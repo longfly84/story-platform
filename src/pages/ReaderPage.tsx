@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useParams, useNavigate } from "react-router-dom"
 import { Helmet } from "react-helmet"
 
@@ -81,16 +81,19 @@ export default function ReaderPage() {
     large: "text-lg leading-relaxed",
   }
 
-  if (story && currentChapter) {
-    saveReadingHistory({
-      storySlug: story.slug,
-      storyTitle: story.title,
-      chapterSlug: currentChapter.slug,
-      chapterNumber: currentChapter.number,
-      chapterTitle: currentChapter.title,
-      lastRead: Date.now(),
-    })
-  }
+  // Save reading history on mount or when story/chapter changes
+  useEffect(() => {
+    if (story && currentChapter) {
+      saveReadingHistory({
+        storySlug: story.slug,
+        storyTitle: story.title,
+        chapterSlug: currentChapter.slug,
+        chapterNumber: currentChapter.number,
+        chapterTitle: currentChapter.title,
+        lastRead: Date.now(),
+      })
+    }
+  }, [story, currentChapter])
 
   return (
     <>

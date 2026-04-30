@@ -19,7 +19,7 @@ export default function StoryCard({ story }: { story: Story }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
 
         <div className="absolute bottom-0 left-0 p-3">
-          <h3 className="line-clamp-2 text-sm font-semibold text-white">
+          <h3 className="line-clamp-2 text-sm font-semibold text-white" title={story.title}>
             {story.title}
           </h3>
 
