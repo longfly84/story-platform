@@ -2,6 +2,7 @@ import { GENRE_REGISTRY } from '@/lib/storyEngine'
 import { HOOK_POOLS, CLIFFHANGER_POOLS, DRAMA_POOLS } from '@/config/storyEngine/retentionPools'
 import { GENRE_PERSONALITIES } from '@/config/storyEngine/genrePersonalities'
 import { CHARACTER_RULES } from '@/config/storyEngine/characterRules'
+import { FEW_SHOT_STYLE_EXAMPLES } from '@/config/storyEngine/styleExamples'
 
 export function buildPrompt({ genreId, dna, memory, latestSummaries, userPrompt }: { genreId?: string, dna?: any, memory?: any, latestSummaries?: string[], userPrompt?: string }) {
   const genre = GENRE_REGISTRY.find(g => g.id === genreId)
@@ -48,6 +49,19 @@ export function buildPrompt({ genreId, dna, memory, latestSummaries, userPrompt 
   if (personality && personality.length) {
     parts.push(`Personality: ${personality.join(', ')}`)
   }
+  // inject few-shot style examples (2-3 random) to nudge micro-style
+  try {
+    const ex = FEW_SHOT_STYLE_EXAMPLES[genre?.id as any] || FEW_SHOT_STYLE_EXAMPLES.system || []
+    if (ex && ex.length) {
+      // pick 2 random
+      const pick = [] as string[]
+      while (pick.length < 2 && pick.length < ex.length) {
+        const s = ex[Math.floor(Math.random() * ex.length)]
+        if (!pick.includes(s)) pick.push(s)
+      }
+      if (pick.length) parts.push(`StyleExamples:\n${pick.join('\n\n')}`)
+    }
+  } catch (e) {}
   // inject character rules if present
   const charRules = CHARACTER_RULES[genre?.id as any]
   if (charRules) {
@@ -72,10 +86,18 @@ export function buildPrompt({ genreId, dna, memory, latestSummaries, userPrompt 
   }
   parts.push([
     'INSTRUCTIONS:',
+    '- IMPORTANT: OUTPUT MUST BE valid JSON only (no markdown, no extra text). Return exactly a single JSON object with fields: title, content, summary, cliffhanger, important_events, emotion_tags, story_memory_updates. Do NOT print any other text or commentary.',
+    '- DO NOT include headings like [Summary] or # Title or any repeated labels. content must contain only the chapter text.',
+    '- DO NOT write in trailer style or narrator-marketing lines (no "hãy chờ xem", "hãy cùng theo dõi", "màn trả thù bắt đầu" etc).',
+    '- DO NOT use summary-style writing or external-addressing lines (no "hãy chờ xem", "hãy cùng theo dõi").',
     '- Use the user prompt / idea as the MAIN SCENE and start the chapter IN MEDIA RES (no lead-in summary).',
     '- Write in first-person narration. Do NOT include an opening summary or meta commentary or explain you are an AI.',
+    '- Start with a concrete scene: show specific setting, an action, and at least one line of dialogue within the first 3 non-empty lines.',
+    '- Favor action + dialogue early; avoid long exposition or "trailer" sentences that summarize future events.',
     '- Open with a strong, concrete hook (first 3 non-empty lines must include a clear incident + a humiliation OR danger OR betrayal OR shocking reveal).',
     '- Do NOT write in generic/plaintive phrases (see blacklist). Avoid vague statements like "Mọi thứ thay đổi" or "Từ ngày đó..."; be specific and show details.',
+    '- Use emotional internal monologue sparingly to add texture, but show through action and dialogue rather than explaining motives.',
+    '- Dialogue should be short and punchy; avoid long speeches that read like exposition.',
     '- Show actions and concrete sensory detail; include actions + at least one line of dialogue in the opening scene.',
     '- Keep sentences short and paragraphs short. Favor many short lines and frequent line breaks.',
     '- Prioritize tension every 2-3 paragraphs: introduce a small escalation or obstacle that raises stakes.',
@@ -87,7 +109,8 @@ export function buildPrompt({ genreId, dna, memory, latestSummaries, userPrompt 
     "- Output MUST be structured exactly with these fields: title, content, summary, cliffhanger, important_events, emotion_tags.",
     "- content should contain the full chapter text (with dialogue and the humiliation scene).",
     "- summary should be a 1-2 sentence concise description (no framing), and cliffhanger should be a single-line description of the final event.",
-    '- BLACKLIST: do not use the following stock phrases verbatim: "Từ ngày đó", "Lòng tôi tràn ngập", "Mọi thứ thay đổi", "Cuộc sống tôi bỗng", "Tất cả thay đổi". If tempted, rephrase into concrete sensory detail.'
+    '- BLACKLIST: do not use the following stock phrases verbatim: "Từ ngày đó", "Lòng tôi tràn ngập", "Mọi thứ thay đổi", "Cuộc sống tôi bỗng", "Tất cả thay đổi". If tempted, rephrase into concrete sensory detail.',
+    '- STRONG_BLACKLIST: remove or avoid these trailer/marketing phrases: "hãy chờ xem", "hãy cùng theo dõi", "màn trả thù bắt đầu", "vận mệnh", "định mệnh", "không ai ngờ", "trailer", "tóm tắt".',
   ].join(' '))
 
   return parts.join('\n\n')

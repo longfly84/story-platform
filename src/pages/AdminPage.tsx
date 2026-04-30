@@ -415,6 +415,38 @@ export default function AdminPage() {
     }
   }
 
+  // Save AI preview as draft chapter into DB
+  async function saveDraftFromAI() {
+    try {
+      const storySlug = aiStorySlug || (newStory as any).slug || ''
+      if (!storySlug) { alert('Chọn truyện để lưu draft'); return }
+      if (!aiResult) { alert('Chưa có nội dung AI để lưu'); return }
+
+      // determine next chapter number
+      const { data: existing, error: err } = await supabase.from('chapters').select('number').eq('story_slug', storySlug).order('number', { ascending: false }).limit(1)
+      if (err) { console.warn('Failed to read chapters for draft', err); }
+      const nextNumber = (existing && existing.length && typeof existing[0].number === 'number') ? (existing[0].number + 1) : 1
+
+      const payload: any = {
+        story_slug: storySlug,
+        title: aiTitle || (aiResult || '').split('\n')[0].slice(0,120),
+        slug: generateSlug(aiTitle || ('chương-' + Date.now())),
+        content: aiResult,
+        number: nextNumber,
+      }
+      if (aiMeta?.summary) payload.summary = aiMeta.summary
+      if (aiMeta?.cliffhanger) payload.cliffhanger = aiMeta.cliffhanger
+      if (aiMeta?.important_events) payload.important_events = aiMeta.important_events
+      if (aiMeta?.emotion_tags) payload.emotion_tags = aiMeta.emotion_tags
+
+      const res = await supabase.from('chapters').insert([payload])
+      if (res.error) throw res.error
+      alert('Lưu draft thành công')
+    } catch (e: any) {
+      alert('Save draft failed: ' + String(e?.message ?? e))
+    }
+  }
+
   return (
     <MainLayout>
       <main className="mx-auto max-w-4xl px-4 py-6">
@@ -644,10 +676,12 @@ export default function AdminPage() {
                   {CHARACTER_VIBES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-            <div className="mt-3">
+            <div className="mt-3 sm:col-span-3">
               <label className="text-xs text-zinc-400">Preview</label>
-              <div className="mt-2 rounded bg-zinc-900/20 p-3 min-h-[80px] text-sm text-zinc-100 whitespace-pre-wrap">
-                {aiLoading ? 'Đang tạo...' : (
+              <div className="mt-2 rounded bg-zinc-900/20 p-4 max-h-[700px] text-sm text-zinc-100 whitespace-pre-wrap leading-relaxed overflow-y-auto break-words w-full flex-shrink-0">
+                {aiLoading ? (
+                  <div>Đang tạo...</div>
+                ) : (
                   aiResult ? (
                     <>
                       {import.meta.env.DEV ? (
@@ -660,31 +694,34 @@ export default function AdminPage() {
                       <div className="text-xs text-zinc-400 mb-2">{aiDnaSummary}</div>
                       <div className="whitespace-pre-wrap">{aiResult}</div>
                     </>
-                  ) : 'Chưa có nội dung.'
+                  ) : (
+                    <div>Chưa có nội dung.</div>
+                  )
                 )}
               </div>
-            </div>
 
-            <div className="flex gap-2 mt-3">
-              <button onClick={(e) => {
-                e.preventDefault()
-                // Insert into create chapter form
-                setNewChapter((c) => ({
-                  ...c,
-                  storySlug: aiStorySlug || c.storySlug,
-                  title: c.title || 'Chương mới',
-                  slug: c.slug || generateSlug('Chương mới'),
-                  content: aiResult || c.content,
-                  summary: aiMeta?.summary || c.summary,
-                  cliffhanger: aiMeta?.cliffhanger || c.cliffhanger,
-                  important_events: aiMeta?.important_events || c.important_events,
-                  emotion_tags: aiMeta?.emotion_tags || c.emotion_tags,
-                }))
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-              }} className="rounded bg-amber-300 px-4 py-2 text-zinc-900">Đưa vào form Chapter</button>
+              <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                <button onClick={(e) => {
+                  e.preventDefault()
+                  // Insert into create chapter form
+                  setNewChapter((c) => ({
+                    ...c,
+                    storySlug: aiStorySlug || c.storySlug,
+                    title: c.title || 'Chương mới',
+                    slug: c.slug || generateSlug('Chương mới'),
+                    content: aiResult || c.content,
+                    summary: aiMeta?.summary || c.summary,
+                    cliffhanger: aiMeta?.cliffhanger || c.cliffhanger,
+                    important_events: aiMeta?.important_events || c.important_events,
+                    emotion_tags: aiMeta?.emotion_tags || c.emotion_tags,
+                  }))
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }} className="w-full sm:w-auto rounded bg-amber-300 px-4 py-2 text-zinc-900">Đưa vào form Chapter</button>
 
-              <button onClick={(e) => { e.preventDefault(); navigator.clipboard?.writeText(aiResult || '') }} className="rounded bg-zinc-800 px-4 py-2">Copy</button>
-              <button onClick={(e) => { e.preventDefault(); navigator.clipboard?.writeText(coverPrompt || '') }} className="rounded bg-zinc-700 px-4 py-2">Copy Cover Prompt</button>
+                <button onClick={(e) => { e.preventDefault(); navigator.clipboard?.writeText(aiResult || '') }} className="w-full sm:w-auto rounded bg-zinc-800 px-4 py-2">Copy</button>
+                <button onClick={(e) => { e.preventDefault(); navigator.clipboard?.writeText(coverPrompt || '') }} className="w-full sm:w-auto rounded bg-zinc-700 px-4 py-2">Copy Cover Prompt</button>
+                <button onClick={(e) => { e.preventDefault(); saveDraftFromAI() }} className="w-full sm:w-auto rounded bg-sky-500 px-4 py-2 text-zinc-900">Save as Draft Chapter</button>
+              </div>
             </div>
 
           </div>

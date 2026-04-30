@@ -46,6 +46,22 @@ export function normalizeAIResult(raw: AIProviderResult, extras: any = {}): AIPr
   }
   processedContent = deduped.join('\n')
 
+  // remove repeated headers like "[Summary]" or duplicated title blocks
+  processedContent = processedContent.replace(/\n#+\s*Chương[^\n]*/gi, '')
+  processedContent = processedContent.replace(/\[Summary\][\s\S]*?(?=\n\n|$)/gi, '')
+  processedContent = processedContent.replace(/\[Cliffhanger\][\s\S]*?(?=\n\n|$)/gi, '')
+  // remove assistant/AI phrases
+  processedContent = processedContent.replace(/(As an AI language model[^\n]*\n?)/gi, '')
+
+  // fallback: if content looks like summary/trailer (few sentences but many future-tense keywords), lightly expand by keeping first scene lines only
+  const trailerCheck = /hãy chờ xem|hãy cùng theo dõi|màn trả thù bắt đầu|sẽ (bắt|bùng|đưa)/i
+  if (trailerCheck.test(processedContent) && processedContent.split('\n').length < 6) {
+    // keep first paragraph and remove trailer sentences
+    const paras = processedContent.split('\n\n')
+    processedContent = paras[0] || processedContent
+    processedContent = processedContent.replace(trailerCheck, '')
+  }
+
   // Simple retention scoring heuristics (0-100)
   function clamp(n: number) { return Math.max(0, Math.min(100, Math.round(n))) }
   const head = (processedContent || '').slice(0, 400)

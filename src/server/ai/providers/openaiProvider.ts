@@ -50,7 +50,18 @@ export async function generateWithOpenAI(prompt: string, opts: any = {}): Promis
     }
 
     const j = await resp.json()
-    const text = j?.choices?.[0]?.message?.content ?? ''
+    let text = j?.choices?.[0]?.message?.content ?? ''
+    // strip common code fences and annotations (```json ... ```)
+    try {
+      // remove ```json ... ``` blocks and ``` ... ``` fences
+      text = String(text).replace(/```json([\s\S]*?)```/gi, '$1')
+      text = text.replace(/```([\s\S]*?)```/g, '$1')
+      // trim leading/trailing non-json text until first '{'
+      const firstBrace = text.indexOf('{')
+      if (firstBrace > 0) text = text.slice(firstBrace)
+    } catch (e) {
+      // ignore
+    }
     // parse model output into structured result
     const parsed = parseModelOutput(String(text))
     // normalize result
