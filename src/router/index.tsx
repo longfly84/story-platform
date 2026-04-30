@@ -5,6 +5,8 @@ import ReaderPage from "@/pages/ReaderPage"
 import StoryDetailPage from "@/pages/StoryDetailPage"
 import NotFoundPage from "../pages/NotFoundPage"
 import ScrollToTop from "@/components/ScrollToTop"
+import AdminPage from "@/pages/AdminPage"
+import LoginPage from "@/pages/LoginPage"
 
 export default function AppRouter() {
   return (
@@ -13,6 +15,8 @@ export default function AppRouter() {
       <>
         <Route path="/" element={<HomePage />} />
         <Route path="/truyen/:slug" element={<StoryDetailPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/doc-truyen/:slug/:chapter" element={<ReaderPage />} />
         <Route
           path="/doc-truyen/:slug"

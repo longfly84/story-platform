@@ -10,6 +10,8 @@ import {
   getStoryBySlug,
   stories,
 } from "@/data/stories"
+import { fetchStoriesFromSupabase } from "@/lib/supabase"
+import { useRef } from "react"
 import { getReadingHistory, getFollowedStories } from "@/lib/localStorageHelpers"
 import type { Story } from "@/data/stories"
 
@@ -172,9 +174,54 @@ export default function HomePage() {
     setFollowedStories(followedStoriesList)
   }, [])
 
+  // try to fetch stories from supabase on mount and fallback to local fake data
+  const [remoteStories, setRemoteStories] = useState<Story[] | null>(null)
+  // keep loading/error but avoid unused variable errors by using them in UI below
+  const [remoteLoading, setRemoteLoading] = useState(false)
+  const [remoteError, setRemoteError] = useState<string | null>(null)
+  const fetchedOnce = useRef(false)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (fetchedOnce.current) return
+      fetchedOnce.current = true
+      setRemoteLoading(true)
+      try {
+        const fetched = await fetchStoriesFromSupabase()
+        if (!mounted) return
+        if (fetched && Array.isArray(fetched) && fetched.length) {
+          // heuristic mapping: map supabase rows to Story shape
+          const mapped: Story[] = fetched.map((r: any) => ({
+            id: r.id ?? String(r.slug ?? Math.random()),
+            slug: r.slug ?? r.id ?? r.title?.toLowerCase().replace(/\s+/g, '-') ?? 'untitled',
+            title: r.title ?? r.name ?? 'Không tên',
+            author: r.author ?? r.writer ?? r.author_name,
+            coverImage: r.cover_image ?? r.coverImage ?? r.image ?? r.cover ?? "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80",
+            views: r.views ?? r.view_count ?? undefined,
+            status: (r.status === 'completed' || r.status === 'full' || r.tags?.includes?.('Full')) ? 'completed' : 'ongoing',
+            description: r.description ?? r.summary ?? r.desc ?? '',
+            genreSlugs: r.genre_slugs ?? r.genres ?? r.genre ?? [],
+            updatedAt: r.updated_at ?? r.updatedAt ?? new Date().toISOString(),
+            chapters: Array.isArray(r.chapters) ? r.chapters.map((c: any, i: number) => ({ number: c.number ?? (i+1), slug: c.slug ?? `chuong-${c.number ?? (i+1)}`, title: c.title ?? `Chương ${c.number ?? (i+1)}`, content: Array.isArray(c.content) ? c.content : [c.content ?? ''], publishedAt: c.published_at ?? c.publishedAt ?? new Date().toISOString(), id: c.id ?? (c.slug ?? `chuong-${c.number ?? (i+1)}`), createdAt: c.created_at ?? c.createdAt })) : [],
+            tags: r.tags ?? (typeof r.tags === 'string' ? r.tags.split(',').map((t: string) => t.trim()) : undefined),
+          }))
+          setRemoteStories(mapped)
+        }
+      } catch (e: any) {
+        setRemoteError(String(e?.message ?? e))
+      } finally {
+        if (mounted) setRemoteLoading(false)
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
+
+  const baseStories = remoteStories && remoteStories.length ? remoteStories : stories
+
   const filteredStories = useMemo(() => {
     const q = normalizeText(debouncedQuery)
-    return stories.filter((s) => {
+    return baseStories.filter((s) => {
       if (selectedGenre && !s.genreSlugs.includes(selectedGenre)) return false
       if (!q) return true
       const title = normalizeText(s.title)
@@ -240,6 +287,11 @@ export default function HomePage() {
       />}
     >
       <div className="mx-auto max-w-7xl px-4 py-5 sm:py-6 lg:py-10">
+        {remoteLoading ? (
+          <div className="mb-4 text-sm text-zinc-400">Đang tải dữ liệu thật…</div>
+        ) : remoteError ? (
+          <div className="mb-4 text-sm text-red-400">Lỗi khi tải dữ liệu: {remoteError}</div>
+        ) : null}
         <div className="mb-4 flex items-center gap-2 lg:hidden">
           <Button
             variant="outline"

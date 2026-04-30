@@ -1,0 +1,69 @@
+import { createClient } from '@supabase/supabase-js'
+
+const url = import.meta.env.VITE_SUPABASE_URL
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+export const supabase = createClient(url ?? '', key ?? '')
+
+export async function fetchStoriesFromSupabase() {
+  try {
+    const { data, error } = await supabase.from('stories').select('*, chapters(*)')
+    if (error) throw error
+    return data
+  } catch (e) {
+    console.warn('Supabase fetch failed', e)
+    return null
+  }
+}
+
+export async function fetchStoryBySlug(slug: string) {
+  try {
+    // try to fetch story and related chapters if foreign table exists
+    const { data, error } = await supabase.from('stories').select('*, chapters(*)').eq('slug', slug).maybeSingle()
+    if (error) throw error
+    return data ?? null
+  } catch (e) {
+    console.warn('fetchStoryBySlug failed', e)
+    return null
+  }
+}
+
+export async function fetchChaptersByStorySlug(storySlug: string) {
+  try {
+    const { data, error } = await supabase.from('chapters').select('*').eq('story_slug', storySlug).order('number', { ascending: true })
+    if (error) throw error
+    return data ?? null
+  } catch (e) {
+    console.warn('fetchChaptersByStorySlug failed', e)
+    return null
+  }
+}
+
+// Auth helpers
+export async function signInWithEmail(email: string, password: string) {
+  try {
+    const res = await supabase.auth.signInWithPassword({ email, password })
+    return res
+  } catch (e) {
+    console.warn('signInWithEmail failed', e)
+    throw e
+  }
+}
+
+export async function signOut() {
+  try {
+    await supabase.auth.signOut()
+  } catch (e) {
+    console.warn('signOut failed', e)
+    throw e
+  }
+}
+
+export async function getCurrentUser() {
+  try {
+    const r = await supabase.auth.getUser()
+    return r.data.user ?? null
+  } catch (e) {
+    return null
+  }
+}

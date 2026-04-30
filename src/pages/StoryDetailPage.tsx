@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet"
 
 import MainLayout from "@/layouts/MainLayout"
 import { getStoryBySlug } from "@/data/stories"
+import { fetchStoryBySlug } from "@/lib/supabase"
 import { StarIcon, EyeIcon, ClockIcon } from "lucide-react"
 import { followStory, unfollowStory, isStoryFollowed, getReadingHistory } from "@/lib/localStorageHelpers"
 import { formatCount } from "@/lib/formatters"
@@ -22,6 +23,21 @@ export default function StoryDetailPage() {
       setFollowed(isStoryFollowed(story.slug))
     }
   }, [story])
+
+  // try to load story from Supabase and merge into local story (fallback if not found)
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (!slug) return
+      const s = await fetchStoryBySlug(slug)
+      if (!mounted) return
+      if (s && story) {
+        // minimal: merge remote fields onto local story object for display
+        Object.assign(story, s as Partial<typeof story>)
+      }
+    })()
+    return () => { mounted = false }
+  }, [slug, story])
 
   // reading history entry for this story (if any)
   const readingEntry = story ? getReadingHistory().find((h) => h.storySlug === story.slug) : undefined

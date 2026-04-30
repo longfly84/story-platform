@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet"
 
 import MainLayout from "@/layouts/MainLayout"
 import { getStoryBySlug } from "@/data/stories"
+import { fetchChaptersByStorySlug } from "@/lib/supabase"
 import { saveReadingHistory, getReadingHistory, isStoryFollowed, followStory } from "@/lib/localStorageHelpers"
 // formatCount not used here but keep import for future extensibility
 
@@ -156,6 +157,21 @@ export default function ReaderPage() {
       })
     }
   }, [story, currentChapter])
+
+  // try load chapters from supabase
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (!story) return
+      const remote = await fetchChaptersByStorySlug(story.slug)
+      if (!mounted) return
+      if (remote && Array.isArray(remote) && remote.length) {
+        // try to map remote chapters into story.chapters shape if possible
+        story.chapters = remote.map((r: any) => ({ number: r.number, slug: r.slug, id: r.id ?? r.slug, title: r.title, content: r.content ?? [r.content], publishedAt: r.published_at ?? r.created_at }))
+      }
+    })()
+    return () => { mounted = false }
+  }, [story])
 
   // follow state
   useEffect(() => {
