@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom"
 
 import type { Story } from "@/data/stories"
+import { formatCount } from "@/lib/formatters"
 
 export default function StoryCard({ story }: { story: Story }) {
   const latest = story.chapters.at(-1)
   const latestLabel = latest ? `Chương ${latest.number}` : "Chưa có chương"
-  const viewsLabel = story.views ? `${story.views.toLocaleString()} lượt đọc` : undefined
+  const viewsLabel = story.views ? `${formatCount(story.views)} lượt đọc` : undefined
 
   return (
     <Link to={`/truyen/${story.slug}`} className="group block">
@@ -29,13 +30,17 @@ export default function StoryCard({ story }: { story: Story }) {
 
         <div className="absolute right-2 top-2 flex gap-2">
           {story.tags?.includes("HOT") ? (
-          <div className="absolute left-2 top-2 rounded bg-amber-500 px-2 py-1 text-[11px] font-bold tracking-wide text-zinc-950">
-            HOT
-          </div>
+            <div className="absolute left-2 top-2 rounded bg-amber-500 px-2 py-1 text-[11px] font-bold tracking-wide text-zinc-950">
+              HOT
+            </div>
           ) : null}
 
           {/* status chip */}
-          {story.status === "completed" ? (
+          {story.tags?.includes("Full") ? (
+            <div className="rounded bg-emerald-400/15 px-2 py-1 text-[11px] font-semibold text-emerald-200">
+              FULL
+            </div>
+          ) : story.status === "completed" ? (
             <div className="rounded bg-emerald-400/15 px-2 py-1 text-[11px] font-semibold text-emerald-200">
               Full
             </div>

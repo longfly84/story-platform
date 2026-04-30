@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link, useParams, useNavigate } from "react-router-dom"
 import { Helmet } from "react-helmet"
 
 import MainLayout from "@/layouts/MainLayout"
 import { getStoryBySlug } from "@/data/stories"
-import { saveReadingHistory } from "@/lib/localStorageHelpers"
+import { saveReadingHistory, getReadingHistory, isStoryFollowed, followStory } from "@/lib/localStorageHelpers"
+// formatCount not used here but keep import for future extensibility
 
 export default function ReaderPage() {
   const { slug, chapter } = useParams<{ slug: string; chapter: string }>()
@@ -51,6 +52,18 @@ export default function ReaderPage() {
       return s.contentWidth ?? DEFAULT_SETTINGS.contentWidth
     } catch {
       return DEFAULT_SETTINGS.contentWidth
+    }
+  })
+
+  const articleRef = useRef<HTMLElement | null>(null)
+  const [progress, setProgress] = useState(0)
+  const [showBackTop, setShowBackTop] = useState(false)
+  const [followed, setFollowed] = useState(false)
+  const [hadHistoryInitially] = useState(() => {
+    try {
+      return !!getReadingHistory().find((h) => h.storySlug === (story?.slug ?? ""))
+    } catch {
+      return false
     }
   })
 
@@ -143,6 +156,42 @@ export default function ReaderPage() {
       })
     }
   }, [story, currentChapter])
+
+  // follow state
+  useEffect(() => {
+    if (!story) return
+    setFollowed(isStoryFollowed(story.slug))
+  }, [story])
+
+  // progress and back-to-top handling
+  useEffect(() => {
+    const handler = () => {
+      const el = articleRef.current
+      const scrollY = window.scrollY
+      setShowBackTop(scrollY > 300)
+
+      if (!el) {
+        setProgress(0)
+        return
+      }
+      const rect = el.getBoundingClientRect()
+      const top = window.scrollY + rect.top
+      const height = rect.height
+      const windowH = window.innerHeight
+      const totalScrollable = Math.max(0, height - windowH)
+      const scrolled = window.scrollY - top
+      const pct = totalScrollable > 0 ? Math.max(0, Math.min(1, scrolled / totalScrollable)) : (window.scrollY > top ? 1 : 0)
+      setProgress(Math.round(pct * 100))
+    }
+
+    window.addEventListener('scroll', handler, { passive: true })
+    window.addEventListener('resize', handler)
+    handler()
+    return () => {
+      window.removeEventListener('scroll', handler)
+      window.removeEventListener('resize', handler)
+    }
+  }, [articleRef, currentChapter])
 
   // Auto-hide floating buttons on scroll (mobile) - toggle classes to avoid direct style calls
   useEffect(() => {
@@ -301,12 +350,57 @@ export default function ReaderPage() {
           <h1 className="text-3xl font-bold text-zinc-100">{story.title}</h1>
           <h2 className="mt-1 text-xl font-semibold text-zinc-300">{currentChapter.title}</h2>
 
+          {/* Empty states: show when user hasn't read this story before or hasn't followed */}
+          {!hadHistoryInitially && (
+            <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-900/30 p-4 text-sm text-zinc-200">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="font-semibold text-zinc-100">Bạn chưa đọc truyện này</div>
+                  <div className="mt-1 text-xs text-zinc-400">Bắt đầu đọc để lưu lịch sử và tiếp tục sau dễ dàng hơn.</div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => navigate(`/doc-truyen/${slug}/${story.chapters[0]?.slug ?? "chuong-1"}`)} className="rounded bg-amber-300 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-200">Đọc từ đầu</button>
+                  {!followed ? (
+                    <button onClick={() => { if (story) { followStory(story.slug); setFollowed(true) } }} className="rounded border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Theo dõi</button>
+                  ) : (
+                    <button disabled className="rounded border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm font-semibold text-zinc-500">Đang theo dõi</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Progress bar */}
+          <div className="mt-4 h-2 w-full rounded bg-zinc-800/50 overflow-hidden">
+            <div
+              role="progressbar"
+              aria-valuenow={progress}
+              style={{ width: `${progress}%`, transition: 'width 220ms linear' }}
+              className="h-full bg-amber-300"
+            />
+          </div>
+
           <article
+            ref={articleRef}
             className={`mt-6 space-y-6 rounded bg-zinc-900/20 p-6 text-zinc-200 ${fontSizeClasses[fontSize]}`}
             style={{ whiteSpace: "pre-wrap", lineHeight: lineHeight, maxWidth: contentWidth }}
           >
             {currentChapter.content}
           </article>
+
+          {/* Back to top and progress label */}
+          <div className="fixed right-4 bottom-20 z-50 flex flex-col items-end gap-2 lg:bottom-8">
+            {showBackTop && (
+              <button
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="rounded-full bg-zinc-800/80 p-3 text-zinc-100 shadow-lg hover:bg-zinc-800"
+                aria-label="Back to top"
+              >
+                ↑
+              </button>
+            )}
+            <div className="rounded bg-zinc-900/70 px-2 py-1 text-xs text-zinc-200">{progress}%</div>
+          </div>
 
           <nav className="sticky bottom-0 left-0 z-50 mt-6 flex w-full max-w-4xl justify-between gap-4 rounded-t bg-zinc-900/80 px-4 py-3 backdrop-blur-sm sm:static sm:bg-transparent sm:px-0">
             <button

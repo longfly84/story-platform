@@ -5,23 +5,29 @@ import { Helmet } from "react-helmet"
 import MainLayout from "@/layouts/MainLayout"
 import { getStoryBySlug } from "@/data/stories"
 import { StarIcon, EyeIcon, ClockIcon } from "lucide-react"
-import { followStory, unfollowStory, isStoryFollowed } from "@/lib/localStorageHelpers"
+import { followStory, unfollowStory, isStoryFollowed, getReadingHistory } from "@/lib/localStorageHelpers"
+import { formatCount } from "@/lib/formatters"
 
 export default function StoryDetailPage() {
   const { slug } = useParams()
   const story = slug ? getStoryBySlug(slug) : undefined
 
   const [rating, setRating] = useState(4.5)
-  const [views, setViews] = useState(12345)
-  const [status, setStatus] = useState("Ongoing")
+  // keep a reactive followed flag so the button updates immediately
+  const [followed, setFollowed] = useState(false)
 
   useEffect(() => {
     if (story) {
       setRating(parseFloat((Math.random() * 2 + 3).toFixed(1)))
-      setViews(Math.floor(Math.random() * 100000 + 1000))
-      setStatus(Math.random() > 0.5 ? "Ongoing" : "Completed")
+      setFollowed(isStoryFollowed(story.slug))
     }
   }, [story])
+
+  // reading history entry for this story (if any)
+  const readingEntry = story ? getReadingHistory().find((h) => h.storySlug === story.slug) : undefined
+  const views = story?.views ?? undefined
+  const statusLabel = story?.status === "completed" ? "Hoàn thành" : "Đang ra"
+  const chapterCount = story?.chapters.length ?? 0
 
   if (!story) {
     return (
@@ -74,28 +80,53 @@ export default function StoryDetailPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <EyeIcon className="size-4" />
-                    <span>{views.toLocaleString()} views</span>
+                    <span>{views ? `${formatCount(views)} lượt đọc` : "- lượt đọc"}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <ClockIcon className="size-4" />
-                    <span>{status}</span>
+                    <span>{statusLabel}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-zinc-500">•</span>
+                    <span>{chapterCount} chương</span>
                   </div>
                 </div>
                 <p className="mt-4 text-zinc-300">{story.description}</p>
               </div>
-              <a
-                href={`/doc-truyen/${story.slug}/${story.chapters[0]?.slug ?? "chuong-1"}`}
-                className="mt-6 inline-block w-full rounded-lg bg-amber-300 px-4 py-2 text-center text-sm font-semibold text-zinc-950 hover:bg-amber-200 sm:w-auto"
-                onClick={() => {
-                  if (isStoryFollowed(story.slug)) {
-                    unfollowStory(story.slug)
-                  } else {
-                    followStory(story.slug)
-                  }
-                }}
-              >
-                {isStoryFollowed(story.slug) ? "Bỏ theo dõi" : "Theo dõi truyện"}
-              </a>
+              <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Link
+                  to={`/doc-truyen/${story.slug}/${story.chapters[0]?.slug ?? "chuong-1"}`}
+                  className="inline-block w-full rounded-lg bg-amber-300 px-4 py-2 text-center text-sm font-semibold text-zinc-950 hover:bg-amber-200 sm:w-auto"
+                >
+                  Đọc từ đầu
+                </Link>
+
+                {readingEntry ? (
+                  <Link
+                    to={`/doc-truyen/${readingEntry.storySlug}/${readingEntry.chapterSlug}`}
+                    className="inline-block w-full rounded-lg border border-zinc-800 bg-zinc-950/40 px-4 py-2 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50 sm:w-auto"
+                  >
+                    Đọc tiếp{readingEntry.chapterNumber ? ` chương ${readingEntry.chapterNumber}` : ""}
+                  </Link>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!story) return
+                    if (followed) {
+                      unfollowStory(story.slug)
+                      setFollowed(false)
+                    } else {
+                      followStory(story.slug)
+                      setFollowed(true)
+                    }
+                  }}
+                  className="inline-block w-full rounded-lg border border-zinc-800 bg-zinc-950/30 px-4 py-2 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50 sm:w-auto"
+                >
+                  {followed ? "Bỏ theo dõi" : "Theo dõi truyện"}
+                </button>
+              </div>
             </div>
           </div>
         </main>
