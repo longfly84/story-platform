@@ -6,6 +6,7 @@ import MainLayout from "@/layouts/MainLayout"
 import { getStoryBySlug } from "@/data/stories"
 import { fetchChaptersByStorySlug } from "@/lib/supabase"
 import { saveReadingHistory, getReadingHistory, isStoryFollowed, followStory } from "@/lib/localStorageHelpers"
+import { getCurrentUser, upsertReadingHistoryForUser } from '@/lib/supabase'
 // formatCount not used here but keep import for future extensibility
 
 export default function ReaderPage() {
@@ -147,14 +148,32 @@ export default function ReaderPage() {
   // Save reading history on mount or when story/chapter changes
   useEffect(() => {
     if (story && currentChapter) {
-      saveReadingHistory({
+      const item = {
         storySlug: story.slug,
         storyTitle: story.title,
         chapterSlug: currentChapter.slug,
         chapterNumber: currentChapter.number,
         chapterTitle: currentChapter.title,
         lastRead: Date.now(),
-      })
+      }
+      // save locally
+      saveReadingHistory(item)
+      // try to sync remotely if logged in
+      ;(async () => {
+        try {
+          const u = await getCurrentUser()
+          if (u) {
+            await upsertReadingHistoryForUser(u.id, {
+              story_slug: item.storySlug,
+              story_title: item.storyTitle,
+              chapter_slug: item.chapterSlug,
+              chapter_number: item.chapterNumber,
+              chapter_title: item.chapterTitle,
+              last_read: item.lastRead,
+            })
+          }
+        } catch {}
+      })()
     }
   }, [story, currentChapter])
 

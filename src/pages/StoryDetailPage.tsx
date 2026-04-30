@@ -6,7 +6,8 @@ import MainLayout from "@/layouts/MainLayout"
 import { getStoryBySlug } from "@/data/stories"
 import { fetchStoryBySlug } from "@/lib/supabase"
 import { StarIcon, EyeIcon } from "lucide-react"
-import { getReadingHistory } from "@/lib/localStorageHelpers"
+import { getReadingHistory, isStoryFollowed, followStory, unfollowStory } from "@/lib/localStorageHelpers"
+import { getCurrentUser, getUserFollows, addUserFollow, removeUserFollow } from '@/lib/supabase'
 import ChapterList from '@/components/ChapterList'
 import { formatCount } from "@/lib/formatters"
 
@@ -39,7 +40,31 @@ export default function StoryDetailPage() {
   }, [slug, story])
 
   // reading history entry for this story (if any)
-  const readingEntry = story ? getReadingHistory().find((h) => h.storySlug === story.slug) : undefined
+  const readingEntryLocal = story ? getReadingHistory().find((h) => h.storySlug === story.slug) : undefined
+  // follow state (sync with Supabase when logged in, fallback to localStorage)
+  const [isFollowed, setIsFollowed] = useState<boolean>(() => story ? isStoryFollowed(story.slug) : false)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (!story) return
+      try {
+        const u = await getCurrentUser()
+        if (!mounted) return
+        if (u) {
+          const follows = await getUserFollows(u.id)
+          if (!mounted) return
+          setIsFollowed(follows.includes(story.slug))
+        } else {
+          setIsFollowed(isStoryFollowed(story.slug))
+        }
+      } catch (e) {
+        // ignore and fallback
+        setIsFollowed(isStoryFollowed(story.slug))
+      }
+    })()
+    return () => { mounted = false }
+  }, [story])
   const views = story?.views ?? undefined
   const statusLabel = story?.status === "completed" ? "Hoàn thành" : "Đang ra"
   const chapterCount = story?.chapters.length ?? 0
@@ -116,7 +141,39 @@ export default function StoryDetailPage() {
               <div className="mt-4 flex flex-col gap-3 px-1">
                 <Link to={`/doc-truyen/${story.slug}/${story.chapters[0]?.slug ?? 'chuong-1'}`} className="block rounded bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-zinc-950 hover:bg-amber-200">Đọc từ đầu</Link>
                 <Link to={`/doc-truyen/${story.slug}/${story.chapters.at(-1)?.slug ?? 'chuong-1'}`} className="block rounded border border-zinc-800 bg-zinc-950/40 px-4 py-3 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Đọc chương mới nhất</Link>
-                {readingEntry ? <Link to={`/doc-truyen/${readingEntry.storySlug}/${readingEntry.chapterSlug}`} className="block rounded border border-zinc-800 bg-zinc-950/30 px-4 py-3 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Đọc tiếp</Link> : null}
+                {readingEntryLocal ? <Link to={`/doc-truyen/${readingEntryLocal.storySlug}/${readingEntryLocal.chapterSlug}`} className="block rounded border border-zinc-800 bg-zinc-950/30 px-4 py-3 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Đọc tiếp</Link> : null}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!story) return
+                    const u = await getCurrentUser()
+                    if (u) {
+                      // toggle follow via remote
+                      const follows = await getUserFollows(u.id)
+                      const currently = follows.includes(story.slug)
+                      if (currently) {
+                        // remove
+                        try { await removeUserFollow(u.id, story.slug) } catch {}
+                      } else {
+                        try { await addUserFollow(u.id, story.slug) } catch {}
+                      }
+                      // optimistic local toggle
+                      setIsFollowed(!currently)
+                    } else {
+                      // fallback localStorage
+                      if (isStoryFollowed(story.slug)) {
+                        unfollowStory(story.slug)
+                        setIsFollowed(false)
+                      } else {
+                        followStory(story.slug)
+                        setIsFollowed(true)
+                      }
+                    }
+                  }}
+                  className="mt-2 rounded border border-zinc-800 bg-zinc-950/20 px-4 py-2 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50"
+                >
+                  {isFollowed ? 'Bỏ theo dõi' : 'Theo dõi'}
+                </button>
               </div>
             </div>
 

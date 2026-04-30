@@ -11,6 +11,7 @@ import {
   stories,
 } from "@/data/stories"
 import { fetchStoriesFromSupabase } from "@/lib/supabase"
+import { getCurrentUser, getReadingHistoryForUser } from '@/lib/supabase'
 import { useRef } from "react"
 import { getReadingHistory, getFollowedStories } from "@/lib/localStorageHelpers"
 import type { Story } from "@/data/stories"
@@ -155,24 +156,57 @@ export default function HomePage() {
     }
   }, [mobileMenuOpen])
 
-  // Load reading history and followed stories from localStorage
+  // Load reading history and followed stories from Supabase if logged in, otherwise localStorage
   useEffect(() => {
-    const historyItems = getReadingHistory()
-    const followedSlugs = getFollowedStories()
+    let mounted = true
+    const load = async () => {
+      try {
+        const u = await getCurrentUser()
+        if (u) {
+          const remote = await getReadingHistoryForUser(u.id)
+          if (!mounted) return
+          if (remote && remote.length) {
+            const mapped = remote.map((r: any) => ({ storySlug: r.story_slug, storyTitle: r.story_title, chapterSlug: r.chapter_slug, chapterNumber: r.chapter_number, chapterTitle: r.chapter_title, lastRead: r.last_read }))
+            setReadingHistoryItems(mapped)
+            const historyStories = mapped
+              .map((item) => stories.find((s) => s.slug === item.storySlug))
+              .filter((s): s is Story => s !== undefined)
+            setReadingHistory(historyStories)
+            // try to load followed stories from localStorage as fallback (can be synced later)
+            const followedSlugs = getFollowedStories()
+            const followedStoriesList = followedSlugs
+              .map((slug) => stories.find((s) => s.slug === slug))
+              .filter((s): s is Story => s !== undefined)
+            setFollowedStories(followedStoriesList)
+            return
+          }
+        }
+      } catch (e) {
+        // ignore and fallback to local
+      }
 
-    // Map slugs to story objects
-    const historyStories = historyItems
-      .map((item) => stories.find((s) => s.slug === item.storySlug))
-      .filter((s): s is Story => s !== undefined)
+      // fallback: localStorage
+      const historyItems = getReadingHistory()
+      const followedSlugs = getFollowedStories()
 
-    const followedStoriesList = followedSlugs
-      .map((slug) => stories.find((s) => s.slug === slug))
-      .filter((s): s is Story => s !== undefined)
+      // Map slugs to story objects
+      const historyStories = historyItems
+        .map((item) => stories.find((s) => s.slug === item.storySlug))
+        .filter((s): s is Story => s !== undefined)
 
-    setReadingHistory(historyStories)
-    // also keep raw items for "Đọc tiếp"
-    setReadingHistoryItems(historyItems)
-    setFollowedStories(followedStoriesList)
+      const followedStoriesList = followedSlugs
+        .map((slug) => stories.find((s) => s.slug === slug))
+        .filter((s): s is Story => s !== undefined)
+
+      if (!mounted) return
+      setReadingHistory(historyStories)
+      // also keep raw items for "Đọc tiếp"
+      setReadingHistoryItems(historyItems)
+      setFollowedStories(followedStoriesList)
+    }
+
+    load()
+    return () => { mounted = false }
   }, [])
 
   // try to fetch stories from supabase on mount and fallback to local fake data
