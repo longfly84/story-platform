@@ -59,6 +59,7 @@ export default function AdminPage() {
   const [aiRevenge, setAiRevenge] = useState(3)
   const [aiCliffhanger, setAiCliffhanger] = useState(CLIFFHANGER_TYPES[0] ?? '')
   const [aiLength, setAiLength] = useState('short') // short, medium, long
+  const [aiProvider, setAiProvider] = useState<'mock'|'openai'>('mock')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiResult, setAiResult] = useState('')
   const [aiTitle, setAiTitle] = useState('')
@@ -330,7 +331,7 @@ export default function AdminPage() {
         const resp = await fetch('/api/ai/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storySlug: aiStorySlug || (newStory as any).slug, genreId: aiGenreId, prompt: aiPrompt + (contextSummary ? (' — context: ' + contextSummary) : ''), length: aiLength }),
+          body: JSON.stringify({ storySlug: aiStorySlug || (newStory as any).slug, genreId: aiGenreId, prompt: aiPrompt + (contextSummary ? (' — context: ' + contextSummary) : ''), length: aiLength, provider: aiProvider }),
         })
         const j = await resp.json()
         if (j?.ok && j.data) {
@@ -564,6 +565,15 @@ export default function AdminPage() {
                   {GENRE_REGISTRY.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
                 </select>
               </div>
+              {import.meta.env.DEV ? (
+                <div>
+                  <label className="text-xs text-zinc-400">Provider (dev)</label>
+                  <select className="rounded bg-zinc-900/20 p-2" value={aiProvider} onChange={(e) => setAiProvider(e.target.value as any)}>
+                    <option value="mock">Mock</option>
+                    <option value="openai">OpenAI (dev)</option>
+                  </select>
+                </div>
+              ) : null}
               <div>
                 <label className="text-xs text-zinc-400">Main character style</label>
                 <select className="rounded bg-zinc-900/20 p-2" value={aiMainStyle} onChange={(e) => setAiMainStyle(e.target.value)}>
@@ -725,3 +735,5 @@ export default function AdminPage() {
     </MainLayout>
   )
 }
+
+// Note: components split created but AdminPage still integrates directly to minimize changes
