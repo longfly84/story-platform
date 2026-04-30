@@ -11,5 +11,7 @@ Một đoạn hành động ngắn.\n\nKết thúc với cliffhanger...`
   const res: AIProviderResult = { title, content, summary, cliffhanger: 'Reveal', important_events: [`Generated: ${summary}`], emotion_tags: [], story_memory_updates: {}, provider_meta: { provider: 'mock' } }
   // normalize before return
   const { normalizeAIResult } = await import('../normalizeAIResult')
-  return normalizeAIResult(res, { provider_used: 'mock' })
+  const norm = normalizeAIResult(res, { provider_used: 'mock' })
+  // expose retention meta in provider_meta so Admin preview can show it (dev only)
+  return { ...norm, provider_meta: { ...(norm.provider_meta || {}), provider: 'mock' } }
 }

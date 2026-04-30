@@ -653,6 +653,9 @@ export default function AdminPage() {
                       {import.meta.env.DEV ? (
                         <div className="text-xs text-zinc-400 mb-2">Provider: {aiProviderUsed ?? aiProvider}</div>
                       ) : null}
+                      {import.meta.env.DEV && aiMeta?.provider_meta?.retention ? (
+                        <div className="text-xs text-zinc-400 mb-2">Retention: {JSON.stringify(aiMeta.provider_meta.retention)}</div>
+                      ) : null}
                       <div className="font-semibold text-zinc-100 mb-2">{aiTitle}</div>
                       <div className="text-xs text-zinc-400 mb-2">{aiDnaSummary}</div>
                       <div className="whitespace-pre-wrap">{aiResult}</div>
