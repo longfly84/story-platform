@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react"
-/* Removed unused import to fix build error */
 import { Link } from "react-router-dom"
 
 import StoryCard from "@/components/home/StoryCard"
@@ -11,6 +10,8 @@ import {
   getStoryBySlug,
   stories,
 } from "@/data/stories"
+import { getReadingHistory, getFollowedStories } from "@/lib/localStorageHelpers"
+import type { Story } from "@/data/stories"
 
 function normalizeText(input: string) {
   return input
@@ -31,6 +32,10 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
+  // State for reading history and followed stories
+  const [readingHistory, setReadingHistory] = useState<Story[]>([])
+  const [followedStories, setFollowedStories] = useState<Story[]>([])
+
   useEffect(() => {
     setCurrentPage(1)
     const t = window.setTimeout(() => setDebouncedQuery(query), 150)
@@ -45,6 +50,24 @@ export default function HomePage() {
       document.body.style.overflow = prev
     }
   }, [mobileMenuOpen])
+
+  // Load reading history and followed stories from localStorage
+  useEffect(() => {
+    const historyItems = getReadingHistory()
+    const followedSlugs = getFollowedStories()
+
+    // Map slugs to story objects
+    const historyStories = historyItems
+      .map((item) => stories.find((s) => s.slug === item.storySlug))
+      .filter((s): s is Story => s !== undefined)
+
+    const followedStoriesList = followedSlugs
+      .map((slug) => stories.find((s) => s.slug === slug))
+      .filter((s): s is Story => s !== undefined)
+
+    setReadingHistory(historyStories)
+    setFollowedStories(followedStoriesList)
+  }, [])
 
   const filteredStories = useMemo(() => {
     const q = normalizeText(debouncedQuery)
@@ -240,6 +263,64 @@ export default function HomePage() {
               </div>
             </section>
           ) : null}
+
+          {/* New section: Đang đọc gần đây */}
+          {readingHistory.length > 0 && (
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-5 sm:p-6">
+              <h2 className="mb-4 text-2xl font-semibold text-zinc-100">Đang đọc gần đây</h2>
+              <div className="space-y-4">
+                {readingHistory.map((story) => (
+                  <Link
+                    key={story.slug}
+                    to={`/doc-truyen/${story.slug}/${story.chapters[0]?.slug ?? "chuong-1"}`}
+                    className="flex items-center gap-4 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-zinc-200 hover:bg-zinc-900/50"
+                  >
+                    <img
+                      src={story.coverImage}
+                      alt={story.title}
+                      className="h-12 w-12 rounded-md object-cover"
+                      loading="lazy"
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold">{story.title}</div>
+                      <div className="truncate text-sm text-zinc-400">
+                        {story.chapters[0]?.title ?? ""}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* New section: Truyện đang theo dõi */}
+          {followedStories.length > 0 && (
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-5 sm:p-6">
+              <h2 className="mb-4 text-2xl font-semibold text-zinc-100">Truyện đang theo dõi</h2>
+              <div className="space-y-4">
+                {followedStories.map((story) => (
+                  <Link
+                    key={story.slug}
+                    to={`/truyen/${story.slug}`}
+                    className="flex items-center gap-4 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-zinc-200 hover:bg-zinc-900/50"
+                  >
+                    <img
+                      src={story.coverImage}
+                      alt={story.title}
+                      className="h-12 w-12 rounded-md object-cover"
+                      loading="lazy"
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold">{story.title}</div>
+                      <div className="truncate text-sm text-zinc-400">
+                        {story.author ?? ""}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section id="hot" className="scroll-mt-24">
             <div className="mb-4 flex items-end justify-between gap-3">

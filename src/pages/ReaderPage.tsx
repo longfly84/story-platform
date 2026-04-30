@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet"
 
 import MainLayout from "@/layouts/MainLayout"
 import { getStoryBySlug } from "@/data/stories"
+import { saveReadingHistory } from "@/lib/localStorageHelpers"
 
 export default function ReaderPage() {
   const { slug, chapter } = useParams<{ slug: string; chapter: string }>()
@@ -78,6 +79,17 @@ export default function ReaderPage() {
     small: "text-sm leading-relaxed",
     medium: "text-base leading-relaxed",
     large: "text-lg leading-relaxed",
+  }
+
+  if (story && currentChapter) {
+    saveReadingHistory({
+      storySlug: story.slug,
+      storyTitle: story.title,
+      chapterSlug: currentChapter.slug,
+      chapterNumber: currentChapter.number,
+      chapterTitle: currentChapter.title,
+      lastRead: Date.now(),
+    })
   }
 
   return (

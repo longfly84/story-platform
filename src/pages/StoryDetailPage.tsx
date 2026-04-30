@@ -5,6 +5,7 @@ import { Helmet } from "react-helmet"
 import MainLayout from "@/layouts/MainLayout"
 import { getStoryBySlug } from "@/data/stories"
 import { StarIcon, EyeIcon, ClockIcon } from "lucide-react"
+import { followStory, unfollowStory, isStoryFollowed } from "@/lib/localStorageHelpers"
 
 export default function StoryDetailPage() {
   const { slug } = useParams()
@@ -85,8 +86,15 @@ export default function StoryDetailPage() {
               <a
                 href={`/doc-truyen/${story.slug}/${story.chapters[0]?.slug ?? "chuong-1"}`}
                 className="mt-6 inline-block w-full rounded-lg bg-amber-300 px-4 py-2 text-center text-sm font-semibold text-zinc-950 hover:bg-amber-200 sm:w-auto"
+                onClick={() => {
+                  if (isStoryFollowed(story.slug)) {
+                    unfollowStory(story.slug)
+                  } else {
+                    followStory(story.slug)
+                  }
+                }}
               >
-                Đọc từ đầu
+                {isStoryFollowed(story.slug) ? "Bỏ theo dõi" : "Theo dõi truyện"}
               </a>
             </div>
           </div>
