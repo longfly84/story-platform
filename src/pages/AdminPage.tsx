@@ -16,8 +16,25 @@ export default function AdminPage() {
   const [editingChapterId, setEditingChapterId] = useState<number | null>(null)
   const [editChapterData, setEditChapterData] = useState<any>(null)
 
+  // helper: generate slug from title
+  function generateSlug(input: string) {
+    return input
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+  }
+
   const [newStory, setNewStory] = useState({ title: '', slug: '', description: '', author: '', status: 'ongoing' })
+  const [newCoverFile, setNewCoverFile] = useState<File | null>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
   const [newChapter, setNewChapter] = useState({ storySlug: '', title: '', slug: '', content: '', chapter_number: 1 })
+
+  // track if user manually edited slug to avoid overwriting
+  const [storySlugEdited, setStorySlugEdited] = useState(false)
+  const [chapterSlugEdited, setChapterSlugEdited] = useState(false)
 
   // fetch stories helper (used after create/update/delete to refresh)
   async function fetchStories() {
@@ -59,7 +76,17 @@ export default function AdminPage() {
   async function handleCreateStory(e: any) {
     e.preventDefault()
     try {
-      const res = await supabase.from('stories').insert([newStory])
+      let coverUrl = (newStory as any).cover_image ?? null
+      if (newCoverFile) {
+        setUploadingCover(true)
+        // lazy import uploader
+        const { uploadCoverImage } = await import('@/lib/supabase')
+        const url = await uploadCoverImage(newCoverFile)
+        setUploadingCover(false)
+        if (url) coverUrl = url
+      }
+      const payload = { ...newStory, cover_image: coverUrl }
+      const res = await supabase.from('stories').insert([payload])
       if (res.error) throw res.error
       alert('Created')
       // refresh list
@@ -195,15 +222,21 @@ export default function AdminPage() {
           <h2 className="text-lg font-semibold text-zinc-100">Stories</h2>
           {loading ? <div className="text-sm text-zinc-400">Loading...</div> : null}
           {error ? <div className="text-sm text-red-400">{error}</div> : null}
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {stories.map((s: any) => (
-              <li key={s.id} className="rounded border border-zinc-800 p-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-zinc-100">{s.title} ({s.slug})</div>
-                    <div className="text-xs text-zinc-400">{s.author}</div>
+              <li key={s.id} className="rounded border border-zinc-800 p-3 flex items-start gap-3">
+                <img src={s.cover_image ?? s.coverImage ?? ''} alt={s.title} className="h-16 w-12 rounded object-cover flex-shrink-0 bg-zinc-900/30" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-zinc-100">{s.title}</div>
+                      <div className="truncate text-xs text-zinc-400">{s.author ?? ''}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded ${s.status === 'completed' ? 'bg-emerald-400/10 text-emerald-200' : 'bg-sky-400/10 text-sky-200'}`}>{s.status === 'completed' ? 'Full' : 'Đang ra'}</span>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="mt-2 flex gap-2">
                     <button onClick={() => startEditStory(s)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
                     <button onClick={() => deleteStory(s.id)} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
                     <button onClick={() => toggleChapters(s.slug)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Chapters</button>
@@ -264,24 +297,41 @@ export default function AdminPage() {
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-zinc-100">Create Story</h2>
           <form onSubmit={handleCreateStory} className="mt-2 grid gap-2">
-            <input className="rounded bg-zinc-900/20 p-2" placeholder="Title" value={newStory.title} onChange={(e) => setNewStory({...newStory, title: e.target.value})} />
-            <input className="rounded bg-zinc-900/20 p-2" placeholder="Slug" value={newStory.slug} onChange={(e) => setNewStory({...newStory, slug: e.target.value})} />
+            <input className="rounded bg-zinc-900/20 p-2" placeholder="Title" value={newStory.title} onChange={(e) => {
+              const val = e.target.value
+              setNewStory((s) => ({ ...s, title: val, slug: storySlugEdited ? s.slug : generateSlug(val) }))
+            }} />
+            <input className="rounded bg-zinc-900/20 p-2" placeholder="Slug" value={newStory.slug} onChange={(e) => { setNewStory({...newStory, slug: e.target.value}); setStorySlugEdited(true) }} />
             <input className="rounded bg-zinc-900/20 p-2" placeholder="Author" value={newStory.author} onChange={(e) => setNewStory({...newStory, author: e.target.value})} />
+            <label className="text-xs text-zinc-400">Cover image (optional)</label>
+            <input type="file" accept="image/*" onChange={(e) => setNewCoverFile(e.target.files?.[0] ?? null)} />
+            {newCoverFile ? (
+              <img src={URL.createObjectURL(newCoverFile)} alt="preview" className="h-24 w-auto rounded mt-2" />
+            ) : null}
             <select className="rounded bg-zinc-900/20 p-2" value={newStory.status} onChange={(e) => setNewStory({...newStory, status: e.target.value})}>
               <option value="ongoing">Đang ra</option>
               <option value="completed">Hoàn thành</option>
             </select>
             <textarea className="rounded bg-zinc-900/20 p-2" placeholder="Description" value={newStory.description} onChange={(e) => setNewStory({...newStory, description: e.target.value})} />
-            <button className="rounded bg-amber-300 px-4 py-2 text-zinc-900">Create Story</button>
+            <button className="rounded bg-amber-300 px-4 py-2 text-zinc-900">{uploadingCover ? 'Uploading cover…' : 'Create Story'}</button>
           </form>
         </div>
 
         <div>
           <h2 className="text-lg font-semibold text-zinc-100">Create Chapter</h2>
           <form onSubmit={handleCreateChapter} className="mt-2 grid gap-2">
-            <input className="rounded bg-zinc-900/20 p-2" placeholder="Story slug" value={newChapter.storySlug} onChange={(e) => setNewChapter({...newChapter, storySlug: e.target.value})} />
-            <input className="rounded bg-zinc-900/20 p-2" placeholder="Chapter title" value={newChapter.title} onChange={(e) => setNewChapter({...newChapter, title: e.target.value})} />
-            <input className="rounded bg-zinc-900/20 p-2" placeholder="Chapter slug" value={newChapter.slug} onChange={(e) => setNewChapter({...newChapter, slug: e.target.value})} />
+            <label className="text-xs text-zinc-400">Chọn truyện</label>
+            <select className="rounded bg-zinc-900/20 p-2" value={newChapter.storySlug} onChange={(e) => setNewChapter({...newChapter, storySlug: e.target.value})}>
+              <option value="">-- Chọn truyện --</option>
+              {stories.map((s) => (
+                <option key={s.id} value={s.slug}>{s.title}</option>
+              ))}
+            </select>
+            <input className="rounded bg-zinc-900/20 p-2" placeholder="Chapter title" value={newChapter.title} onChange={(e) => {
+              const val = e.target.value
+              setNewChapter((c) => ({ ...c, title: val, slug: chapterSlugEdited ? c.slug : generateSlug(val) }))
+            }} />
+            <input className="rounded bg-zinc-900/20 p-2" placeholder="Chapter slug" value={newChapter.slug} onChange={(e) => { setNewChapter({...newChapter, slug: e.target.value}); setChapterSlugEdited(true) }} />
             <textarea className="rounded bg-zinc-900/20 p-2" placeholder="Content" value={newChapter.content} onChange={(e) => setNewChapter({...newChapter, content: e.target.value})} />
             <input type="number" className="rounded bg-zinc-900/20 p-2" value={newChapter.chapter_number} onChange={(e) => setNewChapter({...newChapter, chapter_number: Number(e.target.value)})} />
             <button className="rounded bg-amber-300 px-4 py-2 text-zinc-900">Create Chapter</button>

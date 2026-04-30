@@ -67,3 +67,29 @@ export async function getCurrentUser() {
     return null
   }
 }
+
+/**
+ * Upload a cover image to Supabase Storage and return a public URL.
+ * Requirements: create a public bucket named 'covers' in your Supabase project.
+ * If the bucket is private, you'll need to generate signed URLs instead.
+ * Do NOT hardcode keys here; storage is accessed via the existing supabase client.
+ */
+export async function uploadCoverImage(file: any, filename?: string) {
+  if (!file) return null
+  const bucket = 'covers'
+  const name = filename ?? `${Date.now()}_${file.name}`
+  try {
+    // upload
+    const { error } = await supabase.storage.from(bucket).upload(name, file, { upsert: true })
+    if (error) {
+      console.warn('uploadCoverImage upload error', error)
+      return null
+    }
+    // get public url
+    const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(name)
+    return publicData?.publicUrl ?? null
+  } catch (e) {
+    console.warn('uploadCoverImage failed', e)
+    return null
+  }
+}

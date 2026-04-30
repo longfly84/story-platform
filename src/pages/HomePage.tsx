@@ -177,8 +177,9 @@ export default function HomePage() {
   // try to fetch stories from supabase on mount and fallback to local fake data
   const [remoteStories, setRemoteStories] = useState<Story[] | null>(null)
   // keep loading/error but avoid unused variable errors by using them in UI below
-  const [remoteLoading, setRemoteLoading] = useState(false)
-  const [remoteError, setRemoteError] = useState<string | null>(null)
+  const [, setRemoteLoading] = useState(false)
+  const [, setRemoteAttempted] = useState(false)
+  const [, setRemoteError] = useState<string | null>(null)
   const fetchedOnce = useRef(false)
 
   useEffect(() => {
@@ -211,7 +212,12 @@ export default function HomePage() {
       } catch (e: any) {
         setRemoteError(String(e?.message ?? e))
       } finally {
-        if (mounted) setRemoteLoading(false)
+        if (mounted) {
+          setRemoteLoading(false)
+          // mark that we've attempted fetching remote data so loading text hides
+          setRemoteStories((s) => s ?? [])
+          setRemoteAttempted(true)
+        }
       }
     })()
     return () => { mounted = false }
@@ -287,12 +293,8 @@ export default function HomePage() {
       />}
     >
       <div className="mx-auto max-w-7xl px-4 py-5 sm:py-6 lg:py-10">
-        {remoteLoading ? (
-          <div className="mb-4 text-sm text-zinc-400">Đang tải dữ liệu thật…</div>
-        ) : remoteError ? (
-          <div className="mb-4 text-sm text-red-400">Lỗi khi tải dữ liệu: {remoteError}</div>
-        ) : null}
-        <div className="mb-4 flex items-center gap-2 lg:hidden">
+        {/* remote loading state intentionally hidden (no plain text shown) */}
+        <div className="mb-4 flex items-center gap-2">
           <Button
             variant="outline"
             className="border-zinc-800 bg-zinc-950/40 text-zinc-100 transition hover:-translate-y-0.5 hover:bg-zinc-900/50 active:translate-y-0"
@@ -315,6 +317,17 @@ export default function HomePage() {
             Mới
           </a>
         </div>
+
+        {/* Search empty state: show when user searched but no results found */}
+        {debouncedQuery.trim() && filteredStories.length === 0 ? (
+          <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/20 p-6 text-center text-sm text-zinc-400">
+            <div className="text-lg font-semibold text-zinc-100">Không tìm thấy kết quả</div>
+            <p className="mt-2">Không tìm thấy truyện nào khớp với "{debouncedQuery}". Thử đổi từ khoá hoặc thể loại.</p>
+            <div className="mt-4 flex justify-center">
+              <button onClick={() => { setQuery(''); setDebouncedQuery(''); setSelectedGenre(null) }} className="rounded-lg bg-amber-300 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-200">Xóa tìm kiếm</button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <main className="space-y-7 sm:space-y-8">
