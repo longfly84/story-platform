@@ -60,6 +60,7 @@ export default function AdminPage() {
   const [aiCliffhanger, setAiCliffhanger] = useState(CLIFFHANGER_TYPES[0] ?? '')
   const [aiLength, setAiLength] = useState('short') // short, medium, long
   const [aiProvider, setAiProvider] = useState<'mock'|'openai'>('mock')
+  const [aiProviderUsed, setAiProviderUsed] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiResult, setAiResult] = useState('')
   const [aiTitle, setAiTitle] = useState('')
@@ -328,30 +329,42 @@ export default function AdminPage() {
       let genTitle = ''
       let genDnaSummary = ''
       try {
+        // Dev logs: indicate we're calling server route and which provider is selected
+        if (import.meta.env.DEV) console.debug('[AI] calling /api/ai/generate', { provider: aiProvider, storySlug: aiStorySlug || (newStory as any).slug })
+
         const resp = await fetch('/api/ai/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ storySlug: aiStorySlug || (newStory as any).slug, genreId: aiGenreId, prompt: aiPrompt + (contextSummary ? (' — context: ' + contextSummary) : ''), length: aiLength, provider: aiProvider }),
         })
         const j = await resp.json()
+        if (import.meta.env.DEV) console.debug('[AI] /api/ai/generate response', { ok: j?.ok, status: resp.status, body: j })
         if (j?.ok && j.data) {
           const d = j.data
-          // d: { title, content, summary, prompt }
+          // d: { title, content, summary, prompt, provider_meta }
           genTitle = d.title
           genDnaSummary = d.summary || summary
           genContent = d.content
+          setAiProviderUsed(d.provider_meta?.provider || aiProvider)
         } else {
-          // fallback to local generation if server fails
+          // show server error in preview and fallback to local generation
+          const errMsg = j?.error || 'Unknown error from /api/ai/generate'
+          if (import.meta.env.DEV) console.warn('[AI] server returned error:', errMsg)
+          // surface error to preview so developer can see it
+          genContent = `ERROR: ${String(errMsg)}`
           const out = buildMockChapter({ prompt: aiPrompt + (contextSummary ? (' — context: ' + contextSummary) : ''), dna, length: aiLength as any })
           genTitle = out.title
           genDnaSummary = out.dnaSummary
-          genContent = out.content
+          // keep provider used as mock fallback
+          setAiProviderUsed('mock')
         }
       } catch (e) {
+        if (import.meta.env.DEV) console.error('[AI] fetch /api/ai/generate failed', e)
         const out = buildMockChapter({ prompt: aiPrompt + (contextSummary ? (' — context: ' + contextSummary) : ''), dna, length: aiLength as any })
         genTitle = out.title
         genDnaSummary = out.dnaSummary
         genContent = out.content
+        setAiProviderUsed('mock')
       }
       // set states for preview
       setAiTitle(genTitle)
@@ -626,19 +639,20 @@ export default function AdminPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-zinc-400">Main vibe</label>
+                <label className="text-xs text-zinc-400">Character vibe</label>
                 <select className="rounded bg-zinc-900/20 p-2" value={coverVibe} onChange={(e) => setCoverVibe(e.target.value)}>
                   {CHARACTER_VIBES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-            </div>
-
             <div className="mt-3">
               <label className="text-xs text-zinc-400">Preview</label>
               <div className="mt-2 rounded bg-zinc-900/20 p-3 min-h-[80px] text-sm text-zinc-100 whitespace-pre-wrap">
                 {aiLoading ? 'Đang tạo...' : (
                   aiResult ? (
                     <>
+                      {import.meta.env.DEV ? (
+                        <div className="text-xs text-zinc-400 mb-2">Provider: {aiProviderUsed ?? aiProvider}</div>
+                      ) : null}
                       <div className="font-semibold text-zinc-100 mb-2">{aiTitle}</div>
                       <div className="text-xs text-zinc-400 mb-2">{aiDnaSummary}</div>
                       <div className="whitespace-pre-wrap">{aiResult}</div>
@@ -669,6 +683,8 @@ export default function AdminPage() {
               <button onClick={(e) => { e.preventDefault(); navigator.clipboard?.writeText(aiResult || '') }} className="rounded bg-zinc-800 px-4 py-2">Copy</button>
               <button onClick={(e) => { e.preventDefault(); navigator.clipboard?.writeText(coverPrompt || '') }} className="rounded bg-zinc-700 px-4 py-2">Copy Cover Prompt</button>
             </div>
+
+          </div>
 
         {/* Story Memory Viewer */}
         <div className="mt-6 mb-12 rounded border border-zinc-800 p-4 bg-zinc-950/20">

@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Support both browser (import.meta.env) and server (process.env) environments.
+const _env = (typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined) || ((globalThis as any)?.process?.env)
+const url = _env?.VITE_SUPABASE_URL
+const key = _env?.VITE_SUPABASE_ANON_KEY
 
 export const supabase = createClient(url ?? '', key ?? '')
 

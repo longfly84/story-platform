@@ -4,6 +4,7 @@
 
 import type { AIProviderResult } from './types'
 import { generateMock } from './mockProvider'
+import { parseModelOutput } from '../outputParser'
 
 export async function generateWithOpenAI(prompt: string, opts: any = {}): Promise<AIProviderResult> {
   // allow using real OpenAI only when key present; otherwise fallback to mock
@@ -50,19 +51,12 @@ export async function generateWithOpenAI(prompt: string, opts: any = {}): Promis
 
     const j = await resp.json()
     const text = j?.choices?.[0]?.message?.content ?? ''
-    const title = String(text).split('\n')[0].slice(0, 120)
-    const summary = String(text).split('\n')[0].slice(0, 200)
-
-    return {
-      title,
-      content: text,
-      summary,
-      cliffhanger: undefined,
-      important_events: [],
-      emotion_tags: [],
-      story_memory_updates: {},
-      provider_meta: { provider: 'openai' },
-    }
+    // parse model output into structured result
+    const parsed = parseModelOutput(String(text))
+    // normalize result
+    const { normalizeAIResult } = await import('../normalizeAIResult')
+    const norm = normalizeAIResult(parsed, { provider_used: 'openai' })
+    return norm
   } catch (e) {
     // on any error, fallback to mock
     return generateMock(prompt, opts)
