@@ -572,6 +572,34 @@ export default function HomePage() {
                 <div className="p-6 text-center text-sm text-zinc-400">Không có truyện nào khớp bộ lọc hiện tại.</div>
               )}
             </div>
+          {/* Pagination for "Truyện mới cập nhật" */}
+          {Math.ceil(filteredStories.length / itemsPerPage) > 1 ? (
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                onClick={() => {
+                  setCurrentPage((p) => Math.max(1, p - 1))
+                  document.getElementById('new-updates')?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                disabled={currentPage === 1}
+                className={`rounded px-3 py-1 text-sm font-semibold ${currentPage === 1 ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-zinc-900/40 text-zinc-100 hover:bg-zinc-900/60'}`}
+              >
+                Trước
+              </button>
+
+              <div className="text-sm text-zinc-300">Trang <span className="font-semibold text-zinc-100">{currentPage}</span> / {Math.ceil(filteredStories.length / itemsPerPage)}</div>
+
+              <button
+                onClick={() => {
+                  setCurrentPage((p) => Math.min(Math.ceil(filteredStories.length / itemsPerPage), p + 1))
+                  document.getElementById('new-updates')?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                disabled={currentPage === Math.ceil(filteredStories.length / itemsPerPage)}
+                className={`rounded px-3 py-1 text-sm font-semibold ${currentPage === Math.ceil(filteredStories.length / itemsPerPage) ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-zinc-900/40 text-zinc-100 hover:bg-zinc-900/60'}`}
+              >
+                Sau
+              </button>
+            </div>
+          ) : null}
           </section>
 
           <section

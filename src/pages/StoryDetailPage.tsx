@@ -78,9 +78,25 @@ export default function StoryDetailPage() {
         <meta property="og:title" content={story.title ?? 'Story'} />
         <meta property="og:description" content={story.description ?? ''} />
         <meta property="og:image" content={story.coverImage ?? (story as any).cover_image ?? ''} />
+        {/* JSON-LD structured data for Book */}
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Book",
+          name: story.title ?? undefined,
+          author: story.author ? { "@type": "Person", name: story.author } : undefined,
+          description: story.description ?? undefined,
+          image: story.coverImage ?? (story as any).cover_image ?? undefined,
+          genre: story.genreSlugs && story.genreSlugs.length ? story.genreSlugs : (story.tags ?? undefined),
+          url: (typeof window !== 'undefined' && window.location.href) ? window.location.href : undefined,
+        })}</script>
       </Helmet>
       <MainLayout>
         <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+          <nav aria-label="breadcrumb" className="mb-4 text-sm">
+            <Link to="/" className="text-zinc-400 hover:underline">Trang chủ</Link>
+            <span className="mx-2 text-zinc-500">/</span>
+            <span className="text-zinc-300">{story.title}</span>
+          </nav>
           <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
             <img
               src={story.coverImage}

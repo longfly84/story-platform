@@ -158,6 +158,8 @@ export default function ReaderPage() {
     }
   }, [story, currentChapter])
 
+  // Breadcrumb UI (render inline below)
+
   // try load chapters from supabase
   useEffect(() => {
     let mounted = true
@@ -302,6 +304,27 @@ export default function ReaderPage() {
       m.setAttribute('property', 'og:image')
       m.content = imageUrl
       document.head.appendChild(m)
+    }
+    // JSON-LD structured data for Chapter/CreativeWork
+    const ldId = 'jsonld-reader'
+    let existing = document.getElementById(ldId)
+    const chapterNumber = currentChapter?.number ?? null
+    const jsonld = {
+      "@context": "https://schema.org",
+      "@type": "Chapter",
+      headline: currentChapter?.title ?? undefined,
+      isPartOf: story ? { "@type": "Book", name: story.title, url: (typeof window !== 'undefined' && window.location.href) ? window.location.href.split('/doc-truyen')[0] : undefined } : undefined,
+      position: chapterNumber,
+      url: (typeof window !== 'undefined' && window.location.href) ? window.location.href : undefined,
+    }
+    if (existing) {
+      existing.textContent = JSON.stringify(jsonld)
+    } else {
+      const s = document.createElement('script')
+      s.type = 'application/ld+json'
+      s.id = ldId
+      s.textContent = JSON.stringify(jsonld)
+      document.head.appendChild(s)
     }
   }, [story, currentChapter])
 
