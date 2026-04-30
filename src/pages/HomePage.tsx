@@ -76,9 +76,16 @@ export default function HomePage() {
       if (!q) return true
       const title = normalizeText(s.title)
       const author = normalizeText(s.author ?? "")
-      return title.includes(q) || author.includes(q)
+      const categories = s.genreSlugs.map((slug) => slug.toLowerCase())
+      return title.includes(q) || author.includes(q) || categories.some((c) => c.includes(q))
     })
   }, [debouncedQuery, selectedGenre])
+
+  // Cải thiện filter category thật: lọc theo thể loại có trong genres
+  const filteredByCategory = useMemo(() => {
+    if (!selectedGenre) return filteredStories
+    return filteredStories.filter((story) => story.genreSlugs.includes(selectedGenre))
+  }, [filteredStories, selectedGenre])
 
   const hot = useMemo(() => {
     return [...filteredStories]
@@ -103,6 +110,20 @@ export default function HomePage() {
   const activeGenreName = selectedGenre
     ? genres.find((g) => g.slug === selectedGenre)?.name ?? selectedGenre
     : "Tất cả"
+
+  // Section truyện nổi bật (ví dụ lấy 6 truyện HOT hoặc mới nhất)
+  const featuredStories = useMemo(() => {
+    return [...stories]
+      .filter((s) => s.tags?.includes("HOT"))
+      .slice(0, 6)
+  }, [])
+
+  // Section truyện mới cập nhật (ví dụ lấy 6 truyện mới nhất)
+  const newUpdates = useMemo(() => {
+    return [...stories]
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, 6)
+  }, [])
 
   const SearchBar = ({ className }: { className?: string }) => (
     <div
@@ -142,8 +163,8 @@ export default function HomePage() {
             </div>
             <div className="text-xs text-zinc-500">
               {filteredStories.length} truyện
-            </div>
-          </div>
+      </div>
+    </div>
 
           {suggestions.length ? (
             <div className="max-h-[360px] overflow-auto p-2">
@@ -321,253 +342,3 @@ export default function HomePage() {
               </div>
             </section>
           )}
-
-          <section id="hot" className="scroll-mt-24">
-            <div className="mb-4 flex items-end justify-between gap-3">
-              <h2 className="text-2xl font-semibold sm:text-3xl">Truyện Hot</h2>
-              <span className="text-xs text-zinc-500">
-                (Fake data — phase sau sẽ nối API)
-              </span>
-            </div>
-
-            {hot.length ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
-                {hot.map((story) => (
-                  <StoryCard key={story.id} story={story} />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/20 p-6 text-center">
-                <div className="text-lg font-semibold text-zinc-100">
-                  Không có truyện phù hợp
-                </div>
-                <p className="mt-2 text-sm text-zinc-400">
-                  Thử đổi thể loại hoặc từ khoá tìm kiếm.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedGenre(null)
-                    setQuery("")
-                  }}
-                  className="mt-4 inline-flex rounded-lg bg-amber-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200"
-                >
-                  Xem tất cả
-                </button>
-              </div>
-            )}
-          </section>
-
-          <section
-            id="latest"
-            className="scroll-mt-24 rounded-2xl border border-zinc-800 bg-zinc-900/20"
-          >
-            <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3 sm:px-6 sm:py-4">
-              <h2 className="text-lg font-semibold sm:text-xl">
-                Mới cập nhật
-              </h2>
-              <span className="text-xs text-zinc-500">{filteredStories.length} truyện</span>
-            </div>
-
-            <div className="divide-y divide-zinc-800">
-              {latest.length ? (
-                latest.map((story) => {
-                const latestChapter = story.chapters.at(-1)
-                const chapterHref = latestChapter
-                  ? `/doc-truyen/${story.slug}/${latestChapter.slug}`
-                  : `/truyen/${story.slug}`
-
-                return (
-                  <div
-                    key={story.id}
-                    className="grid grid-cols-[1fr_auto] items-start gap-3 px-4 py-3 text-sm transition hover:bg-zinc-900/30 sm:items-center sm:px-6"
-                  >
-                    <div className="min-w-0">
-                      <Link
-                        to={`/truyen/${story.slug}`}
-                        className="line-clamp-1 font-medium text-zinc-100 hover:text-amber-200"
-                      >
-                        {story.title}
-                      </Link>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                        {story.status === "completed" ? (
-                          <span className="rounded bg-emerald-400/15 px-2 py-0.5 font-semibold text-emerald-200">
-                            Full
-                          </span>
-                        ) : (
-                          <span className="rounded bg-sky-400/15 px-2 py-0.5 font-semibold text-sky-200">
-                            Đang ra
-                          </span>
-                        )}
-                        {story.tags?.includes("NEW") ? (
-                          <span className="rounded bg-fuchsia-400/15 px-2 py-0.5 font-semibold text-fuchsia-200">
-                            New
-                          </span>
-                        ) : null}
-                        <span className="line-clamp-1">
-                          {story.author ?? "Đang cập nhật"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Link
-                      to={chapterHref}
-                      className="shrink-0 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-xs font-semibold text-zinc-100 transition hover:-translate-y-0.5 hover:bg-zinc-900/50 active:translate-y-0"
-                    >
-                      {latestChapter
-                        ? `Chương ${latestChapter.number}`
-                        : "Chi tiết"}
-                    </Link>
-                  </div>
-                )
-              })
-              ) : (
-                <div className="p-6 text-center text-sm text-zinc-400">
-                  Không có truyện nào khớp bộ lọc hiện tại.
-                </div>
-              )}
-            </div>
-            {Math.ceil(filteredStories.length / itemsPerPage) > 1 ? (
-              <div className="mt-4 flex justify-center">
-                <nav className="inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                  {Array.from({ length: Math.ceil(filteredStories.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`relative inline-flex items-center border px-3 py-2 text-sm font-semibold focus:z-20 ${
-                        page === currentPage
-                          ? "border-amber-300 bg-amber-300 text-zinc-950"
-                          : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                </nav>
-              </div>
-            ) : null}
-          </section>
-        </main>
-
-        <aside className="hidden space-y-6 lg:block">
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/20 p-4 sm:p-5">
-            <div className="mb-3 flex items-end justify-between gap-2">
-              <h3 className="text-lg font-semibold">Thể loại</h3>
-              <span className="text-xs text-zinc-500">{activeGenreName}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedGenre(null)}
-              className={[
-                "mb-3 w-full rounded-lg border px-3 py-2 text-left text-sm font-semibold transition",
-                selectedGenre === null
-                  ? "border-amber-300/40 bg-amber-300/10 text-amber-200"
-                  : "border-zinc-800 bg-zinc-950/30 text-zinc-200 hover:bg-zinc-900/40",
-              ].join(" ")}
-            >
-              Tất cả
-            </button>
-            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-1">
-              {genres.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => setSelectedGenre(g.slug)}
-                  className={[
-                    "rounded-lg border px-3 py-2 text-left transition hover:-translate-y-0.5 active:translate-y-0",
-                    selectedGenre === g.slug
-                      ? "border-amber-300/40 bg-amber-300/10 text-amber-200"
-                      : "border-zinc-800 bg-zinc-950/30 text-zinc-200 hover:bg-zinc-900/40",
-                  ].join(" ")}
-                >
-                  {g.name}
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-zinc-500">Click để lọc theo thể loại. (Fake data)</p>
-          </section>
-
-          <section className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/40 to-zinc-900/10 p-4 sm:p-5">
-            <h3 className="text-lg font-semibold">Mẹo đọc</h3>
-            <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-              <li>Chạm giữ thanh điều khiển ở trang đọc để đổi cỡ chữ.</li>
-              <li>Trên mobile, nút “Trước/Sau” luôn nằm trong thanh sticky.</li>
-            </ul>
-          </section>
-        </aside>
-      </div>
-      </div>
-
-      {mobileMenuOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal>
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-label="Đóng menu"
-          />
-          <div className="absolute inset-y-0 left-0 w-[86%] max-w-sm border-r border-zinc-800 bg-zinc-950 p-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-zinc-100">Khám phá</h2>
-              <button
-                type="button"
-                className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2 text-zinc-100 hover:bg-zinc-900/50"
-                onClick={() => setMobileMenuOpen(false)}
-                aria-label="Đóng"
-              >
-                <XIcon className="size-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-6">
-              <section>
-                <h3 className="mb-3 text-sm font-semibold text-zinc-200">Thể loại</h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedGenre(null)
-                    setMobileMenuOpen(false)
-                  }}
-                  className={[
-                    "mb-3 w-full rounded-lg border px-3 py-2 text-left text-sm font-semibold transition",
-                    selectedGenre === null
-                      ? "border-amber-300/40 bg-amber-300/10 text-amber-200"
-                      : "border-zinc-800 bg-zinc-900/30 text-zinc-200 hover:bg-zinc-900/50",
-                  ].join(" ")}
-                >
-                  Tất cả
-                </button>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {genres.map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      onClick={() => setSelectedGenre(g.slug)}
-                      className={[
-                        "rounded-lg border px-3 py-2 text-left transition hover:-translate-y-0.5 active:translate-y-0",
-                        selectedGenre === g.slug
-                          ? "border-amber-300/40 bg-amber-300/10 text-amber-200"
-                          : "border-zinc-800 bg-zinc-900/30 text-zinc-200 hover:bg-zinc-900/50",
-                      ].join(" ")}
-                    >
-                      {g.name}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-3 text-xs text-zinc-500">Chạm để lọc.</p>
-              </section>
-
-              <section className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/40 to-zinc-900/10 p-4 sm:p-5">
-                <h3 className="text-lg font-semibold">Mẹo đọc</h3>
-                <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-                  <li>Chạm giữ thanh điều khiển ở trang đọc để đổi cỡ chữ.</li>
-                  <li>Trên mobile, nút “Trước/Sau” luôn nằm trong thanh sticky.</li>
-                </ul>
-              </section>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </MainLayout>
-  )
-}
