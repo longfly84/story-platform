@@ -1,18 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://yourdomain.com/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
+    <loc>https://story-platform-coral.vercel.app/</loc>
   </url>
   <url>
-    <loc>https://yourdomain.com/truyen/dem-toi-bi-ga-len-nui</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://story-platform-coral.vercel.app/truyen/dem-toi-bi-ga-len-nui</loc>
   </url>
   <url>
-    <loc>https://yourdomain.com/doc-truyen/dem-toi-bi-ga-len-nui/chuong-1</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/dem-toi-bi-ga-len-nui/chuong-1</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/truyen/vo-cu-cua-hoang-tu-ech</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-2</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-3</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-4</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-5</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-6</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-7</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-8</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-9</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-10</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-11</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/doc-truyen/vo-cu-cua-hoang-tu-ech/chuong-12</loc>
+  </url>
+  <url>
+    <loc>https://story-platform-coral.vercel.app/truyen/canh-bao-cua-hac-tu</loc>
   </url>
 </urlset>
