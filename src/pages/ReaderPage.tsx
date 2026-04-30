@@ -146,28 +146,56 @@ export default function ReaderPage() {
 
   // Auto-hide floating buttons on scroll (mobile) - toggle classes to avoid direct style calls
   useEffect(() => {
+    // Only enable on small screens (match Tailwind lg breakpoint: 1024px)
+    if (typeof window === 'undefined') return
     let lastY = window.scrollY
     let ticking = false
+    let idleTimer: number | undefined
+    const isMobile = () => window.innerWidth < 1024
+
+    const showButtons = () => {
+      const els = document.querySelectorAll<HTMLElement>('.mobile-floating-nav')
+      els.forEach((e) => e.classList.remove('opacity-0', 'pointer-events-none'))
+    }
+    const hideButtons = () => {
+      const els = document.querySelectorAll<HTMLElement>('.mobile-floating-nav')
+      els.forEach((e) => e.classList.add('opacity-0', 'pointer-events-none'))
+    }
+
     const handler = () => {
+      if (!isMobile()) return
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentY = window.scrollY
-          const els = document.querySelectorAll<HTMLElement>('.mobile-floating-nav')
-          els.forEach((e) => {
-            if (Math.abs(currentY - lastY) > 10) {
-              e.classList.add('opacity-0', 'pointer-events-none')
-            } else {
-              e.classList.remove('opacity-0', 'pointer-events-none')
-            }
-          })
+          const delta = currentY - lastY
+          // scroll down -> hide; scroll up -> show
+          if (delta > 10) {
+            hideButtons()
+          } else if (delta < -10) {
+            showButtons()
+          }
+
+          // clear previous idle timer
+          if (idleTimer) window.clearTimeout(idleTimer)
+          // when scrolling stops for 300ms, show buttons
+          idleTimer = window.setTimeout(() => {
+            showButtons()
+          }, 300)
+
           lastY = currentY
           ticking = false
         })
         ticking = true
       }
     }
+
     window.addEventListener('scroll', handler, { passive: true })
-    return () => window.removeEventListener('scroll', handler)
+    window.addEventListener('resize', handler)
+    return () => {
+      window.removeEventListener('scroll', handler)
+      window.removeEventListener('resize', handler)
+      if (idleTimer) window.clearTimeout(idleTimer)
+    }
   }, [])
 
   return (

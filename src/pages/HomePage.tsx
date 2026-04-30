@@ -189,6 +189,12 @@ export default function HomePage() {
       .slice(0, 6)
   }, [filteredStories])
 
+  const ranking = useMemo(() => {
+    return [...stories]
+      .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+      .slice(0, 6)
+  }, [])
+
   const latest = useMemo(() => {
     return [...filteredStories]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -425,6 +431,66 @@ export default function HomePage() {
             )}
           </section>
 
+          {/* New section: Truyện mới cập nhật (list with status, views, chapter count) */}
+          <section id="new-updates" className="scroll-mt-24 rounded-2xl border border-zinc-800 bg-zinc-900/20">
+            <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3 sm:px-6 sm:py-4">
+              <h2 className="text-lg font-semibold sm:text-xl">Truyện mới cập nhật</h2>
+              <span className="text-xs text-zinc-500">(Sắp xếp theo thời gian cập nhật)</span>
+            </div>
+
+            <div className="divide-y divide-zinc-800">
+              {latest.length ? (
+                latest.map((story) => {
+                  const latestChapter = story.chapters.at(-1)
+                  const chapterHref = latestChapter
+                    ? `/doc-truyen/${story.slug}/${latestChapter.slug}`
+                    : `/truyen/${story.slug}`
+
+                  return (
+                    <div
+                      key={story.id}
+                      className="grid grid-cols-[1fr_auto] items-start gap-3 px-4 py-3 text-sm transition hover:bg-zinc-900/30 sm:items-center sm:px-6"
+                    >
+                      <div className="min-w-0">
+                        <Link
+                          to={`/truyen/${story.slug}`}
+                          className="line-clamp-1 font-medium text-zinc-100 hover:text-amber-200"
+                        >
+                          {story.title}
+                        </Link>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                          {story.status === "completed" ? (
+                            <span className="rounded bg-emerald-400/15 px-2 py-0.5 font-semibold text-emerald-200">
+                              Full
+                            </span>
+                          ) : (
+                            <span className="rounded bg-sky-400/15 px-2 py-0.5 font-semibold text-sky-200">
+                              Đang ra
+                            </span>
+                          )}
+                          <span>{story.chapters.length} chương</span>
+                          <span>{story.views ? `${story.views.toLocaleString()} lượt đọc` : "- lượt đọc"}</span>
+                          <span className="line-clamp-1">{story.author ?? "Đang cập nhật"}</span>
+                        </div>
+                      </div>
+
+                      <Link
+                        to={chapterHref}
+                        className="shrink-0 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-xs font-semibold text-zinc-100 transition hover:-translate-y-0.5 hover:bg-zinc-900/50 active:translate-y-0"
+                      >
+                        {latestChapter
+                          ? `Chương ${latestChapter.number}`
+                          : "Chi tiết"}
+                      </Link>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="p-6 text-center text-sm text-zinc-400">Không có truyện nào khớp bộ lọc hiện tại.</div>
+              )}
+            </div>
+          </section>
+
           <section
             id="latest"
             className="scroll-mt-24 rounded-2xl border border-zinc-800 bg-zinc-900/20"
@@ -517,6 +583,24 @@ export default function HomePage() {
         </main>
 
         <aside className="hidden space-y-6 lg:block">
+          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/20 p-4 sm:p-5">
+            <div className="mb-3 flex items-end justify-between gap-2">
+              <h3 className="text-lg font-semibold">Bảng xếp hạng</h3>
+              <span className="text-xs text-zinc-500">Top lượt đọc</span>
+            </div>
+            <div className="space-y-2 text-sm text-zinc-200">
+              {ranking.map((s, i) => (
+                <Link key={s.id} to={`/truyen/${s.slug}`} className="flex items-center gap-3 rounded-lg p-2 hover:bg-zinc-900/40">
+                  <div className="w-6 text-xs font-semibold text-amber-300">#{i+1}</div>
+                  <img src={s.coverImage} alt={s.title} className="h-10 w-10 rounded object-cover" />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{s.title}</div>
+                    <div className="truncate text-xs text-zinc-400">{s.views ? `${s.views.toLocaleString()} lượt đọc` : "- lượt đọc"}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900/20 p-4 sm:p-5">
             <div className="mb-3 flex items-end justify-between gap-2">
               <h3 className="text-lg font-semibold">Thể loại</h3>

@@ -5,6 +5,7 @@ import type { Story } from "@/data/stories"
 export default function StoryCard({ story }: { story: Story }) {
   const latest = story.chapters.at(-1)
   const latestLabel = latest ? `Chương ${latest.number}` : "Chưa có chương"
+  const viewsLabel = story.views ? `${story.views.toLocaleString()} lượt đọc` : undefined
 
   return (
     <Link to={`/truyen/${story.slug}`} className="group block">
@@ -23,14 +24,27 @@ export default function StoryCard({ story }: { story: Story }) {
             {story.title}
           </h3>
 
-          <p className="mt-1 text-xs text-zinc-300">{latestLabel}</p>
+          <p className="mt-1 text-xs text-zinc-300">{latestLabel}{viewsLabel ? ` • ${viewsLabel}` : ""}</p>
         </div>
 
-        {story.tags?.includes("HOT") ? (
+        <div className="absolute right-2 top-2 flex gap-2">
+          {story.tags?.includes("HOT") ? (
           <div className="absolute left-2 top-2 rounded bg-amber-500 px-2 py-1 text-[11px] font-bold tracking-wide text-zinc-950">
             HOT
           </div>
-        ) : null}
+          ) : null}
+
+          {/* status chip */}
+          {story.status === "completed" ? (
+            <div className="rounded bg-emerald-400/15 px-2 py-1 text-[11px] font-semibold text-emerald-200">
+              Full
+            </div>
+          ) : (
+            <div className="rounded bg-sky-400/15 px-2 py-1 text-[11px] font-semibold text-sky-200">
+              Đang ra
+            </div>
+          )}
+        </div>
       </div>
     </Link>
   )

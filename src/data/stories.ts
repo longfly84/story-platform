@@ -20,6 +20,8 @@ export type Story = {
   title: string
   author?: string
   coverImage: string
+  /** Estimated / fake view count for UI (optional) */
+  views?: number
   status: StoryStatus
   description: string
   genreSlugs: string[]
@@ -58,6 +60,7 @@ export const stories: Story[] = [
     genreSlugs: ["ngon-tinh", "huyen-huyen", "co-dai"],
     updatedAt: iso("2026-04-29T08:00:00Z"),
     tags: ["HOT", "Full"],
+    views: 12456,
     chapters: [
       {
         number: 1,
@@ -208,6 +211,7 @@ export const stories: Story[] = [
     genreSlugs: ["ngon-tinh", "hai-huoc", "hien-dai"],
     updatedAt: iso("2026-04-30T02:00:00Z"),
     tags: ["HOT"],
+    views: 8321,
     chapters: Array.from({ length: 8 }, (_, i) => {
       const n = i + 1
       return {
@@ -236,6 +240,7 @@ export const stories: Story[] = [
     genreSlugs: ["linh-di", "huyen-huyen", "hien-dai"],
     updatedAt: iso("2026-04-30T01:00:00Z"),
     tags: ["NEW"],
+    views: 19342,
     chapters: Array.from({ length: 21 }, (_, i) => {
       const n = i + 1
       return {
@@ -280,4 +285,5 @@ export function getLatestUpdatedStories(limit = 10) {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, limit)
 }
+
 
