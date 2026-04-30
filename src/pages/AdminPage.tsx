@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import MainLayout from '@/layouts/MainLayout'
-import { supabase } from '@/lib/supabase'
-import { getCurrentUser } from '@/lib/supabase'
+import { supabase, signOut, getCurrentUser } from '@/lib/supabase'
 import { Link } from 'react-router-dom'
 
 export default function AdminPage() {
@@ -39,16 +38,19 @@ export default function AdminPage() {
     fetchStories()
   }, [])
 
-  // auth guard
+  // auth guard + loading state while checking session
+  const [checkingSession, setCheckingSession] = useState(true)
   useEffect(() => {
     let mounted = true
     ;(async () => {
-      const u = await getCurrentUser()
-      if (!mounted) return
-      if (!u) {
-        window.location.href = '/login'
-      } else {
-        // optional: provide logout button later
+      try {
+        const u = await getCurrentUser()
+        if (!mounted) return
+        if (!u) {
+          window.location.href = '/login'
+        }
+      } finally {
+        if (mounted) setCheckingSession(false)
       }
     })()
     return () => { mounted = false }
@@ -171,7 +173,24 @@ export default function AdminPage() {
   return (
     <MainLayout>
       <main className="mx-auto max-w-4xl px-4 py-6">
-        <h1 className="text-2xl font-semibold text-zinc-100 mb-4">Admin (Minimal)</h1>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-zinc-100">Admin (Minimal)</h1>
+          <div className="flex items-center gap-2">
+            <a href="/" className="text-sm text-amber-300 hover:underline">Về trang chủ</a>
+            <button
+              onClick={async () => {
+                try {
+                  await signOut()
+                } catch {}
+                window.location.href = '/login'
+              }}
+              className="rounded bg-zinc-800 px-3 py-1 text-sm text-zinc-100"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+        {checkingSession ? <div className="text-sm text-zinc-400 mb-4">Đang kiểm tra phiên đăng nhập…</div> : null}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-zinc-100">Stories</h2>
           {loading ? <div className="text-sm text-zinc-400">Loading...</div> : null}
