@@ -302,7 +302,7 @@ export default function HomePage() {
         filteredStoriesLength={filteredStories.length}
       />}
     >
-      <div className="mx-auto max-w-7xl px-4 py-5 sm:py-6 lg:py-10">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:py-10">
         {/* remote loading state intentionally hidden (no plain text shown) */}
         <div className="mb-4 flex items-center gap-2">
           <Button
@@ -350,12 +350,12 @@ export default function HomePage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <main className="space-y-7 sm:space-y-8">
           {featured ? (
-            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-5 sm:p-6">
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4 sm:p-6">
               <div className="grid gap-5 sm:grid-cols-[160px_1fr] sm:items-start">
                 <img
                   src={featured.coverImage}
                   alt={featured.title}
-                  className="h-[180px] w-full rounded-xl object-cover sm:h-[220px]"
+                  className="h-[160px] w-full rounded-xl object-cover sm:h-[220px]"
                   loading="lazy"
                 />
                 <div>
