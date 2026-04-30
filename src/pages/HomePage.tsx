@@ -117,6 +117,7 @@ export default function HomePage() {
   const featured = getStoryBySlug("dem-toi-bi-ga-len-nui")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null)
+  const [sortMode, setSortMode] = useState<'none' | 'hot' | 'latest'>('none')
   const [query, setQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
@@ -227,13 +228,22 @@ export default function HomePage() {
 
   const filteredStories = useMemo(() => {
     const q = normalizeText(debouncedQuery)
-    return baseStories.filter((s) => {
-      if (selectedGenre && !s.genreSlugs.includes(selectedGenre)) return false
+    let list = baseStories.filter((s) => {
+      if (selectedGenre && !s.genreSlugs?.includes?.(selectedGenre)) return false
       if (!q) return true
       const title = normalizeText(s.title)
       const author = normalizeText(s.author ?? "")
       return title.includes(q) || author.includes(q)
     })
+
+    // apply sort
+    if (sortMode === 'hot') {
+      list = [...list].sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+    } else if (sortMode === 'latest') {
+      list = [...list].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))
+    }
+
+    return list
   }, [debouncedQuery, selectedGenre])
 
   const hot = useMemo(() => {
@@ -304,18 +314,26 @@ export default function HomePage() {
             Menu / Lọc
           </Button>
 
-          <a
-            href="#hot"
-            className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:-translate-y-0.5 hover:bg-zinc-900/50 active:translate-y-0"
+          <button
+            type="button"
+            onClick={() => { setSortMode(sortMode === 'hot' ? 'none' : 'hot') }}
+            className={[
+              "rounded-lg border px-3 py-2 text-xs font-semibold transition",
+              sortMode === 'hot' ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : 'border-zinc-800 bg-zinc-950/40 text-zinc-200 hover:bg-zinc-900/50',
+            ].join(' ')}
           >
             Hot
-          </a>
-          <a
-            href="#latest"
-            className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:-translate-y-0.5 hover:bg-zinc-900/50 active:translate-y-0"
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSortMode(sortMode === 'latest' ? 'none' : 'latest') }}
+            className={[
+              "rounded-lg border px-3 py-2 text-xs font-semibold transition",
+              sortMode === 'latest' ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : 'border-zinc-800 bg-zinc-950/40 text-zinc-200 hover:bg-zinc-900/50',
+            ].join(' ')}
           >
             Mới
-          </a>
+          </button>
         </div>
 
         {/* Search empty state: show when user searched but no results found */}

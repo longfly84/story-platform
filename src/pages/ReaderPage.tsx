@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { Link, useParams, useNavigate } from "react-router-dom"
-import { Helmet } from "react-helmet"
+// Helmet imported in ReaderPage not used since we manipulate meta tags directly
 
 import MainLayout from "@/layouts/MainLayout"
 import { getStoryBySlug } from "@/data/stories"
@@ -263,12 +263,50 @@ export default function ReaderPage() {
     }
   }, [])
 
+  useEffect(() => {
+    // dynamic document title/meta for reader
+    const title = `${currentChapter?.title ?? ''} - ${story?.title ?? ''}`.trim() || 'Reader'
+    document.title = title
+    const meta = document.querySelector('meta[name="description"]')
+    const desc = `Đọc ${currentChapter?.title ?? 'chương'} của ${story?.title ?? ''}`
+    if (meta) {
+      meta.setAttribute('content', desc)
+    } else {
+      const m = document.createElement('meta')
+      m.name = 'description'
+      m.content = desc
+      document.head.appendChild(m)
+    }
+    // Open graph tags
+    const ogTitle = document.querySelector('meta[property="og:title"]')
+    if (ogTitle) ogTitle.setAttribute('content', title)
+    else {
+      const m = document.createElement('meta')
+      m.setAttribute('property', 'og:title')
+      m.content = title
+      document.head.appendChild(m)
+    }
+    const ogDesc = document.querySelector('meta[property="og:description"]')
+    if (ogDesc) ogDesc.setAttribute('content', desc)
+    else {
+      const m = document.createElement('meta')
+      m.setAttribute('property', 'og:description')
+      m.content = desc
+      document.head.appendChild(m)
+    }
+    const ogImage = document.querySelector('meta[property="og:image"]')
+    const imageUrl = story?.coverImage ?? (story as any).cover_image ?? ''
+    if (ogImage) ogImage.setAttribute('content', imageUrl)
+    else if (imageUrl) {
+      const m = document.createElement('meta')
+      m.setAttribute('property', 'og:image')
+      m.content = imageUrl
+      document.head.appendChild(m)
+    }
+  }, [story, currentChapter])
+
   return (
     <>
-      <Helmet>
-        <title>{story.title} - {currentChapter.title} - Story Platform</title>
-        <meta name="description" content={`Đọc chương ${currentChapter.title} của truyện ${story.title}.`} />
-      </Helmet>
       <MainLayout>
         <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="mb-4 flex items-center justify-between">

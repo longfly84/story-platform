@@ -73,8 +73,11 @@ export default function StoryDetailPage() {
   return (
     <>
       <Helmet>
-        <title>{story.title} - Story Platform</title>
-        <meta name="description" content={story.description} />
+        <title>{story.title} - Đọc Truyện</title>
+        <meta name="description" content={story.description ?? `${story.title} - đọc truyện online.`} />
+        <meta property="og:title" content={story.title ?? 'Story'} />
+        <meta property="og:description" content={story.description ?? ''} />
+        <meta property="og:image" content={story.coverImage ?? (story as any).cover_image ?? ''} />
       </Helmet>
       <MainLayout>
         <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
