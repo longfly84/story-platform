@@ -9,25 +9,34 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // UI state for editing/deleting
+  const [editingStoryId, setEditingStoryId] = useState<number | null>(null)
+  const [editStoryData, setEditStoryData] = useState<any>(null)
+
+  const [expandedChapters, setExpandedChapters] = useState<Record<string, any[]>>({})
+  const [editingChapterId, setEditingChapterId] = useState<number | null>(null)
+  const [editChapterData, setEditChapterData] = useState<any>(null)
+
   const [newStory, setNewStory] = useState({ title: '', slug: '', description: '', author: '', status: 'ongoing' })
   const [newChapter, setNewChapter] = useState({ storySlug: '', title: '', slug: '', content: '', chapter_number: 1 })
 
+  // fetch stories helper (used after create/update/delete to refresh)
+  async function fetchStories() {
+    setLoading(true)
+    try {
+      const res = await supabase.from('stories').select('*').order('id', { ascending: true })
+      if (res.error) throw res.error
+      setStories(res.data ?? [])
+      setError(null)
+    } catch (e: any) {
+      setError(String(e?.message ?? e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      setLoading(true)
-        try {
-        const res = await supabase.from('stories').select('*').order('id', { ascending: true })
-        if (res.error) throw res.error
-        if (!mounted) return
-        setStories(res.data ?? [])
-      } catch (e: any) {
-        setError(String(e?.message ?? e))
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
-    return () => { mounted = false }
+    fetchStories()
   }, [])
 
   // auth guard
@@ -51,7 +60,8 @@ export default function AdminPage() {
       const res = await supabase.from('stories').insert([newStory])
       if (res.error) throw res.error
       alert('Created')
-      setStories((s) => [...s, ...(res.data ?? [])])
+      // refresh list
+      await fetchStories()
     } catch (err: any) {
       alert('Error: ' + String(err?.message ?? err))
     }
@@ -69,8 +79,92 @@ export default function AdminPage() {
       }])
       if (res.error) throw res.error
       alert('Chapter created')
+      // refresh expanded chapters for this story if shown
+      if (expandedChapters[newChapter.storySlug]) {
+        const { data: ch } = await supabase.from('chapters').select('*').eq('story_slug', newChapter.storySlug).order('number', { ascending: true })
+        setExpandedChapters((m) => ({ ...m, [newChapter.storySlug]: ch ?? [] }))
+      }
     } catch (err: any) {
       alert('Error: ' + String(err?.message ?? err))
+    }
+  }
+
+  // Edit story
+  async function startEditStory(s: any) {
+    setEditingStoryId(s.id)
+    setEditStoryData({ ...s })
+  }
+
+  async function saveEditStory(e: any) {
+    e.preventDefault()
+    if (!editStoryData || !editingStoryId) return
+    try {
+      const res = await supabase.from('stories').update(editStoryData).eq('id', editingStoryId)
+      if (res.error) throw res.error
+      setEditingStoryId(null)
+      setEditStoryData(null)
+      await fetchStories()
+    } catch (err: any) {
+      alert('Error updating: ' + String(err?.message ?? err))
+    }
+  }
+
+  async function deleteStory(id: number) {
+    if (!confirm('Xác nhận xoá truyện?')) return
+    try {
+      const res = await supabase.from('stories').delete().eq('id', id)
+      if (res.error) throw res.error
+      await fetchStories()
+    } catch (err: any) {
+      alert('Delete failed: ' + String(err?.message ?? err))
+    }
+  }
+
+  // Chapters: expand/fetch, edit, delete
+  async function toggleChapters(slug: string) {
+    if (expandedChapters[slug]) {
+      setExpandedChapters((m) => { const c = { ...m }; delete c[slug]; return c })
+      return
+    }
+    const { data, error } = await supabase.from('chapters').select('*').eq('story_slug', slug).order('number', { ascending: true })
+    if (error) { alert('Load chapters failed: ' + String(error.message)); return }
+    setExpandedChapters((m) => ({ ...m, [slug]: data ?? [] }))
+  }
+
+  function startEditChapter(chap: any) {
+    setEditingChapterId(chap.id)
+    setEditChapterData({ ...chap })
+  }
+
+  async function saveEditChapter(e: any) {
+    e.preventDefault()
+    if (!editingChapterId || !editChapterData) return
+    try {
+      const res = await supabase.from('chapters').update(editChapterData).eq('id', editingChapterId)
+      if (res.error) throw res.error
+      // refresh currently expanded story chapters
+      if (editChapterData.story_slug) {
+        const { data } = await supabase.from('chapters').select('*').eq('story_slug', editChapterData.story_slug).order('number', { ascending: true })
+        setExpandedChapters((m) => ({ ...m, [editChapterData.story_slug]: data ?? [] }))
+      }
+      setEditingChapterId(null)
+      setEditChapterData(null)
+    } catch (err: any) {
+      alert('Update chapter failed: ' + String(err?.message ?? err))
+    }
+  }
+
+  async function deleteChapter(id: number, storySlug?: string) {
+    if (!confirm('Xác nhận xoá chương?')) return
+    try {
+      const res = await supabase.from('chapters').delete().eq('id', id)
+      if (res.error) throw res.error
+      if (storySlug && expandedChapters[storySlug]) {
+        const { data } = await supabase.from('chapters').select('*').eq('story_slug', storySlug).order('number', { ascending: true })
+        setExpandedChapters((m) => ({ ...m, [storySlug]: data ?? [] }))
+      }
+    } catch (err: any) {
+      alert('Delete chapter failed: ' + String(err?.message ?? err))
     }
   }
 
@@ -85,9 +179,64 @@ export default function AdminPage() {
           <ul className="mt-2 space-y-2">
             {stories.map((s: any) => (
               <li key={s.id} className="rounded border border-zinc-800 p-2">
-                <div className="font-semibold text-zinc-100">{s.title} ({s.slug})</div>
-                <div className="text-xs text-zinc-400">{s.author}</div>
-                <Link to={`/truyen/${s.slug}`} className="text-xs text-amber-300 hover:underline">View</Link>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-zinc-100">{s.title} ({s.slug})</div>
+                    <div className="text-xs text-zinc-400">{s.author}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => startEditStory(s)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
+                    <button onClick={() => deleteStory(s.id)} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
+                    <button onClick={() => toggleChapters(s.slug)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Chapters</button>
+                    <Link to={`/truyen/${s.slug}`} className="text-xs text-amber-300 hover:underline">View</Link>
+                  </div>
+                </div>
+
+                {/* edit story inline */}
+                {editingStoryId === s.id && editStoryData ? (
+                  <form onSubmit={saveEditStory} className="mt-2 grid gap-2">
+                    <input className="rounded bg-zinc-900/20 p-2" value={editStoryData.title} onChange={(e) => setEditStoryData({...editStoryData, title: e.target.value})} />
+                    <input className="rounded bg-zinc-900/20 p-2" value={editStoryData.slug} onChange={(e) => setEditStoryData({...editStoryData, slug: e.target.value})} />
+                    <input className="rounded bg-zinc-900/20 p-2" value={editStoryData.author} onChange={(e) => setEditStoryData({...editStoryData, author: e.target.value})} />
+                    <textarea className="rounded bg-zinc-900/20 p-2" value={editStoryData.description} onChange={(e) => setEditStoryData({...editStoryData, description: e.target.value})} />
+                    <div className="flex gap-2">
+                      <button type="submit" className="rounded bg-amber-300 px-3 py-1">Save</button>
+                      <button type="button" onClick={() => { setEditingStoryId(null); setEditStoryData(null) }} className="rounded bg-zinc-800 px-3 py-1">Cancel</button>
+                    </div>
+                  </form>
+                ) : null}
+
+                {/* chapters expanded */}
+                {expandedChapters[s.slug] ? (
+                  <div className="mt-2 space-y-2">
+                    {expandedChapters[s.slug].map((c: any) => (
+                      <div key={c.id} className="rounded border border-zinc-700 p-2 bg-zinc-950/20">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-zinc-100">{c.title} (#{c.number})</div>
+                            <div className="text-xs text-zinc-400">{c.slug}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => startEditChapter(c)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
+                            <button onClick={() => deleteChapter(c.id, s.slug)} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
+                          </div>
+                        </div>
+
+                        {editingChapterId === c.id && editChapterData ? (
+                          <form onSubmit={saveEditChapter} className="mt-2 grid gap-2">
+                            <input className="rounded bg-zinc-900/20 p-2" value={editChapterData.title} onChange={(e) => setEditChapterData({...editChapterData, title: e.target.value})} />
+                            <input className="rounded bg-zinc-900/20 p-2" value={editChapterData.slug} onChange={(e) => setEditChapterData({...editChapterData, slug: e.target.value})} />
+                            <textarea className="rounded bg-zinc-900/20 p-2" value={editChapterData.content} onChange={(e) => setEditChapterData({...editChapterData, content: e.target.value})} />
+                            <div className="flex gap-2">
+                              <button type="submit" className="rounded bg-amber-300 px-3 py-1">Save</button>
+                              <button type="button" onClick={() => { setEditingChapterId(null); setEditChapterData(null) }} className="rounded bg-zinc-800 px-3 py-1">Cancel</button>
+                            </div>
+                          </form>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
