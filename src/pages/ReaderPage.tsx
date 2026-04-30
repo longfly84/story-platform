@@ -11,7 +11,56 @@ export default function ReaderPage() {
   const navigate = useNavigate()
   const story = slug ? getStoryBySlug(slug) : undefined
 
-  const [fontSize, setFontSize] = useState("medium") // small, medium, large
+  type ReaderSettings = {
+    fontSize: "small" | "medium" | "large"
+    lineHeight: number
+    contentWidth: string
+  }
+
+  const DEFAULT_SETTINGS: ReaderSettings = {
+    fontSize: "medium",
+    lineHeight: 1.6,
+    contentWidth: "48rem",
+  }
+
+  const [fontSize, setFontSize] = useState<ReaderSettings["fontSize"]>(() => {
+    try {
+      const raw = localStorage.getItem("readerSettings")
+      if (!raw) return DEFAULT_SETTINGS.fontSize
+      const s = JSON.parse(raw) as ReaderSettings
+      return s.fontSize ?? DEFAULT_SETTINGS.fontSize
+    } catch {
+      return DEFAULT_SETTINGS.fontSize
+    }
+  }) // small, medium, large
+  const [lineHeight, setLineHeight] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem("readerSettings")
+      if (!raw) return DEFAULT_SETTINGS.lineHeight
+      const s = JSON.parse(raw) as ReaderSettings
+      return s.lineHeight ?? DEFAULT_SETTINGS.lineHeight
+    } catch {
+      return DEFAULT_SETTINGS.lineHeight
+    }
+  })
+  const [contentWidth, setContentWidth] = useState<string>(() => {
+    try {
+      const raw = localStorage.getItem("readerSettings")
+      if (!raw) return DEFAULT_SETTINGS.contentWidth
+      const s = JSON.parse(raw) as ReaderSettings
+      return s.contentWidth ?? DEFAULT_SETTINGS.contentWidth
+    } catch {
+      return DEFAULT_SETTINGS.contentWidth
+    }
+  })
+
+  // persist settings
+  useEffect(() => {
+    const s: ReaderSettings = { fontSize, lineHeight, contentWidth }
+    try {
+      localStorage.setItem("readerSettings", JSON.stringify(s))
+    } catch {}
+  }, [fontSize, lineHeight, contentWidth])
 
   if (!story) {
     return (
@@ -140,21 +189,67 @@ export default function ReaderPage() {
               </button>
             </div>
           </div>
-          <div className="mb-4">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
             <button
               onClick={() => navigate(`/doc-truyen/${slug}/${story.chapters[0]?.slug ?? "chuong-1"}`)}
               className="rounded bg-amber-300 px-4 py-2 text-zinc-950 hover:bg-amber-200"
             >
               Đọc từ đầu
             </button>
+
+            {/* Font size controls (existing) */}
+            <div className="flex items-center gap-2 text-sm text-zinc-400">
+              <button
+                onClick={() => setFontSize("small")}
+                className={`rounded px-2 py-1 hover:bg-zinc-700 ${fontSize === "small" ? "bg-zinc-700" : ""}`}
+                aria-label="Cỡ chữ nhỏ"
+              >
+                A-
+              </button>
+              <button
+                onClick={() => setFontSize("medium")}
+                className={`rounded px-2 py-1 hover:bg-zinc-700 ${fontSize === "medium" ? "bg-zinc-700" : ""}`}
+                aria-label="Cỡ chữ vừa"
+              >
+                A
+              </button>
+              <button
+                onClick={() => setFontSize("large")}
+                className={`rounded px-2 py-1 hover:bg-zinc-700 ${fontSize === "large" ? "bg-zinc-700" : ""}`}
+                aria-label="Cỡ chữ lớn"
+              >
+                A+
+              </button>
+            </div>
+
+            {/* Line height and width controls (minimal UI) */}
+            <div className="ml-4 flex items-center gap-2 text-sm text-zinc-400">
+              <label className="text-xs text-zinc-500">Line</label>
+              <button onClick={() => setLineHeight((v) => Math.max(1, +(v - 0.1).toFixed(2)))} className="rounded px-2 py-1 hover:bg-zinc-700">-</button>
+              <div className="px-2">{lineHeight.toFixed(2)}</div>
+              <button onClick={() => setLineHeight((v) => +(v + 0.1).toFixed(2))} className="rounded px-2 py-1 hover:bg-zinc-700">+</button>
+            </div>
+
+            <div className="ml-4 flex items-center gap-2 text-sm text-zinc-400">
+              <label className="text-xs text-zinc-500">Width</label>
+              <button onClick={() => setContentWidth((w) => {
+                const val = parseFloat(w)
+                return `${Math.max(32, val - 4)}rem`
+              })} className="rounded px-2 py-1 hover:bg-zinc-700">-</button>
+              <div className="px-2">{contentWidth}</div>
+              <button onClick={() => setContentWidth((w) => {
+                const val = parseFloat(w)
+                return `${Math.min(120, val + 4)}rem`
+              })} className="rounded px-2 py-1 hover:bg-zinc-700">+</button>
+            </div>
           </div>
 
           <h1 className="text-3xl font-bold text-zinc-100">{story.title}</h1>
           <h2 className="mt-1 text-xl font-semibold text-zinc-300">{currentChapter.title}</h2>
 
           <article
-            className={`mt-6 max-w-3xl space-y-6 rounded bg-zinc-900/20 p-6 text-zinc-200 ${fontSizeClasses[fontSize]}`}
-            style={{ whiteSpace: "pre-wrap" }}
+            className={`mt-6 space-y-6 rounded bg-zinc-900/20 p-6 text-zinc-200 ${fontSizeClasses[fontSize]}`}
+            style={{ whiteSpace: "pre-wrap", lineHeight: lineHeight, maxWidth: contentWidth }}
           >
             {currentChapter.content}
           </article>
