@@ -113,10 +113,10 @@ export default function StoryDetailPage() {
                 </div>
                 <div className="mt-2 text-xs text-zinc-400">{statusLabel} • {chapterCount} chương</div>
               </div>
-              <div className="mt-4 flex flex-col gap-2">
-                <Link to={`/doc-truyen/${story.slug}/${story.chapters[0]?.slug ?? 'chuong-1'}`} className="rounded bg-amber-300 px-4 py-2 text-center text-sm font-semibold text-zinc-950 hover:bg-amber-200">Đọc từ đầu</Link>
-                <Link to={`/doc-truyen/${story.slug}/${story.chapters.at(-1)?.slug ?? 'chuong-1'}`} className="rounded border border-zinc-800 bg-zinc-950/40 px-4 py-2 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Đọc chương mới nhất</Link>
-                {readingEntry ? <Link to={`/doc-truyen/${readingEntry.storySlug}/${readingEntry.chapterSlug}`} className="rounded border border-zinc-800 bg-zinc-950/30 px-4 py-2 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Đọc tiếp</Link> : null}
+              <div className="mt-4 flex flex-col gap-3 px-1">
+                <Link to={`/doc-truyen/${story.slug}/${story.chapters[0]?.slug ?? 'chuong-1'}`} className="block rounded bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-zinc-950 hover:bg-amber-200">Đọc từ đầu</Link>
+                <Link to={`/doc-truyen/${story.slug}/${story.chapters.at(-1)?.slug ?? 'chuong-1'}`} className="block rounded border border-zinc-800 bg-zinc-950/40 px-4 py-3 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Đọc chương mới nhất</Link>
+                {readingEntry ? <Link to={`/doc-truyen/${readingEntry.storySlug}/${readingEntry.chapterSlug}`} className="block rounded border border-zinc-800 bg-zinc-950/30 px-4 py-3 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Đọc tiếp</Link> : null}
               </div>
             </div>
 
