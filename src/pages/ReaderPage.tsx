@@ -144,6 +144,32 @@ export default function ReaderPage() {
     }
   }, [story, currentChapter])
 
+  // Auto-hide floating buttons on scroll (mobile) - toggle classes to avoid direct style calls
+  useEffect(() => {
+    let lastY = window.scrollY
+    let ticking = false
+    const handler = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY
+          const els = document.querySelectorAll<HTMLElement>('.mobile-floating-nav')
+          els.forEach((e) => {
+            if (Math.abs(currentY - lastY) > 10) {
+              e.classList.add('opacity-0', 'pointer-events-none')
+            } else {
+              e.classList.remove('opacity-0', 'pointer-events-none')
+            }
+          })
+          lastY = currentY
+          ticking = false
+        })
+        ticking = true
+      }
+    }
+    window.addEventListener('scroll', handler, { passive: true })
+    return () => window.removeEventListener('scroll', handler)
+  }, [])
+
   return (
     <>
       <Helmet>
@@ -281,6 +307,30 @@ export default function ReaderPage() {
             >
               Đọc chương mới nhất
             </button>
+          </div>
+
+          {/* Mobile floating prev/next buttons */}
+          <div className="lg:hidden">
+            <div className="fixed bottom-6 left-4 z-50 mobile-floating-nav transition-opacity duration-200">
+              <button
+                onClick={() => prevChapter && navigate(`/doc-truyen/${slug}/${prevChapter.slug}`)}
+                disabled={!prevChapter}
+                aria-label="Chương trước"
+                className={`rounded-full p-3 shadow-lg text-zinc-100 ${prevChapter ? 'bg-zinc-800/80 hover:bg-zinc-800' : 'bg-zinc-700/40 opacity-50 cursor-not-allowed'}`}
+              >
+                ‹
+              </button>
+            </div>
+            <div className="fixed bottom-6 right-4 z-50 mobile-floating-nav transition-opacity duration-200">
+              <button
+                onClick={() => nextChapter && navigate(`/doc-truyen/${slug}/${nextChapter.slug}`)}
+                disabled={!nextChapter}
+                aria-label="Chương sau"
+                className={`rounded-full p-3 shadow-lg text-zinc-100 ${nextChapter ? 'bg-zinc-800/80 hover:bg-zinc-800' : 'bg-zinc-700/40 opacity-50 cursor-not-allowed'}`}
+              >
+                ›
+              </button>
+            </div>
           </div>
         </main>
       </MainLayout>
