@@ -26,10 +26,8 @@ export function getReadingHistory(): ReadingHistoryItem[] {
 
 export function saveReadingHistory(item: ReadingHistoryItem) {
   const history = getReadingHistory()
-  // Remove existing entry for same story and chapter if any
-  const filtered = history.filter(
-    (h) => !(h.storySlug === item.storySlug && h.chapterSlug === item.chapterSlug)
-  )
+  // Remove existing entries for the same story (keep only one per story)
+  const filtered = history.filter((h) => h.storySlug !== item.storySlug)
   // Add new item at front
   filtered.unshift(item)
   // Limit to 10 items

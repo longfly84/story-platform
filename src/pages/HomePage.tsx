@@ -22,6 +22,95 @@ function normalizeText(input: string) {
     .trim()
 }
 
+type SearchBarProps = {
+  className?: string
+  query: string
+  setQuery: (v: string) => void
+  searchOpen: boolean
+  setSearchOpen: (v: boolean) => void
+  debouncedQuery: string
+  suggestions: Story[]
+  activeGenreName: string
+  filteredStoriesLength: number
+}
+
+function SearchBar({
+  className,
+  query,
+  setQuery,
+  searchOpen,
+  setSearchOpen,
+  debouncedQuery,
+  suggestions,
+  activeGenreName,
+  filteredStoriesLength,
+}: SearchBarProps) {
+  // Keep this component stable (module-level) to avoid remounting the input on parent re-renders
+  return (
+    <div
+      className={["relative w-full", className].filter(Boolean).join(" ")}
+      onFocus={() => setSearchOpen(true)}
+      onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}
+    >
+      <div className="relative">
+        <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Tìm theo tên truyện hoặc tác giả…"
+          className="h-10 w-full rounded-lg border border-zinc-800/80 bg-zinc-950/30 pl-9 pr-9 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition focus:border-amber-300/30 focus:ring-2 focus:ring-amber-300/10"
+        />
+        {query ? (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-zinc-800 bg-zinc-950/40 p-1.5 text-zinc-200 transition hover:bg-zinc-900/60"
+            aria-label="Xoá tìm kiếm"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        ) : null}
+      </div>
+
+      {/* Dropdown: desktop only */}
+      {searchOpen && debouncedQuery.trim() ? (
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 hidden overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/95 shadow-2xl backdrop-blur-sm sm:block">
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-3 py-2">
+            <div className="text-xs text-zinc-400">
+              Kết quả trong: {" "}
+              <span className="font-semibold text-zinc-200">{activeGenreName}</span>
+            </div>
+            <div className="text-xs text-zinc-500">{filteredStoriesLength} truyện</div>
+          </div>
+
+          {suggestions.length ? (
+            <div className="max-h-[360px] overflow-auto p-2">
+              {suggestions.map((s) => (
+                <Link
+                  key={s.id}
+                  to={`/truyen/${s.slug}`}
+                  onClick={() => setSearchOpen(false)}
+                  className="group flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-zinc-900/60"
+                >
+                  <img src={s.coverImage} alt={s.title} className="h-10 w-10 rounded-md object-cover" loading="lazy" />
+                  <div className="min-w-0">
+                    <div className="line-clamp-1 text-sm font-semibold text-zinc-100 group-hover:text-amber-200">{s.title}</div>
+                    <div className="mt-0.5 line-clamp-1 text-xs text-zinc-500">{s.author ?? "Đang cập nhật"}</div>
+                  </div>
+                  <div className="ml-auto text-xs text-zinc-500">{s.chapters.length} ch</div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 text-sm text-zinc-400">Không có kết quả phù hợp.</div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+
 export default function HomePage() {
   const featured = getStoryBySlug("dem-toi-bi-ga-len-nui")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -33,7 +122,19 @@ export default function HomePage() {
   const itemsPerPage = 5
 
   // State for reading history and followed stories
+  // readingHistory: mapped Story objects for UI list
   const [readingHistory, setReadingHistory] = useState<Story[]>([])
+  // raw reading history items from localStorage (contains chapterSlug etc.)
+  type ReadingHistoryItem = {
+    storySlug: string
+    storyTitle: string
+    chapterSlug?: string
+    chapterNumber?: number
+    chapterTitle?: string
+    lastRead?: number
+    coverImage?: string
+  }
+  const [readingHistoryItems, setReadingHistoryItems] = useState<ReadingHistoryItem[]>([])
   const [followedStories, setFollowedStories] = useState<Story[]>([])
 
   useEffect(() => {
@@ -66,6 +167,8 @@ export default function HomePage() {
       .filter((s): s is Story => s !== undefined)
 
     setReadingHistory(historyStories)
+    // also keep raw items for "Đọc tiếp"
+    setReadingHistoryItems(historyItems)
     setFollowedStories(followedStoriesList)
   }, [])
 
@@ -104,90 +207,31 @@ export default function HomePage() {
     ? genres.find((g) => g.slug === selectedGenre)?.name ?? selectedGenre
     : "Tất cả"
 
-  const SearchBar = ({ className }: { className?: string }) => (
-    <div
-      className={["relative w-full", className].filter(Boolean).join(" ")}
-      onFocus={() => setSearchOpen(true)}
-      onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}
-    >
-      <div className="relative">
-        <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Tìm theo tên truyện hoặc tác giả…"
-          className="h-10 w-full rounded-lg border border-zinc-800/80 bg-zinc-950/30 pl-9 pr-9 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition focus:border-amber-300/30 focus:ring-2 focus:ring-amber-300/10"
-        />
-        {query ? (
-          <button
-            type="button"
-            onClick={() => setQuery("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-zinc-800 bg-zinc-950/40 p-1.5 text-zinc-200 transition hover:bg-zinc-900/60"
-            aria-label="Xoá tìm kiếm"
-          >
-            <XIcon className="size-3.5" />
-          </button>
-        ) : null}
-      </div>
-
-      {/* Dropdown: desktop only */}
-      {searchOpen && debouncedQuery.trim() ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 hidden overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/95 shadow-2xl backdrop-blur-sm sm:block">
-          <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-3 py-2">
-            <div className="text-xs text-zinc-400">
-              Kết quả trong:{" "}
-              <span className="font-semibold text-zinc-200">
-                {activeGenreName}
-              </span>
-            </div>
-            <div className="text-xs text-zinc-500">
-              {filteredStories.length} truyện
-            </div>
-          </div>
-
-          {suggestions.length ? (
-            <div className="max-h-[360px] overflow-auto p-2">
-              {suggestions.map((s) => (
-                <Link
-                  key={s.id}
-                  to={`/truyen/${s.slug}`}
-                  onClick={() => setSearchOpen(false)}
-                  className="group flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-zinc-900/60"
-                >
-                  <img
-                    src={s.coverImage}
-                    alt={s.title}
-                    className="h-10 w-10 rounded-md object-cover"
-                    loading="lazy"
-                  />
-                  <div className="min-w-0">
-                    <div className="line-clamp-1 text-sm font-semibold text-zinc-100 group-hover:text-amber-200">
-                      {s.title}
-                    </div>
-                    <div className="mt-0.5 line-clamp-1 text-xs text-zinc-500">
-                      {s.author ?? "Đang cập nhật"}
-                    </div>
-                  </div>
-                  <div className="ml-auto text-xs text-zinc-500">
-                    {s.chapters.length} ch
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="p-4 text-sm text-zinc-400">
-              Không có kết quả phù hợp.
-            </div>
-          )}
-        </div>
-      ) : null}
-    </div>
-  )
+  // use the module-level SearchBar component defined above to avoid remounting
 
   return (
     <MainLayout
-      headerRight={<SearchBar className="hidden sm:block" />}
-      headerBottom={<SearchBar />}
+      headerRight={<SearchBar
+        className="hidden sm:block"
+        query={query}
+        setQuery={setQuery}
+        searchOpen={searchOpen}
+        setSearchOpen={setSearchOpen}
+        debouncedQuery={debouncedQuery}
+        suggestions={suggestions}
+        activeGenreName={activeGenreName}
+        filteredStoriesLength={filteredStories.length}
+      />}
+      headerBottom={<SearchBar
+        query={query}
+        setQuery={setQuery}
+        searchOpen={searchOpen}
+        setSearchOpen={setSearchOpen}
+        debouncedQuery={debouncedQuery}
+        suggestions={suggestions}
+        activeGenreName={activeGenreName}
+        filteredStoriesLength={filteredStories.length}
+      />}
     >
       <div className="mx-auto max-w-7xl px-4 py-5 sm:py-6 lg:py-10">
         <div className="mb-4 flex items-center gap-2 lg:hidden">
@@ -265,6 +309,29 @@ export default function HomePage() {
           ) : null}
 
           {/* New section: Đang đọc gần đây */}
+          {/* New section: Đọc tiếp (show most recent reading history) */}
+          {readingHistoryItems.length > 0 && (() => {
+            const recent = readingHistoryItems[0]
+            // require storySlug and chapterSlug to render 'Đọc tiếp'
+            if (!recent || !recent.storySlug || !recent.chapterSlug) return null
+            const href = `/doc-truyen/${recent.storySlug}/${recent.chapterSlug}`
+            return (
+              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-5 sm:p-6">
+                <h2 className="mb-4 text-2xl font-semibold text-zinc-100">Đọc tiếp</h2>
+                <div className="flex items-center gap-4">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-zinc-100">{recent.storyTitle}</div>
+                    <div className="text-sm text-zinc-400">{recent.chapterTitle ?? "Tiếp tục đọc"}</div>
+                  </div>
+                  <div className="ml-auto">
+                    <Link to={href} className="rounded-lg border border-zinc-800 bg-amber-300 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-200">
+                      Đọc tiếp{recent.chapterNumber ? ` chương ${recent.chapterNumber}` : ""}
+                    </Link>
+                  </div>
+                </div>
+              </section>
+            )
+          })()}
           {readingHistory.length > 0 && (
             <section className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-5 sm:p-6">
               <h2 className="mb-4 text-2xl font-semibold text-zinc-100">Đang đọc gần đây</h2>
