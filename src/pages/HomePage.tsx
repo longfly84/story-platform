@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+/* Removed unused import to fix build error */
 import { Link } from "react-router-dom"
 
 import StoryCard from "@/components/home/StoryCard"
@@ -460,12 +461,9 @@ export default function HomePage() {
                     <button
                       key={g.id}
                       type="button"
-                      onClick={() => {
-                        setSelectedGenre(g.slug)
-                        setMobileMenuOpen(false)
-                      }}
+                      onClick={() => setSelectedGenre(g.slug)}
                       className={[
-                        "rounded-lg border px-3 py-2 text-left transition",
+                        "rounded-lg border px-3 py-2 text-left transition hover:-translate-y-0.5 active:translate-y-0",
                         selectedGenre === g.slug
                           ? "border-amber-300/40 bg-amber-300/10 text-amber-200"
                           : "border-zinc-800 bg-zinc-900/30 text-zinc-200 hover:bg-zinc-900/50",

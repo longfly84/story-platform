@@ -1,14 +1,25 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { BrowserRouter, Route } from "react-router-dom"
+import { Navigate } from "react-router"
 import HomePage from "@/pages/HomePage"
 import ReaderPage from "@/pages/ReaderPage"
+import StoryDetailPage from "@/pages/StoryDetailPage"
+import NotFoundPage from "../pages/NotFoundPage"
+import ScrollToTop from "@/components/ScrollToTop"
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
+      <ScrollToTop />
+      <>
         <Route path="/" element={<HomePage />} />
-        <Route path="/doc-truyen/:slug/chuong-:chapter" element={<ReaderPage />} />
-      </Routes>
+        <Route path="/truyen/:slug" element={<StoryDetailPage />} />
+        <Route path="/doc-truyen/:slug/:chapter" element={<ReaderPage />} />
+        <Route
+          path="/doc-truyen/:slug"
+          element={<Navigate to={`/doc-truyen/${window.location.pathname.split('/')[2]}/1`} replace />}
+        />
+        <Route path="*" element={<NotFoundPage />} />
+      </>
     </BrowserRouter>
   )
 }
