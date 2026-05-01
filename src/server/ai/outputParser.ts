@@ -14,16 +14,18 @@ export function parseModelOutput(raw: string): AIProviderResult {
   // attempt to extract JSON object from raw even if wrapped in text
   try {
     // find first { ... } block
-    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    // try to find the most likely JSON object block (non-greedy)
+    const jsonMatch = raw.match(/\{[\s\S]*?\}\s*$/) || raw.match(/\{[\s\S]*?\}/)
     if (jsonMatch) {
       const j = JSON.parse(jsonMatch[0])
       const ok = j && (typeof j.title === 'string' || typeof j.content === 'string' || typeof j.summary === 'string')
       if (ok) {
         return {
           title: j.title || firstLine(String(j.content||'')) || 'Chương mới',
-          content: j.content || j.text || raw,
-          summary: j.summary || shortSummary(j.content || j.text || raw),
-          cliffhanger: j.cliffhanger || j.cliff || lastLine(j.content || j.text || raw),
+          // return parsed fields only (clean content)
+          content: (j.content || j.text || '') ? String(j.content || j.text).trim() : '',
+          summary: (j.summary || '') ? String(j.summary).trim() : shortSummary(j.content || j.text || ''),
+          cliffhanger: (j.cliffhanger || j.cliff || '') ? String(j.cliffhanger || j.cliff).trim() : lastLine(j.content || j.text || ''),
           important_events: j.important_events || j.events || [],
           emotion_tags: j.emotion_tags || j.emotionTags || [],
           story_memory_updates: j.story_memory_updates || j.memory_updates || {},

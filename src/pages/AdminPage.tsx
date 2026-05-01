@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import MainLayout from '@/layouts/MainLayout'
-import { supabase, signOut, getCurrentUser } from '@/lib/supabase'
+import { supabase, signOut, getCurrentUser, resolveCoverUrl } from '@/lib/supabase'
 import { Link } from 'react-router-dom'
 import { GENRE_REGISTRY, CHAPTER_LENGTH_OPTIONS, buildStoryDNA, buildMockChapter } from '@/lib/storyEngine'
 
@@ -135,8 +135,72 @@ export default function AdminPage() {
     fetchStories()
   }, [])
 
+  // cover helper removed (inlined where needed) to avoid unused function warning
+
+  // track image load errors to avoid broken icons
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
+
+  // NOTE: categories feature omitted for now (will add CRUD later)
+  // Categories (minimal CRUD)
+  const [categories, setCategories] = useState<any[]>([])
+  const [catName, setCatName] = useState('')
+  const [catSlug, setCatSlug] = useState('')
+  const [catDesc, setCatDesc] = useState('')
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
+  const [selectedEditCategoryId, setSelectedEditCategoryId] = useState<string>('')
+
+  async function fetchCategories() {
+    try {
+      const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: false })
+      if (error) throw error
+      setCategories(data || [])
+    } catch (e) {
+      if (import.meta.env.DEV) console.debug('categories missing or failed to load', e)
+      setCategories([])
+    }
+  }
+  useEffect(() => { fetchCategories() }, [])
+
+  function onCatNameChange(v: string) {
+    setCatName(v)
+    if (!catSlug) setCatSlug(generateSlug(v))
+  }
+
+  async function createCategory() {
+    if (!catName.trim()) { alert('Name required'); return }
+    const payload = { name: catName.trim(), slug: catSlug || generateSlug(catName), description: catDesc || null }
+    try {
+      const { error } = await supabase.from('categories').insert([payload])
+      if (error) throw error
+      setCatName(''); setCatSlug(''); setCatDesc('')
+      await fetchCategories()
+    } catch (e: any) {
+      alert('Create category failed: ' + String(e?.message ?? e) + '\nRun scripts/create_categories.sql if table missing.')
+    }
+  }
+
+  async function deleteCategory(id: string, slug: string) {
+    if (!confirm('Xác nhận xoá thể loại này?')) return
+    try {
+      // check stories referencing this category by category_id or category slug
+      const { data: byId, error: e1 } = await supabase.from('stories').select('id').eq('category_id', id).limit(1)
+      if (!e1 && byId && byId.length) { alert('Không thể xóa: có truyện đang sử dụng thể loại này.'); return }
+      const { data: bySlug, error: e2 } = await supabase.from('stories').select('id').eq('category_slug', slug).limit(1)
+      if (!e2 && bySlug && bySlug.length) { alert('Không thể xóa: có truyện đang sử dụng thể loại này.'); return }
+      const { error } = await supabase.from('categories').delete().eq('id', id)
+      if (error) throw error
+      await fetchCategories()
+    } catch (e: any) {
+      alert('Delete category failed: ' + String(e?.message ?? e))
+    }
+  }
+
+  // no-op helper removed
+
   // auth guard + loading state while checking session
   const [checkingSession, setCheckingSession] = useState(true)
+  const editSectionRef = useRef<HTMLDivElement | null>(null)
+  const [editCoverFile, setEditCoverFile] = useState<File | null>(null)
   useEffect(() => {
     let mounted = true
     ;(async () => {
@@ -181,13 +245,16 @@ export default function AdminPage() {
   async function handleCreateChapter(e: any) {
     e.preventDefault()
     try {
+      // resolve story id from selected slug if possible
+      const sid = stories.find(s => s.slug === newChapter.storySlug)?.id
       const payload: any = {
-        story_slug: newChapter.storySlug,
         title: newChapter.title,
         slug: newChapter.slug,
         content: newChapter.content,
-        number: newChapter.chapter_number,
+        // NOTE: do not write 'number' column - schema may not include it. Handle ordering separately.
       }
+      if (sid) payload.story_id = sid
+      else if (newChapter.storySlug) payload.story_slug = newChapter.storySlug
       // include metadata if present
       if (newChapter.summary) payload.summary = newChapter.summary
       if (newChapter.cliffhanger) payload.cliffhanger = newChapter.cliffhanger
@@ -198,8 +265,12 @@ export default function AdminPage() {
       if (res.error) throw res.error
       alert('Chapter created')
       // refresh expanded chapters for this story if shown
-      if (expandedChapters[newChapter.storySlug]) {
-        const { data: ch } = await supabase.from('chapters').select('*').eq('story_slug', newChapter.storySlug).order('number', { ascending: true })
+        if (expandedChapters[newChapter.storySlug]) {
+        // refresh by story id if available
+        const sid2 = stories.find(s => s.slug === newChapter.storySlug)?.id
+        const q = supabase.from('chapters').select('*')
+        const q2 = sid2 ? q.eq('story_id', sid2) : q.eq('story_slug', newChapter.storySlug)
+        const { data: ch } = await q2.order('created_at', { ascending: true })
         setExpandedChapters((m) => ({ ...m, [newChapter.storySlug]: ch ?? [] }))
       }
     } catch (err: any) {
@@ -211,16 +282,40 @@ export default function AdminPage() {
   async function startEditStory(s: any) {
     setEditingStoryId(s.id)
     setEditStoryData({ ...s })
+    // scroll to edit section after state updates
+    setTimeout(() => { try { editSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) } catch {} }, 120)
   }
 
   async function saveEditStory(e: any) {
     e.preventDefault()
     if (!editStoryData || !editingStoryId) return
     try {
-      const res = await supabase.from('stories').update(editStoryData).eq('id', editingStoryId)
+      // if a new cover file selected, upload it and attach to payload only if story row already has a cover-like field
+      let coverUrl: string | null = null
+      if (editCoverFile) {
+        try {
+          const { uploadCoverImage } = await import('@/lib/supabase')
+          const url = await uploadCoverImage(editCoverFile)
+          if (url) coverUrl = url
+        } catch (e) {
+          if (import.meta.env.DEV) console.debug('edit cover upload failed', e)
+        }
+      }
+
+      const payload: any = { ...editStoryData }
+      if (coverUrl) {
+        // detect existing cover field name on the record and set only that field
+        const coverKeys = ['cover_image', 'cover_url', 'cover', 'image_url']
+        const keyName = Object.keys(editStoryData).find(k => coverKeys.includes(k))
+        if (keyName) payload[keyName] = coverUrl
+        // else: do not add new cover column to avoid schema mismatch
+      }
+
+      const res = await supabase.from('stories').update(payload).eq('id', editingStoryId)
       if (res.error) throw res.error
       setEditingStoryId(null)
       setEditStoryData(null)
+      setEditCoverFile(null)
       await fetchStories()
     } catch (err: any) {
       alert('Error updating: ' + String(err?.message ?? err))
@@ -244,7 +339,11 @@ export default function AdminPage() {
       setExpandedChapters((m) => { const c = { ...m }; delete c[slug]; return c })
       return
     }
-    const { data, error } = await supabase.from('chapters').select('*').eq('story_slug', slug).order('number', { ascending: true })
+    // prefer story_id if available
+    const sid = stories.find(s => s.slug === slug)?.id
+    const q = supabase.from('chapters').select('*')
+    const q2 = sid ? q.eq('story_id', sid) : q.eq('story_slug', slug)
+    const { data, error } = await q2.order('created_at', { ascending: true })
     if (error) { alert('Load chapters failed: ' + String(error.message)); return }
     setExpandedChapters((m) => ({ ...m, [slug]: data ?? [] }))
   }
@@ -311,14 +410,17 @@ export default function AdminPage() {
       if (aiMode === 'next') {
         // try to read latest chapter summary/cliffhanger from DB for this story
         try {
-          const storySlug = aiStorySlug || (newStory as any).slug || ''
-          if (storySlug) {
-            const { data: last } = await supabase.from('chapters').select('id, title, slug, content, summary, cliffhanger').eq('story_slug', storySlug).order('number', { ascending: false }).limit(1)
-            if (last && last.length) {
-              contextSummary = last[0].summary || last[0].content?.slice(0,200) || ''
-              latestCliff = last[0].cliffhanger || ''
+            const storySlug = aiStorySlug || (newStory as any).slug || ''
+            if (storySlug) {
+              const sid = stories.find(s => s.slug === storySlug)?.id
+              let q = supabase.from('chapters').select('id, title, slug, content, summary, cliffhanger')
+              q = sid ? q.eq('story_id', sid) : q.eq('story_slug', storySlug)
+              const { data: last } = await q.order('created_at', { ascending: false }).limit(1)
+              if (last && last.length) {
+                contextSummary = last[0].summary || last[0].content?.slice(0,200) || ''
+                latestCliff = last[0].cliffhanger || ''
+              }
             }
-          }
         } catch (e) {
           // ignore DB errors for mock
         }
@@ -422,17 +524,14 @@ export default function AdminPage() {
       if (!storySlug) { alert('Chọn truyện để lưu draft'); return }
       if (!aiResult) { alert('Chưa có nội dung AI để lưu'); return }
 
-      // determine next chapter number
-      const { data: existing, error: err } = await supabase.from('chapters').select('number').eq('story_slug', storySlug).order('number', { ascending: false }).limit(1)
-      if (err) { console.warn('Failed to read chapters for draft', err); }
-      const nextNumber = (existing && existing.length && typeof existing[0].number === 'number') ? (existing[0].number + 1) : 1
+      // Note: do not rely on a 'number' column existing in DB; omit chapter ordering field here.
+      // If your DB uses a different column (e.g. chapter_number), update inserts accordingly.
 
       const payload: any = {
         story_slug: storySlug,
         title: aiTitle || (aiResult || '').split('\n')[0].slice(0,120),
         slug: generateSlug(aiTitle || ('chương-' + Date.now())),
         content: aiResult,
-        number: nextNumber,
       }
       if (aiMeta?.summary) payload.summary = aiMeta.summary
       if (aiMeta?.cliffhanger) payload.cliffhanger = aiMeta.cliffhanger
@@ -450,15 +549,23 @@ export default function AdminPage() {
   return (
     <MainLayout>
       <main className="mx-auto max-w-4xl px-4 py-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-zinc-100">Admin (Minimal)</h1>
+        <header className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold text-zinc-100">Admin CMS</h1>
+              <div className="text-xs text-zinc-400">Đang đăng nhập</div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <Link to="/admin" className="text-xs rounded bg-zinc-900/20 px-3 py-1 text-amber-300">Admin Dashboard</Link>
+              <Link to="/" className="text-xs rounded bg-zinc-900/20 px-3 py-1 text-zinc-200">Xem trang chủ</Link>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
-            <a href="/" className="text-sm text-amber-300 hover:underline">Về trang chủ</a>
+            <Link to="/admin" className="text-sm text-amber-300 hover:underline sm:hidden">Admin</Link>
+            <a href="/" className="text-sm text-zinc-400 hover:underline">Xem trang chủ</a>
             <button
               onClick={async () => {
-                try {
-                  await signOut()
-                } catch {}
+                try { await signOut() } catch {}
                 window.location.href = '/login'
               }}
               className="rounded bg-zinc-800 px-3 py-1 text-sm text-zinc-100"
@@ -466,7 +573,20 @@ export default function AdminPage() {
               Logout
             </button>
           </div>
-        </div>
+        </header>
+
+        {editingStoryId ? (
+          <nav className="mb-4 text-sm text-zinc-400">
+            <div className="flex items-center gap-2">
+              <Link to="/admin" className="text-amber-300 hover:underline">Admin</Link>
+              <span>/</span>
+              <span>Stories</span>
+              <span>/</span>
+              <span className="text-zinc-200">Edit Story</span>
+              <button onClick={() => { setEditingStoryId(null); setEditStoryData(null) }} className="ml-4 text-xs rounded bg-zinc-900/20 px-2 py-1">Quay lại Admin</button>
+            </div>
+          </nav>
+        ) : null}
         {checkingSession ? <div className="text-sm text-zinc-400 mb-4">Đang kiểm tra phiên đăng nhập…</div> : null}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-zinc-100">Stories</h2>
@@ -475,7 +595,27 @@ export default function AdminPage() {
           <ul className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {stories.map((s: any) => (
               <li key={s.id} className="rounded border border-zinc-800 p-3 flex items-start gap-3">
-                <img src={s.cover_image ?? s.coverImage ?? ''} alt={s.title} className="h-16 w-12 rounded object-cover flex-shrink-0 bg-zinc-900/30" />
+                {/* cover: only render img when resolved and not errored; otherwise show placeholder */}
+                {(() => {
+                  const raw = s?.cover_image ?? s?.coverImage ?? s?.cover ?? s?.cover_url ?? null
+                  const path = raw && String(raw).startsWith('covers/') ? String(raw).replace(/^covers\//, '') : raw
+                  const resolved = resolveCoverUrl(path)
+                  if (import.meta.env.DEV) console.debug('[cover debug render]', s?.title, 'raw:', raw, 'resolved:', resolved)
+                  const errored = imageErrors?.[s?.id]
+                  if (resolved && !errored) {
+                    return (
+                      <img
+                        src={resolved}
+                        alt={s.title}
+                        className="h-16 w-12 rounded object-cover flex-shrink-0 bg-zinc-900/30"
+                        onError={() => setImageErrors(prev => ({ ...(prev||{}), [s.id]: true }))}
+                      />
+                    )
+                  }
+                  return (
+                    <div style={{ width: 64, height: 84 }} className="flex items-center justify-center rounded border bg-zinc-900/20 text-zinc-400 text-xs">No cover</div>
+                  )
+                })()}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -485,28 +625,19 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2">
                       <span className={`text-xs px-2 py-0.5 rounded ${s.status === 'completed' ? 'bg-emerald-400/10 text-emerald-200' : 'bg-sky-400/10 text-sky-200'}`}>{s.status === 'completed' ? 'Full' : 'Đang ra'}</span>
                     </div>
-                  </div>
-                  <div className="mt-2 flex gap-2">
+                    <button onClick={() => startEditStory(s)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
+                    <button onClick={() => deleteStory(s.id)} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
                     <button onClick={() => startEditStory(s)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
                     <button onClick={() => deleteStory(s.id)} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
                     <button onClick={() => toggleChapters(s.slug)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Chapters</button>
                     <Link to={`/truyen/${s.slug}`} className="text-xs text-amber-300 hover:underline">View</Link>
-                  </div>
+                </div>
+                <div className="flex-shrink-0">
+                  {/* ensure we don't render a second img that could be broken */}
+                </div>
                 </div>
 
-                {/* edit story inline */}
-                {editingStoryId === s.id && editStoryData ? (
-                  <form onSubmit={saveEditStory} className="mt-2 grid gap-2">
-                    <input className="rounded bg-zinc-900/20 p-2" value={editStoryData.title} onChange={(e) => setEditStoryData({...editStoryData, title: e.target.value})} />
-                    <input className="rounded bg-zinc-900/20 p-2" value={editStoryData.slug} onChange={(e) => setEditStoryData({...editStoryData, slug: e.target.value})} />
-                    <input className="rounded bg-zinc-900/20 p-2" value={editStoryData.author} onChange={(e) => setEditStoryData({...editStoryData, author: e.target.value})} />
-                    <textarea className="rounded bg-zinc-900/20 p-2" value={editStoryData.description} onChange={(e) => setEditStoryData({...editStoryData, description: e.target.value})} />
-                    <div className="flex gap-2">
-                      <button type="submit" className="rounded bg-amber-300 px-3 py-1">Save</button>
-                      <button type="button" onClick={() => { setEditingStoryId(null); setEditStoryData(null) }} className="rounded bg-zinc-800 px-3 py-1">Cancel</button>
-                    </div>
-                  </form>
-                ) : null}
+                {/* edit moved to dedicated section below */}
 
                 {/* chapters expanded */}
                 {expandedChapters[s.slug] ? (
@@ -565,6 +696,88 @@ export default function AdminPage() {
             <textarea className="rounded bg-zinc-900/20 p-2" placeholder="Description" value={newStory.description} onChange={(e) => setNewStory({...newStory, description: e.target.value})} />
             <button className="rounded bg-amber-300 px-4 py-2 text-zinc-900">{uploadingCover ? 'Uploading cover…' : 'Create Story'}</button>
           </form>
+        </div>
+
+        {/* Edit Story section: appears when an Edit is active */}
+        <div ref={editSectionRef} className="mb-6">
+          <h2 className="text-lg font-semibold text-zinc-100">Edit Story</h2>
+          {editingStoryId && editStoryData ? (
+            <form onSubmit={saveEditStory} className="mt-2 grid gap-2">
+              <input className="rounded bg-zinc-900/20 p-2" placeholder="Title" value={editStoryData.title || ''} onChange={(e) => setEditStoryData({...editStoryData, title: e.target.value})} />
+              <input className="rounded bg-zinc-900/20 p-2" placeholder="Slug" value={editStoryData.slug || ''} onChange={(e) => setEditStoryData({...editStoryData, slug: e.target.value})} />
+              <input className="rounded bg-zinc-900/20 p-2" placeholder="Author" value={editStoryData.author || ''} onChange={(e) => setEditStoryData({...editStoryData, author: e.target.value})} />
+              <select className="rounded bg-zinc-900/20 p-2" value={editStoryData.status || 'ongoing'} onChange={(e) => setEditStoryData({...editStoryData, status: e.target.value})}>
+                <option value="ongoing">Đang ra</option>
+                <option value="completed">Hoàn thành</option>
+              </select>
+              <textarea className="rounded bg-zinc-900/20 p-2" placeholder="Description" value={editStoryData.description || ''} onChange={(e) => setEditStoryData({...editStoryData, description: e.target.value})} />
+              {categories && categories.length ? (
+                <select className="rounded bg-zinc-900/20 p-2" value={selectedEditCategoryId} onChange={(e) => { setSelectedEditCategoryId(e.target.value); setEditStoryData({...editStoryData, category_id: e.target.value}) }}>
+                  <option value="">-- (Không đổi) --</option>
+                  {categories.map((c:any)=>(<option key={c.id} value={c.id}>{c.name}</option>))}
+                </select>
+              ) : null}
+              <div>
+                <div className="text-xs text-zinc-400">Current cover</div>
+                {(() => {
+                  const raw = editStoryData?.cover_image ?? editStoryData?.cover ?? editStoryData?.cover_url ?? editStoryData?.image_url ?? null
+                  const path = raw && String(raw).startsWith('covers/') ? String(raw).replace(/^covers\//, '') : raw
+                  const resolved = resolveCoverUrl(path)
+                  if (import.meta.env.DEV) console.debug('[cover debug edit]', editStoryData?.title, 'raw:', raw, 'resolved:', resolved)
+                  if (resolved) return <img src={resolved} alt="cover" className="h-28 w-auto rounded" onError={() => setImageErrors(prev => ({ ...(prev||{}), [editingStoryId as any]: true }))} />
+                  return <div className="h-28 w-20 flex items-center justify-center rounded border bg-zinc-900/20 text-zinc-400">No cover</div>
+                })()}
+              </div>
+              <label className="text-xs text-zinc-400">Upload new cover (optional)</label>
+              <input type="file" accept="image/*" onChange={(e) => setEditCoverFile(e.target.files?.[0] ?? null)} />
+              <div className="flex gap-2">
+                <button type="submit" className="rounded bg-amber-300 px-4 py-2">Save Changes</button>
+                <button type="button" onClick={() => { setEditingStoryId(null); setEditStoryData(null); setEditCoverFile(null) }} className="rounded bg-zinc-800 px-4 py-2">Cancel</button>
+              </div>
+            </form>
+          ) : (
+            <div className="text-xs text-zinc-400">Chọn một truyện và nhấn Edit để chỉnh sửa ở đây.</div>
+          )}
+        </div>
+
+        {/* Category Management (minimal) */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-zinc-100">Category Management</h2>
+          <div className="mt-2 grid gap-2">
+            <input className="rounded bg-zinc-900/20 p-2" placeholder="Name" value={catName} onChange={(e) => onCatNameChange(e.target.value)} />
+            <input className="rounded bg-zinc-900/20 p-2" placeholder="Slug" value={catSlug} onChange={(e) => setCatSlug(e.target.value)} />
+            <textarea className="rounded bg-zinc-900/20 p-2" placeholder="Description (optional)" value={catDesc} onChange={(e) => setCatDesc(e.target.value)} />
+            <div className="flex gap-2">
+              <button onClick={(e) => { e.preventDefault(); createCategory() }} className="rounded bg-emerald-500 px-4 py-2">Create Category</button>
+              <button onClick={(e) => { e.preventDefault(); setCatName(''); setCatSlug(''); setCatDesc('') }} className="rounded bg-zinc-800 px-4 py-2">Clear</button>
+            </div>
+
+          <div className="mt-3">
+            <label className="text-xs text-zinc-400">Chọn thể loại</label>
+            <select className="rounded bg-zinc-900/20 p-2 w-full" value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)}>
+              <option value="">-- Chọn category --</option>
+              {categories.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {selectedCategoryId ? (
+              (() => {
+                const c = categories.find(x => x.id === selectedCategoryId)
+                if (!c) return null
+                return (
+                  <div className="mt-2 rounded border border-zinc-800 p-3 bg-zinc-950/10">
+                    <div className="font-medium">{c.name}</div>
+                    <div className="text-xs text-zinc-400">{c.slug}</div>
+                    <div className="text-xs text-zinc-400 mt-1">{c.description}</div>
+                    <div className="mt-2 flex gap-2">
+                      <button onClick={() => { if (confirm('Xác nhận xoá?')) { deleteCategory(c.id, c.slug); setSelectedCategoryId('') } }} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
+                    </div>
+                  </div>
+                )
+              })()
+            ) : (
+              <div className="text-xs text-zinc-400 mt-2">Chưa có thể loại được chọn.</div>
+            )}
+          </div>
+          </div>
         </div>
 
         <div>
@@ -707,9 +920,9 @@ export default function AdminPage() {
                   setNewChapter((c) => ({
                     ...c,
                     storySlug: aiStorySlug || c.storySlug,
-                    title: c.title || 'Chương mới',
-                    slug: c.slug || generateSlug('Chương mới'),
-                    content: aiResult || c.content,
+                    title: (aiTitle || aiResult || '').split('\n')[0].slice(0,120) || c.title || 'Chương mới',
+                    slug: c.slug || generateSlug((aiTitle || aiResult || '').split('\n')[0].slice(0,60) || 'chương'),
+                    content: (aiResult || c.content) ? String(aiResult || c.content).replace(/\{[\s\S]*?\}/g, '').replace(/\[Summary\][\s\S]*?(?=\n\n|$)/gi, '').replace(/\[Cliffhanger\][\s\S]*?(?=\n\n|$)/gi, '').trim() : c.content,
                     summary: aiMeta?.summary || c.summary,
                     cliffhanger: aiMeta?.cliffhanger || c.cliffhanger,
                     important_events: aiMeta?.important_events || c.important_events,

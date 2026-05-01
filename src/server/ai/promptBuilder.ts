@@ -84,34 +84,18 @@ export function buildPrompt({ genreId, dna, memory, latestSummaries, userPrompt 
     parts.push(`Continuity: unresolved_conflict=${String(c.unresolved_conflict || '')}; latest_cliff=${String(c.latest_cliffhanger||'')}; emotions=${JSON.stringify(c.latest_emotional_state||[])}; villain_adv=${String(c.villain_current_advantage||'')}; protagonist_goal=${String(c.protagonist_current_goal||'')}`)
     parts.push('ContinuityRules: continue previous scene; do not reset emotions; keep unresolved conflicts visible; preserve dialogue/personality continuity')
   }
-  parts.push([
-    'INSTRUCTIONS:',
-    '- IMPORTANT: OUTPUT MUST BE valid JSON only (no markdown, no extra text). Return exactly a single JSON object with fields: title, content, summary, cliffhanger, important_events, emotion_tags, story_memory_updates. Do NOT print any other text or commentary.',
-    '- DO NOT include headings like [Summary] or # Title or any repeated labels. content must contain only the chapter text.',
-    '- DO NOT write in trailer style or narrator-marketing lines (no "hãy chờ xem", "hãy cùng theo dõi", "màn trả thù bắt đầu" etc).',
-    '- DO NOT use summary-style writing or external-addressing lines (no "hãy chờ xem", "hãy cùng theo dõi").',
-    '- Use the user prompt / idea as the MAIN SCENE and start the chapter IN MEDIA RES (no lead-in summary).',
-    '- Write in first-person narration. Do NOT include an opening summary or meta commentary or explain you are an AI.',
-    '- Start with a concrete scene: show specific setting, an action, and at least one line of dialogue within the first 3 non-empty lines.',
-    '- Favor action + dialogue early; avoid long exposition or "trailer" sentences that summarize future events.',
-    '- Open with a strong, concrete hook (first 3 non-empty lines must include a clear incident + a humiliation OR danger OR betrayal OR shocking reveal).',
-    '- Do NOT write in generic/plaintive phrases (see blacklist). Avoid vague statements like "Mọi thứ thay đổi" or "Từ ngày đó..."; be specific and show details.',
-    '- Use emotional internal monologue sparingly to add texture, but show through action and dialogue rather than explaining motives.',
-    '- Dialogue should be short and punchy; avoid long speeches that read like exposition.',
-    '- Show actions and concrete sensory detail; include actions + at least one line of dialogue in the opening scene.',
-    '- Keep sentences short and paragraphs short. Favor many short lines and frequent line breaks.',
-    '- Prioritize tension every 2-3 paragraphs: introduce a small escalation or obstacle that raises stakes.',
-    '- Use dialogue to reveal character and advance plot; aim for a high dialogue ratio.',
-    '- Avoid repeating the same sentence or phrase; vary wording and beats; do not produce wall-of-text.',
-    '- Include an explicit, shown humiliation scene (avoid internal monologue only). The protagonist should appear outwardly calm while feeling humiliated.',
-    '- Avoid meta explanations like "I will take revenge"; show the planning through actions and clipped thoughts instead.',
-    '- Ensure the final line is a SPECIFIC cliffhanger EVENT (concrete happening, not a vague sentence).',
-    "- Output MUST be structured exactly with these fields: title, content, summary, cliffhanger, important_events, emotion_tags.",
-    "- content should contain the full chapter text (with dialogue and the humiliation scene).",
-    "- summary should be a 1-2 sentence concise description (no framing), and cliffhanger should be a single-line description of the final event.",
-    '- BLACKLIST: do not use the following stock phrases verbatim: "Từ ngày đó", "Lòng tôi tràn ngập", "Mọi thứ thay đổi", "Cuộc sống tôi bỗng", "Tất cả thay đổi". If tempted, rephrase into concrete sensory detail.',
-    '- STRONG_BLACKLIST: remove or avoid these trailer/marketing phrases: "hãy chờ xem", "hãy cùng theo dõi", "màn trả thù bắt đầu", "vận mệnh", "định mệnh", "không ai ngờ", "trailer", "tóm tắt".',
-  ].join(' '))
+  // Minimal system instruction: require a single valid JSON object output.
+  parts.push('INSTRUCTIONS: Return exactly one valid JSON object (no markdown, no extra text). The object must contain these fields: title, content, summary, cliffhanger, important_events, emotion_tags, story_memory_updates. content must be the chapter text only.')
+
+  // Strong dialogue patterns to nudge model toward punchy, humiliating lines
+  const STRONG_DIALOGUE = [
+    'Quỳ xuống.',
+    'Cô nghĩ mình xứng à?',
+    'Đuổi cô ta ra ngoài.',
+    'Im lặng đi.',
+    'Ai cho phép cô nói vậy?',
+  ]
+  parts.push(`DialoguePatterns: ${STRONG_DIALOGUE.join(' | ')}`)
 
   return parts.join('\n\n')
 }

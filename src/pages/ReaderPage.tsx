@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from "react"
 import { Link, useParams, useNavigate } from "react-router-dom"
 // Helmet imported in ReaderPage not used since we manipulate meta tags directly
 
-import MainLayout from "@/layouts/MainLayout"
-import { getStoryBySlug } from "@/data/stories"
-import { fetchChaptersByStorySlug } from "@/lib/supabase"
+import MainLayout from '@/layouts/MainLayout'
+import { getStoryBySlug } from '@/data/stories'
+import { fetchChaptersByStorySlug, fetchStoryBySlug } from '@/lib/supabase'
 import { saveReadingHistory, getReadingHistory, isStoryFollowed, followStory } from "@/lib/localStorageHelpers"
 import { getCurrentUser, upsertReadingHistoryForUser } from '@/lib/supabase'
 // formatCount not used here but keep import for future extensibility
@@ -12,7 +12,7 @@ import { getCurrentUser, upsertReadingHistoryForUser } from '@/lib/supabase'
 export default function ReaderPage() {
   const { slug, chapter } = useParams<{ slug: string; chapter: string }>()
   const navigate = useNavigate()
-  const story = slug ? getStoryBySlug(slug) : undefined
+  const [story, setStory] = useState<any>(slug ? getStoryBySlug(slug) : undefined)
 
   type ReaderSettings = {
     fontSize: "small" | "medium" | "large"
@@ -98,14 +98,14 @@ export default function ReaderPage() {
   // Cho phép nhận chapter là số hoặc slug
   let currentChapter = undefined
   let chapterIndex = -1
-  if (chapter) {
-    if (/^\d+$/.test(chapter)) {
-      // Nếu chapter là số, tìm chương có number === số đó
-      chapterIndex = story.chapters.findIndex((c) => c.number === Number(chapter))
-    } else {
-      // Nếu chapter là slug, tìm chương có slug === chapter
-      chapterIndex = story.chapters.findIndex((c) => c.slug === chapter)
-    }
+    if (chapter) {
+      if (/^\d+$/.test(chapter)) {
+        // Nếu chapter là số, tìm chương có number === số đó
+        chapterIndex = story.chapters.findIndex((c: any) => c.number === Number(chapter))
+      } else {
+        // Nếu chapter là slug, tìm chương có slug === chapter
+        chapterIndex = story.chapters.findIndex((c: any) => c.slug === chapter)
+      }
     currentChapter = chapterIndex !== -1 ? story.chapters[chapterIndex] : undefined
   }
 
@@ -179,20 +179,28 @@ export default function ReaderPage() {
 
   // Breadcrumb UI (render inline below)
 
-  // try load chapters from supabase
+  // try to load story + chapters from Supabase (fallback to fake data)
   useEffect(() => {
     let mounted = true
     ;(async () => {
+      if (!slug) return
+      try {
+        const s = await fetchStoryBySlug(slug)
+        if (!mounted) return
+        if (s) setStory((prev:any)=>({ ...(prev||{}), ...s }))
+      } catch {}
+
       if (!story) return
-      const remote = await fetchChaptersByStorySlug(story.slug)
-      if (!mounted) return
-      if (remote && Array.isArray(remote) && remote.length) {
-        // try to map remote chapters into story.chapters shape if possible
-        story.chapters = remote.map((r: any) => ({ number: r.number, slug: r.slug, id: r.id ?? r.slug, title: r.title, content: r.content ?? [r.content], publishedAt: r.published_at ?? r.created_at }))
-      }
+      try {
+        const remote = await fetchChaptersByStorySlug(story.slug)
+        if (!mounted) return
+        if (remote && Array.isArray(remote) && remote.length) {
+          setStory((prev:any)=>({ ...(prev||{}), chapters: remote.map((r:any) => ({ number: r.number, slug: r.slug, id: r.id ?? r.slug, title: r.title, content: r.content ?? r.body ?? r.text, publishedAt: r.published_at ?? r.created_at })) }))
+        }
+      } catch {}
     })()
     return () => { mounted = false }
-  }, [story])
+  }, [slug, story])
 
   // follow state
   useEffect(() => {

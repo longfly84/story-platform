@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
 import StoryCard from "@/components/home/StoryCard"
+import { resolveCoverUrl } from '@/lib/supabase'
 import MainLayout from "@/layouts/MainLayout"
 import { Button } from "@/components/ui/button"
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react"
@@ -88,14 +89,23 @@ function SearchBar({
 
           {suggestions.length ? (
             <div className="max-h-[360px] overflow-auto p-2">
-              {suggestions.map((s) => (
+                {suggestions.map((s) => (
                 <Link
                   key={s.id}
                   to={`/truyen/${s.slug}`}
                   onClick={() => setSearchOpen(false)}
                   className="group flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-zinc-900/60"
                 >
-                  <img src={s.coverImage} alt={s.title} className="h-10 w-10 rounded-md object-cover" loading="lazy" />
+                    {/* cover: prefer resolved public url, fallback to data value */}
+                    {(() => {
+                      try {
+                        const raw = s.coverImage ?? (s as any).cover_image ?? (s as any).cover ?? (s as any).cover_url ?? null
+                        const resolved = resolveCoverUrl(raw as any)
+                        if (import.meta.env.DEV) console.debug('[cover debug search]', s.title, 'raw:', raw, 'resolved:', resolved)
+                        if (resolved) return <img src={resolved} alt={s.title} className="h-10 w-10 rounded-md object-cover" loading="lazy" />
+                      } catch (e) {}
+                      return <img src={s.coverImage} alt={s.title} className="h-10 w-10 rounded-md object-cover" loading="lazy" />
+                    })()}
                   <div className="min-w-0">
                     <div className="line-clamp-1 text-sm font-semibold text-zinc-100 group-hover:text-amber-200">{s.title}</div>
                     <div className="mt-0.5 line-clamp-1 text-xs text-zinc-500">{s.author ?? "Đang cập nhật"}</div>
@@ -335,7 +345,7 @@ export default function HomePage() {
         activeGenreName={activeGenreName}
         filteredStoriesLength={filteredStories.length}
       />}
-    >
+      >
       <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:py-10">
         {/* remote loading state intentionally hidden (no plain text shown) */}
         <div className="mb-4 flex items-center gap-2">

@@ -2,9 +2,10 @@ import { Link, useParams } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { Helmet } from "react-helmet"
 
-import MainLayout from "@/layouts/MainLayout"
-import { getStoryBySlug } from "@/data/stories"
-import { fetchStoryBySlug } from "@/lib/supabase"
+import MainLayout from '@/layouts/MainLayout'
+import { getStoryBySlug } from '@/data/stories'
+import { fetchStoryBySlug, fetchChaptersByStorySlug } from '@/lib/supabase'
+import { resolveCoverUrl } from '@/lib/supabase'
 import { StarIcon, EyeIcon } from "lucide-react"
 import { getReadingHistory, isStoryFollowed, followStory, unfollowStory } from "@/lib/localStorageHelpers"
 import { getCurrentUser, getUserFollows, addUserFollow, removeUserFollow } from '@/lib/supabase'
@@ -13,7 +14,7 @@ import { formatCount } from "@/lib/formatters"
 
 export default function StoryDetailPage() {
   const { slug } = useParams()
-  const story = slug ? getStoryBySlug(slug) : undefined
+  const [story, setStory] = useState<any>(slug ? getStoryBySlug(slug) : undefined)
 
   const [rating, setRating] = useState(4.5)
   // followed state intentionally not used in detail (kept minimal)
@@ -24,20 +25,34 @@ export default function StoryDetailPage() {
     }
   }, [story])
 
-  // try to load story from Supabase and merge into local story (fallback if not found)
+  // try to load story + chapters from Supabase (fallback to local fake data)
   useEffect(() => {
     let mounted = true
     ;(async () => {
       if (!slug) return
-      const s = await fetchStoryBySlug(slug)
-      if (!mounted) return
-      if (s && story) {
-        // minimal: merge remote fields onto local story object for display
-        Object.assign(story, s as Partial<typeof story>)
+      try {
+        const s = await fetchStoryBySlug(slug)
+        if (!mounted) return
+        if (s) {
+          // if remote story found, replace local story and fetch chapters
+          setStory((prev: any) => ({ ...(prev || {}), ...s }))
+          // try to load chapters by story slug
+          try {
+            const ch = await fetchChaptersByStorySlug(slug)
+            if (!mounted) return
+            if (Array.isArray(ch) && ch.length) {
+              setStory((prev: any) => ({ ...(prev || {}), chapters: ch.map((r:any)=>({ number: r.number, slug: r.slug, id: r.id ?? r.slug, title: r.title, content: r.content ?? r.body ?? r.text, publishedAt: r.published_at ?? r.created_at })) }))
+            }
+          } catch (e) {
+            // ignore chapter load errors
+          }
+        }
+      } catch (e) {
+        // ignore and keep fake data
       }
     })()
     return () => { mounted = false }
-  }, [slug, story])
+  }, [slug])
 
   // reading history entry for this story (if any)
   const readingEntryLocal = story ? getReadingHistory().find((h) => h.storySlug === story.slug) : undefined
@@ -123,13 +138,15 @@ export default function StoryDetailPage() {
           </nav>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
             <div>
-              <img
-                src={story.coverImage}
-                alt={story.title}
-                className="w-full rounded-lg object-cover shadow-lg"
-                style={{ aspectRatio: '3/4' }}
-                loading="lazy"
-              />
+              {(() => {
+                const raw = story.coverImage ?? (story as any).cover_image ?? (story as any).cover ?? (story as any).cover_url ?? null
+                const resolved = resolveCoverUrl(raw)
+                if (import.meta.env.DEV) console.debug('[cover debug story]', story.title, 'raw:', raw, 'resolved:', resolved)
+                if (resolved) {
+                  return <img src={resolved} alt={story.title} className="w-full rounded-lg object-cover shadow-lg" style={{ aspectRatio: '3/4' }} loading="lazy" onError={(e)=>{ (e.target as any).style.display='none' }} />
+                }
+                return <div className="w-full rounded-lg bg-zinc-900/20 flex h-[300px] items-center justify-center text-zinc-400">No cover</div>
+              })()}
               <div className="mt-4 space-y-2">
                 <div className="text-xs text-zinc-400">{story.author ?? 'Đang cập nhật'}</div>
                 <div className="flex items-center gap-3 text-xs text-zinc-400">

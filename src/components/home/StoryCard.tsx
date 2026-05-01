@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 
 import type { Story } from "@/data/stories"
+import { resolveCoverUrl } from '@/lib/supabase'
 import { formatCount } from "@/lib/formatters"
 
 export default function StoryCard({ story }: { story: Story }) {
@@ -11,12 +12,13 @@ export default function StoryCard({ story }: { story: Story }) {
   return (
     <Link to={`/truyen/${story.slug}`} className="group block">
       <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40 transition duration-200 ease-out group-hover:-translate-y-0.5 group-hover:border-zinc-700 group-hover:bg-zinc-900/55">
-        <img
-          src={story.coverImage}
-          alt={story.title}
-          className="h-[180px] w-full object-cover transition duration-300 group-hover:scale-105 sm:h-[240px] lg:h-[260px]"
-          loading="lazy"
-        />
+        {(() => {
+          const raw = (story as any).coverImage ?? (story as any).cover_image ?? (story as any).cover ?? (story as any).cover_url ?? null
+          const resolved = resolveCoverUrl(raw)
+          if (import.meta.env.DEV) console.debug('[cover debug card]', story.title, 'raw:', raw, 'resolved:', resolved)
+          if (resolved) return <img src={resolved} alt={story.title} className="h-[180px] w-full object-cover transition duration-300 group-hover:scale-105 sm:h-[240px] lg:h-[260px]" loading="lazy" onError={(e)=>{ (e.target as any).style.display='none' }} />
+          return <div className="h-[180px] w-full bg-zinc-900/20 flex items-center justify-center text-zinc-400 sm:h-[240px] lg:h-[260px]">No cover</div>
+        })()}
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
 

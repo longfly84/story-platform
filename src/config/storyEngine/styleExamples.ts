@@ -24,6 +24,10 @@ export const FEW_SHOT_STYLE_EXAMPLES: Record<string, string[]> = {
   system: [
     `"Hãy mở ngay cửa." Tiếng nói lạnh lùng vọng lại. Tôi không hỏi tại sao, chỉ lắng nghe bước chân phía ngoài và chuẩn bị. Hành động trước rồi mới nghĩ.`,
     `Một tiếng hét cắt ngang đêm. Tôi bật dậy, kéo áo choàng, và lao ra. Người trong hành lang nằm sấp, thở dốc. Tôi quỳ xuống hỏi, không chờ câu trả lời.`,
+    // few-shot humiliation/reveal examples (short, focused)
+    `"Quỳ xuống." Tiếng người đó như một lệnh. Tôi không làm ầm, chỉ cúi đầu cho đúng kiểu mọi người đang nhìn. Tiếng cười rộ lên.`,
+    `"Cô nghĩ mình xứng à?" Anh ta nói, mắt nhọn như dao. Tôi giữ im lặng, tay nắm chặt, rồi buông ra một câu lạnh lùng: "Không phải vậy".`,
+    `Một tin nhắn xuất hiện: "Tôi có cả album ảnh." Ánh sáng màn hình chớp, và tôi nhận ra mọi thứ đã bị bày ra trước mặt cả phòng.`,
   ]
 }
 

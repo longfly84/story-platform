@@ -153,3 +153,25 @@ export async function uploadCoverImage(file: any, filename?: string) {
     return null
   }
 }
+
+/**
+ * Resolve a cover path or URL to a usable public URL.
+ * If value is already an absolute URL, return it.
+ * If value looks like a storage path, return publicUrl from 'covers' bucket.
+ * Otherwise return a simple SVG placeholder data URI.
+ */
+export function resolveCoverUrl(cover?: string|null) {
+  if (!cover) return undefined
+  try {
+    const s = String(cover)
+    if (s.startsWith('http://') || s.startsWith('https://')) return s
+    // assume storage path in 'covers' bucket
+    const path = s.startsWith('covers/') ? s.replace(/^covers\//, '') : s
+    const { data } = supabase.storage.from('covers').getPublicUrl(path)
+    if (data?.publicUrl) return data.publicUrl
+    return undefined
+  } catch (e) {
+    console.warn('resolveCoverUrl failed', e)
+    return undefined
+  }
+}
