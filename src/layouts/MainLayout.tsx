@@ -111,6 +111,26 @@ export default function MainLayout({
       ) : null}
 
       {children}
+      {/* Global footer for pages using MainLayout */}
+      <footer className="border-t border-zinc-800 bg-zinc-950 text-zinc-400">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+          <div className="flex w-full flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <Link to="/" className="text-base font-semibold text-zinc-100">Truyện Ngắn 24h</Link>
+              <div className="mt-1 text-sm text-zinc-400">Nền tảng đọc truyện ngắn, truyện AI và web novel tiếng Việt.</div>
+            </div>
+
+            <nav className="flex flex-wrap gap-3 text-sm">
+              <Link to="/" className="text-zinc-300 hover:text-zinc-100">Trang chủ</Link>
+              <a href="/#categories" className="text-zinc-300 hover:text-zinc-100">Thể loại</a>
+              <a href="/#chapter-count" className="text-zinc-300 hover:text-zinc-100">Theo số chương</a>
+              <Link to="/admin" className="text-zinc-300 hover:text-zinc-100">Admin</Link>
+            </nav>
+
+            <div className="mt-2 text-sm text-zinc-500 sm:mt-0">© 2026 Truyện Ngắn 24h. All rights reserved.</div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -3,16 +3,17 @@ import { Link } from 'react-router-dom'
 type Props = {
   checkingSession?: boolean
   onLogout: () => void | Promise<void>
+  role?: 'admin' | 'staff'
 }
 
-export default function AdminTopBar({ checkingSession, onLogout }: Props) {
+export default function AdminTopBar({ checkingSession, onLogout, role }: Props) {
   return (
     <>
       <header className="mb-4 flex flex-col items-start justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 sm:flex-row sm:items-center">
         <div className="flex items-center gap-4">
-          <div>
+            <div>
             <h1 className="text-2xl font-semibold text-zinc-100">Admin CMS</h1>
-            <div className="text-xs text-zinc-400">Đang đăng nhập</div>
+            <div className="text-xs text-zinc-400">{role ? (role === 'admin' ? 'Đăng nhập với quyền Admin' : 'Đăng nhập với quyền Staff') : 'Đang đăng nhập'}</div>
           </div>
           <div className="hidden items-center gap-2 sm:flex">
             <Link to="/admin" className="rounded bg-zinc-900/60 px-3 py-1 text-xs text-amber-300">Admin Dashboard</Link>

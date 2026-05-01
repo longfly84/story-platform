@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import MainLayout from '@/layouts/MainLayout'
-import { supabase, signOut, getCurrentUser, resolveCoverUrl } from '@/lib/supabase'
+import { supabase, signOut, resolveCoverUrl } from '@/lib/supabase'
+import useAdminSession from '@/hooks/admin/useAdminSession'
 import { GENRE_REGISTRY, buildStoryDNA, buildMockChapter } from '@/lib/storyEngine'
 import { COVER_STYLES, COLOR_THEMES, CHARACTER_VIBES, buildCoverPrompt } from '@/lib/coverEngine'
 import AdminTopBar from '@/components/admin/AdminTopBar'
@@ -82,7 +83,8 @@ export default function AdminPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
   const [createCategorySlug, setCreateCategorySlug] = useState<string>('')
 
-  const [checkingSession, setCheckingSession] = useState(true)
+  // admin session (user + role)
+  const { user, role, loading: sessionLoading } = useAdminSession()
 
   function generateSlug(input: string) {
     return input
@@ -97,7 +99,12 @@ export default function AdminPage() {
   async function fetchStories() {
     setLoading(true)
     try {
-      const res = await supabase.from('stories').select('*').order('id', { ascending: true })
+      // role-based fetch: admin gets all, staff only their own (owner_id)
+      let q = supabase.from('stories').select('*')
+      if (role === 'staff' && user?.id) {
+        q = q.eq('owner_id', user.id)
+      }
+      const res = await q.order('id', { ascending: true })
       if (res.error) throw res.error
       setStories(res.data ?? [])
       setError(null)
@@ -120,23 +127,18 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    fetchStories()
-    fetchCategories()
-  }, [])
+    // Fetch stories after session resolved. If loading, wait.
+      if (sessionLoading) return
+    ;(async () => {
+      await fetchStories()
+    })()
+  }, [sessionLoading, role, user])
 
   useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        const u = await getCurrentUser()
-        if (!mounted) return
-        if (!u) window.location.href = '/login'
-      } finally {
-        if (mounted) setCheckingSession(false)
-      }
-    })()
-    return () => { mounted = false }
-  }, [])
+    if (!sessionLoading && !user) {
+      window.location.href = '/login'
+    }
+  }, [sessionLoading, user])
 
   function onCatNameChange(v: string) {
     setCatName(v)
@@ -203,6 +205,8 @@ export default function AdminPage() {
       payload.cover_image = coverUrl ?? null
       payload.genres = createCategorySlug ? [createCategorySlug] : []
       payload.status = newVisibility === 'draft' ? 'draft' : 'published'
+      // set owner_id to current user for auditing/ownership
+      try { payload.owner_id = user?.id ?? null } catch (e) {}
       if (import.meta.env.DEV) console.log('[story-insert-payload]', payload)
 
       const res = await supabase.from('stories').insert([payload])
@@ -497,7 +501,8 @@ export default function AdminPage() {
     <MainLayout>
       <main className="mx-auto max-w-4xl px-4 py-6">
         <AdminTopBar
-          checkingSession={checkingSession}
+          checkingSession={sessionLoading}
+          role={role}
           onLogout={async () => {
             try { await signOut() } catch {}
             window.location.href = '/login'
