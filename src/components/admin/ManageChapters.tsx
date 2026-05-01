@@ -46,7 +46,16 @@ export default function ManageChapters({
               </div>
               <div className="flex shrink-0 gap-2">
                 <button type="button" onClick={() => startEditChapter(c)} className="rounded bg-zinc-800 px-2 py-1 text-xs text-white">Edit</button>
-                <button type="button" onClick={() => void deleteChapter(c.id, selectedStoryForChapters)} className="rounded bg-red-700 px-2 py-1 text-xs text-white">Delete</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!confirm('Xác nhận xoá chương này?')) return
+                    void deleteChapter(c.id, selectedStoryForChapters)
+                  }}
+                  className="rounded bg-red-700 px-2 py-1 text-xs text-white"
+                >
+                  Delete
+                </button>
               </div>
             </div>
 

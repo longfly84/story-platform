@@ -10,6 +10,7 @@ import { StarIcon, EyeIcon } from "lucide-react"
 import { getReadingHistory, isStoryFollowed, followStory, unfollowStory } from "@/lib/localStorageHelpers"
 import { getCurrentUser, getUserFollows, addUserFollow, removeUserFollow } from '@/lib/supabase'
 import ChapterList from '@/components/ChapterList'
+import { trackPageView } from '@/lib/analytics/trackView'
 import { formatCount } from "@/lib/formatters"
 
 export default function StoryDetailPage() {
@@ -36,6 +37,10 @@ export default function StoryDetailPage() {
         if (s) {
           // if remote story found, replace local story and fetch chapters
           setStory((prev: any) => ({ ...(prev || {}), ...s }))
+          try {
+            // track page view for remote story once
+            if (s?.id) void trackPageView({ path: (typeof window !== 'undefined' && window.location.pathname) ? window.location.pathname : '/', storySlug: s.slug, userId: null })
+          } catch (e) {}
           // try to load chapters by story slug
           try {
             const ch = await fetchChaptersByStorySlug(slug)

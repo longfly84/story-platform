@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import MobileMenuButton from './MobileMenuButton'
 import { useEffect, useState } from "react"
+import SiteThemeToggle from '@/components/SiteThemeToggle'
 import { getCurrentUser, signOut } from '@/lib/supabase'
 
 import { Input } from "@/components/ui/input"
@@ -15,6 +16,7 @@ export default function MainLayout({
   headerBottom?: React.ReactNode
 }) {
   const [isAdminUser, setIsAdminUser] = useState(false)
+  const theme = 'dark'
 
   useEffect(() => {
     let mounted = true
@@ -30,7 +32,7 @@ export default function MainLayout({
     return () => { mounted = false }
   }, [])
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div data-theme="dark" className="site-root min-h-screen bg-zinc-950 text-zinc-100">
       <header className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/70 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-3 sm:px-4 sm:h-16">
           <Link to="/" className="text-base sm:text-xl font-semibold tracking-wide">
@@ -71,9 +73,10 @@ export default function MainLayout({
             {headerRight ?? (
               <Input
                 placeholder="Tìm kiếm (tên truyện hoặc tác giả)…"
-                className="hidden border-zinc-800/80 bg-zinc-950/30 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/20 sm:block"
+                className={`hidden ${theme === 'dark' ? 'border-zinc-800/80 bg-zinc-950/30 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/20' : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-300/20'} sm:block`}
               />
             )}
+            <SiteThemeToggle />
           </div>
 
           <div className="ml-2 flex items-center md:hidden">
@@ -110,21 +113,23 @@ export default function MainLayout({
         </div>
       ) : null}
 
-      {children}
+      <div className={`${theme === 'dark' ? '' : ''}`}>
+        {children}
+      </div>
       {/* Global footer for pages using MainLayout */}
-      <footer className="border-t border-zinc-800 bg-zinc-950 text-zinc-400">
+      <footer className="site-footer border-t border-zinc-800 bg-zinc-950 text-zinc-400">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
           <div className="flex w-full flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <Link to="/" className="text-base font-semibold text-zinc-100">Truyện Ngắn 24h</Link>
-              <div className="mt-1 text-sm text-zinc-400">Nền tảng đọc truyện ngắn, truyện AI và web novel tiếng Việt.</div>
+              <div className="mt-1 text-sm text-zinc-400">Nền tảng đọc truyện ngắn và web novel tiếng Việt.</div>
             </div>
 
             <nav className="flex flex-wrap gap-3 text-sm">
               <Link to="/" className="text-zinc-300 hover:text-zinc-100">Trang chủ</Link>
               <a href="/#categories" className="text-zinc-300 hover:text-zinc-100">Thể loại</a>
               <a href="/#chapter-count" className="text-zinc-300 hover:text-zinc-100">Theo số chương</a>
-              <Link to="/admin" className="text-zinc-300 hover:text-zinc-100">Admin</Link>
+              
             </nav>
 
             <div className="mt-2 text-sm text-zinc-500 sm:mt-0">© 2026 Truyện Ngắn 24h. All rights reserved.</div>
