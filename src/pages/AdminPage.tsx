@@ -149,7 +149,9 @@ export default function AdminPage() {
   const [catSlug, setCatSlug] = useState('')
   const [catDesc, setCatDesc] = useState('')
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
-  const [selectedEditCategoryId, setSelectedEditCategoryId] = useState<string>('')
+  // category slug states for story create/edit forms
+  const [createCategorySlug, setCreateCategorySlug] = useState<string>('')
+  const [editCategorySlug, setEditCategorySlug] = useState<string>('')
 
   async function fetchCategories() {
     try {
@@ -170,14 +172,23 @@ export default function AdminPage() {
 
   async function createCategory() {
     if (!catName.trim()) { alert('Name required'); return }
-    const payload = { name: catName.trim(), slug: catSlug || generateSlug(catName), description: catDesc || null }
+    const slugToUse = catSlug || generateSlug(catName)
     try {
+      // check existing slug first
+      const { data: exist } = await supabase.from('categories').select('id').eq('slug', slugToUse).limit(1)
+      if (exist && exist.length) { alert('Thể loại này đã tồn tại.'); return }
+      const payload = { name: catName.trim(), slug: slugToUse, description: catDesc || null }
       const { error } = await supabase.from('categories').insert([payload])
       if (error) throw error
       setCatName(''); setCatSlug(''); setCatDesc('')
       await fetchCategories()
     } catch (e: any) {
-      alert('Create category failed: ' + String(e?.message ?? e) + '\nRun scripts/create_categories.sql if table missing.')
+      const msg = String(e?.message ?? e)
+      if (msg.toLowerCase().includes('duplicate') || (e?.code === '23505')) {
+        alert('Thể loại này đã tồn tại.')
+      } else {
+        alert('Create category failed: ' + msg + '\nRun scripts/create_categories.sql if table missing.')
+      }
     }
   }
 
@@ -222,21 +233,28 @@ export default function AdminPage() {
   async function handleCreateStory(e: any) {
     e.preventDefault()
     try {
-      let coverUrl = (newStory as any).cover_url ?? null
+      // prepare to upload cover into storage bucket 'covers' and save public url into stories.cover_image
+      let coverUrl: string | null = (newStory as any).cover_image ?? null
       if (newCoverFile) {
         setUploadingCover(true)
+        const filePath = `${Date.now()}-${newCoverFile.name}` // no prefix 'covers/'
+        if (import.meta.env.DEV) console.log('[cover-submit]', { hasFile: !!newCoverFile, fileName: newCoverFile?.name, fileSize: newCoverFile?.size })
         try {
-          const { uploadCoverImage } = await import('@/lib/supabase')
-          if (import.meta.env.DEV) console.log('[cover-create] file', { name: newCoverFile.name, size: newCoverFile.size, type: newCoverFile.type })
-          // filePath should NOT include bucket name
-          const filePath = `${Date.now()}-${newCoverFile.name}`
-          if (import.meta.env.DEV) console.log('[cover-create] uploading to', filePath)
-          const url = await uploadCoverImage(newCoverFile, filePath)
-          if (import.meta.env.DEV) console.log('[cover-create] upload returned', url)
-          if (url) coverUrl = url
-        } catch (e) {
-          console.warn('[cover-create] upload failed', e)
-          alert('Cover upload failed: ' + String(e))
+          // upload file to Supabase storage bucket 'covers'
+          const { error: uploadError } = await supabase.storage.from('covers').upload(filePath, newCoverFile as File)
+          if (uploadError) {
+            console.error('[cover-upload] uploadError', uploadError)
+            alert('Cover upload failed: ' + String(uploadError?.message ?? uploadError))
+          } else {
+            // get public URL for uploaded object
+            const publicRes = supabase.storage.from('covers').getPublicUrl(filePath)
+            const publicUrl = (publicRes && (publicRes as any).data && (publicRes as any).data.publicUrl) || null
+            if (import.meta.env.DEV) console.log('[cover-upload]', { filePath, uploadError, publicUrl })
+            coverUrl = publicUrl
+          }
+        } catch (e: any) {
+          console.error('[cover-upload] exception', e)
+          alert('Cover upload failed: ' + String(e?.message ?? e))
         } finally {
           setUploadingCover(false)
         }
@@ -244,13 +262,20 @@ export default function AdminPage() {
       // ensure newStory contains story_dna, story_memory, emotion_tags, cover_prompt, cover_style if present
       // canonicalize to stories.cover_url but avoid overwriting when null
       const payload = { ...newStory }
-      if (coverUrl) payload.cover_url = coverUrl
+      // save to canonical stories.cover_image column per schema
+      payload.cover_image = coverUrl ?? null
       // visibility: save explicit 'draft' or 'published' to status field when creating
       payload.status = newVisibility === 'draft' ? 'draft' : 'published'
+      if (import.meta.env.DEV) console.log('[story-insert-payload]', payload)
       // persist newStory including story memory fields
       const res = await supabase.from('stories').insert([payload])
       if (res.error) throw res.error
       alert('Created')
+      // clear create form fields on success (minimal)
+      setNewStory({ title: '', slug: '', description: '', author: '', status: 'ongoing' })
+      setNewVisibility('published')
+      setNewCoverFile(null)
+      setSelectedCategoryId('')
       // refresh list
       await fetchStories()
     } catch (err: any) {
@@ -298,6 +323,8 @@ export default function AdminPage() {
   async function startEditStory(s: any) {
     setEditingStoryId(s.id)
     setEditStoryData({ ...s })
+    // prefill edit category from story.genres if present
+    setEditCategorySlug((s?.genres && Array.isArray(s.genres) && s.genres[0]) || '')
     // scroll to edit section after state updates
     setTimeout(() => { try { editSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) } catch {} }, 120)
   }
@@ -683,7 +710,7 @@ export default function AdminPage() {
 
                       <button onClick={() => openManageChapters(s.slug, s.title)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Chapters</button>
 
-                      <Link to={`/truyen/${s.slug}`} className="text-xs text-amber-300 hover:underline">View</Link>
+                      <Link to={`/truyen/${s.slug}?from=admin`} className="text-xs text-amber-300 hover:underline">View</Link>
                     </div>
                 </div>
                 <div className="flex-shrink-0">
@@ -744,6 +771,13 @@ export default function AdminPage() {
               <img src={URL.createObjectURL(newCoverFile)} alt="preview" className="h-24 w-auto rounded mt-2" />
             ) : null}
             <div className="flex gap-2 items-center">
+              <label className="text-xs text-zinc-400">Thể loại</label>
+              <select className="rounded bg-zinc-900/20 p-2" value={createCategorySlug} onChange={(e) => setCreateCategorySlug(e.target.value)}>
+                <option value="">-- Chưa có thể loại --</option>
+                {categories.map((c:any) => <option key={c.id} value={c.slug}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2 items-center">
               <label className="text-xs text-zinc-400">Visibility</label>
               <select className="rounded bg-zinc-900/20 p-2" value={newVisibility} onChange={(e) => setNewVisibility(e.target.value as any)}>
                 <option value="published">Published</option>
@@ -761,40 +795,52 @@ export default function AdminPage() {
 
         {/* Edit Story section: appears when an Edit is active */}
         <div ref={editSectionRef} className="mb-6">
-          <h2 className="text-lg font-semibold text-zinc-100">Edit Story</h2>
           {editingStoryId && editStoryData ? (
-            <form onSubmit={saveEditStory} className="mt-2 grid gap-2">
-              <input className="rounded bg-zinc-900/20 p-2" placeholder="Title" value={editStoryData.title || ''} onChange={(e) => setEditStoryData({...editStoryData, title: e.target.value})} />
-              <input className="rounded bg-zinc-900/20 p-2" placeholder="Slug" value={editStoryData.slug || ''} onChange={(e) => setEditStoryData({...editStoryData, slug: e.target.value})} />
-              <input className="rounded bg-zinc-900/20 p-2" placeholder="Author" value={editStoryData.author || ''} onChange={(e) => setEditStoryData({...editStoryData, author: e.target.value})} />
-              <select className="rounded bg-zinc-900/20 p-2" value={editStoryData.status || 'ongoing'} onChange={(e) => setEditStoryData({...editStoryData, status: e.target.value})}>
-                <option value="ongoing">Đang ra</option>
-                <option value="completed">Hoàn thành</option>
-              </select>
-              <textarea className="rounded bg-zinc-900/20 p-2" placeholder="Description" value={editStoryData.description || ''} onChange={(e) => setEditStoryData({...editStoryData, description: e.target.value})} />
-              {categories && categories.length ? (
-                <select className="rounded bg-zinc-900/20 p-2" value={selectedEditCategoryId} onChange={(e) => { setSelectedEditCategoryId(e.target.value); setEditStoryData({...editStoryData, category_id: e.target.value}) }}>
-                  <option value="">-- (Không đổi) --</option>
-                  {categories.map((c:any)=>(<option key={c.id} value={c.id}>{c.name}</option>))}
-                </select>
-              ) : null}
-              <div>
-                <div className="text-xs text-zinc-400">Current cover</div>
-                {(() => {
-                  const raw = editStoryData?.cover_image ?? editStoryData?.cover ?? editStoryData?.cover_url ?? editStoryData?.image_url ?? null
-                  const resolved = resolveCoverUrl(raw)
-                  if (import.meta.env.DEV) console.debug('[cover debug edit]', editStoryData?.title, 'raw:', raw, 'resolved:', resolved)
-                  if (resolved) return <img src={resolved} alt="cover" className="h-28 w-auto rounded" onError={() => setImageErrors(prev => ({ ...(prev||{}), [editingStoryId as any]: true }))} />
-                  return <div className="h-28 w-20 flex items-center justify-center rounded border bg-zinc-900/20 text-zinc-400">No cover</div>
-                })()}
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/20 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-zinc-100">Edit Story: {editStoryData.title}</h2>
+                <div className="flex gap-2">
+                  <button onClick={() => { setEditingStoryId(null); setEditStoryData(null); setEditCoverFile(null) }} className="text-sm rounded bg-zinc-800 px-3 py-1">Quay lại danh sách</button>
+                </div>
               </div>
-              <label className="text-xs text-zinc-400">Upload new cover (optional)</label>
-              <input type="file" accept="image/*" onChange={(e) => setEditCoverFile(e.target.files?.[0] ?? null)} />
-              <div className="flex gap-2">
-                <button type="submit" className="rounded bg-amber-300 px-4 py-2">Save Changes</button>
-                <button type="button" onClick={() => { setEditingStoryId(null); setEditStoryData(null); setEditCoverFile(null) }} className="rounded bg-zinc-800 px-4 py-2">Cancel</button>
-              </div>
-            </form>
+              <form onSubmit={saveEditStory} className="grid gap-3">
+                <input className="rounded bg-zinc-900/20 p-2" placeholder="Title" value={editStoryData.title || ''} onChange={(e) => setEditStoryData({...editStoryData, title: e.target.value})} />
+                <input className="rounded bg-zinc-900/20 p-2" placeholder="Slug" value={editStoryData.slug || ''} onChange={(e) => setEditStoryData({...editStoryData, slug: e.target.value})} />
+                <input className="rounded bg-zinc-900/20 p-2" placeholder="Author" value={editStoryData.author || ''} onChange={(e) => setEditStoryData({...editStoryData, author: e.target.value})} />
+                <div className="grid sm:grid-cols-3 gap-2">
+                  <select className="rounded bg-zinc-900/20 p-2" value={editStoryData.status || 'ongoing'} onChange={(e) => setEditStoryData({...editStoryData, status: e.target.value})}>
+                    <option value="ongoing">Đang ra</option>
+                    <option value="completed">Hoàn thành</option>
+                    <option value="paused">Tạm dừng</option>
+                  </select>
+                  <select className="rounded bg-zinc-900/20 p-2" value={editStoryData.status === 'draft' ? 'draft' : (editStoryData.status === 'published' ? 'published' : (editStoryData.status === 'completed' ? 'completed' : 'ongoing'))} onChange={(e) => setEditStoryData({...editStoryData, status: e.target.value})}>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                  <select className="rounded bg-zinc-900/20 p-2" value={editCategorySlug || ''} onChange={(e) => setEditCategorySlug(e.target.value)}>
+                    <option value="">-- Chưa có thể loại --</option>
+                    {categories.map((c:any)=>(<option key={c.id} value={c.slug}>{c.name}</option>))}
+                  </select>
+                </div>
+                <textarea className="rounded bg-zinc-900/20 p-2 h-36" placeholder="Description" value={editStoryData.description || ''} onChange={(e) => setEditStoryData({...editStoryData, description: e.target.value})} />
+                <div>
+                  <div className="text-xs text-zinc-400">Current cover</div>
+                  {(() => {
+                    const raw = editStoryData?.cover_image ?? editStoryData?.cover ?? editStoryData?.cover_url ?? editStoryData?.image_url ?? null
+                    const resolved = resolveCoverUrl(raw)
+                    if (import.meta.env.DEV) console.debug('[cover debug edit]', editStoryData?.title, 'raw:', raw, 'resolved:', resolved)
+                    if (resolved) return <img src={resolved} alt="cover" className="h-28 w-auto rounded" onError={() => setImageErrors(prev => ({ ...(prev||{}), [editingStoryId as any]: true }))} />
+                    return <div className="h-28 w-20 flex items-center justify-center rounded border bg-zinc-900/20 text-zinc-400">No cover</div>
+                  })()}
+                </div>
+                <label className="text-xs text-zinc-400">Upload new cover (optional)</label>
+                <input type="file" accept="image/*" onChange={(e) => setEditCoverFile(e.target.files?.[0] ?? null)} />
+                <div className="flex gap-2">
+                  <button type="submit" className="rounded bg-amber-300 px-4 py-2">Save Changes</button>
+                  <button type="button" onClick={() => { setEditingStoryId(null); setEditStoryData(null); setEditCoverFile(null) }} className="rounded bg-zinc-800 px-4 py-2">Cancel</button>
+                </div>
+              </form>
+            </div>
           ) : (
             <div className="text-xs text-zinc-400">Chọn một truyện và nhấn Edit để chỉnh sửa ở đây.</div>
           )}
