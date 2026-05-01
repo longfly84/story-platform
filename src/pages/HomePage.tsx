@@ -7,7 +7,7 @@ import MainLayout from "@/layouts/MainLayout"
 import { Button } from "@/components/ui/button"
 import { genres, stories } from "@/data/stories"
 import type { Story } from "@/data/stories"
-import { fetchStoriesFromSupabase, resolveCoverUrl } from "@/lib/supabase"
+import { fetchStoriesFromSupabase, resolveCoverUrl, supabase } from '@/lib/supabase'
 
 function normalizeText(input: string) {
   return input
@@ -220,6 +220,7 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [remoteStories, setRemoteStories] = useState<Story[]>([])
   const [remoteLoaded, setRemoteLoaded] = useState(false)
+  const [remoteCategories, setRemoteCategories] = useState<any[]>([])
 
   const itemsPerPage = 5
 
@@ -264,6 +265,19 @@ export default function HomePage() {
     }
 
     loadRemoteStories()
+    // fetch categories from supabase
+    ;(async () => {
+      try {
+        const { data, error } = await supabase.from('categories').select('id,name,slug,description').order('name', { ascending: true })
+        if (import.meta.env.DEV) console.debug('[home-categories-fetch]', { data, error })
+        if (!mounted) return
+        if (data && Array.isArray(data) && data.length) setRemoteCategories(data)
+        else setRemoteCategories([])
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn('[home-categories-fetch-error]', e)
+        if (mounted) setRemoteCategories([])
+      }
+    })()
     return () => {
       mounted = false
     }
@@ -314,9 +328,10 @@ export default function HomePage() {
     if (!q) return []
     return filteredStories.slice(0, 5)
   }, [debouncedQuery, filteredStories])
+  const categoriesToShow = remoteCategories && remoteCategories.length ? remoteCategories : genres
 
   const activeGenreName = selectedGenre
-    ? genres.find((genre) => genre.slug === selectedGenre)?.name ?? selectedGenre
+    ? (categoriesToShow.find((g: any) => g.slug === selectedGenre)?.name ?? selectedGenre)
     : "Tất cả"
 
   const pageCount = Math.max(1, Math.ceil(filteredStories.length / itemsPerPage))
@@ -428,7 +443,7 @@ export default function HomePage() {
                     <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-300">
                       {featured.genreSlugs.slice(0, 3).map((slug) => (
                         <span key={slug} className="rounded-full border border-zinc-800 bg-zinc-950/40 px-3 py-1">
-                          {genres.find((genre) => genre.slug === slug)?.name ?? slug}
+                          {categoriesToShow.find((genre: any) => genre.slug === slug)?.name ?? slug}
                         </span>
                       ))}
                     </div>
@@ -562,9 +577,9 @@ export default function HomePage() {
                 Tất cả
               </button>
               <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-1">
-                {genres.map((genre) => (
+                {categoriesToShow.map((genre: any) => (
                   <button
-                    key={genre.id}
+                    key={genre.slug}
                     type="button"
                     onClick={() => setSelectedGenre(genre.slug)}
                     className={[
@@ -657,9 +672,9 @@ export default function HomePage() {
                   >
                     Tất cả
                   </button>
-                  {genres.map((genre) => (
+                  {categoriesToShow.map((genre: any) => (
                     <button
-                      key={genre.id}
+                      key={genre.slug}
                       type="button"
                       onClick={() => setSelectedGenre(genre.slug)}
                       className={[
