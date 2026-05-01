@@ -6,6 +6,7 @@ import { GENRE_REGISTRY, buildStoryDNA, buildMockChapter } from '@/lib/storyEngi
 import { COVER_STYLES, COLOR_THEMES, CHARACTER_VIBES, buildCoverPrompt } from '@/lib/coverEngine'
 import AdminTopBar from '@/components/admin/AdminTopBar'
 import StoriesSection from '@/components/admin/StoriesSection'
+import AdminAnalyticsPanel from '@/components/admin/analytics/AdminAnalyticsPanel'
 import CreateStoryForm from '@/components/admin/CreateStoryForm'
 import CategoryManager from '@/components/admin/CategoryManager'
 import CreateChapterForm from '@/components/admin/CreateChapterForm'
@@ -508,6 +509,8 @@ export default function AdminPage() {
             window.location.href = '/login'
           }}
         />
+
+        <AdminAnalyticsPanel />
 
         <StoriesSection
           stories={stories}

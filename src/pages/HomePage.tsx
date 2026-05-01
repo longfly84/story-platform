@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { genres, stories } from "@/data/stories"
 import type { Story } from "@/data/stories"
 import { fetchStoriesFromSupabase, resolveCoverUrl, supabase } from '@/lib/supabase'
+import { getStoryViewCounts } from '@/lib/analytics/viewStats'
 
 function normalizeText(input: string) {
   return input
@@ -178,7 +179,7 @@ function SearchBar({
   )
 }
 
-function LatestStoryRow({ story }: { story: Story }) {
+function LatestStoryRow({ story, getReadText }: { story: Story; getReadText: (s:any)=>string }) {
   const latestChapter = story.chapters[story.chapters.length - 1]
   const chapterHref = latestChapter ? `/doc-truyen/${story.slug}/${latestChapter.slug}` : `/truyen/${story.slug}`
 
@@ -195,7 +196,7 @@ function LatestStoryRow({ story }: { story: Story }) {
             <span className="rounded bg-sky-400/15 px-2 py-0.5 font-semibold text-sky-200">Đang ra</span>
           )}
           <span>{story.chapters.length} chương</span>
-          <span>{story.views ? `${story.views.toLocaleString()} lượt đọc` : "- lượt đọc"}</span>
+          <span>{/* viewCounts passed via prop when needed */ getReadText(story)}</span>
           <span className="line-clamp-1">{story.author ?? "Đang cập nhật"}</span>
         </div>
       </div>
@@ -219,6 +220,7 @@ export default function HomePage() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [remoteStories, setRemoteStories] = useState<Story[]>([])
+  const [viewCounts, setViewCounts] = useState<Record<string, number> | null>(null)
   const [remoteLoaded, setRemoteLoaded] = useState(false)
   const [remoteCategories, setRemoteCategories] = useState<any[]>([])
 
@@ -256,6 +258,17 @@ export default function HomePage() {
 
         if (import.meta.env.DEV) console.log("[home-real-stories]", mapped)
         if (mounted) setRemoteStories(mapped)
+        // fetch view counts for mapped stories
+        try {
+          const slugs = mapped.map((s:any) => s.slug).filter(Boolean)
+          if (slugs.length) {
+            const counts = await getStoryViewCounts(slugs)
+            if (import.meta.env.DEV) console.log('[view-counts]', counts)
+            if (mounted && counts) setViewCounts(counts as Record<string, number>)
+          }
+        } catch (e) {
+          console.warn('[home-getViewCounts-error]', e)
+        }
       } catch (error) {
         if (import.meta.env.DEV) console.error("[home-stories-fetch-error]", error)
         if (mounted) setRemoteStories([])
@@ -335,6 +348,14 @@ export default function HomePage() {
     : "Tất cả"
 
   const pageCount = Math.max(1, Math.ceil(filteredStories.length / itemsPerPage))
+
+  function getReadText(s: any) {
+    if (s?.slug) {
+      const reads = viewCounts?.[s.slug] ?? 0
+      return `${reads.toLocaleString()} lượt đọc`
+    }
+    return s?.views ? `${s.views.toLocaleString()} lượt đọc` : "0 lượt đọc"
+  }
 
   return (
     <MainLayout
@@ -494,7 +515,7 @@ export default function HomePage() {
               </div>
 
               <div className="divide-y divide-zinc-800">
-                {latest.length ? latest.map((story) => <LatestStoryRow key={story.id} story={story} />) : (
+                {latest.length ? latest.map((story) => <LatestStoryRow key={story.id} story={story} getReadText={getReadText} />) : (
                   <div className="p-6 text-center text-sm text-zinc-400">Không có truyện nào khớp bộ lọc hiện tại.</div>
                 )}
               </div>
@@ -530,7 +551,7 @@ export default function HomePage() {
                 <span className="text-xs text-zinc-500">{filteredStories.length} truyện</span>
               </div>
               <div className="divide-y divide-zinc-800">
-                {latest.length ? latest.map((story) => <LatestStoryRow key={`latest-${story.id}`} story={story} />) : (
+                {latest.length ? latest.map((story) => <LatestStoryRow key={`latest-${story.id}`} story={story} getReadText={getReadText} />) : (
                   <div className="p-6 text-center text-sm text-zinc-400">Không có truyện nào khớp bộ lọc hiện tại.</div>
                 )}
               </div>
@@ -551,7 +572,7 @@ export default function HomePage() {
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">{story.title}</div>
                       <div className="truncate text-xs text-zinc-400">
-                        {story.views ? `${story.views.toLocaleString()} lượt đọc` : "- lượt đọc"}
+          <span>{getReadText(story)}</span>
                       </div>
                     </div>
                   </Link>

@@ -10,7 +10,8 @@ import { StarIcon, EyeIcon } from "lucide-react"
 import { getReadingHistory, isStoryFollowed, followStory, unfollowStory } from "@/lib/localStorageHelpers"
 import { getCurrentUser, getUserFollows, addUserFollow, removeUserFollow } from '@/lib/supabase'
 import ChapterList from '@/components/ChapterList'
-import { trackPageView } from '@/lib/analytics/trackView'
+// trackPageView imported dynamically where needed to avoid duplicate static imports
+import { getStoryViewCount } from '@/lib/analytics/viewStats'
 import { formatCount } from "@/lib/formatters"
 
 export default function StoryDetailPage() {
@@ -38,8 +39,8 @@ export default function StoryDetailPage() {
           // if remote story found, replace local story and fetch chapters
           setStory((prev: any) => ({ ...(prev || {}), ...s }))
           try {
-            // track page view for remote story once
-            if (s?.id) void trackPageView({ path: (typeof window !== 'undefined' && window.location.pathname) ? window.location.pathname : '/', storySlug: s.slug, userId: null })
+            // track page view for remote story once (moved to dedicated effect to avoid duplicates)
+            // previous call removed to prevent double-tracking
           } catch (e) {}
           // try to load chapters by story slug
           try {
@@ -63,6 +64,7 @@ export default function StoryDetailPage() {
   const readingEntryLocal = story ? getReadingHistory().find((h) => h.storySlug === story.slug) : undefined
   // follow state (sync with Supabase when logged in, fallback to localStorage)
   const [isFollowed, setIsFollowed] = useState<boolean>(() => story ? isStoryFollowed(story.slug) : false)
+  const [realViews, setRealViews] = useState<number | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -85,7 +87,32 @@ export default function StoryDetailPage() {
     })()
     return () => { mounted = false }
   }, [story])
-  const views = story?.views ?? undefined
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (!story?.slug) return
+      try {
+        const c = await getStoryViewCount(story.slug)
+        if (!mounted) return
+        if (typeof c === 'number') setRealViews(c)
+      } catch (e) {
+        console.warn('[story-detail-get-views]', e)
+      }
+      // track page view once per story slug (dedupe handled in trackPageView)
+      try {
+        const mod = await import('@/lib/analytics/trackView')
+        if (typeof mod.trackPageView === 'function') {
+          await mod.trackPageView({ path: window.location.pathname, storySlug: story.slug })
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) console.warn('[track-view-error]', err)
+      }
+    })()
+    return () => { mounted = false }
+  }, [story])
+  const viewsToShow = realViews ?? story?.views ?? undefined
+  const safeViewCount = typeof viewsToShow === 'number' ? viewsToShow : 0
+  if (import.meta.env.DEV && story?.slug) console.log('[story-view-count]', { slug: story.slug, viewCount: safeViewCount })
   const statusLabel = story?.status === "completed" ? "Hoàn thành" : "Đang ra"
   const chapterCount = story?.chapters.length ?? 0
 
@@ -162,7 +189,7 @@ export default function StoryDetailPage() {
                 <div className="text-xs text-zinc-400">{story.author ?? 'Đang cập nhật'}</div>
                 <div className="flex items-center gap-3 text-xs text-zinc-400">
                   <div className="flex items-center gap-1"><StarIcon className="size-4 text-amber-400" /> <span>{rating}</span></div>
-                  <div className="flex items-center gap-1"><EyeIcon className="size-4" /> <span>{views ? `${formatCount(views)} lượt đọc` : '- lượt đọc'}</span></div>
+                   <div className="flex items-center gap-1"><EyeIcon className="size-4" /> <span>{`${formatCount(safeViewCount)} lượt đọc`}</span></div>
                 </div>
                 <div className="mt-2 text-xs text-zinc-400">{statusLabel} • {chapterCount} chương</div>
               </div>

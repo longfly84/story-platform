@@ -94,21 +94,8 @@ export default function ReaderPage() {
 
         setChapterData(chapterRow)
         setLoading(false)
-
-        // Non-blocking analytics. Do not crash reader if analytics helper changes/fails.
-        void import('@/lib/analytics/trackView')
-          .then((mod: any) => {
-            if (typeof mod.trackPageView === 'function') {
-              return mod.trackPageView({
-                path: window.location.pathname,
-                storySlug: storyRow.slug,
-              })
-            }
-            return null
-          })
-          .catch((err) => {
-            if (import.meta.env.DEV) console.warn('[reader-track-view-error]', err)
-          })
+    // Non-blocking analytics will be handled in next effect
+        // Move tracking to dedicated effect to avoid duplicate calls during data load
       } catch (err) {
         if (!mounted) return
         if (import.meta.env.DEV) console.log('[reader-load-exception]', err)
@@ -127,6 +114,22 @@ export default function ReaderPage() {
   }, [slug, chapter])
 
   const appliedTheme = themeStyles[theme] ?? themeStyles.dark
+
+  // track reader view once per story+chapter
+  useEffect(() => {
+    ;(async () => {
+      if (!story?.slug || !chapterData?.slug) return
+      try {
+        const mod = await import('@/lib/analytics/trackView')
+        if (typeof mod.trackPageView === 'function') {
+          if (import.meta.env.DEV) console.log('[track-view-submit]', { path: window.location.pathname, storySlug: story.slug })
+          await mod.trackPageView({ path: window.location.pathname, storySlug: story.slug })
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) console.warn('[track-view-error]', err)
+      }
+    })()
+  }, [story?.slug, chapterData?.slug])
 
   if (loading) {
     return (

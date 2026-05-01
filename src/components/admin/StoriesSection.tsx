@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import AdminStoryCard from './AdminStoryCard'
 
 type Props = {
@@ -26,6 +27,17 @@ export default function StoriesSection({
   onDeleteStory,
   onOpenChapters,
 }: Props) {
+  const [query, setQuery] = useState('')
+
+  const q = (query || '').trim().toLowerCase()
+  const filtered = q ? stories.filter((s:any) => {
+    const inTitle = String(s.title || '').toLowerCase().includes(q)
+    const inAuthor = String(s.author || '').toLowerCase().includes(q)
+    const inSlug = String(s.slug || '').toLowerCase().includes(q)
+    const inStatus = String(s.status || '').toLowerCase().includes(q)
+    const inGenres = Array.isArray(s.genres) && s.genres.join(' ').toLowerCase().includes(q)
+    return inTitle || inAuthor || inSlug || inStatus || inGenres
+  }) : stories
   return (
     <section className="mb-6">
       <div className="flex items-center justify-between gap-3">
@@ -35,11 +47,16 @@ export default function StoriesSection({
         </div>
       </div>
 
+      <div className="mt-3 flex items-center gap-2">
+        <input placeholder="Tìm truyện theo tên, tác giả, slug..." value={query} onChange={(e)=>setQuery(e.target.value)} className="w-full rounded-md border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none" />
+      </div>
       {loading ? <div className="mt-3 text-sm text-zinc-400">Loading...</div> : null}
       {error ? <div className="mt-3 text-sm text-red-400">{error}</div> : null}
 
       <ul className="mt-3 grid grid-cols-1 gap-3">
-        {stories.map((s: any) => {
+        {filtered.length === 0 ? (
+          <div className="mt-3 text-sm text-zinc-400">Không tìm thấy truyện phù hợp.</div>
+        ) : filtered.map((s: any) => {
           const rawCover = s?.cover_image ?? s?.cover ?? s?.image_url ?? null
           const resolvedCover = resolveCoverUrl(rawCover)
           const coverErrored = imageErrors?.[s?.id]
