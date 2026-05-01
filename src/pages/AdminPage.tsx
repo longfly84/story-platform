@@ -264,6 +264,7 @@ export default function AdminPage() {
       const payload = { ...newStory }
       // save to canonical stories.cover_image column per schema
       payload.cover_image = coverUrl ?? null
+      payload.genres = createCategorySlug ? [createCategorySlug] : []
       // visibility: save explicit 'draft' or 'published' to status field when creating
       payload.status = newVisibility === 'draft' ? 'draft' : 'published'
       if (import.meta.env.DEV) console.log('[story-insert-payload]', payload)
@@ -276,6 +277,7 @@ export default function AdminPage() {
       setNewVisibility('published')
       setNewCoverFile(null)
       setSelectedCategoryId('')
+      setCreateCategorySlug('')
       // refresh list
       await fetchStories()
     } catch (err: any) {
@@ -351,9 +353,11 @@ export default function AdminPage() {
       }
 
       const payload: any = { ...editStoryData }
+      delete payload.cover_url
+      payload.genres = editCategorySlug ? [editCategorySlug] : []
       if (coverUrl) {
-        // always write to canonical cover_url field
-        payload.cover_url = coverUrl
+        // write to schema field: stories.cover_image
+        payload.cover_image = coverUrl
       }
 
       const res = await supabase.from('stories').update(payload).eq('id', editingStoryId)
@@ -651,108 +655,146 @@ export default function AdminPage() {
           <h2 className="text-lg font-semibold text-zinc-100">Stories</h2>
           {loading ? <div className="text-sm text-zinc-400">Loading...</div> : null}
           {error ? <div className="text-sm text-red-400">{error}</div> : null}
-          <ul className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {stories.map((s: any) => (
-              <li key={s.id} className="rounded border border-zinc-800 p-3 flex items-start gap-3">
-                {/* cover: only render img when resolved and not errored; otherwise show placeholder */}
-                {(() => {
-                  const raw = s?.cover_url ?? s?.cover_image ?? s?.coverImage ?? s?.cover ?? s?.image_url ?? null
-                  const resolved = resolveCoverUrl(raw)
-                  if (import.meta.env.DEV) console.log('[cover-debug]', { title: s?.title, cover_url: s?.cover_url, cover_image: s?.cover_image, cover: s?.cover, image_url: s?.image_url, resolved })
-                  const errored = imageErrors?.[s?.id]
-                  if (resolved && !errored) {
-                    return (
-                      <img
-                        src={resolved}
-                        alt={s.title}
-                        className="h-16 w-12 rounded object-cover flex-shrink-0 bg-zinc-900/30"
-                        onError={() => setImageErrors(prev => ({ ...(prev||{}), [s.id]: true }))}
-                      />
-                    )
-                  }
-                  return (
-                    <div style={{ width: 64, height: 84 }} className="flex items-center justify-center rounded border bg-zinc-900/20 text-zinc-400 text-xs">No cover</div>
-                  )
-                })()}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate font-semibold text-zinc-100">{s.title}</div>
-                      <div className="truncate text-xs text-zinc-400">{s.author ?? ''}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded ${s.status === 'completed' ? 'bg-emerald-400/10 text-emerald-200' : 'bg-sky-400/10 text-sky-200'}`}>{s.status === 'completed' ? 'Full' : 'Đang ra'}</span>
-                      {s.status === 'draft' ? (
-                        <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-300">Draft</span>
+          <ul className="mt-3 grid grid-cols-1 gap-3">
+            {stories.map((s: any) => {
+              const rawCover = s?.cover_image ?? s?.cover ?? s?.image_url ?? null
+              const resolvedCover = resolveCoverUrl(rawCover)
+              const coverErrored = imageErrors?.[s?.id]
+              const storyStatusLabel = s.status === 'completed' ? 'Full' : s.status === 'paused' ? 'Tạm dừng' : 'Đang ra'
+              const isDraft = s.status === 'draft'
+              const visibilityLabel = isDraft ? 'Draft' : 'Published'
+              const categorySlug = Array.isArray(s.genres) ? s.genres[0] : ''
+              const categoryName = categorySlug ? (categories.find((c: any) => c.slug === categorySlug)?.name ?? categorySlug) : ''
+
+              if (import.meta.env.DEV) {
+                console.log('[cover-debug]', {
+                  title: s?.title,
+                  cover_image: s?.cover_image,
+                  resolvedCover,
+                })
+              }
+
+              return (
+                <li key={s.id} className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                    <div className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60">
+                      {resolvedCover && !coverErrored ? (
+                        <img
+                          src={resolvedCover}
+                          alt={s.title}
+                          className="h-full w-full object-cover"
+                          onError={() => setImageErrors((prev) => ({ ...(prev || {}), [s.id]: true }))}
+                        />
                       ) : (
-                        <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/5 text-emerald-200">Published</span>
+                        <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-zinc-400">No cover</div>
                       )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {s.status === 'draft' ? (
-                        <button onClick={async ()=>{ try { const { error } = await supabase.from('stories').update({ status: 'published' }).eq('id', s.id); if (error) throw error; await fetchStories() } catch(e){ alert('Toggle failed: '+String(e)) } }} className="text-xs rounded px-2 py-1 bg-emerald-600 text-white">Publish</button>
-                      ) : (
-                        <button onClick={async ()=>{ try { const { error } = await supabase.from('stories').update({ status: 'draft' }).eq('id', s.id); if (error) throw error; await fetchStories() } catch(e){ alert('Toggle failed: '+String(e)) } }} className="text-xs rounded px-2 py-1 bg-zinc-800 text-white">Unpublish</button>
-                      )}
 
-                      <button onClick={() => startEditStory(s)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
-
-                      <button onClick={() => {
-                        const choice = window.prompt('Nhập 1 để xóa cả truyện, 2 để mở phần chương để xóa chương, khác để hủy')
-                        if (choice === '1') {
-                          if (!confirm('Xóa truyện sẽ xóa toàn bộ chương liên quan nếu có. Tiếp tục?')) return
-                          deleteStory(s.id)
-                        } else if (choice === '2') {
-                          // open manage chapters section for this story
-                          openManageChapters(s.slug, s.title)
-                        }
-                      }} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
-
-                      <button onClick={() => openManageChapters(s.slug, s.title)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Chapters</button>
-
-                      <Link to={`/truyen/${s.slug}?from=admin`} className="text-xs text-amber-300 hover:underline">View</Link>
-                    </div>
-                </div>
-                <div className="flex-shrink-0">
-                  {/* ensure we don't render a second img that could be broken */}
-                </div>
-                </div>
-
-                {/* edit moved to dedicated section below */}
-
-                {/* chapters expanded */}
-                {expandedChapters[s.slug] ? (
-                  <div className="mt-2 space-y-2">
-                    {expandedChapters[s.slug].map((c: any) => (
-                      <div key={c.id} className="rounded border border-zinc-700 p-2 bg-zinc-950/20">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-zinc-100">{c.title} (#{c.number})</div>
-                            <div className="text-xs text-zinc-400">{c.slug}</div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => startEditChapter(c)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
-                            <button onClick={() => deleteChapter(c.id, s.slug)} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
-                          </div>
-                        </div>
-
-                        {editingChapterId === c.id && editChapterData ? (
-                          <form onSubmit={saveEditChapter} className="mt-2 grid gap-2">
-                            <input className="rounded bg-zinc-900/20 p-2" value={editChapterData.title} onChange={(e) => setEditChapterData({...editChapterData, title: e.target.value})} />
-                            <input className="rounded bg-zinc-900/20 p-2" value={editChapterData.slug} onChange={(e) => setEditChapterData({...editChapterData, slug: e.target.value})} />
-                            <textarea className="rounded bg-zinc-900/20 p-2" value={editChapterData.content} onChange={(e) => setEditChapterData({...editChapterData, content: e.target.value})} />
-                            <div className="flex gap-2">
-                              <button type="submit" className="rounded bg-amber-300 px-3 py-1">Save</button>
-                              <button type="button" onClick={() => { setEditingChapterId(null); setEditChapterData(null) }} className="rounded bg-zinc-800 px-3 py-1">Cancel</button>
-                            </div>
-                          </form>
-                        ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="min-w-0">
+                        <div className="line-clamp-2 text-base font-semibold leading-snug text-zinc-100">{s.title}</div>
+                        <div className="mt-1 text-xs text-zinc-400">{s.author || 'Chưa có tác giả'}</div>
                       </div>
-                    ))}
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <span className="rounded bg-sky-400/10 px-2 py-0.5 text-xs text-sky-200">{storyStatusLabel}</span>
+                        <span className={`rounded px-2 py-0.5 text-xs ${isDraft ? 'bg-yellow-500/10 text-yellow-300' : 'bg-emerald-500/10 text-emerald-200'}`}>{visibilityLabel}</span>
+                        {categoryName ? <span className="rounded bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">{categoryName}</span> : null}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {isDraft ? (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const { error } = await supabase.from('stories').update({ status: 'published' }).eq('id', s.id)
+                                if (error) throw error
+                                await fetchStories()
+                              } catch (e) {
+                                alert('Toggle failed: ' + String(e))
+                              }
+                            }}
+                            className="rounded bg-emerald-600 px-3 py-1.5 text-xs text-white"
+                          >
+                            Publish
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const { error } = await supabase.from('stories').update({ status: 'draft' }).eq('id', s.id)
+                                if (error) throw error
+                                await fetchStories()
+                              } catch (e) {
+                                alert('Toggle failed: ' + String(e))
+                              }
+                            }}
+                            className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-white"
+                          >
+                            Unpublish
+                          </button>
+                        )}
+
+                        <button type="button" onClick={() => startEditStory(s)} className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-white">Edit</button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const choice = window.prompt('Nhập 1 để xóa cả truyện, 2 để mở phần chương để xóa chương, khác để hủy')
+                            if (choice === '1') {
+                              if (!confirm('Xóa truyện sẽ xóa toàn bộ chương liên quan nếu có. Tiếp tục?')) return
+                              deleteStory(s.id)
+                            } else if (choice === '2') {
+                              openManageChapters(s.slug, s.title)
+                            }
+                          }}
+                          className="rounded bg-red-700 px-3 py-1.5 text-xs text-white"
+                        >
+                          Delete
+                        </button>
+
+                        <button type="button" onClick={() => openManageChapters(s.slug, s.title)} className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-white">Chapters</button>
+
+                        <Link to={`/truyen/${s.slug}?from=admin`} className="rounded bg-zinc-900 px-3 py-1.5 text-xs text-amber-300 hover:underline">View</Link>
+                      </div>
+                    </div>
                   </div>
-                ) : null}
-              </li>
-            ))}
+
+                  {expandedChapters[s.slug] ? (
+                    <div className="mt-4 space-y-2 border-t border-zinc-800 pt-3">
+                      {expandedChapters[s.slug].map((c: any) => (
+                        <div key={c.id} className="rounded border border-zinc-700 bg-zinc-950/20 p-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate font-medium text-zinc-100">{c.title}</div>
+                              <div className="truncate text-xs text-zinc-400">{c.slug}</div>
+                            </div>
+                            <div className="flex shrink-0 gap-2">
+                              <button type="button" onClick={() => startEditChapter(c)} className="rounded bg-zinc-800 px-2 py-1 text-xs text-white">Edit</button>
+                              <button type="button" onClick={() => deleteChapter(c.id, s.slug)} className="rounded bg-red-700 px-2 py-1 text-xs text-white">Delete</button>
+                            </div>
+                          </div>
+
+                          {editingChapterId === c.id && editChapterData ? (
+                            <form onSubmit={saveEditChapter} className="mt-2 grid gap-2">
+                              <input className="rounded bg-zinc-900/20 p-2" value={editChapterData.title} onChange={(e) => setEditChapterData({ ...editChapterData, title: e.target.value })} />
+                              <input className="rounded bg-zinc-900/20 p-2" value={editChapterData.slug} onChange={(e) => setEditChapterData({ ...editChapterData, slug: e.target.value })} />
+                              <textarea className="rounded bg-zinc-900/20 p-2" value={editChapterData.content} onChange={(e) => setEditChapterData({ ...editChapterData, content: e.target.value })} />
+                              <div className="flex gap-2">
+                                <button type="submit" className="rounded bg-amber-300 px-3 py-1 text-zinc-900">Save</button>
+                                <button type="button" onClick={() => { setEditingChapterId(null); setEditChapterData(null) }} className="rounded bg-zinc-800 px-3 py-1 text-white">Cancel</button>
+                              </div>
+                            </form>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         </div>
 

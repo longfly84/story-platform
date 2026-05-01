@@ -245,14 +245,17 @@ export default function HomePage() {
             author: r.author ?? r.writer ?? r.author_name,
             coverImage: r.cover_image ?? r.coverImage ?? r.image ?? r.cover ?? r.cover_url ?? "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80",
             views: r.views ?? r.view_count ?? undefined,
-            status: (r.status === 'completed' || r.status === 'full' || r.tags?.includes?.('Full')) ? 'completed' : 'ongoing',
+            // preserve explicit status from remote row when present (e.g. 'published'),
+            // otherwise fall back to inferred values
+            status: typeof r.status === 'string' ? r.status : ((r.status === 'completed' || r.status === 'full' || r.tags?.includes?.('Full')) ? 'completed' : 'ongoing'),
             description: r.description ?? r.summary ?? r.desc ?? '',
             genreSlugs: r.genre_slugs ?? r.genres ?? r.genre ?? [],
             updatedAt: r.updated_at ?? r.updatedAt ?? new Date().toISOString(),
             chapters: Array.isArray(r.chapters) ? r.chapters.map((c: any, i: number) => ({ number: c.number ?? (i+1), slug: c.slug ?? `chuong-${c.number ?? (i+1)}`, title: c.title ?? `Chương ${c.number ?? (i+1)}`, content: Array.isArray(c.content) ? c.content : [c.content ?? ''], publishedAt: c.published_at ?? c.publishedAt ?? new Date().toISOString(), id: c.id ?? (c.slug ?? `chuong-${c.number ?? (i+1)}`), createdAt: c.created_at ?? c.createdAt })) : [],
             tags: r.tags ?? (typeof r.tags === 'string' ? r.tags.split(',').map((t: string) => t.trim()) : undefined),
           }))
-           // filter only published stories (status !== 'draft')
+           // filter only public stories: include items that are not drafts.
+           // public if status === 'published' OR status !== 'draft' (effectively exclude 'draft')
            setRemoteStories(mapped.filter(s => String(s.status ?? '').toLowerCase() !== 'draft'))
         }
       } catch (e: any) {
@@ -269,12 +272,13 @@ export default function HomePage() {
     return () => { mounted = false }
   }, [])
 
-  const baseStories = remoteStories && remoteStories.length ? remoteStories : stories
+   const baseStories = remoteStories && remoteStories.length ? remoteStories : stories
+  const usingRemote = Array.isArray(remoteStories) && remoteStories.length > 0
 
   // ensure only published stories appear on homepage
   
 
-  const filteredStories = useMemo(() => {
+   const filteredStories = useMemo(() => {
     const q = normalizeText(debouncedQuery)
     let list = baseStories.filter((s) => {
       if (selectedGenre && !s.genreSlugs?.includes?.(selectedGenre)) return false
@@ -292,7 +296,7 @@ export default function HomePage() {
     }
 
     return list
-  }, [debouncedQuery, selectedGenre])
+   }, [debouncedQuery, selectedGenre, baseStories])
 
   const hot = useMemo(() => {
     return [...filteredStories]
@@ -529,9 +533,9 @@ export default function HomePage() {
           <section id="hot" className="scroll-mt-24">
             <div className="mb-4 flex items-end justify-between gap-3">
               <h2 className="text-2xl font-semibold sm:text-3xl">Truyện Hot</h2>
-              <span className="text-xs text-zinc-500">
-                (Fake data — phase sau sẽ nối API)
-              </span>
+              {!usingRemote ? (
+                <span className="text-xs text-zinc-500">(Fake data — phase sau sẽ nối API)</span>
+              ) : null}
             </div>
 
             {hot.length ? (
@@ -794,7 +798,7 @@ export default function HomePage() {
                 </button>
               ))}
             </div>
-            <p className="mt-3 text-xs text-zinc-500">Click để lọc theo thể loại. (Fake data)</p>
+            <p className="mt-3 text-xs text-zinc-500">Click để lọc theo thể loại.{!usingRemote ? ' (Fake data)' : ''}</p>
           </section>
 
           <section className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/40 to-zinc-900/10 p-4 sm:p-5">
