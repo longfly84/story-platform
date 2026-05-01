@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom"
 import MobileMenuButton from './MobileMenuButton'
+import { useEffect, useState } from "react"
+import { getCurrentUser, signOut } from '@/lib/supabase'
 
 import { Input } from "@/components/ui/input"
 
@@ -12,6 +14,21 @@ export default function MainLayout({
   headerRight?: React.ReactNode
   headerBottom?: React.ReactNode
 }) {
+  const [isAdminUser, setIsAdminUser] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const u = await getCurrentUser()
+        if (!mounted) return
+        setIsAdminUser(!!u)
+      } catch (e) {
+        // ignore
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <header className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/70 backdrop-blur-sm">
@@ -71,6 +88,27 @@ export default function MainLayout({
           </div>
         ) : null}
       </header>
+
+      {/* Global admin bar: shown when a user is logged in (admin area access) */}
+      {isAdminUser ? (
+        <div className="z-40 border-b border-zinc-800 bg-amber-300/8 text-xs text-zinc-100">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-1 sm:py-2">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Admin đang đăng nhập</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link to="/admin" className="text-xs rounded bg-zinc-900/20 px-2 py-1 text-amber-300">Admin Dashboard</Link>
+              <Link to="/" className="text-xs rounded bg-zinc-900/20 px-2 py-1 text-zinc-200">Xem trang chủ</Link>
+              <button
+                onClick={async () => { try { await signOut() } catch {} window.location.href = '/login' }}
+                className="text-xs rounded bg-zinc-800 px-2 py-1 text-zinc-100"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {children}
     </div>
