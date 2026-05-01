@@ -137,17 +137,27 @@ export async function getCurrentUser() {
 export async function uploadCoverImage(file: any, filename?: string) {
   if (!file) return null
   const bucket = 'covers'
-  const name = filename ?? `${Date.now()}_${file.name}`
+  // object key inside the 'covers' bucket - do NOT include the bucket name here
+  const name = filename ?? `${Date.now()}-${file.name}`
+  if (import.meta.env.DEV) {
+    try {
+      console.log('[cover-upload-debug] file selected', { name: file.name, size: file.size, type: file.type })
+      console.log('[cover-upload-debug] will upload to', `${bucket}/${name}`)
+    } catch (e) {}
+  }
   try {
     // upload
-    const { error } = await supabase.storage.from(bucket).upload(name, file, { upsert: true })
-    if (error) {
-      console.warn('uploadCoverImage upload error', error)
+    const res = await supabase.storage.from(bucket).upload(name, file, { upsert: true })
+    if (res.error) {
+      console.warn('[cover-upload-debug] upload error', res.error)
       return null
     }
+    if (import.meta.env.DEV) console.log('[cover-upload-debug] upload result', res)
     // get public url
     const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(name)
-    return publicData?.publicUrl ?? null
+    const pub = publicData?.publicUrl ?? null
+    if (import.meta.env.DEV) console.log('[cover-upload-debug] publicUrl', pub)
+    return pub
   } catch (e) {
     console.warn('uploadCoverImage failed', e)
     return null
@@ -165,8 +175,9 @@ export function resolveCoverUrl(cover?: string|null) {
   try {
     const s = String(cover)
     if (s.startsWith('http://') || s.startsWith('https://')) return s
-    // assume storage path in 'covers' bucket
-    const path = s.startsWith('covers/') ? s.replace(/^covers\//, '') : s
+    // assume storage path (object path inside the 'covers' bucket)
+    // support values like 'covers/12345-name.png' or 'story-covers/..' or plain filename
+    const path = s
     const { data } = supabase.storage.from('covers').getPublicUrl(path)
     if (data?.publicUrl) return data.publicUrl
     return undefined

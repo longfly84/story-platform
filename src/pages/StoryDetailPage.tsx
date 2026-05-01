@@ -139,9 +139,9 @@ export default function StoryDetailPage() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
             <div>
               {(() => {
-                const raw = story.coverImage ?? (story as any).cover_image ?? (story as any).cover ?? (story as any).cover_url ?? null
+                const raw = story.cover_url ?? story.coverImage ?? (story as any).cover_image ?? (story as any).cover ?? null
                 const resolved = resolveCoverUrl(raw)
-                if (import.meta.env.DEV) console.debug('[cover debug story]', story.title, 'raw:', raw, 'resolved:', resolved)
+                if (import.meta.env.DEV) console.log('[cover-debug]', { title: story.title, cover_url: story.cover_url, resolvedCoverUrl: resolved })
                 if (resolved) {
                   return <img src={resolved} alt={story.title} className="w-full rounded-lg object-cover shadow-lg" style={{ aspectRatio: '3/4' }} loading="lazy" onError={(e)=>{ (e.target as any).style.display='none' }} />
                 }

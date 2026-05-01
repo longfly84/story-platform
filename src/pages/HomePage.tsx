@@ -243,7 +243,7 @@ export default function HomePage() {
             slug: r.slug ?? r.id ?? r.title?.toLowerCase().replace(/\s+/g, '-') ?? 'untitled',
             title: r.title ?? r.name ?? 'Không tên',
             author: r.author ?? r.writer ?? r.author_name,
-            coverImage: r.cover_image ?? r.coverImage ?? r.image ?? r.cover ?? "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80",
+            coverImage: r.cover_image ?? r.coverImage ?? r.image ?? r.cover ?? r.cover_url ?? "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80",
             views: r.views ?? r.view_count ?? undefined,
             status: (r.status === 'completed' || r.status === 'full' || r.tags?.includes?.('Full')) ? 'completed' : 'ongoing',
             description: r.description ?? r.summary ?? r.desc ?? '',
@@ -252,7 +252,8 @@ export default function HomePage() {
             chapters: Array.isArray(r.chapters) ? r.chapters.map((c: any, i: number) => ({ number: c.number ?? (i+1), slug: c.slug ?? `chuong-${c.number ?? (i+1)}`, title: c.title ?? `Chương ${c.number ?? (i+1)}`, content: Array.isArray(c.content) ? c.content : [c.content ?? ''], publishedAt: c.published_at ?? c.publishedAt ?? new Date().toISOString(), id: c.id ?? (c.slug ?? `chuong-${c.number ?? (i+1)}`), createdAt: c.created_at ?? c.createdAt })) : [],
             tags: r.tags ?? (typeof r.tags === 'string' ? r.tags.split(',').map((t: string) => t.trim()) : undefined),
           }))
-          setRemoteStories(mapped)
+           // filter only published stories (status !== 'draft')
+           setRemoteStories(mapped.filter(s => String(s.status ?? '').toLowerCase() !== 'draft'))
         }
       } catch (e: any) {
         setRemoteError(String(e?.message ?? e))

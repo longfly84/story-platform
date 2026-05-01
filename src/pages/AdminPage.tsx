@@ -27,6 +27,7 @@ export default function AdminPage() {
   const [expandedChapters, setExpandedChapters] = useState<Record<string, any[]>>({})
   const [editingChapterId, setEditingChapterId] = useState<number | null>(null)
   const [editChapterData, setEditChapterData] = useState<any>(null)
+  const [selectedStoryForChapters, setSelectedStoryForChapters] = useState<string | null>(null)
 
   // helper: generate slug from title
   function generateSlug(input: string) {
@@ -39,7 +40,8 @@ export default function AdminPage() {
       .replace(/\s+/g, '-')
   }
 
-  const [newStory, setNewStory] = useState({ title: '', slug: '', description: '', author: '', status: 'ongoing' })
+  const [newStory, setNewStory] = useState<any>({ title: '', slug: '', description: '', author: '', status: 'ongoing' })
+  const [newVisibility, setNewVisibility] = useState<'published'|'draft'>('published')
   const [newCoverFile, setNewCoverFile] = useState<File | null>(null)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [newChapter, setNewChapter] = useState({ storySlug: '', title: '', slug: '', content: '', chapter_number: 1, summary: '', cliffhanger: '', important_events: [] as string[], emotion_tags: [] as string[] })
@@ -220,17 +222,31 @@ export default function AdminPage() {
   async function handleCreateStory(e: any) {
     e.preventDefault()
     try {
-      let coverUrl = (newStory as any).cover_image ?? null
+      let coverUrl = (newStory as any).cover_url ?? null
       if (newCoverFile) {
         setUploadingCover(true)
-        // lazy import uploader
-        const { uploadCoverImage } = await import('@/lib/supabase')
-        const url = await uploadCoverImage(newCoverFile)
-        setUploadingCover(false)
-        if (url) coverUrl = url
+        try {
+          const { uploadCoverImage } = await import('@/lib/supabase')
+          if (import.meta.env.DEV) console.log('[cover-create] file', { name: newCoverFile.name, size: newCoverFile.size, type: newCoverFile.type })
+          // filePath should NOT include bucket name
+          const filePath = `${Date.now()}-${newCoverFile.name}`
+          if (import.meta.env.DEV) console.log('[cover-create] uploading to', filePath)
+          const url = await uploadCoverImage(newCoverFile, filePath)
+          if (import.meta.env.DEV) console.log('[cover-create] upload returned', url)
+          if (url) coverUrl = url
+        } catch (e) {
+          console.warn('[cover-create] upload failed', e)
+          alert('Cover upload failed: ' + String(e))
+        } finally {
+          setUploadingCover(false)
+        }
       }
       // ensure newStory contains story_dna, story_memory, emotion_tags, cover_prompt, cover_style if present
-      const payload = { ...newStory, cover_image: coverUrl }
+      // canonicalize to stories.cover_url but avoid overwriting when null
+      const payload = { ...newStory }
+      if (coverUrl) payload.cover_url = coverUrl
+      // visibility: save explicit 'draft' or 'published' to status field when creating
+      payload.status = newVisibility === 'draft' ? 'draft' : 'published'
       // persist newStory including story memory fields
       const res = await supabase.from('stories').insert([payload])
       if (res.error) throw res.error
@@ -295,20 +311,22 @@ export default function AdminPage() {
       if (editCoverFile) {
         try {
           const { uploadCoverImage } = await import('@/lib/supabase')
-          const url = await uploadCoverImage(editCoverFile)
+          if (import.meta.env.DEV) console.log('[cover-edit] file', { name: editCoverFile.name, size: editCoverFile.size, type: editCoverFile.type })
+          const filePath = `${Date.now()}-${editCoverFile.name}`
+          if (import.meta.env.DEV) console.log('[cover-edit] uploading to', filePath)
+          const url = await uploadCoverImage(editCoverFile, filePath)
+          if (import.meta.env.DEV) console.log('[cover-edit] upload returned', url)
           if (url) coverUrl = url
         } catch (e) {
           if (import.meta.env.DEV) console.debug('edit cover upload failed', e)
+          alert('Cover upload failed: ' + String(e))
         }
       }
 
       const payload: any = { ...editStoryData }
       if (coverUrl) {
-        // detect existing cover field name on the record and set only that field
-        const coverKeys = ['cover_image', 'cover_url', 'cover', 'image_url']
-        const keyName = Object.keys(editStoryData).find(k => coverKeys.includes(k))
-        if (keyName) payload[keyName] = coverUrl
-        // else: do not add new cover column to avoid schema mismatch
+        // always write to canonical cover_url field
+        payload.cover_url = coverUrl
       }
 
       const res = await supabase.from('stories').update(payload).eq('id', editingStoryId)
@@ -334,19 +352,7 @@ export default function AdminPage() {
   }
 
   // Chapters: expand/fetch, edit, delete
-  async function toggleChapters(slug: string) {
-    if (expandedChapters[slug]) {
-      setExpandedChapters((m) => { const c = { ...m }; delete c[slug]; return c })
-      return
-    }
-    // prefer story_id if available
-    const sid = stories.find(s => s.slug === slug)?.id
-    const q = supabase.from('chapters').select('*')
-    const q2 = sid ? q.eq('story_id', sid) : q.eq('story_slug', slug)
-    const { data, error } = await q2.order('created_at', { ascending: true })
-    if (error) { alert('Load chapters failed: ' + String(error.message)); return }
-    setExpandedChapters((m) => ({ ...m, [slug]: data ?? [] }))
-  }
+  // NOTE: toggleChapters removed in favor of openManageChapters/open expanded UI
 
   function startEditChapter(chap: any) {
     setEditingChapterId(chap.id)
@@ -363,6 +369,10 @@ export default function AdminPage() {
       if (editChapterData.story_slug) {
         const { data } = await supabase.from('chapters').select('*').eq('story_slug', editChapterData.story_slug).order('number', { ascending: true })
         setExpandedChapters((m) => ({ ...m, [editChapterData.story_slug]: data ?? [] }))
+        // if we're managing chapters for this story, refresh that list too
+        if (selectedStoryForChapters && selectedStoryForChapters === editChapterData.story_slug) {
+          await openManageChapters(selectedStoryForChapters)
+        }
       }
       setEditingChapterId(null)
       setEditChapterData(null)
@@ -376,12 +386,34 @@ export default function AdminPage() {
     try {
       const res = await supabase.from('chapters').delete().eq('id', id)
       if (res.error) throw res.error
-      if (storySlug && expandedChapters[storySlug]) {
-        const { data } = await supabase.from('chapters').select('*').eq('story_slug', storySlug).order('number', { ascending: true })
-        setExpandedChapters((m) => ({ ...m, [storySlug]: data ?? [] }))
+      if (storySlug) {
+        if (expandedChapters[storySlug]) {
+          const { data } = await supabase.from('chapters').select('*').eq('story_slug', storySlug).order('number', { ascending: true })
+          setExpandedChapters((m) => ({ ...m, [storySlug]: data ?? [] }))
+        }
+        // refresh manage list if active
+        if (selectedStoryForChapters === storySlug) await openManageChapters(selectedStoryForChapters)
       }
     } catch (err: any) {
       alert('Delete chapter failed: ' + String(err?.message ?? err))
+    }
+  }
+
+  async function openManageChapters(slug: string, _title?: string) {
+    try {
+      setSelectedStoryForChapters(slug)
+      // load chapters for this story
+      const sid = stories.find(s => s.slug === slug)?.id
+      const q = supabase.from('chapters').select('*')
+      const q2 = sid ? q.eq('story_id', sid) : q.eq('story_slug', slug)
+      const { data, error } = await q2.order('created_at', { ascending: true })
+      if (error) throw error
+      // reuse expandedChapters map so UI uses same place for listing chapters
+      setExpandedChapters((m) => ({ ...m, [slug]: data ?? [] }))
+      // ensure chapters section visible
+      setTimeout(() => { document.getElementById('manage-chapters')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 120)
+    } catch (e: any) {
+      alert('Load chapters failed: ' + String(e?.message ?? e))
     }
   }
 
@@ -503,7 +535,7 @@ export default function AdminPage() {
       story_memory.arc_progress = Math.min(100, (story_memory.arc_progress || 0) + (aiMode === 'next' ? 10 : 3))
 
       // attach to newStory object so user can save later
-      setNewStory((s) => ({ ...s, story_dna: dna, story_memory, emotion_tags: story_memory.emotion_tags, cover_prompt: cp, cover_style: coverStyle, current_arc: story_memory.current_arc, arc_progress: story_memory.arc_progress }))
+      setNewStory((s: any) => ({ ...s, story_dna: dna, story_memory, emotion_tags: story_memory.emotion_tags, cover_prompt: cp, cover_style: coverStyle, current_arc: story_memory.current_arc, arc_progress: story_memory.arc_progress }))
 
       // expose ai metadata for chapter insertion
       setAiMeta({ summary: newSummary, cliffhanger: newCliff, important_events: story_memory.important_events, emotion_tags: story_memory.emotion_tags })
@@ -597,10 +629,9 @@ export default function AdminPage() {
               <li key={s.id} className="rounded border border-zinc-800 p-3 flex items-start gap-3">
                 {/* cover: only render img when resolved and not errored; otherwise show placeholder */}
                 {(() => {
-                  const raw = s?.cover_image ?? s?.coverImage ?? s?.cover ?? s?.cover_url ?? null
-                  const path = raw && String(raw).startsWith('covers/') ? String(raw).replace(/^covers\//, '') : raw
-                  const resolved = resolveCoverUrl(path)
-                  if (import.meta.env.DEV) console.debug('[cover debug render]', s?.title, 'raw:', raw, 'resolved:', resolved)
+                  const raw = s?.cover_url ?? s?.cover_image ?? s?.coverImage ?? s?.cover ?? s?.image_url ?? null
+                  const resolved = resolveCoverUrl(raw)
+                  if (import.meta.env.DEV) console.log('[cover-debug]', { title: s?.title, cover_url: s?.cover_url, cover_image: s?.cover_image, cover: s?.cover, image_url: s?.image_url, resolved })
                   const errored = imageErrors?.[s?.id]
                   if (resolved && !errored) {
                     return (
@@ -624,13 +655,36 @@ export default function AdminPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`text-xs px-2 py-0.5 rounded ${s.status === 'completed' ? 'bg-emerald-400/10 text-emerald-200' : 'bg-sky-400/10 text-sky-200'}`}>{s.status === 'completed' ? 'Full' : 'Đang ra'}</span>
+                      {s.status === 'draft' ? (
+                        <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-300">Draft</span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/5 text-emerald-200">Published</span>
+                      )}
                     </div>
-                    <button onClick={() => startEditStory(s)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
-                    <button onClick={() => deleteStory(s.id)} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
-                    <button onClick={() => startEditStory(s)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
-                    <button onClick={() => deleteStory(s.id)} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
-                    <button onClick={() => toggleChapters(s.slug)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Chapters</button>
-                    <Link to={`/truyen/${s.slug}`} className="text-xs text-amber-300 hover:underline">View</Link>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {s.status === 'draft' ? (
+                        <button onClick={async ()=>{ try { const { error } = await supabase.from('stories').update({ status: 'published' }).eq('id', s.id); if (error) throw error; await fetchStories() } catch(e){ alert('Toggle failed: '+String(e)) } }} className="text-xs rounded px-2 py-1 bg-emerald-600 text-white">Publish</button>
+                      ) : (
+                        <button onClick={async ()=>{ try { const { error } = await supabase.from('stories').update({ status: 'draft' }).eq('id', s.id); if (error) throw error; await fetchStories() } catch(e){ alert('Toggle failed: '+String(e)) } }} className="text-xs rounded px-2 py-1 bg-zinc-800 text-white">Unpublish</button>
+                      )}
+
+                      <button onClick={() => startEditStory(s)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Edit</button>
+
+                      <button onClick={() => {
+                        const choice = window.prompt('Nhập 1 để xóa cả truyện, 2 để mở phần chương để xóa chương, khác để hủy')
+                        if (choice === '1') {
+                          if (!confirm('Xóa truyện sẽ xóa toàn bộ chương liên quan nếu có. Tiếp tục?')) return
+                          deleteStory(s.id)
+                        } else if (choice === '2') {
+                          // open manage chapters section for this story
+                          openManageChapters(s.slug, s.title)
+                        }
+                      }} className="text-xs rounded px-2 py-1 bg-red-700 text-white">Delete</button>
+
+                      <button onClick={() => openManageChapters(s.slug, s.title)} className="text-xs rounded px-2 py-1 bg-zinc-900/20">Chapters</button>
+
+                      <Link to={`/truyen/${s.slug}`} className="text-xs text-amber-300 hover:underline">View</Link>
+                    </div>
                 </div>
                 <div className="flex-shrink-0">
                   {/* ensure we don't render a second img that could be broken */}
@@ -680,7 +734,7 @@ export default function AdminPage() {
           <form onSubmit={handleCreateStory} className="mt-2 grid gap-2">
             <input className="rounded bg-zinc-900/20 p-2" placeholder="Title" value={newStory.title} onChange={(e) => {
               const val = e.target.value
-              setNewStory((s) => ({ ...s, title: val, slug: storySlugEdited ? s.slug : generateSlug(val) }))
+              setNewStory((s: any) => ({ ...s, title: val, slug: storySlugEdited ? s.slug : generateSlug(val) }))
             }} />
             <input className="rounded bg-zinc-900/20 p-2" placeholder="Slug" value={newStory.slug} onChange={(e) => { setNewStory({...newStory, slug: e.target.value}); setStorySlugEdited(true) }} />
             <input className="rounded bg-zinc-900/20 p-2" placeholder="Author" value={newStory.author} onChange={(e) => setNewStory({...newStory, author: e.target.value})} />
@@ -689,6 +743,13 @@ export default function AdminPage() {
             {newCoverFile ? (
               <img src={URL.createObjectURL(newCoverFile)} alt="preview" className="h-24 w-auto rounded mt-2" />
             ) : null}
+            <div className="flex gap-2 items-center">
+              <label className="text-xs text-zinc-400">Visibility</label>
+              <select className="rounded bg-zinc-900/20 p-2" value={newVisibility} onChange={(e) => setNewVisibility(e.target.value as any)}>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
             <select className="rounded bg-zinc-900/20 p-2" value={newStory.status} onChange={(e) => setNewStory({...newStory, status: e.target.value})}>
               <option value="ongoing">Đang ra</option>
               <option value="completed">Hoàn thành</option>
@@ -721,8 +782,7 @@ export default function AdminPage() {
                 <div className="text-xs text-zinc-400">Current cover</div>
                 {(() => {
                   const raw = editStoryData?.cover_image ?? editStoryData?.cover ?? editStoryData?.cover_url ?? editStoryData?.image_url ?? null
-                  const path = raw && String(raw).startsWith('covers/') ? String(raw).replace(/^covers\//, '') : raw
-                  const resolved = resolveCoverUrl(path)
+                  const resolved = resolveCoverUrl(raw)
                   if (import.meta.env.DEV) console.debug('[cover debug edit]', editStoryData?.title, 'raw:', raw, 'resolved:', resolved)
                   if (resolved) return <img src={resolved} alt="cover" className="h-28 w-auto rounded" onError={() => setImageErrors(prev => ({ ...(prev||{}), [editingStoryId as any]: true }))} />
                   return <div className="h-28 w-20 flex items-center justify-center rounded border bg-zinc-900/20 text-zinc-400">No cover</div>
@@ -786,7 +846,7 @@ export default function AdminPage() {
             <label className="text-xs text-zinc-400">Chọn truyện</label>
             <select className="rounded bg-zinc-900/20 p-2" value={newChapter.storySlug} onChange={(e) => setNewChapter({...newChapter, storySlug: e.target.value})}>
               <option value="">-- Chọn truyện --</option>
-              {stories.map((s) => (
+              {stories.map((s: any) => (
                 <option key={s.id} value={s.slug}>{s.title}</option>
               ))}
             </select>
@@ -808,7 +868,7 @@ export default function AdminPage() {
             <label className="text-xs text-zinc-400">Chọn truyện (để gán vào chapter)</label>
             <select className="rounded bg-zinc-900/20 p-2" value={aiStorySlug} onChange={(e) => setAiStorySlug(e.target.value)}>
               <option value="">-- (Không chọn) --</option>
-              {stories.map((s) => (
+                {stories.map((s: any) => (
                 <option key={s.id} value={s.slug}>{s.title}</option>
               ))}
             </select>
@@ -946,7 +1006,7 @@ export default function AdminPage() {
             <div className="flex gap-2">
               <select className="rounded bg-zinc-900/20 p-2 text-sm" value={selectedMemorySlug ?? ''} onChange={(e) => { setSelectedMemorySlug(e.target.value || null) }}>
                 <option value="">-- Chọn truyện --</option>
-                {stories.map((s) => <option key={s.id} value={s.slug}>{s.title}</option>)}
+                {stories.map((s: any) => <option key={s.id} value={s.slug}>{s.title}</option>)}
               </select>
               <button onClick={(e) => { e.preventDefault(); if (selectedMemorySlug) loadStoryMemory(selectedMemorySlug) }} className="rounded bg-amber-300 px-3 py-1 text-sm">Load Memory</button>
               <button onClick={(e) => { e.preventDefault(); saveStoryMemoryToDb() }} className="rounded bg-emerald-500 px-3 py-1 text-sm">Save Memory</button>
