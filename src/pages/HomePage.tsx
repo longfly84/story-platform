@@ -271,6 +271,9 @@ export default function HomePage() {
 
   const baseStories = remoteStories && remoteStories.length ? remoteStories : stories
 
+  // ensure only published stories appear on homepage
+  
+
   const filteredStories = useMemo(() => {
     const q = normalizeText(debouncedQuery)
     let list = baseStories.filter((s) => {

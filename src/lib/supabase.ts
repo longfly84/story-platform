@@ -156,7 +156,11 @@ export async function uploadCoverImage(file: any, filename?: string) {
     // get public url
     const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(name)
     const pub = publicData?.publicUrl ?? null
-    if (import.meta.env.DEV) console.log('[cover-upload-debug] publicUrl', pub)
+    if (import.meta.env.DEV) {
+      console.log('[cover-upload-debug] publicUrl', pub)
+      console.log('[cover-upload-debug] Cover uploaded to bucket covers:', name)
+      console.log('[cover-upload-debug] Public URL:', pub)
+    }
     return pub
   } catch (e) {
     console.warn('uploadCoverImage failed', e)

@@ -136,6 +136,12 @@ export default function StoryDetailPage() {
             <span className="mx-2 text-zinc-500">/</span>
             <span className="text-zinc-300">{story.title}</span>
           </nav>
+          {/* show back-to-admin when ?from=admin */}
+          {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('from') === 'admin' ? (
+            <div className="mb-3">
+              <Link to="/admin" className="text-sm text-amber-300 hover:underline">← Quay lại Admin</Link>
+            </div>
+          ) : null}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
             <div>
               {(() => {
