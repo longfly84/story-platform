@@ -230,7 +230,6 @@ export default function AdminContentPage() {
         ...newStory,
         cover_image: coverUrl,
         genres: createCategorySlug ? [createCategorySlug] : [],
-        visibility: newVisibility,
         status: newVisibility,
         owner_id: user?.id ?? null,
       }

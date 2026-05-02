@@ -722,7 +722,8 @@ export default function AIGeneratePanel() {
     const slugBase = makeSlug(title || 'truyen-nhap-ai')
     const slug = `${slugBase}-${Date.now()}`
     const genreLabel = findLabel(categoryOptions, aiForm.category)
-
+    const { data: authData } = await supabase.auth.getUser()
+    const ownerId = authData.user?.id ?? null
     try {
       const payload = {
         title,
@@ -730,7 +731,6 @@ export default function AIGeneratePanel() {
         description,
         author: 'AI Writer',
         status: 'draft',
-        visibility: 'draft',
         genres: aiForm.category ? [aiForm.category] : [],
         story_dna: {
           source: 'ai-writer',
@@ -772,6 +772,7 @@ export default function AIGeneratePanel() {
             description,
             author: 'AI Writer',
             status: 'draft',
+            owner_id: ownerId,
             genres: aiForm.category ? [aiForm.category] : [],
           }
 
