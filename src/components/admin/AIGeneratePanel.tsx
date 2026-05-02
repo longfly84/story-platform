@@ -620,7 +620,70 @@ export default function AIGeneratePanel() {
     await navigator.clipboard.writeText(text)
     setMessage(successMessage)
   }
+  
+  function getMarkdownSection(markdown: string, heading: string) {
+  const lines = markdown.split('\n')
+  const headingIndex = lines.findIndex((line) => line.trim() === heading)
 
+  if (headingIndex === -1) return ''
+
+  const collected: string[] = []
+
+  for (let index = headingIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index]
+
+    if (line.trim().startsWith('## ') || line.trim().startsWith('# ')) {
+      break
+    }
+
+    collected.push(line)
+  }
+
+  return collected.join('\n').trim()
+  }
+
+  function getStoryTitleFromPreview() {
+    const planTitle = getMarkdownSection(preview, '## Tên truyện')
+      .split('\n')
+      .find((line) => line.trim())
+
+    if (planTitle) return planTitle.replace(/^[-*]\s*/, '').trim()
+
+    const chapterTitle = preview
+      .split('\n')
+      .find((line) => line.trim().startsWith('# Chương'))
+
+    if (chapterTitle) {
+      return chapterTitle
+        .replace(/^#+\s*/, '')
+        .replace(/^Chương\s*[—-]\s*/i, '')
+        .trim()
+    }
+
+    return (
+      selectedStory?.title ||
+      aiForm.promptIdea.trim() ||
+      'Truyện nháp AI Writer'
+    )
+  }
+
+  function getStoryDescriptionFromPreview() {
+    const logline = getMarkdownSection(preview, '## Logline')
+    if (logline) return logline
+
+    const summary = getMarkdownSection(preview, '## Tóm tắt')
+    if (summary) return summary
+
+    const conflict = getMarkdownSection(preview, '## Mâu thuẫn cốt lõi')
+    if (conflict) return conflict
+
+    return (
+      aiForm.promptIdea.trim() ||
+      selectedStory?.description ||
+      'Truyện được tạo từ AI Writer.'
+    )
+  }
+  
   function getReaderOnly() {
     if (!preview) return ''
     return preview.split('\n---\n')[0] || preview
@@ -652,6 +715,95 @@ export default function AIGeneratePanel() {
       .replace(/^#+\s*/, '')
       .replace(/^Chương\s*[—-]\s*/i, '')
       .trim()
+  }
+  
+  async function createStoryDraftFromPreview() {
+    if (!preview.trim()) {
+      setMessage('Chưa có preview để tạo truyện.')
+      return
+    }
+
+    const title = getStoryTitleFromPreview()
+    const description = getStoryDescriptionFromPreview()
+    const slugBase = makeSlug(title || 'truyen-nhap-ai')
+    const slug = `${slugBase}-${Date.now()}`
+    const genreLabel = findLabel(categoryOptions, aiForm.category)
+
+    try {
+      const payload = {
+        title,
+        slug,
+        description,
+        author: 'AI Writer',
+        status: 'draft',
+        visibility: 'draft',
+        genres: aiForm.category ? [aiForm.category] : [],
+        story_dna: {
+          source: 'ai-writer',
+          module: aiForm.moduleId,
+          genre: genreLabel,
+          main_character_style: findLabel(mainCharacterOptions, aiForm.mainCharacterStyle),
+          chapter_length: findLabel(chapterLengthOptions, aiForm.chapterLength),
+          cliffhanger_type: findLabel(cliffhangerOptions, aiForm.cliffhangerType),
+          humiliation_level: aiForm.humiliationLevel,
+          revenge_intensity: aiForm.revengeIntensity,
+        },
+        story_memory: {
+          created_from: 'ai-writer-story-plan',
+          preview,
+        },
+        current_arc: 'Khởi đầu truyện / setup xung đột chính',
+        emotion_tags: [genreLabel, findLabel(mainCharacterOptions, aiForm.mainCharacterStyle)],
+      }
+
+      const { data, error } = await supabase
+        .from('stories')
+        .insert([payload])
+        .select('id, title, slug, author, status, description')
+        .single()
+
+      if (error) {
+        const msg = String(error.message || error)
+
+        if (
+          msg.toLowerCase().includes('story_dna') ||
+          msg.toLowerCase().includes('story_memory') ||
+          msg.toLowerCase().includes('current_arc') ||
+          msg.toLowerCase().includes('emotion_tags') ||
+          msg.toLowerCase().includes('visibility')
+        ) {
+          const fallbackPayload = {
+            title,
+            slug,
+            description,
+            author: 'AI Writer',
+            status: 'draft',
+            genres: aiForm.category ? [aiForm.category] : [],
+          }
+
+          const fallback = await supabase
+            .from('stories')
+            .insert([fallbackPayload])
+            .select('id, title, slug, author, status, description')
+            .single()
+
+          if (fallback.error) throw fallback.error
+
+          setSelectedStory(fallback.data)
+          setStoryOptions((prev) => [fallback.data, ...prev])
+          setMessage(`Đã tạo Story Draft: ${fallback.data.title}`)
+          return
+        }
+
+        throw error
+      }
+
+      setSelectedStory(data)
+      setStoryOptions((prev) => [data, ...prev])
+      setMessage(`Đã tạo Story Draft: ${data.title}`)
+    } catch (err: any) {
+      setMessage(`Tạo Story Draft thất bại: ${String(err?.message ?? err)}`)
+    }
   }
   
   async function saveDraft(source: 'insert' | 'draft') {
@@ -1049,6 +1201,15 @@ export default function AIGeneratePanel() {
           ) : null}
 
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button
+              type="button"
+              disabled={!hasPreview}
+              onClick={createStoryDraftFromPreview}
+              className="w-full rounded-lg bg-purple-500 px-4 py-2 text-zinc-950 disabled:opacity-50 sm:w-auto"
+            >
+              Tạo Story Draft từ Preview
+            </button>
+
             <button
               type="button"
               disabled={!hasPreview}
