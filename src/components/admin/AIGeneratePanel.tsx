@@ -576,7 +576,96 @@ export default function AIGeneratePanel() {
         : 'Đã lưu draft chương vào localStorage.'
     )
   }
+ 
+  function buildFullCoverPrompt() {
+  const title =
+    selectedStory?.title ||
+    'Sau Khi Bị Phản Bội, Tôi Khiến Cả Nhà Họ Quỳ Xin Lỗi'
 
+  const genreLabel = findLabel(categoryOptions, aiForm.category)
+  const styleLabel = findLabel(mainCharacterOptions, aiForm.mainCharacterStyle)
+  const coverStyleLabel = findLabel(coverStyleOptions, aiForm.coverStyle)
+  const colorThemeLabel = findLabel(colorThemeOptions, aiForm.colorTheme)
+  const characterVibeLabel = findLabel(characterVibeOptions, aiForm.characterVibe)
+
+  const summary =
+    aiForm.promptIdea.trim() ||
+    selectedStory?.description ||
+    'A betrayed bride is publicly humiliated during an engagement ceremony, but she secretly holds evidence that can destroy the wealthy family that betrayed her.'
+
+  const coverStylePrompt =
+    aiForm.coverStyle === 'anime-drama'
+      ? 'high-detail anime cover illustration, emotional facial expressions, cinematic framing, polished web-novel cover quality, dramatic lighting, glossy premium finish'
+      : aiForm.coverStyle === 'luxury-wedding'
+        ? 'luxury wedding visual language, grand ballroom, crystal chandeliers, couture bridal fashion, glamorous and expensive atmosphere'
+        : aiForm.coverStyle === 'corporate-queen'
+          ? 'modern elite corporate aesthetics, sharp fashion styling, wealthy urban atmosphere, confident female lead, premium executive aura'
+          : aiForm.coverStyle === 'revenge-poster'
+            ? 'high-impact revenge drama poster style, visually bold composition, intense tension, striking contrast, viral web-fiction cover energy'
+            : 'clean portrait-focused cover, elegant composition, single-character emphasis, simple but premium visual hierarchy, refined illustration'
+
+  const colorPrompt =
+    aiForm.colorTheme === 'dark-luxury'
+      ? 'dark luxury color palette with black, charcoal, soft gold highlights, deep shadows, subtle champagne glow, premium elite atmosphere'
+      : aiForm.colorTheme === 'cold-blue'
+        ? 'cold blue palette, steel-blue shadows, cool highlights, dramatic emotional distance, elegant urban chill'
+        : aiForm.colorTheme === 'red-drama'
+          ? 'dramatic red accents, tension-heavy atmosphere, emotional intensity, high-conflict visual tone'
+          : aiForm.colorTheme === 'black-amber'
+            ? 'black and amber palette, moody rich shadows, cinematic warmth, sophisticated drama look'
+            : 'warm gold palette, golden highlights, soft amber light, elegant warm tones, luxurious romantic glow'
+
+  const vibePrompt =
+    aiForm.characterVibe === 'broken-bride'
+      ? 'the heroine should look like a betrayed bride: emotionally wounded but still proud, graceful, cold-eyed, elegant, fragile on the surface yet internally dangerous'
+      : aiForm.characterVibe === 'cold-queen'
+        ? 'the heroine should appear untouchable, regal, elegant, cold, dominant, and high-status'
+        : aiForm.characterVibe === 'elegant-revenge'
+          ? 'the heroine should appear refined, graceful, intelligent, and quietly vengeful, with a polished aristocratic aura'
+          : aiForm.characterVibe === 'soft-dangerous'
+            ? 'the heroine should look gentle at first glance but carry a hidden threat, sharp intelligence, and emotional danger underneath'
+            : 'the heroine should appear calm, restrained, composed, emotionally controlled, powerful through silence'
+
+  return `Create a premium vertical web-novel cover illustration.
+
+  Format: 2:3 vertical book cover, polished digital illustration, highly detailed, cinematic, premium, commercial-quality cover art.
+
+  Story title: "${title}"
+  Genre: ${genreLabel}
+  Story engine style: Nữ tần đô thị viral Trung Quốc
+  Story summary: ${summary}
+
+  Visual style:
+  ${coverStylePrompt}
+
+  Color direction:
+  ${colorPrompt}
+
+  Character vibe:
+  ${vibePrompt}
+
+  Main subject:
+  A beautiful female protagonist with the character direction "${styleLabel}". She should be the main focus of the cover. She looks emotionally wounded but strong, elegant, memorable, and ready to take revenge.
+
+  Setting:
+  Modern Chinese urban luxury environment, wealthy families, elite corporate circles, glamorous hotel or banquet hall, crystal chandeliers, luxury fashion, public scandal atmosphere, Weibo/Douyin viral drama feeling.
+
+  Composition:
+  The heroine stands in the foreground. In the blurred background, show hints of betrayal: a man in a formal black suit standing close to another woman, wealthy guests, luxury lights, or a grand engagement ceremony. Keep the heroine dominant and unforgettable.
+
+  Mood:
+  Dark luxury, emotional tension, betrayal, humiliation turning into revenge, female-oriented Chinese urban drama, high-click web novel cover energy.
+
+  Selected cover tags:
+  - Cover style: ${coverStyleLabel}
+  - Color theme: ${colorThemeLabel}
+  - Character vibe: ${characterVibeLabel}
+
+  Important:
+  Do not add any text, logo, watermark, random letters, or unreadable typography on the cover.
+  No extra fingers, no distorted face, no low-quality anatomy.
+  Make it look like a premium anime-style Chinese urban revenge novel cover.`
+  }
   const hasPreview = Boolean(preview.trim())
 
   return (
@@ -802,15 +891,7 @@ export default function AIGeneratePanel() {
 
             <button
               type="button"
-              onClick={() =>
-                copyText(
-                  `Anime cover, ${findLabel(coverStyleOptions, aiForm.coverStyle)}, ${findLabel(
-                    colorThemeOptions,
-                    aiForm.colorTheme
-                  )}, ${findLabel(characterVibeOptions, aiForm.characterVibe)}, Chinese urban revenge drama`,
-                  'Đã copy cover prompt.'
-                )
-              }
+              onClick={() => copyText(buildFullCoverPrompt(), 'Đã copy cover prompt đầy đủ.')}
               className="w-full rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 sm:w-auto"
             >
               Copy Cover Prompt
