@@ -18,7 +18,13 @@ import {
   type StoryLite,
 } from '@/components/admin/ai/aiWriterOptions'
 import { buildChapterMock, buildStoryPlanMock } from '@/components/admin/ai/aiWriterMocks'
-
+import { buildFullCoverPrompt } from '@/components/admin/ai/aiWriterCoverPrompt'
+import {
+  extractReaderOnly,
+  getChapterTitleFromReader,
+  getStoryDescriptionFromPreviewText,
+  getStoryTitleFromPreviewText,
+} from '@/components/admin/ai/aiWriterText'
 
 
 function SelectField({
@@ -50,109 +56,6 @@ function SelectField({
   )
 }
 
-
-
-function getMarkdownSection(markdown: string, heading: string) {
-  const lines = markdown.split('\n')
-  const headingIndex = lines.findIndex((line) => line.trim() === heading)
-
-  if (headingIndex === -1) return ''
-
-  const collected: string[] = []
-
-  for (let index = headingIndex + 1; index < lines.length; index += 1) {
-    const line = lines[index]
-
-    if (line.trim().startsWith('## ') || line.trim().startsWith('# ')) break
-
-    collected.push(line)
-  }
-
-  return collected.join('\n').trim()
-}
-
-function extractReaderOnly(preview: string) {
-  const marker = '# BẢN ĐỌC CHO ĐỘC GIẢ'
-  const techMarker = '---'
-
-  const markerIndex = preview.indexOf(marker)
-
-  if (markerIndex === -1) return preview.trim()
-
-  const afterMarker = preview.slice(markerIndex).trim()
-  const techIndex = afterMarker.indexOf(techMarker)
-
-  if (techIndex === -1) return afterMarker.trim()
-
-  return afterMarker.slice(0, techIndex).trim()
-}
-
-function buildFullCoverPrompt({
-  selectedStory,
-  preview,
-  aiForm,
-  categoryOptions,
-}: {
-  selectedStory: StoryLite | null
-  preview: string
-  aiForm: AIFormState
-  categoryOptions: Option[]
-}) {
-  const title =
-    selectedStory?.title ||
-    getMarkdownSection(preview, '## Tên truyện')
-      .split('\n')
-      .find((line) => line.trim()) ||
-    'Sau Khi Bị Phản Bội, Tôi Khiến Cả Nhà Họ Quỳ Xin Lỗi'
-
-  const genreLabel = findLabel(categoryOptions, aiForm.category)
-  const styleLabel = findLabel(mainCharacterOptions, aiForm.mainCharacterStyle)
-  const coverStyleLabel = findLabel(coverStyleOptions, aiForm.coverStyle)
-  const colorThemeLabel = findLabel(colorThemeOptions, aiForm.colorTheme)
-  const characterVibeLabel = findLabel(characterVibeOptions, aiForm.characterVibe)
-
-  const summary =
-    aiForm.promptIdea.trim() ||
-    selectedStory?.description ||
-    getMarkdownSection(preview, '## Logline') ||
-    getMarkdownSection(preview, '## Tóm tắt') ||
-    'A betrayed bride is publicly humiliated during an engagement ceremony, but she secretly holds evidence that can destroy the wealthy family that betrayed her.'
-
-  return `Create a premium vertical web-novel cover illustration.
-
-Format: 2:3 vertical book cover, polished digital illustration, highly detailed, cinematic, premium, commercial-quality cover art.
-
-Story title: "${title}"
-Genre: ${genreLabel}
-Story engine style: Nữ tần đô thị viral Trung Quốc
-Story summary: ${summary}
-
-Visual style:
-${coverStyleLabel}, high-detail anime cover illustration, emotional facial expressions, cinematic framing, polished web-novel cover quality, dramatic lighting, glossy premium finish.
-
-Color direction:
-${colorThemeLabel}, dark luxury atmosphere, premium elite feeling, cinematic shadows, strong contrast.
-
-Character vibe:
-${characterVibeLabel}. The heroine should be emotionally wounded but proud, graceful, cold-eyed, elegant, fragile on the surface yet internally dangerous.
-
-Main subject:
-A beautiful female protagonist with the character direction "${styleLabel}". She should be the main focus of the cover. She looks emotionally wounded but strong, elegant, memorable, and ready to take revenge.
-
-Setting:
-Modern Chinese urban luxury environment, wealthy families, elite corporate circles, glamorous hotel or banquet hall, crystal chandeliers, luxury fashion, public scandal atmosphere, Weibo/Douyin viral drama feeling.
-
-Composition:
-The heroine stands in the foreground. In the blurred background, show hints of betrayal: a man in a formal black suit standing close to another woman, wealthy guests, luxury lights, or a grand engagement ceremony. Keep the heroine dominant and unforgettable.
-
-Mood:
-Dark luxury, emotional tension, betrayal, humiliation turning into revenge, female-oriented Chinese urban drama, high-click web novel cover energy.
-
-Important:
-Do not add any text, logo, watermark, random letters, or unreadable typography on the cover.
-No extra fingers, no distorted face, no low-quality anatomy.
-Make it look like a premium anime-style Chinese urban revenge novel cover.`
-}
 
 
 
@@ -298,51 +201,22 @@ export default function AIGeneratePanel() {
   }
 
   function getDraftTitle() {
-    const readerOnly = getReaderOnly()
-
-    const chapterLine =
-      readerOnly
-        .split('\n')
-        .find((line) => line.trim().startsWith('# Chương')) ||
-      selectedStory?.title ||
-      'Chương nháp AI'
-
-    return chapterLine
-      .replace(/^#+\s*/, '')
-      .replace(/^Chương\s*[—-]\s*/i, '')
-      .trim()
+    return getChapterTitleFromReader(getReaderOnly(), selectedStory?.title || 'Chương nháp AI')
   }
 
   function getStoryTitleFromPreview() {
-    const planTitle = getMarkdownSection(preview, '## Tên truyện')
-      .split('\n')
-      .find((line) => line.trim())
-
-    if (planTitle) return planTitle.replace(/^[-*]\s*/, '').trim()
-
-    const chapterTitle = preview.split('\n').find((line) => line.trim().startsWith('# Chương'))
-
-    if (chapterTitle) {
-      return chapterTitle
-        .replace(/^#+\s*/, '')
-        .replace(/^Chương\s*[—-]\s*/i, '')
-        .trim()
-    }
-
-    return selectedStory?.title || aiForm.promptIdea.trim() || 'Truyện nháp AI Writer'
+    return getStoryTitleFromPreviewText({
+      preview,
+      fallbackTitle: selectedStory?.title || aiForm.promptIdea.trim() || 'Truyện nháp AI Writer',
+    })
   }
 
   function getStoryDescriptionFromPreview() {
-    const logline = getMarkdownSection(preview, '## Logline')
-    if (logline) return logline
-
-    const summary = getMarkdownSection(preview, '## Tóm tắt')
-    if (summary) return summary
-
-    const conflict = getMarkdownSection(preview, '## Mâu thuẫn cốt lõi')
-    if (conflict) return conflict
-
-    return aiForm.promptIdea.trim() || selectedStory?.description || 'Truyện được tạo từ AI Writer.'
+    return getStoryDescriptionFromPreviewText({
+      preview,
+      fallbackDescription:
+        aiForm.promptIdea.trim() || selectedStory?.description || 'Truyện được tạo từ AI Writer.',
+    })
   }
 
   function handleClear() {
