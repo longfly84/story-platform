@@ -16,9 +16,18 @@ export default function AdminDashboardPage() {
 
         <div className="grid gap-3 sm:grid-cols-2">
           {cards.map((c) => (
-            <Link key={c.to} to={c.to} className="rounded-2xl border border-zinc-800 bg-zinc-900/20 p-4 hover:shadow-lg">
-              <div className="text-lg font-semibold text-zinc-100">{c.title}</div>
-              <div className="mt-1 text-sm text-zinc-400">{c.desc}</div>
+            <Link
+              key={c.to}
+              to={c.to}
+              className="block rounded-2xl border border-zinc-800 bg-zinc-900/20 p-4 hover:shadow-lg cursor-pointer transition hover:border-amber-400/60 hover:bg-zinc-900/80"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-lg font-semibold text-zinc-100">{c.title}</div>
+                  <div className="mt-1 text-sm text-zinc-400">{c.desc}</div>
+                </div>
+                <div className="ml-4 text-amber-300 text-sm shrink-0 self-end">Mở →</div>
+              </div>
             </Link>
           ))}
         </div>
