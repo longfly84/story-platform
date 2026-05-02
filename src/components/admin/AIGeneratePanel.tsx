@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 type Option = {
@@ -32,16 +32,16 @@ type AIFormState = {
 }
 
 const fallbackCategories: Option[] = [
-  { value: 'hon-nhan-phan-boi-ngoai-tinh', label: 'HÃ´n nhÃ¢n pháº£n bá»™i / ngoáº¡i tÃ¬nh' },
-  { value: 'cong-so-va-mat-nu-cuong-thuong-chien', label: 'CÃ´ng sá»Ÿ váº£ máº·t / ná»¯ cÆ°á»ng thÆ°Æ¡ng chiáº¿n' },
-  { value: 'hon-nhan-phan-boi-huy-hon-chong-cu-hoi-han', label: 'HÃ´n nhÃ¢n pháº£n bá»™i / há»§y hÃ´n / chá»“ng cÅ© há»‘i háº­n' },
-  { value: 'hao-mon-lien-hon', label: 'HÃ o mÃ´n liÃªn hÃ´n' },
-  { value: 'tra-thu-do-thi', label: 'Tráº£ thÃ¹ Ä‘Ã´ thá»‹' },
+  { value: 'hon-nhan-phan-boi-ngoai-tinh', label: 'Hôn nhân phản bội / ngoại tình' },
+  { value: 'cong-so-va-mat-nu-cuong-thuong-chien', label: 'Công sở vả mặt / nữ cường thương chiến' },
+  { value: 'hon-nhan-phan-boi-huy-hon-chong-cu-hoi-han', label: 'Hôn nhân phản bội / hủy hôn / chồng cũ hối hận' },
+  { value: 'hao-mon-lien-hon', label: 'Hào môn liên hôn' },
+  { value: 'tra-thu-do-thi', label: 'Trả thù đô thị' },
 ]
 
 const modeOptions: Option[] = [
-  { value: 'chapter', label: 'Táº¡o chÆ°Æ¡ng truyá»‡n' },
-  { value: 'story-plan', label: 'Táº¡o dÃ n Ã½ truyá»‡n' },
+  { value: 'chapter', label: 'Tạo chương truyện' },
+  { value: 'story-plan', label: 'Tạo dàn ý truyện' },
 ]
 
 const providerOptions: Option[] = [
@@ -50,31 +50,31 @@ const providerOptions: Option[] = [
 ]
 
 const moduleOptions: Option[] = [
-  { value: 'female-urban-viral', label: 'Ná»¯ táº§n Ä‘Ã´ thá»‹ viral Trung Quá»‘c' },
+  { value: 'female-urban-viral', label: 'Nữ tần đô thị viral Trung Quốc' },
 ]
 
 const mainCharacterOptions: Option[] = [
-  { value: 'patient-counterattack', label: 'Nháº«n nhá»‹n rá»“i pháº£n cÃ´ng' },
-  { value: 'cold-sharp', label: 'Láº¡nh lÃ¹ng sáº¯c bÃ©n' },
-  { value: 'business-queen', label: 'Ná»¯ cÆ°á»ng thÆ°Æ¡ng chiáº¿n' },
-  { value: 'hidden-heiress', label: 'GiÃ u ngáº§m / thÃ¢n pháº­n áº©n' },
-  { value: 'betrayed-bride', label: 'CÃ´ dÃ¢u bá»‹ pháº£n bá»™i' },
+  { value: 'patient-counterattack', label: 'Nhẫn nhịn rồi phản công' },
+  { value: 'cold-sharp', label: 'Lạnh lùng sắc bén' },
+  { value: 'business-queen', label: 'Nữ cường thương chiến' },
+  { value: 'hidden-heiress', label: 'Giàu ngầm / thân phận ẩn' },
+  { value: 'betrayed-bride', label: 'Cô dâu bị phản bội' },
 ]
 
 const chapterLengthOptions: Option[] = [
-  { value: 'short', label: 'Ngáº¯n 1.800â€“2.500 kÃ½ tá»±' },
-  { value: 'medium', label: 'Vá»«a 2.500â€“3.500 kÃ½ tá»±' },
-  { value: 'long', label: 'DÃ i 3.500â€“4.500 kÃ½ tá»±' },
+  { value: 'short', label: 'Ngắn 1.800–2.500 ký tự' },
+  { value: 'medium', label: 'Vừa 2.500–3.500 ký tự' },
+  { value: 'long', label: 'Dài 3.500–4.500 ký tự' },
 ]
 
 const cliffhangerOptions: Option[] = [
-  { value: 'new-evidence', label: 'Báº±ng chá»©ng má»›i xuáº¥t hiá»‡n' },
-  { value: 'villain-counterattack', label: 'Pháº£n diá»‡n pháº£n cÃ´ng' },
-  { value: 'hot-search', label: 'Hot search bÃ¹ng ná»•' },
-  { value: 'key-character', label: 'NhÃ¢n váº­t quan trá»ng xuáº¥t hiá»‡n' },
-  { value: 'face-slap-line', label: 'Ná»¯ chÃ­nh tung cÃ¢u váº£ máº·t' },
-  { value: 'secret-message-camera', label: 'Tin nháº¯n / camera bÃ­ máº­t' },
-  { value: 'legal-reversal', label: 'Há»£p Ä‘á»“ng / phÃ¡p lÃ½ Ä‘áº£o chiá»u' },
+  { value: 'new-evidence', label: 'Bằng chứng mới xuất hiện' },
+  { value: 'villain-counterattack', label: 'Phản diện phản công' },
+  { value: 'hot-search', label: 'Hot search bùng nổ' },
+  { value: 'key-character', label: 'Nhân vật quan trọng xuất hiện' },
+  { value: 'face-slap-line', label: 'Nữ chính tung câu vả mặt' },
+  { value: 'secret-message-camera', label: 'Tin nhắn / camera bí mật' },
+  { value: 'legal-reversal', label: 'Hợp đồng / pháp lý đảo chiều' },
 ]
 
 const coverStyleOptions: Option[] = [
@@ -146,7 +146,7 @@ function buildStoryPlanMock({
   const idea =
     form.promptIdea.trim() ||
     selectedStory?.title ||
-    'Má»™t ná»¯ chÃ­nh bá»‹ pháº£n bá»™i trong hÃ´n lá»… vÃ  báº¯t Ä‘áº§u pháº£n cÃ´ng.'
+    'Một nữ chính bị phản bội trong hôn lễ và bắt đầu phản công.'
 
   const categoryLabel = findLabel(categoryOptions, form.category)
   const styleLabel = findLabel(mainCharacterOptions, form.mainCharacterStyle)
@@ -155,64 +155,64 @@ function buildStoryPlanMock({
 
   return `# STORY PLAN
 
-## TÃªn truyá»‡n
-${selectedStory?.title || 'Sau Khi Bá»‹ Pháº£n Bá»™i, TÃ´i Khiáº¿n Cáº£ NhÃ  Há» Quá»³ Xin Lá»—i'}
+## Tên truyện
+${selectedStory?.title || 'Sau Khi Bị Phản Bội, Tôi Khiến Cả Nhà Họ Quỳ Xin Lỗi'}
 
-## CÃ´ng thá»©c viáº¿t
-Ná»¯ táº§n Ä‘Ã´ thá»‹ viral Trung Quá»‘c
+## Công thức viết
+Nữ tần đô thị viral Trung Quốc
 
-## Thá»ƒ loáº¡i
+## Thể loại
 ${categoryLabel}
 
-## Bá»‘i cáº£nh
-Trung Quá»‘c hiá»‡n Ä‘áº¡i, táº­p Ä‘oÃ n, hÃ o mÃ´n, Weibo/Douyin/hot search, tiá»n tá»‡ tá»‡/RMB.
+## Bối cảnh
+Trung Quốc hiện đại, tập đoàn, hào môn, Weibo/Douyin/hot search, tiền tệ tệ/RMB.
 
-## Ã tÆ°á»Ÿng chÃ­nh
+## Ý tưởng chính
 ${idea}
 
 ## Hook
-Ngay trong khoáº£nh kháº¯c tÃ´i bá»‹ Ã©p cÃºi Ä‘áº§u nháº­n lá»—i, má»™t Ä‘oáº¡n báº±ng chá»©ng chÆ°a tá»«ng cÃ´ng bá»‘ báº¯t Ä‘áº§u Ä‘Æ°á»£c gá»­i tá»›i Ä‘iá»‡n thoáº¡i cá»§a tá»«ng ngÆ°á»i trong phÃ²ng.
+Ngay trong khoảnh khắc tôi bị ép cúi đầu nhận lỗi, một đoạn bằng chứng chưa từng công bố bắt đầu được gửi tới điện thoại của từng người trong phòng.
 
-## TÃ³m táº¯t
-Ná»¯ chÃ­nh thuá»™c kiá»ƒu "${styleLabel}", ban Ä‘áº§u bá»‹ pháº£n bá»™i, bá»‹ gaslight vÃ  bá»‹ Ä‘áº©y vÃ o tháº¿ máº¥t máº·t cÃ´ng khai. NhÆ°ng cÃ´ khÃ´ng tung toÃ n bá»™ báº±ng chá»©ng ngay. CÃ´ giá»¯ láº¡i Ä‘Ã²n chÃ­ máº¡ng, Ä‘á»ƒ pháº£n diá»‡n tá»± Ä‘Ã o há»‘ qua tá»«ng chÆ°Æ¡ng.
+## Tóm tắt
+Nữ chính thuộc kiểu "${styleLabel}", ban đầu bị phản bội, bị gaslight và bị đẩy vào thế mất mặt công khai. Nhưng cô không tung toàn bộ bằng chứng ngay. Cô giữ lại đòn chí mạng, để phản diện tự đào hố qua từng chương.
 
-## NhÃ¢n váº­t
-- Ná»¯ chÃ­nh: xÆ°ng tÃ´i, ${styleLabel}, cÃ ng vá» sau cÃ ng láº¡nh vÃ  kiá»ƒm soÃ¡t tháº¿ cá»¥c.
-- Pháº£n diá»‡n chÃ­nh: ngÆ°á»i pháº£n bá»™i/táº­p Ä‘oÃ n/hÃ o mÃ´n Ä‘ang cá»‘ dÃ¹ng quyá»n lá»±c vÃ  dÆ° luáº­n Ã©p ná»¯ chÃ­nh im láº·ng.
-- NhÃ¢n váº­t há»— trá»£: chá»‰ há»— trá»£ thÃ´ng tin/phÃ¡p lÃ½, khÃ´ng tháº¯ng thay ná»¯ chÃ­nh.
+## Nhân vật
+- Nữ chính: xưng tôi, ${styleLabel}, càng về sau càng lạnh và kiểm soát thế cục.
+- Phản diện chính: người phản bội/tập đoàn/hào môn đang cố dùng quyền lực và dư luận ép nữ chính im lặng.
+- Nhân vật hỗ trợ: chỉ hỗ trợ thông tin/pháp lý, không thắng thay nữ chính.
 
-## MÃ¢u thuáº«n cá»‘t lÃµi
-Danh dá»±, tÃ i sáº£n, cá»• pháº§n/há»£p Ä‘á»“ng vÃ  sá»± pháº£n bá»™i cÃ´ng khai.
+## Mâu thuẫn cốt lõi
+Danh dự, tài sản, cổ phần/hợp đồng và sự phản bội công khai.
 
 ## Revenge Weapon
-Camera, ghi Ã¢m, há»£p Ä‘á»“ng, Ä‘iá»u khoáº£n phÃ¡p lÃ½, hot search Weibo vÃ  má»™t nhÃ¢n chá»©ng chÆ°a lá»™ máº·t.
+Camera, ghi âm, hợp đồng, điều khoản pháp lý, hot search Weibo và một nhân chứng chưa lộ mặt.
 
 ## Evidence Pacing
-- 0â€“25%: chá»‰ cÃ i dáº¥u hiá»‡u.
-- 25â€“50%: tháº¯ng nhá», hÃ© báº±ng chá»©ng phá»¥.
-- 50â€“75%: pháº£n diá»‡n pháº£n cÃ´ng, báº±ng chá»©ng máº¡nh xuáº¥t hiá»‡n má»™t pháº§n.
-- 75â€“90%: váº£ máº·t cÃ´ng khai.
-- 90â€“100%: payoff cuá»‘i, pháº£n diá»‡n tráº£ giÃ¡.
+- 0–25%: chỉ cài dấu hiệu.
+- 25–50%: thắng nhỏ, hé bằng chứng phụ.
+- 50–75%: phản diện phản công, bằng chứng mạnh xuất hiện một phần.
+- 75–90%: vả mặt công khai.
+- 90–100%: payoff cuối, phản diện trả giá.
 
-## Äá»™ dÃ i chÆ°Æ¡ng má»¥c tiÃªu
+## Độ dài chương mục tiêu
 ${lengthLabel}
 
-## Kiá»ƒu káº¿t chÆ°Æ¡ng Æ°u tiÃªn
+## Kiểu kết chương ưu tiên
 ${cliffLabel}
 
-## Má»©c uáº¥t á»©c
+## Mức uất ức
 ${form.humiliationLevel}/5
 
-## Má»©c tráº£ thÃ¹
+## Mức trả thù
 ${form.revengeIntensity}/5
 
-## Outline 6 chÆ°Æ¡ng
-ChÆ°Æ¡ng 1: Opening Shock â€” ná»¯ chÃ­nh bá»‹ pháº£n bá»™i cÃ´ng khai, giá»¯ láº¡i báº±ng chá»©ng Ä‘áº§u tiÃªn.
-ChÆ°Æ¡ng 2: Gaslighting â€” pháº£n diá»‡n Ã©p ná»¯ chÃ­nh nháº­n lá»—i, dÆ° luáº­n báº¯t Ä‘áº§u nghiÃªng sai hÆ°á»›ng.
-ChÆ°Æ¡ng 3: First Counterattack â€” ná»¯ chÃ­nh tung má»™t máº£nh báº±ng chá»©ng nhá», pháº£n diá»‡n chÆ°a sá»¥p.
-ChÆ°Æ¡ng 4: Escalation â€” pháº£n diá»‡n pháº£n cÃ´ng báº±ng truyá»n thÃ´ng báº©n/há»£p Ä‘á»“ng giáº£.
-ChÆ°Æ¡ng 5: Public Face-Slap â€” báº±ng chá»©ng máº¡nh lÃªn hot search, Ä‘á»“ng minh pháº£n diá»‡n dao Ä‘á»™ng.
-ChÆ°Æ¡ng 6: Final Payoff â€” ná»¯ chÃ­nh tung Ä‘Ã²n cuá»‘i, pháº£n diá»‡n máº¥t danh dá»±/tÃ i sáº£n/quyá»n lá»±c.`
+## Outline 6 chương
+Chương 1: Opening Shock — nữ chính bị phản bội công khai, giữ lại bằng chứng đầu tiên.
+Chương 2: Gaslighting — phản diện ép nữ chính nhận lỗi, dư luận bắt đầu nghiêng sai hướng.
+Chương 3: First Counterattack — nữ chính tung một mảnh bằng chứng nhỏ, phản diện chưa sụp.
+Chương 4: Escalation — phản diện phản công bằng truyền thông bẩn/hợp đồng giả.
+Chương 5: Public Face-Slap — bằng chứng mạnh lên hot search, đồng minh phản diện dao động.
+Chương 6: Final Payoff — nữ chính tung đòn cuối, phản diện mất danh dự/tài sản/quyền lực.`
 }
 
 function buildChapterMock({
@@ -227,168 +227,168 @@ function buildChapterMock({
   const idea =
     form.promptIdea.trim() ||
     selectedStory?.title ||
-    'Má»™t ná»¯ chÃ­nh bá»‹ pháº£n bá»™i trong hÃ´n lá»… vÃ  báº¯t Ä‘áº§u pháº£n cÃ´ng.'
+    'Một nữ chính bị phản bội trong hôn lễ và bắt đầu phản công.'
 
   const categoryLabel = findLabel(categoryOptions, form.category)
   const styleLabel = findLabel(mainCharacterOptions, form.mainCharacterStyle)
   const lengthLabel = findLabel(chapterLengthOptions, form.chapterLength)
   const cliffLabel = findLabel(cliffhangerOptions, form.cliffhangerType)
 
-  const baseScene = `TÃ´i Ä‘á»©ng giá»¯a sáº£nh tiá»‡c khÃ¡ch sáº¡n nÄƒm sao á»Ÿ ThÆ°á»£ng Háº£i, vÃ¡y cÆ°á»›i cÃ²n chÆ°a ká»‹p thay, Ä‘Ã£ nghe Lá»¥c ThÃ nh nÃ³i trÆ°á»›c máº·t hÆ¡n ba trÄƒm khÃ¡ch má»i:
+  const baseScene = `Tôi đứng giữa sảnh tiệc khách sạn năm sao ở Thượng Hải, váy cưới còn chưa kịp thay, đã nghe Lục Thành nói trước mặt hơn ba trăm khách mời:
 
-â€œLÃ¢m An NhiÃªn, cÃ´ Ä‘á»«ng lÃ m loáº¡n ná»¯a. NgÆ°á»i tÃ´i yÃªu tháº­t sá»± khÃ´ng pháº£i cÃ´.â€
+“Lâm An Nhiên, cô đừng làm loạn nữa. Người tôi yêu thật sự không phải cô.”
 
-Cáº£ sáº£nh im phÄƒng pháº¯c.
+Cả sảnh im phăng phắc.
 
-MÃ n hÃ¬nh lá»›n sau lÆ°ng anh ta váº«n Ä‘ang chiáº¿u áº£nh cÆ°á»›i cá»§a chÃºng tÃ´i. CÃ²n ngÆ°á»i phá»¥ ná»¯ Ä‘Æ°á»£c anh ta náº¯m tay kÃ©o lÃªn sÃ¢n kháº¥u láº¡i chÃ­nh lÃ  Háº¡ Máº¡n Nhi, cÃ´ em gÃ¡i nuÃ´i mÃ  máº¹ tÃ´i tá»«ng báº¯t tÃ´i nhÆ°á»ng phÃ²ng, nhÆ°á»ng vÃ¡y, nhÆ°á»ng cáº£ suáº¥t du há»c.
+Màn hình lớn sau lưng anh ta vẫn đang chiếu ảnh cưới của chúng tôi. Còn người phụ nữ được anh ta nắm tay kéo lên sân khấu lại chính là Hạ Mạn Nhi, cô em gái nuôi mà mẹ tôi từng bắt tôi nhường phòng, nhường váy, nhường cả suất du học.
 
-CÃ´ ta cÃºi Ä‘áº§u, nÆ°á»›c máº¯t rÆ¡i Ä‘Ãºng lÃºc.
+Cô ta cúi đầu, nước mắt rơi đúng lúc.
 
-â€œChá»‹, em xin lá»—i. NhÆ°ng tÃ¬nh yÃªu khÃ´ng thá»ƒ Ã©p buá»™c.â€
+“Chị, em xin lỗi. Nhưng tình yêu không thể ép buộc.”
 
-Má»™t cÃ¢u nháº¹ tÃªnh, láº¡i Ä‘á»§ biáº¿n tÃ´i thÃ nh ngÆ°á»i thá»© ba trong chÃ­nh lá»… Ä‘Ã­nh hÃ´n cá»§a mÃ¬nh.
+Một câu nhẹ tênh, lại đủ biến tôi thành người thứ ba trong chính lễ đính hôn của mình.
 
-DÆ°á»›i sÃ¢n kháº¥u, Lá»¥c phu nhÃ¢n láº¡nh máº·t Ä‘áº·t chÃ©n trÃ  xuá»‘ng.
+Dưới sân khấu, Lục phu nhân lạnh mặt đặt chén trà xuống.
 
-â€œAn NhiÃªn, nhÃ  há» Lá»¥c cáº§n thá»ƒ diá»‡n. Náº¿u cÃ´ cÃ²n hiá»ƒu chuyá»‡n, hÃ£y tá»± bÆ°á»›c xuá»‘ng.â€
+“An Nhiên, nhà họ Lục cần thể diện. Nếu cô còn hiểu chuyện, hãy tự bước xuống.”
 
-TÃ´i nhÃ¬n tá»«ng gÆ°Æ¡ng máº·t quen thuá»™c.
+Tôi nhìn từng gương mặt quen thuộc.
 
-NgÆ°á»i tá»«ng nÃ³i tÃ´i lÃ  con dÃ¢u duy nháº¥t cá»§a nhÃ  há» Lá»¥c, giá» trÃ¡nh Ã¡nh máº¯t tÃ´i.
+Người từng nói tôi là con dâu duy nhất của nhà họ Lục, giờ tránh ánh mắt tôi.
 
-NgÆ°á»i tá»«ng nháº­n cá»• pháº§n há»“i mÃ´n cá»§a tÃ´i, giá» báº£o tÃ´i Ä‘á»«ng lÃ m máº¥t máº·t gia tá»™c.
+Người từng nhận cổ phần hồi môn của tôi, giờ bảo tôi đừng làm mất mặt gia tộc.
 
-TÃ´i chá»£t báº­t cÆ°á»i.
+Tôi chợt bật cười.
 
-KhÃ´ng lá»›n.
+Không lớn.
 
-NhÆ°ng Ä‘á»§ Ä‘á»ƒ micro trÆ°á»›c máº·t thu láº¡i.
+Nhưng đủ để micro trước mặt thu lại.
 
-Lá»¥c ThÃ nh nhÃ­u mÃ y. â€œCÃ´ cÆ°á»i cÃ¡i gÃ¬?â€
+Lục Thành nhíu mày. “Cô cười cái gì?”
 
-TÃ´i rÃºt Ä‘iá»‡n thoáº¡i khá»i tÃºi xÃ¡ch, má»Ÿ tin nháº¯n vá»«a nháº­n Ä‘Æ°á»£c tá»« phÃ²ng phÃ¡p vá»¥ Váº¡n Thá»‹nh.
+Tôi rút điện thoại khỏi túi xách, mở tin nhắn vừa nhận được từ phòng pháp vụ Vạn Thịnh.
 
-Trong Ä‘Ã³ cÃ³ má»™t dÃ²ng ngáº¯n:
+Trong đó có một dòng ngắn:
 
-â€œHá»£p Ä‘á»“ng liÃªn minh giá»¯a Lá»¥c thá»‹ vÃ  Váº¡n Thá»‹nh cÃ³ Ä‘iá»u khoáº£n há»§y ngang náº¿u bÃªn Lá»¥c thá»‹ vi pháº¡m Ä‘áº¡o Ä‘á»©c thÆ°Æ¡ng nghiá»‡p trong sá»± kiá»‡n cÃ´ng khai.â€
+“Hợp đồng liên minh giữa Lục thị và Vạn Thịnh có điều khoản hủy ngang nếu bên Lục thị vi phạm đạo đức thương nghiệp trong sự kiện công khai.”
 
-TÃ´i chÆ°a báº¥m gá»­i.
+Tôi chưa bấm gửi.
 
-ChÆ°a pháº£i lÃºc.
+Chưa phải lúc.
 
-Má»™t con bÃ i Ä‘á»§ lÃ m há» cháº£y mÃ¡u, nhÆ°ng chÆ°a Ä‘á»§ Ä‘á»ƒ káº¿t thÃºc.
+Một con bài đủ làm họ chảy máu, nhưng chưa đủ để kết thúc.
 
-TÃ´i ngáº©ng Ä‘áº§u nhÃ¬n Háº¡ Máº¡n Nhi.
+Tôi ngẩng đầu nhìn Hạ Mạn Nhi.
 
-â€œCÃ´ cháº¯c hÃ´m nay muá»‘n Ä‘á»©ng trÃªn sÃ¢n kháº¥u nÃ y?â€
+“Cô chắc hôm nay muốn đứng trên sân khấu này?”
 
-Máº·t cÃ´ ta tráº¯ng Ä‘i trong má»™t thoÃ¡ng.
+Mặt cô ta trắng đi trong một thoáng.
 
-Ráº¥t nhanh thÃ´i.
+Rất nhanh thôi.
 
-Nhanh Ä‘áº¿n má»©c ngÆ°á»i khÃ¡c khÃ´ng nháº­n ra.
+Nhanh đến mức người khác không nhận ra.
 
-NhÆ°ng tÃ´i nháº­n ra.
+Nhưng tôi nhận ra.
 
-VÃ¬ ngÆ°á»i Ä‘ang nÃ³i dá»‘i luÃ´n sá»£ ngÆ°á»i khÃ¡c há»i Ä‘Ãºng chá»— Ä‘au.
+Vì người đang nói dối luôn sợ người khác hỏi đúng chỗ đau.
 
-Lá»¥c ThÃ nh bÆ°á»›c cháº¯n trÆ°á»›c máº·t cÃ´ ta.
+Lục Thành bước chắn trước mặt cô ta.
 
-â€œÄá»§ rá»“i. Náº¿u cÃ´ cÃ²n lÃ m loáº¡n, tÃ´i sáº½ yÃªu cáº§u báº£o vá»‡ Ä‘Æ°a cÃ´ ra ngoÃ i.â€
+“Đủ rồi. Nếu cô còn làm loạn, tôi sẽ yêu cầu bảo vệ đưa cô ra ngoài.”
 
-TÃ´i gáº­t Ä‘áº§u.
+Tôi gật đầu.
 
-â€œÄÆ°á»£c.â€
+“Được.”
 
-Rá»“i tÃ´i cáº§m micro, nhÃ¬n tháº³ng vá» phÃ­a camera livestream cá»§a khÃ¡ch sáº¡n.
+Rồi tôi cầm micro, nhìn thẳng về phía camera livestream của khách sạn.
 
-â€œVáº­y trÆ°á»›c khi tÃ´i ra ngoÃ i, tÃ´i chá»‰ há»i má»™t cÃ¢u.â€
+“Vậy trước khi tôi ra ngoài, tôi chỉ hỏi một câu.”
 
-TÃ´i dá»«ng láº¡i, nhÃ¬n cáº£ nhÃ  há» Lá»¥c.
+Tôi dừng lại, nhìn cả nhà họ Lục.
 
-â€œÄoáº¡n camera háº­u trÆ°á»ng lÃºc 19 giá» 42 phÃºt, cÃ¡c ngÆ°á»i muá»‘n tá»± cÃ´ng bá»‘, hay Ä‘á»ƒ tÃ´i cÃ´ng bá»‘?â€`
+“Đoạn camera hậu trường lúc 19 giờ 42 phút, các người muốn tự công bố, hay để tôi công bố?”`
 
   const extraMedium = `
 
-KhÃ´ng khÃ­ trong sáº£nh tiá»‡c Ä‘Ã´ng cá»©ng.
+Không khí trong sảnh tiệc đông cứng.
 
-Lá»¥c ThÃ nh vá»‘n Ä‘ang Ä‘á»‹nh giáº­t micro khá»i tay tÃ´i, bá»—ng khá»±ng láº¡i.
+Lục Thành vốn đang định giật micro khỏi tay tôi, bỗng khựng lại.
 
-Háº¡ Máº¡n Nhi náº¯m cháº·t tay Ã¡o anh ta. MÃ³ng tay cÃ´ ta báº¥m Ä‘áº¿n tráº¯ng bá»‡ch, nhÆ°ng giá»ng váº«n má»m nhÆ° nÆ°á»›c.
+Hạ Mạn Nhi nắm chặt tay áo anh ta. Móng tay cô ta bấm đến trắng bệch, nhưng giọng vẫn mềm như nước.
 
-â€œChá»‹, chá»‹ Ä‘ang nÃ³i gÃ¬ váº­y? Em khÃ´ng hiá»ƒu.â€
+“Chị, chị đang nói gì vậy? Em không hiểu.”
 
-TÃ´i nhÃ¬n cÃ´ ta.
+Tôi nhìn cô ta.
 
-â€œKhÃ´ng hiá»ƒu cÅ©ng khÃ´ng sao. Camera hiá»ƒu.â€
+“Không hiểu cũng không sao. Camera hiểu.”
 
-Tiáº¿ng bÃ n tÃ¡n báº¯t Ä‘áº§u ná»•i lÃªn nhÆ° sÃ³ng.
+Tiếng bàn tán bắt đầu nổi lên như sóng.
 
-â€œCamera gÃ¬?â€
+“Camera gì?”
 
-â€œHáº­u trÆ°á»ng lÃºc 19 giá» 42 phÃºt cháº³ng pháº£i lÃ  lÃºc cÃ´ Háº¡ máº¥t tÃ­ch sao?â€
+“Hậu trường lúc 19 giờ 42 phút chẳng phải là lúc cô Hạ mất tích sao?”
 
-â€œCÃ³ pháº£i cÃ²n chuyá»‡n khÃ¡c khÃ´ng?â€
+“Có phải còn chuyện khác không?”
 
-Lá»¥c phu nhÃ¢n láº­p tá»©c Ä‘á»©ng dáº­y.
+Lục phu nhân lập tức đứng dậy.
 
-â€œLÃ¢m An NhiÃªn, cÃ´ muá»‘n há»§y cáº£ buá»•i tiá»‡c sao?â€
+“Lâm An Nhiên, cô muốn hủy cả buổi tiệc sao?”
 
-TÃ´i quay sang bÃ  ta, bÃ¬nh tÄ©nh Ä‘áº¿n má»©c chÃ­nh tÃ´i cÅ©ng tháº¥y xa láº¡.
+Tôi quay sang bà ta, bình tĩnh đến mức chính tôi cũng thấy xa lạ.
 
-â€œKhÃ´ng pháº£i tÃ´i há»§y.â€
+“Không phải tôi hủy.”
 
-TÃ´i chá»‰ vÃ o mÃ n hÃ¬nh lá»›n phÃ­a sau.
+Tôi chỉ vào màn hình lớn phía sau.
 
-â€œLÃ  cÃ¡c ngÆ°á»i tá»± dá»±ng sÃ¢n kháº¥u nÃ y lÃªn.â€`
+“Là các người tự dựng sân khấu này lên.”`
 
   const extraLong = `
 
-Má»™t nhÃ¢n viÃªn khÃ¡ch sáº¡n Ã´m mÃ¡y tÃ­nh cháº¡y tá»« phÃ­a sau cÃ¡nh gÃ  ra, máº·t tÃ¡i mÃ©t.
+Một nhân viên khách sạn ôm máy tính chạy từ phía sau cánh gà ra, mặt tái mét.
 
-â€œLá»¥c tá»•ng, há»‡ thá»‘ng livestream bá»‹ ngÆ°á»i xem report quÃ¡ nhiá»u, phÃ²ng ká»¹ thuáº­t há»i cÃ³ cáº§n táº¯t khÃ´ng?â€
+“Lục tổng, hệ thống livestream bị người xem report quá nhiều, phòng kỹ thuật hỏi có cần tắt không?”
 
-Táº¯t?
+Tắt?
 
-Muá»™n rá»“i.
+Muộn rồi.
 
-TrÃªn Douyin, Ä‘oáº¡n Lá»¥c ThÃ nh náº¯m tay Háº¡ Máº¡n Nhi tuyÃªn bá»‘ há»§y hÃ´n Ä‘Ã£ bá»‹ cáº¯t thÃ nh hÃ ng chá»¥c video.
+Trên Douyin, đoạn Lục Thành nắm tay Hạ Mạn Nhi tuyên bố hủy hôn đã bị cắt thành hàng chục video.
 
-TrÃªn Weibo, hashtag #Lá»¥cThá»‹Há»§yHÃ´nTrÃªnSÃ¢nKháº¥u Ä‘ang leo lÃªn hot search khu vá»±c ThÆ°á»£ng Háº£i.
+Trên Weibo, hashtag #LụcThịHủyHônTrênSânKhấu đang leo lên hot search khu vực Thượng Hải.
 
-TÃ´i nhÃ¬n mÃ n hÃ¬nh Ä‘iá»‡n thoáº¡i.
+Tôi nhìn màn hình điện thoại.
 
-BÃ¬nh luáº­n cháº¡y nhanh Ä‘áº¿n má»©c gáº§n nhÆ° khÃ´ng Ä‘á»c ká»‹p.
+Bình luận chạy nhanh đến mức gần như không đọc kịp.
 
-â€œÄáº¡i tiá»ƒu thÆ° bá»‹ cÆ°á»›p hÃ´n phu ngay trong lá»… Ä‘Ã­nh hÃ´n?â€
+“Đại tiểu thư bị cướp hôn phu ngay trong lễ đính hôn?”
 
-â€œEm gÃ¡i nuÃ´i? Láº¡i lÃ  em gÃ¡i nuÃ´i?â€
+“Em gái nuôi? Lại là em gái nuôi?”
 
-â€œCamera háº­u trÆ°á»ng lÃ  gÃ¬? Mau cÃ´ng bá»‘!â€
+“Camera hậu trường là gì? Mau công bố!”
 
-Lá»¥c ThÃ nh cuá»‘i cÃ¹ng cÅ©ng nháº­n ra chuyá»‡n khÃ´ng cÃ²n náº±m trong táº§m kiá»ƒm soÃ¡t.
+Lục Thành cuối cùng cũng nhận ra chuyện không còn nằm trong tầm kiểm soát.
 
-Anh ta nghiáº¿n rÄƒng, háº¡ giá»ng chá»‰ Ä‘á»§ cho tÃ´i nghe.
+Anh ta nghiến răng, hạ giọng chỉ đủ cho tôi nghe.
 
-â€œAn NhiÃªn, cÃ´ muá»‘n gÃ¬?â€
+“An Nhiên, cô muốn gì?”
 
-TÃ´i cÆ°á»i nháº¡t.
+Tôi cười nhạt.
 
-CÃ¢u nÃ y, Ä‘Ã¡ng láº½ anh ta pháº£i há»i sá»›m hÆ¡n.
+Câu này, đáng lẽ anh ta phải hỏi sớm hơn.
 
-TrÆ°á»›c khi dÃ¹ng tÃ i sáº£n há»“i mÃ´n cá»§a tÃ´i Ä‘á»ƒ Ä‘á»•i láº¥y dá»± Ã¡n Nam Cáº£ng.
+Trước khi dùng tài sản hồi môn của tôi để đổi lấy dự án Nam Cảng.
 
-TrÆ°á»›c khi Ä‘á»ƒ Háº¡ Máº¡n Nhi máº·c chiáº¿c vÃ¡y tÃ´i Ä‘áº·t riÃªng.
+Trước khi để Hạ Mạn Nhi mặc chiếc váy tôi đặt riêng.
 
-TrÆ°á»›c khi biáº¿n tÃ´i thÃ nh trÃ² cÆ°á»i trÆ°á»›c toÃ n bá»™ ThÆ°á»£ng Háº£i.
+Trước khi biến tôi thành trò cười trước toàn bộ Thượng Hải.
 
-TÃ´i Ä‘áº·t Ä‘iá»‡n thoáº¡i xuá»‘ng cáº¡nh micro.
+Tôi đặt điện thoại xuống cạnh micro.
 
-â€œLá»¥c ThÃ nh, tÃ´i tá»«ng muá»‘n má»™t lá»i giáº£i thÃ­ch.â€
+“Lục Thành, tôi từng muốn một lời giải thích.”
 
-TÃ´i nhÃ¬n anh ta, tá»«ng chá»¯ ráº¥t cháº­m.
+Tôi nhìn anh ta, từng chữ rất chậm.
 
-â€œBÃ¢y giá» tÃ´i muá»‘n thanh toÃ¡n.â€`
+“Bây giờ tôi muốn thanh toán.”`
 
   let body = baseScene
 
@@ -400,41 +400,41 @@ TÃ´i nhÃ¬n anh ta, tá»«ng chá»¯ ráº¥t cháº­m.
     body += extraMedium + extraLong
   }
 
-  return `# Báº¢N Äá»ŒC CHO Äá»˜C GIáº¢
+  return `# BẢN ĐỌC CHO ĐỘC GIẢ
 
-# ChÆ°Æ¡ng â€” ${selectedStory?.title || 'CÃ´ DÃ¢u Bá»‹ Pháº£n Bá»™i'}
+# Chương — ${selectedStory?.title || 'Cô Dâu Bị Phản Bội'}
 
 ${body}
 
 ---
 
-# Báº¢N PHÃ‚N TÃCH Ká»¸ THUáº¬T / KHÃ”NG ÄÄ‚NG
+# BẢN PHÂN TÍCH KỸ THUẬT / KHÔNG ĐĂNG
 
 === STORY PROGRESS CHECK ===
 - Mode: ${form.mode}
-- Ã tÆ°á»Ÿng: ${idea}
-- Thá»ƒ loáº¡i: ${categoryLabel}
-- Kiá»ƒu ná»¯ chÃ­nh: ${styleLabel}
-- Äá»™ dÃ i chÆ°Æ¡ng: ${lengthLabel}
-- Kiá»ƒu káº¿t chÆ°Æ¡ng: ${cliffLabel}
-- Má»©c uáº¥t á»©c: ${form.humiliationLevel}/5
-- Má»©c tráº£ thÃ¹: ${form.revengeIntensity}/5
+- Ý tưởng: ${idea}
+- Thể loại: ${categoryLabel}
+- Kiểu nữ chính: ${styleLabel}
+- Độ dài chương: ${lengthLabel}
+- Kiểu kết chương: ${cliffLabel}
+- Mức uất ức: ${form.humiliationLevel}/5
+- Mức trả thù: ${form.revengeIntensity}/5
 
 === STORY MEMORY ===
-- Ná»¯ chÃ­nh bá»‹ há»§y hÃ´n cÃ´ng khai táº¡i khÃ¡ch sáº¡n nÄƒm sao á»Ÿ ThÆ°á»£ng Háº£i.
-- Lá»¥c ThÃ nh cÃ´ng khai chá»n Háº¡ Máº¡n Nhi.
-- Ná»¯ chÃ­nh giá»¯ láº¡i camera háº­u trÆ°á»ng lÃºc 19 giá» 42 phÃºt, chÆ°a tung toÃ n bá»™.
+- Nữ chính bị hủy hôn công khai tại khách sạn năm sao ở Thượng Hải.
+- Lục Thành công khai chọn Hạ Mạn Nhi.
+- Nữ chính giữ lại camera hậu trường lúc 19 giờ 42 phút, chưa tung toàn bộ.
 
 === PAYOFF SETUP TRACKER ===
-- Setup Ä‘Ã£ cÃ i: camera háº­u trÆ°á»ng, há»£p Ä‘á»“ng liÃªn minh Lá»¥c thá»‹ â€“ Váº¡n Thá»‹nh, hot search Weibo.
-- Payoff chÆ°a thá»±c hiá»‡n: cÃ´ng bá»‘ toÃ n bá»™ camera, Ä‘iá»u khoáº£n há»§y há»£p Ä‘á»“ng, pháº£n diá»‡n máº¥t quyá»n/danh tiáº¿ng.
+- Setup đã cài: camera hậu trường, hợp đồng liên minh Lục thị – Vạn Thịnh, hot search Weibo.
+- Payoff chưa thực hiện: công bố toàn bộ camera, điều khoản hủy hợp đồng, phản diện mất quyền/danh tiếng.
 
 === EVIDENCE PACING TRACKER ===
-- Chá»‰ hÃ© báº±ng chá»©ng, chÆ°a tung Tier 4.
-- Giá»¯ Ä‘áº¡n cuá»‘i cho giai Ä‘oáº¡n public face-slap/final payoff.
+- Chỉ hé bằng chứng, chưa tung Tier 4.
+- Giữ đạn cuối cho giai đoạn public face-slap/final payoff.
 
 === CONFLICT ESCALATION LEDGER ===
-- Conflict tÄƒng tá»« pháº£n bá»™i cÃ¡ nhÃ¢n lÃªn scandal cÃ´ng khai + nguy cÆ¡ thÆ°Æ¡ng chiáº¿n.`
+- Conflict tăng từ phản bội cá nhân lên scandal công khai + nguy cơ thương chiến.`
 }
 
 export default function AIGeneratePanel() {
@@ -532,7 +532,7 @@ export default function AIGeneratePanel() {
       } catch {
         if (!ignore) {
           setStoryOptions([])
-          setMessage('KhÃ´ng load Ä‘Æ°á»£c danh sÃ¡ch truyá»‡n Ä‘á»ƒ lÆ°u draft.')
+          setMessage('Không load được danh sách truyện để lưu draft.')
         }
       }
     }
@@ -591,18 +591,18 @@ export default function AIGeneratePanel() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data?.error || 'OpenAI API lá»—i.')
+        throw new Error(data?.error || 'OpenAI API lỗi.')
       }
 
       if (!data?.text) {
-        throw new Error('OpenAI khÃ´ng tráº£ ná»™i dung.')
+        throw new Error('OpenAI không trả nội dung.')
       }
 
       setPreview(data.text)
-      setMessage(`ÄÃ£ generate báº±ng OpenAI API${data.model ? ` (${data.model})` : ''}.`)
+      setMessage(`Đã generate bằng OpenAI API${data.model ? ` (${data.model})` : ''}.`)
     } catch (err: any) {
       setMessage(
-        `Generate tháº¥t báº¡i: ${String(err?.message ?? err)}. Náº¿u Ä‘ang cháº¡y localhost báº±ng npm run dev thÃ¬ /api cÃ³ thá»ƒ chÆ°a cháº¡y; dÃ¹ng vercel dev hoáº·c deploy lÃªn Vercel Ä‘á»ƒ test API.`
+        `Generate thất bại: ${String(err?.message ?? err)}. Nếu đang chạy localhost bằng npm run dev thì /api có thể chưa chạy; dùng vercel dev hoặc deploy lên Vercel để test API.`
       )
     } finally {
       setLoading(false)
@@ -644,19 +644,19 @@ export default function AIGeneratePanel() {
     const chapterLine =
       readerOnly
         .split('\n')
-        .find((line) => line.trim().startsWith('# ChÆ°Æ¡ng')) ||
+        .find((line) => line.trim().startsWith('# Chương')) ||
       selectedStory?.title ||
-      'ChÆ°Æ¡ng nhÃ¡p AI'
+      'Chương nháp AI'
 
     return chapterLine
       .replace(/^#+\s*/, '')
-      .replace(/^ChÆ°Æ¡ng\s*[â€”-]\s*/i, '')
+      .replace(/^Chương\s*[—-]\s*/i, '')
       .trim()
   }
   
   async function saveDraft(source: 'insert' | 'draft') {
     if (!preview.trim()) {
-      setMessage('ChÆ°a cÃ³ ná»™i dung Ä‘á»ƒ lÆ°u.')
+      setMessage('Chưa có nội dung để lưu.')
       return
     }
 
@@ -680,7 +680,7 @@ export default function AIGeneratePanel() {
     localStorage.setItem('storyPlatform.aiWriter.chapterDraft', JSON.stringify(localPayload))
 
     if (source === 'insert') {
-      setMessage('ÄÃ£ Ä‘Æ°a ná»™i dung vÃ o draft local. CÃ³ thá»ƒ dÃ¹ng Ä‘á»ƒ Ä‘á»• vÃ o form Chapter.')
+      setMessage('Đã đưa nội dung vào draft local. Có thể dùng để đổ vào form Chapter.')
       return
     }
 
@@ -694,7 +694,7 @@ export default function AIGeneratePanel() {
         .single()
 
       if (storyError) {
-        setMessage(`KhÃ´ng tÃ¬m Ä‘Æ°á»£c truyá»‡n Ä‘Ã£ chá»n trong Supabase: ${String(storyError.message)}`)
+        setMessage(`Không tìm được truyện đã chọn trong Supabase: ${String(storyError.message)}`)
         return
       }
 
@@ -702,7 +702,7 @@ export default function AIGeneratePanel() {
     }
 
     if (!storyId) {
-      setMessage('Chá»n truyá»‡n trÆ°á»›c khi lÆ°u draft chapter vÃ o Supabase.')
+      setMessage('Chọn truyện trước khi lưu draft chapter vào Supabase.')
       return
     }
 
@@ -723,7 +723,7 @@ export default function AIGeneratePanel() {
 
         if (msg.toLowerCase().includes('status')) {
           setMessage(
-            'ChÆ°a lÆ°u Supabase Ä‘Æ°á»£c vÃ¬ báº£ng chapters thiáº¿u cá»™t status. ÄÃ£ lÆ°u backup localStorage. HÃ£y cháº¡y SQL thÃªm cá»™t status.'
+            'Chưa lưu Supabase được vì bảng chapters thiếu cột status. Đã lưu backup localStorage. Hãy chạy SQL thêm cột status.'
           )
           return
         }
@@ -731,9 +731,9 @@ export default function AIGeneratePanel() {
         throw error
       }
 
-      setMessage('ÄÃ£ lÆ°u draft chapter vÃ o Supabase.')
+      setMessage('Đã lưu draft chapter vào Supabase.')
     } catch (err: any) {
-      setMessage(`LÆ°u draft tháº¥t báº¡i: ${String(err?.message ?? err)}`)
+      setMessage(`Lưu draft thất bại: ${String(err?.message ?? err)}`)
     }
   }
  
@@ -742,7 +742,7 @@ export default function AIGeneratePanel() {
   function buildFullCoverPrompt() {
   const title =
     selectedStory?.title ||
-    'Sau Khi Bá»‹ Pháº£n Bá»™i, TÃ´i Khiáº¿n Cáº£ NhÃ  Há» Quá»³ Xin Lá»—i'
+    'Sau Khi Bị Phản Bội, Tôi Khiến Cả Nhà Họ Quỳ Xin Lỗi'
 
   const genreLabel = findLabel(categoryOptions, aiForm.category)
   const styleLabel = findLabel(mainCharacterOptions, aiForm.mainCharacterStyle)
@@ -794,7 +794,7 @@ export default function AIGeneratePanel() {
 
   Story title: "${title}"
   Genre: ${genreLabel}
-  Story engine style: Ná»¯ táº§n Ä‘Ã´ thá»‹ viral Trung Quá»‘c
+  Story engine style: Nữ tần đô thị viral Trung Quốc
   Story summary: ${summary}
 
   Visual style:
@@ -838,7 +838,7 @@ export default function AIGeneratePanel() {
       <div className="mt-5 grid gap-5">
         <div className="grid gap-2">
           <label className="grid gap-1 text-xs text-zinc-400">
-            Chá»n truyá»‡n Ä‘á»ƒ gÃ¡n vÃ o chapter / lÆ°u draft
+            Chọn truyện để gán vào chapter / lưu draft
             <select
               value={selectedStory?.id ? String(selectedStory.id) : ''}
               onChange={(event) => {
@@ -847,17 +847,17 @@ export default function AIGeneratePanel() {
                 setSelectedStory(story)
 
                 if (story) {
-                  setMessage(`ÄÃ£ chá»n truyá»‡n: ${story.title}`)
+                  setMessage(`Đã chọn truyện: ${story.title}`)
                 } else {
                   setMessage(null)
                 }
               }}
               className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-sm font-medium text-zinc-100 outline-none focus:border-amber-400"
             >
-              <option value="">-- Chá»n truyá»‡n --</option>
+              <option value="">-- Chọn truyện --</option>
               {storyOptions.map((story) => (
                 <option key={story.id} value={String(story.id)}>
-                  {story.title} â€” {story.author || 'KhÃ´ng rÃµ tÃ¡c giáº£'}
+                  {story.title} — {story.author || 'Không rõ tác giả'}
                 </option>
               ))}
             </select>
@@ -866,11 +866,11 @@ export default function AIGeneratePanel() {
           {selectedStory ? (
             <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-sm text-zinc-200">
               <div className="font-semibold text-zinc-100">
-                ÄÃ£ chá»n: {selectedStory.title}
+                Đã chọn: {selectedStory.title}
               </div>
 
               <div className="mt-1 text-xs text-zinc-400">
-                ID: {selectedStory.id || 'chÆ°a cÃ³'} â€¢ {selectedStory.author || 'KhÃ´ng rÃµ tÃ¡c giáº£'} â€¢{' '}
+                ID: {selectedStory.id || 'chưa có'} • {selectedStory.author || 'Không rõ tác giả'} •{' '}
                 {selectedStory.slug}
               </div>
 
@@ -882,7 +882,7 @@ export default function AIGeneratePanel() {
                 }}
                 className="mt-2 rounded bg-zinc-800 px-3 py-1 text-xs text-zinc-100 hover:bg-zinc-700"
               >
-                Bá» chá»n
+                Bỏ chọn
               </button>
             </div>
           ) : null}
@@ -893,7 +893,7 @@ export default function AIGeneratePanel() {
           Prompt idea
           <input
             className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-400"
-            placeholder="VÃ­ dá»¥: Bá»‹ chá»“ng sáº¯p cÆ°á»›i há»§y hÃ´n ngay trÃªn sÃ¢n kháº¥u"
+            placeholder="Ví dụ: Bị chồng sắp cưới hủy hôn ngay trên sân khấu"
             value={aiForm.promptIdea}
             onChange={(event) => updateAiForm('promptIdea', event.target.value)}
           />
@@ -901,21 +901,21 @@ export default function AIGeneratePanel() {
 
         <div className="grid gap-4 lg:grid-cols-3">
           <SelectField
-            label="Nguá»“n táº¡o ná»™i dung"
+            label="Nguồn tạo nội dung"
             value={aiForm.provider}
             options={providerOptions}
             onChange={(value) => updateAiForm('provider', value as AIFormState['provider'])}
           />
 
           <SelectField
-            label="CÃ´ng thá»©c viáº¿t truyá»‡n"
+            label="Công thức viết truyện"
             value={aiForm.moduleId}
             options={moduleOptions}
             onChange={(value) => updateAiForm('moduleId', value as AIFormState['moduleId'])}
           />
 
           <SelectField
-            label="Cháº¿ Ä‘á»™"
+            label="Chế độ"
             value={aiForm.mode}
             options={modeOptions}
             onChange={(value) => updateAiForm('mode', value as AIFormState['mode'])}
@@ -924,21 +924,21 @@ export default function AIGeneratePanel() {
 
         <div className="grid gap-4 lg:grid-cols-3">
           <SelectField
-            label="Thá»ƒ loáº¡i"
+            label="Thể loại"
             value={aiForm.category}
             options={categoryOptions}
             onChange={(value) => updateAiForm('category', value)}
           />
 
           <SelectField
-            label="Kiá»ƒu ná»¯ chÃ­nh"
+            label="Kiểu nữ chính"
             value={aiForm.mainCharacterStyle}
             options={mainCharacterOptions}
             onChange={(value) => updateAiForm('mainCharacterStyle', value)}
           />
 
           <SelectField
-            label="Äá»™ dÃ i chÆ°Æ¡ng"
+            label="Độ dài chương"
             value={aiForm.chapterLength}
             options={chapterLengthOptions}
             onChange={(value) => updateAiForm('chapterLength', value as AIFormState['chapterLength'])}
@@ -947,7 +947,7 @@ export default function AIGeneratePanel() {
 
         <div className="grid gap-4 lg:grid-cols-3">
           <div>
-            <label className="text-xs text-zinc-400">Má»©c uáº¥t á»©c</label>
+            <label className="text-xs text-zinc-400">Mức uất ức</label>
             <input
               className="mt-2 block w-full"
               type="range"
@@ -960,7 +960,7 @@ export default function AIGeneratePanel() {
           </div>
 
           <div>
-            <label className="text-xs text-zinc-400">Má»©c tráº£ thÃ¹</label>
+            <label className="text-xs text-zinc-400">Mức trả thù</label>
             <input
               className="mt-2 block w-full"
               type="range"
@@ -973,7 +973,7 @@ export default function AIGeneratePanel() {
           </div>
 
           <SelectField
-            label="Kiá»ƒu káº¿t chÆ°Æ¡ng"
+            label="Kiểu kết chương"
             value={aiForm.cliffhangerType}
             options={cliffhangerOptions}
             onChange={(value) => updateAiForm('cliffhangerType', value)}
@@ -989,8 +989,8 @@ export default function AIGeneratePanel() {
           >
             {loading
               ? aiForm.provider === 'openai'
-                ? 'Äang gá»i OpenAI API...'
-                : 'Äang táº¡o ná»™i dung mock...'
+                ? 'Đang gọi OpenAI API...'
+                : 'Đang tạo nội dung mock...'
               : 'Generate'}
           </button>
 
@@ -1005,21 +1005,21 @@ export default function AIGeneratePanel() {
 
         <div className="grid gap-4 lg:grid-cols-3">
           <SelectField
-            label="Phong cÃ¡ch bÃ¬a"
+            label="Phong cách bìa"
             value={aiForm.coverStyle}
             options={coverStyleOptions}
             onChange={(value) => updateAiForm('coverStyle', value)}
           />
 
           <SelectField
-            label="TÃ´ng mÃ u bÃ¬a"
+            label="Tông màu bìa"
             value={aiForm.colorTheme}
             options={colorThemeOptions}
             onChange={(value) => updateAiForm('colorTheme', value)}
           />
 
           <SelectField
-            label="KhÃ­ cháº¥t nhÃ¢n váº­t"
+            label="Khí chất nhân vật"
             value={aiForm.characterVibe}
             options={characterVibeOptions}
             onChange={(value) => updateAiForm('characterVibe', value)}
@@ -1034,12 +1034,12 @@ export default function AIGeneratePanel() {
             </div>
 
             <div className="text-xs text-zinc-400">
-              Sá»‘ kÃ½ tá»±: {previewStats.chars} â€¢ DÃ²ng: {previewStats.lines}
+              Số ký tự: {previewStats.chars} • Dòng: {previewStats.lines}
             </div>
           </div>
 
           <div className="max-h-[420px] w-full overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-zinc-900/40 p-4 text-sm leading-relaxed text-zinc-100 sm:max-h-[600px]">
-            {loading ? 'Äang táº¡o ná»™i dung mock...' : preview || 'ChÆ°a cÃ³ ná»™i dung.'}
+            {loading ? 'Đang tạo nội dung mock...' : preview || 'Chưa có nội dung.'}
           </div>
 
           {message ? (
@@ -1055,25 +1055,25 @@ export default function AIGeneratePanel() {
               onClick={() => saveDraft('insert')}
               className="w-full rounded-lg bg-amber-300 px-4 py-2 text-zinc-900 disabled:opacity-50 sm:w-auto"
             >
-              ÄÆ°a vÃ o form Chapter
+              Đưa vào form Chapter
             </button>
 
             <button
               type="button"
               disabled={!hasPreview}
-              onClick={() => copyText(preview, 'ÄÃ£ copy toÃ n bá»™ output.')}
+              onClick={() => copyText(preview, 'Đã copy toàn bộ output.')}
               className="w-full rounded-lg bg-zinc-800 px-4 py-2 text-zinc-100 disabled:opacity-50 sm:w-auto"
             >
-              Copy toÃ n bá»™
+              Copy toàn bộ
             </button>
 
             <button
               type="button"
               disabled={!hasPreview}
-              onClick={() => copyText(getReaderOnly(), 'ÄÃ£ copy Báº¢N Äá»ŒC CHO Äá»˜C GIáº¢.')}
+              onClick={() => copyText(getReaderOnly(), 'Đã copy BẢN ĐỌC CHO ĐỘC GIẢ.')}
               className="w-full rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 disabled:opacity-50 sm:w-auto"
             >
-              Copy Báº¢N Äá»ŒC CHO Äá»˜C GIáº¢
+              Copy BẢN ĐỌC CHO ĐỘC GIẢ
             </button>
 
             <button
@@ -1086,7 +1086,7 @@ export default function AIGeneratePanel() {
 
             <button
               type="button"
-              onClick={() => copyText(buildFullCoverPrompt(), 'ÄÃ£ copy cover prompt Ä‘áº§y Ä‘á»§.')}
+              onClick={() => copyText(buildFullCoverPrompt(), 'Đã copy cover prompt đầy đủ.')}
               className="w-full rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 sm:w-auto"
             >
               Copy Cover Prompt
