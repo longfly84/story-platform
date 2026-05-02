@@ -46,31 +46,34 @@ function getOutputText(data: any) {
   return ''
 }
 
+
 function getLengthRule(chapterLengthLabel: string) {
   const normalized = chapterLengthLabel.toLowerCase()
 
   if (normalized.includes('ngắn') || normalized.includes('short')) {
     return {
       label: chapterLengthLabel,
-      readerLength: 'khoảng 1.000–1.500 ký tự cho riêng phần BẢN ĐỌC CHO ĐỘC GIẢ',
-      maxOutputTokens: 3200,
+      readerLength: 'khoảng 1.800–2.500 ký tự cho riêng phần BẢN ĐỌC CHO ĐỘC GIẢ',
+      maxOutputTokens: 4800,
     }
   }
 
   if (normalized.includes('dài') || normalized.includes('long')) {
     return {
       label: chapterLengthLabel,
-      readerLength: 'khoảng 2.800–3.500 ký tự cho riêng phần BẢN ĐỌC CHO ĐỘC GIẢ',
-      maxOutputTokens: 7200,
+      readerLength: 'khoảng 3.500–4.500 ký tự cho riêng phần BẢN ĐỌC CHO ĐỘC GIẢ',
+      maxOutputTokens: 9000,
     }
   }
 
   return {
     label: chapterLengthLabel,
-    readerLength: 'khoảng 1.800–2.300 ký tự cho riêng phần BẢN ĐỌC CHO ĐỘC GIẢ',
-    maxOutputTokens: 5200,
+    readerLength: 'khoảng 2.500–3.500 ký tự cho riêng phần BẢN ĐỌC CHO ĐỘC GIẢ',
+    maxOutputTokens: 7200,
   }
 }
+
+
 
 function getModuleInstruction(moduleId?: string) {
   const normalized = safeText(moduleId).toLowerCase()
@@ -150,9 +153,9 @@ QUY TẮC CHẤT LƯỢNG BẮT BUỘC:
 - Không dùng bullet trong phần truyện đọc cho độc giả.
 
 QUY TẮC ĐỘ DÀI:
-- Nếu độ dài là "Ngắn", phần BẢN ĐỌC CHO ĐỘC GIẢ khoảng 1.000–1.500 ký tự.
-- Nếu độ dài là "Vừa", phần BẢN ĐỌC CHO ĐỘC GIẢ khoảng 1.800–2.300 ký tự.
-- Nếu độ dài là "Dài", phần BẢN ĐỌC CHO ĐỘC GIẢ khoảng 2.800–3.500 ký tự.
+- Nếu độ dài là "Ngắn", phần BẢN ĐỌC CHO ĐỘC GIẢ khoảng 1.800–2.500 ký tự.
+- Nếu độ dài là "Vừa", phần BẢN ĐỌC CHO ĐỘC GIẢ khoảng 2.500–3.500 ký tự.
+- Nếu độ dài là "Dài", phần BẢN ĐỌC CHO ĐỘC GIẢ khoảng 3.500–4.500 ký tự.
 - Không tính phần kỹ thuật vào độ dài chương.
 - Độ dài mục tiêu hiện tại: ${lengthRule.readerLength}.
 
