@@ -43,11 +43,11 @@ export default function AdminStoryCard({ story, coverSrc, categoryName, onPublis
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button type="button" onClick={onPublishToggle} className={`rounded px-3 py-1.5 text-xs text-white ${isDraft ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-amber-500 hover:bg-amber-400'}`}>{isDraft ? 'Publish' : 'Unpublish'}</button>
-            <button type="button" onClick={onEdit} className="rounded px-3 py-1.5 text-xs text-white bg-sky-600 hover:bg-sky-500">Edit</button>
-            <button type="button" onClick={onDelete} className="rounded px-3 py-1.5 text-xs text-white bg-red-600 hover:bg-red-500">Delete</button>
-            <button type="button" onClick={onChapters} className="rounded px-3 py-1.5 text-xs text-white bg-indigo-600 hover:bg-indigo-500">Chapters</button>
-            <a href={viewHref} className="rounded px-3 py-1.5 text-xs text-amber-300 bg-zinc-900/60 hover:underline">View</a>
+            <button type="button" onClick={onPublishToggle} className={`rounded px-3 py-1.5 text-xs font-semibold ${isDraft ? 'bg-emerald-600 text-zinc-900 hover:bg-emerald-500' : 'bg-zinc-700 text-amber-300 hover:bg-zinc-600'}`}>{isDraft ? 'Publish' : 'Unpublish'}</button>
+            <button type="button" onClick={onEdit} className="rounded px-3 py-1.5 text-xs font-semibold bg-sky-700 text-white hover:bg-sky-600">Edit</button>
+            <button type="button" onClick={onDelete} className="rounded px-3 py-1.5 text-xs font-semibold bg-red-700 text-white hover:bg-red-600">Delete</button>
+            <button type="button" onClick={onChapters} className="rounded px-3 py-1.5 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-600">Chapters</button>
+            <a href={viewHref} className="rounded px-3 py-1.5 text-xs font-semibold text-zinc-900 bg-amber-300 hover:bg-amber-200">View</a>
           </div>
         </div>
       </div>

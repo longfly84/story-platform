@@ -57,8 +57,14 @@ export default function StoriesSection({
         {filtered.length === 0 ? (
           <div className="mt-3 text-sm text-zinc-400">Không tìm thấy truyện phù hợp.</div>
         ) : filtered.map((s: any) => {
-          const rawCover = s?.cover_image ?? s?.cover_url ?? s?.image_url ?? s?.cover ?? null
-          const resolvedCover = resolveCoverUrl(rawCover)
+          // try several possible cover fields (some stories use different keys)
+          const rawCover = s?.cover_image ?? s?.coverImage ?? s?.cover_url ?? s?.image_url ?? s?.image ?? s?.cover ?? null
+          // prefer resolved public URL from helper; if that returns undefined, try resolving common fallbacks
+          let resolvedCover = resolveCoverUrl(rawCover)
+          if (!resolvedCover) {
+            const fallbackRaw = s?.cover_image ?? s?.cover_url ?? s?.image_url ?? null
+            resolvedCover = resolveCoverUrl(fallbackRaw) ?? undefined
+          }
           const coverErrored = imageErrors?.[s?.id]
           const categorySlug = Array.isArray(s.genres) ? s.genres[0] : ''
           const categoryName = categorySlug ? (categories.find((c: any) => c.slug === categorySlug)?.name ?? categorySlug) : ''

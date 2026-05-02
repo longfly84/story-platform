@@ -106,23 +106,23 @@ export default function AdminAdsManager() {
       <div className="mt-4">
         {loading ? <div>Loading...</div> : null}
         {error ? <div className="text-red-400">{error}</div> : null}
-        <div className="mt-2 grid grid-cols-1 gap-3">
-          <div className="grid grid-cols-4 gap-2 mb-2 text-sm">
-            <div className="rounded border border-zinc-800 bg-zinc-900/20 p-2 text-center">Tổng: <div className="font-semibold">{totalAds}</div></div>
-            <div className="rounded border border-zinc-800 bg-zinc-900/20 p-2 text-center">Đang bật: <div className="font-semibold">{activeAds}</div></div>
-            <div className="rounded border border-zinc-800 bg-zinc-900/20 p-2 text-center">Đang tắt: <div className="font-semibold">{inactiveAds}</div></div>
-            <div className="rounded border border-zinc-800 bg-zinc-900/20 p-2 text-center">Sidebar/Inline: <div className="font-semibold">{homeSidebarAds}/{homeInlineAds}</div></div>
-          </div>
+          <div className="mt-2 grid grid-cols-1 gap-3">
+           <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-2 text-sm">
+             <div className="rounded border border-zinc-800 bg-zinc-900/20 p-2 text-center">Tổng quảng cáo: <div className="font-semibold">{totalAds}</div></div>
+             <div className="rounded border border-zinc-800 bg-zinc-900/20 p-2 text-center">Đang bật: <div className="font-semibold">{activeAds}</div></div>
+             <div className="rounded border border-zinc-800 bg-zinc-900/20 p-2 text-center">Đang tắt: <div className="font-semibold">{inactiveAds}</div></div>
+             <div className="rounded border border-zinc-800 bg-zinc-900/20 p-2 text-center">Vị trí (sidebar/inline): <div className="font-semibold">{homeSidebarAds} / {homeInlineAds}</div></div>
+           </div>
           <div className="overflow-auto">
             <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-zinc-400">
-                <th className="w-[40%]">Title</th>
-                <th>Placement</th>
-                <th>Priority</th>
-                <th>Active</th>
-                <th className="w-[30%]">Target</th>
-                <th>Actions</th>
+                <th className="w-[30%]">Title</th>
+                <th className="w-[12%]">Placement</th>
+                <th className="w-[8%]">Priority</th>
+                <th className="w-[8%]">Active</th>
+                <th className="w-[30%]">Target URL</th>
+                <th className="w-[12%]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -132,11 +132,11 @@ export default function AdminAdsManager() {
                   <td className="py-2 text-zinc-400">{a.placement}</td>
                   <td className="py-2">{a.priority}</td>
                   <td className="py-2">{a.is_active ? 'Yes' : 'No'}</td>
-                  <td className="py-2 truncate max-w-[300px]"><a href={a.target_url} target="_blank" rel="noopener noreferrer" className="text-amber-300">{String(a.target_url).slice(0,80)}</a></td>
+                  <td className="py-2 truncate max-w-[320px] break-words"><a href={a.target_url} target="_blank" rel="noopener noreferrer" className="text-amber-300">{String(a.target_url || '').length > 80 ? String(a.target_url).slice(0,80) + '…' : String(a.target_url)}</a></td>
                   <td className="py-2 flex gap-2">
-                    <button className="rounded px-2 py-1 bg-sky-600 text-white hover:bg-sky-500" onClick={()=>{ setEditing(a); setForm({...a}) }}>Edit</button>
-                    <button className={`rounded px-2 py-1 ${a.is_active ? 'bg-orange-500 text-white hover:bg-orange-400' : 'bg-emerald-600 text-white hover:bg-emerald-500'}`} onClick={()=>toggleActive(a)}>{a.is_active ? 'Disable' : 'Enable'}</button>
-                    <button className="rounded px-2 py-1 bg-red-600 text-white hover:bg-red-500" onClick={()=>del(a.id)}>Delete</button>
+                    <button className="rounded px-2 py-1 bg-sky-700 text-white hover:bg-sky-600" onClick={()=>{ setEditing(a); setForm({...a}) }}>Edit</button>
+                    <button className={`rounded px-2 py-1 ${a.is_active ? 'bg-orange-600 text-white hover:bg-orange-500' : 'bg-emerald-600 text-white hover:bg-emerald-500'}`} onClick={()=>toggleActive(a)}>{a.is_active ? 'Disable' : 'Enable'}</button>
+                    <button className="rounded px-2 py-1 bg-red-700 text-white hover:bg-red-600" onClick={()=>del(a.id)}>Delete</button>
                   </td>
                 </tr>
               ))}
