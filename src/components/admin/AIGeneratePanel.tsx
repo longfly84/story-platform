@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import StorySearchSelect from '@/components/admin/ai/StorySearchSelect'
 import { supabase } from '@/lib/supabase'
 
 type Option = {
@@ -453,6 +452,7 @@ export default function AIGeneratePanel() {
   })
 
   const [selectedStory, setSelectedStory] = useState<StoryLite | null>(null)
+  const [storyOptions, setStoryOptions] = useState<StoryLite[]>([])
   const [categories, setCategories] = useState<Option[]>([])
   const [preview, setPreview] = useState('')
   const [loading, setLoading] = useState(false)
@@ -510,7 +510,37 @@ export default function AIGeneratePanel() {
       ignore = true
     }
   }, [])
+  
+  useEffect(() => {
+    let ignore = false
 
+    async function loadStoriesForDraft() {
+      try {
+        const { data, error } = await supabase
+          .from('stories')
+          .select('id, title, slug, author, status, description')
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        if (!ignore) {
+          setStoryOptions(data || [])
+        }
+      } catch {
+        if (!ignore) {
+          setStoryOptions([])
+          setMessage('Không load được danh sách truyện để lưu draft.')
+        }
+      }
+    }
+
+    loadStoriesForDraft()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+  
   function updateAiForm<K extends keyof AIFormState>(key: K, value: AIFormState[K]) {
     setAiForm((prev) => ({ ...prev, [key]: value }))
     setMessage(null)
@@ -548,34 +578,118 @@ export default function AIGeneratePanel() {
     return preview.split('\n---\n')[0] || preview
   }
 
-  function saveDraft(source: 'insert' | 'draft') {
-    if (!preview) return
+  
+  function makeSlug(input: string) {
+    return input
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+  }
 
+  function getDraftTitle() {
     const readerOnly = getReaderOnly()
-    const titleLine =
+
+    const chapterLine =
       readerOnly
         .split('\n')
         .find((line) => line.trim().startsWith('# Chương')) ||
       selectedStory?.title ||
-      'Chương nháp AI Writer'
+      'Chương nháp AI'
 
-    const payload = {
+    return chapterLine
+      .replace(/^#+\s*/, '')
+      .replace(/^Chương\s*[—-]\s*/i, '')
+      .trim()
+  }
+  
+  async function saveDraft(source: 'insert' | 'draft') {
+    if (!preview.trim()) {
+      setMessage('Chưa có nội dung để lưu.')
+      return
+    }
+
+    const readerOnly = getReaderOnly()
+    const title = getDraftTitle()
+    const slugBase = makeSlug(title || 'chuong-nhap-ai')
+    const slug = `${slugBase}-${Date.now()}`
+
+    const localPayload = {
       story_id: selectedStory?.id || null,
+      story_slug: selectedStory?.slug || null,
       story_title: selectedStory?.title || null,
-      title: titleLine.replace(/^#\s*/, '').trim(),
+      title,
+      slug,
       content: readerOnly,
       full_output: preview,
       created_at: new Date().toISOString(),
       source,
     }
 
-    localStorage.setItem('storyPlatform.aiWriter.chapterDraft', JSON.stringify(payload))
-    setMessage(
-      selectedStory?.title
-        ? `Đã lưu draft cho truyện: ${selectedStory.title}`
-        : 'Đã lưu draft chương vào localStorage.'
-    )
+    localStorage.setItem('storyPlatform.aiWriter.chapterDraft', JSON.stringify(localPayload))
+
+    if (source === 'insert') {
+      setMessage('Đã đưa nội dung vào draft local. Có thể dùng để đổ vào form Chapter.')
+      return
+    }
+
+    let storyId = selectedStory?.id || null
+
+    if (!storyId && selectedStory?.slug) {
+      const { data: storyRow, error: storyError } = await supabase
+        .from('stories')
+        .select('id')
+        .eq('slug', selectedStory.slug)
+        .single()
+
+      if (storyError) {
+        setMessage(`Không tìm được truyện đã chọn trong Supabase: ${String(storyError.message)}`)
+        return
+      }
+
+      storyId = storyRow?.id || null
+    }
+
+    if (!storyId) {
+      setMessage('Chọn truyện trước khi lưu draft chapter vào Supabase.')
+      return
+    }
+
+    try {
+      const payload = {
+        story_id: storyId,
+        title,
+        slug,
+        content: readerOnly,
+        summary: aiForm.promptIdea.trim() || null,
+        status: 'draft',
+      }
+
+      const { error } = await supabase.from('chapters').insert([payload])
+
+      if (error) {
+        const msg = String(error.message || error)
+
+        if (msg.toLowerCase().includes('status')) {
+          setMessage(
+            'Chưa lưu Supabase được vì bảng chapters thiếu cột status. Đã lưu backup localStorage. Hãy chạy SQL thêm cột status.'
+          )
+          return
+        }
+
+        throw error
+      }
+
+      setMessage('Đã lưu draft chapter vào Supabase.')
+    } catch (err: any) {
+      setMessage(`Lưu draft thất bại: ${String(err?.message ?? err)}`)
+    }
   }
+ 
+  
  
   function buildFullCoverPrompt() {
   const title =
@@ -672,24 +786,52 @@ export default function AIGeneratePanel() {
     <section className="mb-12 mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
       <h2 className="text-lg font-semibold text-zinc-100">AI Generate</h2>
 
+
       <div className="mt-5 grid gap-5">
         <div className="grid gap-2">
-          <div className="text-xs text-zinc-400">Chọn truyện để gán vào chapter</div>
-          <StorySearchSelect
-            onSelect={(story) => {
-              setSelectedStory(story || null)
-            }}
-          />
+          <label className="grid gap-1 text-xs text-zinc-400">
+            Chọn truyện để gán vào chapter / lưu draft
+            <select
+              value={selectedStory?.id ? String(selectedStory.id) : ''}
+              onChange={(event) => {
+                const storyId = event.target.value
+                const story = storyOptions.find((item) => String(item.id) === storyId) || null
+                setSelectedStory(story)
+
+                if (story) {
+                  setMessage(`Đã chọn truyện: ${story.title}`)
+                } else {
+                  setMessage(null)
+                }
+              }}
+              className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-sm font-medium text-zinc-100 outline-none focus:border-amber-400"
+            >
+              <option value="">-- Chọn truyện --</option>
+              {storyOptions.map((story) => (
+                <option key={story.id} value={String(story.id)}>
+                  {story.title} — {story.author || 'Không rõ tác giả'}
+                </option>
+              ))}
+            </select>
+          </label>
 
           {selectedStory ? (
             <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-sm text-zinc-200">
-              <div className="font-semibold text-zinc-100">Đã chọn: {selectedStory.title}</div>
-              <div className="mt-1 text-xs text-zinc-400">
-                {selectedStory.author || 'Không rõ tác giả'} • {selectedStory.slug}
+              <div className="font-semibold text-zinc-100">
+                Đã chọn: {selectedStory.title}
               </div>
+
+              <div className="mt-1 text-xs text-zinc-400">
+                ID: {selectedStory.id || 'chưa có'} • {selectedStory.author || 'Không rõ tác giả'} •{' '}
+                {selectedStory.slug}
+              </div>
+
               <button
                 type="button"
-                onClick={() => setSelectedStory(null)}
+                onClick={() => {
+                  setSelectedStory(null)
+                  setMessage(null)
+                }}
                 className="mt-2 rounded bg-zinc-800 px-3 py-1 text-xs text-zinc-100 hover:bg-zinc-700"
               >
                 Bỏ chọn
@@ -697,6 +839,7 @@ export default function AIGeneratePanel() {
             </div>
           ) : null}
         </div>
+   
 
         <label className="grid gap-1 text-xs text-zinc-400">
           Prompt idea

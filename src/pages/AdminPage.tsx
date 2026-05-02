@@ -304,15 +304,60 @@ export default function AdminPage() {
     }
   }
 
-  async function deleteStory(id: number) {
+  
+  async function deleteStory(storyOrId: any) {
+    const story =
+      typeof storyOrId === 'object'
+        ? storyOrId
+        : stories.find((item) => String(item.id) === String(storyOrId))
+
+    if (!story) {
+      alert('Không tìm thấy truyện để xử lý.')
+      return
+    }
+
+    const choice = window.prompt(
+      [
+        `Bạn muốn làm gì với truyện: ${story.title}?`,
+        '',
+        'Nhập 1 để XÓA CẢ TRUYỆN.',
+        'Nhập 2 để MỞ DANH SÁCH CHƯƠNG và xóa/sửa từng chương.',
+        '',
+        'Nhập số 1 hoặc 2:',
+      ].join('\n')
+    )
+
+    if (choice === null) return
+
+    const normalized = choice.trim()
+
+    if (normalized === '2') {
+      await openManageChapters(story.slug)
+      return
+    }
+
+    if (normalized !== '1') {
+      alert('Lựa chọn không hợp lệ. Nhập 1 hoặc 2.')
+      return
+    }
+
+    const confirmDelete = window.confirm(
+      `Xóa cả truyện "${story.title}"?\n\nLưu ý: thao tác này chỉ xóa story. Nếu muốn xóa chương trước, hãy chọn 2.`
+    )
+
+    if (!confirmDelete) return
+
     try {
-      const res = await supabase.from('stories').delete().eq('id', id)
+      const res = await supabase.from('stories').delete().eq('id', story.id)
       if (res.error) throw res.error
+
       await fetchStories()
+      alert('Đã xóa truyện.')
     } catch (err: any) {
       alert('Delete failed: ' + String(err?.message ?? err))
     }
   }
+  
 
   async function togglePublish(story: any) {
     try {
@@ -471,18 +516,20 @@ export default function AdminPage() {
           onOpenChapters={openManageChapters}
         />
 
-        <ManageChapters
-          selectedStoryForChapters={selectedStoryForChapters}
-          chapters={selectedStoryForChapters ? expandedChapters[selectedStoryForChapters] ?? [] : []}
-          editingChapterId={editingChapterId}
-          editChapterData={editChapterData}
-          setEditingChapterId={setEditingChapterId}
-          setEditChapterData={setEditChapterData}
-          startEditChapter={startEditChapter}
-          saveEditChapter={saveEditChapter}
-          deleteChapter={deleteChapter}
-          onClose={() => setSelectedStoryForChapters(null)}
-        />
+        <div id="manage-chapters">
+          <ManageChapters
+            selectedStoryForChapters={selectedStoryForChapters}
+            chapters={selectedStoryForChapters ? expandedChapters[selectedStoryForChapters] ?? [] : []}
+            editingChapterId={editingChapterId}
+            editChapterData={editChapterData}
+            setEditingChapterId={setEditingChapterId}
+            setEditChapterData={setEditChapterData}
+            startEditChapter={startEditChapter}
+            saveEditChapter={saveEditChapter}
+            deleteChapter={deleteChapter}
+            onClose={() => setSelectedStoryForChapters(null)}
+          />
+        </div>
 
         <CreateStoryForm
           newStory={newStory}
