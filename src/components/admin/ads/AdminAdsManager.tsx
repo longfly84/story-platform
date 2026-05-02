@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, uploadCoverImage, resolveCoverUrl } from '@/lib/supabase'
 
 export default function AdminAdsManager() {
   const [ads, setAds] = useState<any[]>([])
@@ -8,6 +8,8 @@ export default function AdminAdsManager() {
 
   const [editing, setEditing] = useState<any | null>(null)
   const [form, setForm] = useState<any>({ title: '', subtitle: '', description: '', image_url: '', target_url: '', placement: 'home_sidebar', priority: 0, is_active: true })
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -86,7 +88,29 @@ export default function AdminAdsManager() {
       <form onSubmit={save} className="grid gap-2">
         <input value={form.title} onChange={(e)=>setForm({...form, title:e.target.value})} placeholder="Title" className="rounded border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm" />
         <input value={form.subtitle} onChange={(e)=>setForm({...form, subtitle:e.target.value})} placeholder="Subtitle" className="rounded border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm" />
-        <input value={form.image_url} onChange={(e)=>setForm({...form, image_url:e.target.value})} placeholder="Image URL" className="rounded border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm" />
+        <div className="flex flex-col gap-2">
+          <input value={form.image_url} onChange={(e)=>setForm({...form, image_url:e.target.value})} placeholder="Image URL" className="rounded border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm" />
+          <label className="text-sm text-zinc-400">Upload ảnh quảng cáo</label>
+          <input type="file" accept="image/*" onChange={async (e)=>{
+            const f = e.target.files?.[0]
+            if (!f) return
+            setUploadError(null)
+            setUploading(true)
+            try {
+              const safeName = String(f.name).replace(/[^a-zA-Z0-9.\-_]/g, '_')
+              const path = `ads/${Date.now()}-${safeName}`
+              const publicUrl = await uploadCoverImage(f, path)
+              if (!publicUrl) throw new Error('Upload thất bại')
+              // set image_url to returned public url
+              setForm((prev:any)=>({ ...prev, image_url: publicUrl }))
+            } catch (err:any) {
+              console.warn('[admin-ads-upload-error]', err)
+              setUploadError(String(err?.message ?? err))
+            } finally { setUploading(false) }
+          }} className="text-sm text-zinc-200" />
+          {uploading ? <div className="text-sm text-zinc-400">Uploading…</div> : null}
+          {uploadError ? <div className="text-sm text-red-400">{uploadError}</div> : null}
+        </div>
         <input value={form.target_url} onChange={(e)=>setForm({...form, target_url:e.target.value})} placeholder="Target URL" className="rounded border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm" />
         <textarea value={form.description} onChange={(e)=>setForm({...form, description:e.target.value})} placeholder="Description" className="rounded border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm" />
         <div className="flex gap-2 items-center">
@@ -101,6 +125,12 @@ export default function AdminAdsManager() {
           <button type="submit" className="rounded bg-amber-300 px-3 py-1 text-sm font-semibold text-zinc-950">Save</button>
           <button type="button" onClick={resetForm} className="rounded border border-zinc-800 px-3 py-1 text-sm">Cancel</button>
         </div>
+        {form.image_url ? (
+          <div className="mt-2">
+            <div className="text-xs text-zinc-400 mb-1">Preview</div>
+            <img src={resolveCoverUrl(form.image_url) ?? form.image_url} alt="preview" className="w-full max-h-40 object-contain rounded border border-zinc-800" />
+          </div>
+        ) : null}
       </form>
 
       <div className="mt-4">

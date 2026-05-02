@@ -9,22 +9,32 @@ import { resolveCoverUrl } from '@/lib/supabase'
 import { StarIcon, EyeIcon } from "lucide-react"
 import { getReadingHistory, isStoryFollowed, followStory, unfollowStory } from "@/lib/localStorageHelpers"
 import { getCurrentUser, getUserFollows, addUserFollow, removeUserFollow } from '@/lib/supabase'
+import { submitComment, getApprovedComments } from '@/lib/analytics/comments'
+import { Textarea } from '@/components/ui/textarea'
+import { useMemo } from 'react'
 import ChapterList from '@/components/ChapterList'
 // trackPageView imported dynamically where needed to avoid duplicate static imports
 import { getStoryViewCount } from '@/lib/analytics/viewStats'
 import { formatCount } from "@/lib/formatters"
-import RatingBox from '@/components/engagement/RatingBox'
+// RatingBox intentionally not shown in sidebar; moved into main column for full-width layout
 
 export default function StoryDetailPage() {
   const { slug } = useParams()
   const [story, setStory] = useState<any>(slug ? getStoryBySlug(slug) : undefined)
 
-  const [rating, setRating] = useState(4.5)
+  const [rating, setRating] = useState<number>(0)
+  const [ratingCount, setRatingCount] = useState<number>(0)
   // followed state intentionally not used in detail (kept minimal)
 
+  // rating will be updated by RatingBox onLoad via onUpdate
+
+  // derive initial rating display from story_stats if available
   useEffect(() => {
-    if (story) {
-      setRating(parseFloat((Math.random() * 2 + 3).toFixed(1)))
+    if (!story) return
+    const stats = (story as any)?.story_stats
+    if (stats) {
+      if (typeof stats.avg_rating === 'number') setRating(parseFloat(stats.avg_rating.toFixed(1)))
+      if (typeof stats.rating_count === 'number') setRatingCount(stats.rating_count)
     }
   }, [story])
 
@@ -116,6 +126,25 @@ export default function StoryDetailPage() {
   if (import.meta.env.DEV && story?.slug) console.log('[story-view-count]', { slug: story.slug, viewCount: safeViewCount })
   const statusLabel = story?.status === "completed" ? "Hoàn thành" : "Đang ra"
   const chapterCount = story?.chapters.length ?? 0
+  const [comments, setComments] = useState<any[]>([])
+  const [commentText, setCommentText] = useState('')
+  const [commentStatusMsg, setCommentStatusMsg] = useState<string | null>(null)
+  const userLoggedIn = useMemo(() => !!(typeof window !== 'undefined' && getCurrentUser()), [])
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (!story?.slug) return
+      try {
+        const c = await getApprovedComments(story.slug)
+        if (!mounted) return
+        setComments(c || [])
+      } catch (e) {
+        // ignore
+      }
+    })()
+    return () => { mounted = false }
+  }, [story])
 
   if (!story) {
     return (
@@ -189,13 +218,20 @@ export default function StoryDetailPage() {
               <div className="mt-4 space-y-2">
                 <div className="text-xs text-zinc-400">{story.author ?? 'Đang cập nhật'}</div>
                 <div className="flex items-center gap-3 text-xs text-zinc-400">
-                  <div className="flex items-center gap-1"><StarIcon className="size-4 text-amber-400" /> <span>{rating}</span></div>
+                  <div className="flex items-center gap-1">
+                    <StarIcon className="size-4 text-amber-400" />
+                    {ratingCount > 0 ? (
+                      <span>{rating} · {ratingCount} đánh giá</span>
+                    ) : (
+                      <span>Chưa có đánh giá</span>
+                    )}
+                  </div>
                    <div className="flex items-center gap-1"><EyeIcon className="size-4" /> <span>{`${formatCount(safeViewCount)} lượt đọc`}</span></div>
                 </div>
                 <div className="mt-2 text-xs text-zinc-400">{statusLabel} • {chapterCount} chương</div>
               </div>
               <div className="mt-4 flex flex-col gap-3 px-1">
-                <Link to={`/doc-truyen/${story.slug}/${story.chapters[0]?.slug ?? 'chuong-1'}`} className="block rounded bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-zinc-950 hover:bg-amber-200">Đọc từ đầu</Link>
+              <Link to={`/doc-truyen/${story.slug}/${story.chapters[0]?.slug ?? 'chuong-1'}`} className="block rounded bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-zinc-950 hover:bg-amber-200">Đọc từ đầu</Link>
                 <Link to={`/doc-truyen/${story.slug}/${story.chapters.at(-1)?.slug ?? 'chuong-1'}`} className="block rounded border border-zinc-800 bg-zinc-950/40 px-4 py-3 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Đọc chương mới nhất</Link>
                 {readingEntryLocal ? <Link to={`/doc-truyen/${readingEntryLocal.storySlug}/${readingEntryLocal.chapterSlug}`} className="block rounded border border-zinc-800 bg-zinc-950/30 px-4 py-3 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50">Đọc tiếp</Link> : null}
                 <button
@@ -231,7 +267,7 @@ export default function StoryDetailPage() {
                   {isFollowed ? 'Bỏ theo dõi' : 'Theo dõi'}
                 </button>
               </div>
-              <RatingBox storyId={story.id} />
+              {/* Rating moved to main column for better layout (full width) */}
             </div>
 
             <div>
@@ -242,6 +278,47 @@ export default function StoryDetailPage() {
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-zinc-100 mb-3">Danh sách chương</h3>
                 <ChapterList chapters={story.chapters} storySlug={story.slug} />
+              </div>
+
+              {/* Comments */}
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-zinc-100 mb-3">Bình luận</h3>
+                {userLoggedIn ? (
+                  <div className="mb-3">
+                    <Textarea value={commentText} onChange={(e:any)=>setCommentText(e.target.value)} placeholder="Viết bình luận..." />
+                    <div className="mt-2 flex items-center gap-2">
+                      <button className="rounded bg-amber-300 px-3 py-2 text-zinc-950" onClick={async()=>{
+                        if (!commentText.trim() || !story) return
+                        const res = await submitComment({ storyId: story.slug, content: commentText.trim() })
+                        if (res?.ok) {
+                          setCommentText('')
+                          setCommentStatusMsg('Bình luận đã gửi và đang chờ duyệt.')
+                        } else {
+                          setCommentStatusMsg('Lỗi khi gửi bình luận.')
+                        }
+                        setTimeout(()=>setCommentStatusMsg(null), 4000)
+                      }}>Gửi bình luận</button>
+                      {commentStatusMsg ? <div className="text-sm text-zinc-300">{commentStatusMsg}</div> : null}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-zinc-400">Đăng nhập để bình luận</div>
+                )}
+
+                <div className="mt-4">
+                  {comments && comments.length > 0 ? (
+                    <ul className="space-y-3">
+                      {comments.map((c:any)=> (
+                        <li key={c.id} className="rounded border border-zinc-800 p-3">
+                          <div className="text-sm font-semibold text-zinc-100">{c.author_name ?? (c.user_id ? 'Người dùng' : 'Khách')}</div>
+                          <div className="mt-1 text-sm text-zinc-300 whitespace-pre-line">{c.content}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-sm text-zinc-400">Chưa có bình luận nào.</div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
