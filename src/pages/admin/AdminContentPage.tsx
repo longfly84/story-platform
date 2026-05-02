@@ -1,7 +1,6 @@
 import MainLayout from '@/layouts/MainLayout'
 import { Link } from 'react-router-dom'
 import StoriesSection from '@/components/admin/StoriesSection'
-import CreateStoryForm from '@/components/admin/CreateStoryForm'
 import CategoryManager from '@/components/admin/CategoryManager'
 import CreateChapterForm from '@/components/admin/CreateChapterForm'
 import ManageChapters from '@/components/admin/ManageChapters'
@@ -37,19 +36,7 @@ export default function AdminContentPage() {
   const [editingChapterId, setEditingChapterId] = useState<number | null>(null)
   const [editChapterData, setEditChapterData] = useState<any>(null)
 
-  const [newStory, setNewStory] = useState<any>({
-    title: '',
-    slug: '',
-    description: '',
-    author: '',
-    status: 'ongoing',
-  })
-
-  const [newVisibility, setNewVisibility] = useState<'published' | 'draft'>('published')
-  const [newCoverFile, setNewCoverFile] = useState<File | null>(null)
-  const [uploadingCover, setUploadingCover] = useState(false)
-  const [storySlugEdited, setStorySlugEdited] = useState(false)
-  const [createCategorySlug, setCreateCategorySlug] = useState('')
+  
 
   const [newChapter, setNewChapter] = useState<NewChapterState>({
     storySlug: '',
@@ -200,65 +187,7 @@ export default function AdminContentPage() {
     }
   }
 
-  async function handleCreateStory(event: any) {
-    event.preventDefault()
-
-    try {
-      let coverUrl: string | null = newStory.cover_image ?? null
-
-      if (newCoverFile) {
-        setUploadingCover(true)
-
-        try {
-          const safeFileName = newCoverFile.name.replace(/[^a-zA-Z0-9._-]/g, '-')
-          const filePath = `${Date.now()}-${safeFileName}`
-
-          const { error: uploadError } = await supabase.storage
-            .from('covers')
-            .upload(filePath, newCoverFile)
-
-          if (uploadError) throw uploadError
-
-          const publicRes = supabase.storage.from('covers').getPublicUrl(filePath)
-          coverUrl = publicRes.data.publicUrl
-        } finally {
-          setUploadingCover(false)
-        }
-      }
-
-      const payload: any = {
-        ...newStory,
-        cover_image: coverUrl,
-        genres: createCategorySlug ? [createCategorySlug] : [],
-        status: newVisibility,
-        owner_id: user?.id ?? null,
-      }
-
-      const { error } = await supabase.from('stories').insert([payload])
-
-      if (error) throw error
-
-      alert('Đã tạo truyện.')
-
-      setNewStory({
-        title: '',
-        slug: '',
-        description: '',
-        author: '',
-        status: 'ongoing',
-      })
-      setNewVisibility('published')
-      setNewCoverFile(null)
-      setStorySlugEdited(false)
-      setCreateCategorySlug('')
-
-      await fetchStories()
-    } catch (e: any) {
-      alert('Create story failed: ' + String(e?.message ?? e))
-    } finally {
-      setUploadingCover(false)
-    }
-  }
+  
 
   async function handleCreateChapter(event: any) {
     event.preventDefault()
@@ -475,7 +404,24 @@ export default function AdminContentPage() {
             ← Quay lại Admin Dashboard
           </Link>
         </div>
+        
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-zinc-100">Stories</h1>
+            <p className="mt-1 text-sm text-zinc-500">
+              Quản lý truyện, chapter, public/draft và trang xem public.
+            </p>
+          </div>
 
+          <Link
+            to="/admin/content/new"
+            className="rounded-lg bg-amber-300 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-200"
+          >
+            Tạo truyện mới
+          </Link>
+        </div>
+        
+        
         <StoriesSection
           stories={stories}
           categories={categories}
@@ -504,23 +450,7 @@ export default function AdminContentPage() {
           />
         </div>
 
-        <CreateStoryForm
-          newStory={newStory}
-          setNewStory={setNewStory}
-          newVisibility={newVisibility}
-          setNewVisibility={setNewVisibility}
-          newCoverFile={newCoverFile}
-          setNewCoverFile={setNewCoverFile}
-          uploadingCover={uploadingCover}
-          storySlugEdited={storySlugEdited}
-          setStorySlugEdited={setStorySlugEdited}
-          createCategorySlug={createCategorySlug}
-          setCreateCategorySlug={setCreateCategorySlug}
-          categories={categories}
-          generateSlug={generateSlug}
-          onSubmit={handleCreateStory}
-        />
-
+        
         <CategoryManager
           catName={catName}
           catSlug={catSlug}

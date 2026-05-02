@@ -14,6 +14,7 @@ import AdminAdsPage from '@/pages/admin/AdminAdsPage'
 import AdminAIPage from '@/pages/admin/AdminAIPage'
 import AdminEditStoryPage from "@/pages/AdminEditStoryPage"
 import LoginPage from "@/pages/LoginPage"
+import AdminCreateStoryPage from '@/pages/admin/AdminCreateStoryPage'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/truyen/:slug" element={<StoryDetailPage />} />
         <Route path="/admin" element={<AdminDashboardPage />} />
         <Route path="/admin/content" element={<AdminContentPage />} />
+        <Route path="/admin/content/new" element={<AdminCreateStoryPage />} />
         <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
         <Route path="/admin/ads" element={<AdminAdsPage />} />
         <Route path="/admin/ai-writer" element={<AdminAIPage />} />
