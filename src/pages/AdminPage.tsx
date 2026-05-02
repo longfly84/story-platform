@@ -11,6 +11,7 @@ import CreateStoryForm from '@/components/admin/CreateStoryForm'
 import CategoryManager from '@/components/admin/CategoryManager'
 import CreateChapterForm from '@/components/admin/CreateChapterForm'
 import ManageChapters from '@/components/admin/ManageChapters'
+import AdminAdsManager from '@/components/admin/ads/AdminAdsManager'
 import AIGeneratePanel from '@/components/admin/AIGeneratePanel'
 import StoryMemoryViewer from '@/components/admin/StoryMemoryViewer'
 
@@ -579,6 +580,8 @@ export default function AdminPage() {
           generateSlug={generateSlug}
           onSubmit={handleCreateChapter}
         />
+
+        <AdminAdsManager />
 
         <AIGeneratePanel
           stories={stories}

@@ -20,7 +20,7 @@ export default function AdminStoryCard({ story, coverSrc, categoryName, onPublis
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded border border-zinc-800 bg-zinc-900/30">
+          <div className="h-[96px] w-[72px] shrink-0 overflow-hidden rounded border border-zinc-800 bg-zinc-900/30">
           {coverSrc ? (
             <img src={coverSrc} alt={story?.title} onError={onCoverError} className="h-full w-full object-cover" />
           ) : (
@@ -43,11 +43,11 @@ export default function AdminStoryCard({ story, coverSrc, categoryName, onPublis
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button type="button" onClick={onPublishToggle} className="rounded bg-emerald-600 px-3 py-1.5 text-xs text-white">{isDraft ? 'Publish' : 'Unpublish'}</button>
-            <button type="button" onClick={onEdit} className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-white">Edit</button>
-            <button type="button" onClick={onDelete} className="rounded bg-red-700 px-3 py-1.5 text-xs text-white">Delete</button>
-            <button type="button" onClick={onChapters} className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-white">Chapters</button>
-            <a href={viewHref} className="rounded bg-zinc-900 px-3 py-1.5 text-xs text-amber-300 hover:underline">View</a>
+            <button type="button" onClick={onPublishToggle} className={`rounded px-3 py-1.5 text-xs text-white ${isDraft ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-amber-500 hover:bg-amber-400'}`}>{isDraft ? 'Publish' : 'Unpublish'}</button>
+            <button type="button" onClick={onEdit} className="rounded px-3 py-1.5 text-xs text-white bg-sky-600 hover:bg-sky-500">Edit</button>
+            <button type="button" onClick={onDelete} className="rounded px-3 py-1.5 text-xs text-white bg-red-600 hover:bg-red-500">Delete</button>
+            <button type="button" onClick={onChapters} className="rounded px-3 py-1.5 text-xs text-white bg-indigo-600 hover:bg-indigo-500">Chapters</button>
+            <a href={viewHref} className="rounded px-3 py-1.5 text-xs text-amber-300 bg-zinc-900/60 hover:underline">View</a>
           </div>
         </div>
       </div>

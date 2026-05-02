@@ -57,19 +57,21 @@ export default function StoriesSection({
         {filtered.length === 0 ? (
           <div className="mt-3 text-sm text-zinc-400">Không tìm thấy truyện phù hợp.</div>
         ) : filtered.map((s: any) => {
-          const rawCover = s?.cover_image ?? s?.cover ?? s?.image_url ?? null
+          const rawCover = s?.cover_image ?? s?.cover_url ?? s?.image_url ?? s?.cover ?? null
           const resolvedCover = resolveCoverUrl(rawCover)
           const coverErrored = imageErrors?.[s?.id]
           const categorySlug = Array.isArray(s.genres) ? s.genres[0] : ''
           const categoryName = categorySlug ? (categories.find((c: any) => c.slug === categorySlug)?.name ?? categorySlug) : ''
 
-          if (import.meta.env.DEV) {
-            console.log('[cover-debug]', {
-              title: s?.title,
-              cover_image: s?.cover_image,
-              resolvedCover,
-            })
-          }
+            if (import.meta.env.DEV) {
+              console.log('[admin-cover]', {
+                title: s?.title,
+                cover_image: s?.cover_image,
+                cover_url: s?.cover_url,
+                image_url: s?.image_url,
+                resolvedCover,
+              })
+            }
 
           const isDraft = s?.status === 'draft'
 

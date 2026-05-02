@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react"
 
 import StoryCard from "@/components/home/StoryCard"
+import HomeAds from '@/components/ads/HomeAds'
 import MainLayout from "@/layouts/MainLayout"
 import { Button } from "@/components/ui/button"
 import { genres, stories } from "@/data/stories"
@@ -506,6 +507,11 @@ export default function HomePage() {
                   Không có truyện nào phù hợp.
                 </div>
               )}
+            {/* mobile ad inserted after Hot on small screens */}
+            <div className="mt-4 sm:hidden">
+              {/* mobile ad from home ads (uses supabase) */}
+              <HomeAds />
+            </div>
             </section>
 
             <section id="new-updates" className="scroll-mt-24 rounded-2xl border border-zinc-800 bg-zinc-900/20">
@@ -617,12 +623,12 @@ export default function HomePage() {
               <p className="mt-3 text-xs text-zinc-500">Click để lọc theo thể loại.</p>
             </section>
 
-            <section className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/40 to-zinc-900/10 p-4 sm:p-5">
-              <h3 className="text-lg font-semibold">Mẹo đọc</h3>
-              <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-                <li>Chạm giữ thanh điều khiển ở trang đọc để đổi cỡ chữ.</li>
-                <li>Trên mobile, nút “Trước/Sau” luôn nằm trong thanh sticky.</li>
-              </ul>
+            {/* 'Mẹo đọc' card removed as requested */}
+            <section>
+              {/* Sidebar ad (desktop) */}
+              <div className="mt-3">
+                <HomeAds />
+              </div>
             </section>
           </aside>
         </div>

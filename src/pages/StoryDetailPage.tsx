@@ -13,6 +13,7 @@ import ChapterList from '@/components/ChapterList'
 // trackPageView imported dynamically where needed to avoid duplicate static imports
 import { getStoryViewCount } from '@/lib/analytics/viewStats'
 import { formatCount } from "@/lib/formatters"
+import RatingBox from '@/components/engagement/RatingBox'
 
 export default function StoryDetailPage() {
   const { slug } = useParams()
@@ -230,6 +231,7 @@ export default function StoryDetailPage() {
                   {isFollowed ? 'Bỏ theo dõi' : 'Theo dõi'}
                 </button>
               </div>
+              <RatingBox storyId={story.id} />
             </div>
 
             <div>

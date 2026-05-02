@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom"
 import MobileMenuButton from './MobileMenuButton'
-import { useEffect, useState } from "react"
+import BackToTopButton from '@/components/BackToTopButton'
+// useAdminSession provides user/role state
 import SiteThemeToggle from '@/components/SiteThemeToggle'
-import { getCurrentUser, signOut } from '@/lib/supabase'
+import { signOut } from '@/lib/supabase'
+import useAdminSession from '@/hooks/admin/useAdminSession'
 
 import { Input } from "@/components/ui/input"
 
@@ -15,24 +17,12 @@ export default function MainLayout({
   headerRight?: React.ReactNode
   headerBottom?: React.ReactNode
 }) {
-  const [isAdminUser, setIsAdminUser] = useState(false)
   const theme = 'dark'
-
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        const u = await getCurrentUser()
-        if (!mounted) return
-        setIsAdminUser(!!u)
-      } catch (e) {
-        // ignore
-      }
-    })()
-    return () => { mounted = false }
-  }, [])
+  const { user, role } = useAdminSession()
+  const isAdminUser = !!user
+  const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
   return (
-    <div data-theme="dark" className="site-root min-h-screen bg-zinc-950 text-zinc-100">
+    <div data-theme="dark" className="site-root flex flex-col min-h-screen bg-zinc-950 text-zinc-100">
       <header className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/70 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-3 sm:px-4 sm:h-16">
           <Link to="/" className="text-base sm:text-xl font-semibold tracking-wide">
@@ -70,12 +60,12 @@ export default function MainLayout({
           </nav>
 
           <div className="ml-auto flex w-full max-w-[520px] items-center gap-2">
-            {headerRight ?? (
+            {!isAdminPath ? (headerRight ?? (
               <Input
                 placeholder="Tìm kiếm (tên truyện hoặc tác giả)…"
                 className={`hidden ${theme === 'dark' ? 'border-zinc-800/80 bg-zinc-950/30 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/20' : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-300/20'} sm:block`}
               />
-            )}
+            )) : null}
             <SiteThemeToggle />
           </div>
 
@@ -92,12 +82,12 @@ export default function MainLayout({
         ) : null}
       </header>
 
-      {/* Global admin bar: shown when a user is logged in (admin area access) */}
+      {/* Global admin bar: shown when a user is logged in (admin or staff) on all pages */}
       {isAdminUser ? (
         <div className="z-40 border-b border-zinc-800 bg-amber-300/8 text-xs text-zinc-100">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-1 sm:py-2">
             <div className="flex items-center gap-2">
-              <span className="font-medium">Admin đang đăng nhập</span>
+              <span className="font-medium">{role === 'staff' ? 'Nhân viên đang đăng nhập' : 'Admin đang đăng nhập'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Link to="/admin" className="text-xs rounded bg-zinc-900/20 px-2 py-1 text-amber-300">Admin Dashboard</Link>
@@ -113,8 +103,9 @@ export default function MainLayout({
         </div>
       ) : null}
 
-      <div className={`${theme === 'dark' ? '' : ''}`}>
+      <div className={`${theme === 'dark' ? '' : ''} flex-1`}> 
         {children}
+        <BackToTopButton />
       </div>
       {/* Global footer for pages using MainLayout */}
       <footer className="site-footer border-t border-zinc-800 bg-zinc-950 text-zinc-400">
