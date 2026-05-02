@@ -5,6 +5,7 @@ import CreateStoryForm from '@/components/admin/CreateStoryForm'
 import CategoryManager from '@/components/admin/CategoryManager'
 import CreateChapterForm from '@/components/admin/CreateChapterForm'
 import ManageChapters from '@/components/admin/ManageChapters'
+import ManageComments from '@/components/admin/ManageComments'
 import useAdminSession from '@/hooks/admin/useAdminSession'
 import { useEffect, useState } from 'react'
 import { supabase, resolveCoverUrl } from '@/lib/supabase'
@@ -52,6 +53,9 @@ export default function AdminContentPage() {
         <CategoryManager catName={''} catSlug={''} catDesc={''} selectedCategoryId={''} categories={[]} onCatNameChange={()=>{}} setCatSlug={()=>{}} setCatDesc={()=>{}} setSelectedCategoryId={()=>{}} createCategory={async()=>{}} deleteCategory={async()=>{}} clearForm={()=>{}} />
         <CreateChapterForm stories={stories} newChapter={{}} setNewChapter={()=>{}} chapterSlugEdited={false} setChapterSlugEdited={()=>{}} generateSlug={()=>''} onSubmit={async()=>{}} />
         <ManageChapters selectedStoryForChapters={selectedStoryForChapters} chapters={[]} editingChapterId={null} editChapterData={null} setEditingChapterId={()=>{}} setEditChapterData={()=>{}} startEditChapter={()=>{}} saveEditChapter={async()=>{}} deleteChapter={async()=>{}} onClose={()=>{}} />
+        <div className="mt-6">
+          <ManageComments />
+        </div>
       </main>
     </MainLayout>
   )
