@@ -33,8 +33,14 @@ type AIFormState = {
 
 const fallbackCategories: Option[] = [
   { value: 'hon-nhan-phan-boi-ngoai-tinh', label: 'Hôn nhân phản bội / ngoại tình' },
-  { value: 'cong-so-va-mat-nu-cuong-thuong-chien', label: 'Công sở vả mặt / nữ cường thương chiến' },
-  { value: 'hon-nhan-phan-boi-huy-hon-chong-cu-hoi-han', label: 'Hôn nhân phản bội / hủy hôn / chồng cũ hối hận' },
+  {
+    value: 'cong-so-va-mat-nu-cuong-thuong-chien',
+    label: 'Công sở vả mặt / nữ cường thương chiến',
+  },
+  {
+    value: 'hon-nhan-phan-boi-huy-hon-chong-cu-hoi-han',
+    label: 'Hôn nhân phản bội / hủy hôn / chồng cũ hối hận',
+  },
   { value: 'hao-mon-lien-hon', label: 'Hào môn liên hôn' },
   { value: 'tra-thu-do-thi', label: 'Trả thù đô thị' },
 ]
@@ -105,6 +111,17 @@ function findLabel(options: Option[], value: string) {
   return options.find((item) => item.value === value)?.label || value
 }
 
+function makeSlug(input: string) {
+  return input
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+}
+
 function SelectField({
   label,
   value,
@@ -165,7 +182,7 @@ Nữ tần đô thị viral Trung Quốc
 ${categoryLabel}
 
 ## Bối cảnh
-Trung Quốc hiện đại, tập đoàn, hào môn, Weibo/Douyin/hot search, tiền tệ tệ/RMB.
+Trung Quốc hiện đại, tập đoàn, hào môn, Weibo/Douyin/hot search, tiền tệ RMB/tệ.
 
 ## Ý tưởng chính
 ${idea}
@@ -177,9 +194,10 @@ Ngay trong khoảnh khắc tôi bị ép cúi đầu nhận lỗi, một đoạn
 Nữ chính thuộc kiểu "${styleLabel}", ban đầu bị phản bội, bị gaslight và bị đẩy vào thế mất mặt công khai. Nhưng cô không tung toàn bộ bằng chứng ngay. Cô giữ lại đòn chí mạng, để phản diện tự đào hố qua từng chương.
 
 ## Nhân vật
-- Nữ chính: xưng tôi, ${styleLabel}, càng về sau càng lạnh và kiểm soát thế cục.
-- Phản diện chính: người phản bội/tập đoàn/hào môn đang cố dùng quyền lực và dư luận ép nữ chính im lặng.
-- Nhân vật hỗ trợ: chỉ hỗ trợ thông tin/pháp lý, không thắng thay nữ chính.
+- Nữ chính: Lâm An Nhiên, xưng tôi, ${styleLabel}, càng về sau càng lạnh và kiểm soát thế cục.
+- Phản diện chính: Lục Thành, người phản bội đang cố dùng quyền lực và dư luận ép nữ chính im lặng.
+- Người thứ ba: Hạ Mạn Nhi, giả yếu đuối nhưng có tham vọng.
+- Nhân vật hỗ trợ: phòng pháp vụ hoặc người gửi bằng chứng ẩn danh, chỉ hỗ trợ thông tin, không thắng thay nữ chính.
 
 ## Mâu thuẫn cốt lõi
 Danh dự, tài sản, cổ phần/hợp đồng và sự phản bội công khai.
@@ -206,13 +224,17 @@ ${form.humiliationLevel}/5
 ## Mức trả thù
 ${form.revengeIntensity}/5
 
-## Outline 6 chương
+## Outline 10 chương
 Chương 1: Opening Shock — nữ chính bị phản bội công khai, giữ lại bằng chứng đầu tiên.
 Chương 2: Gaslighting — phản diện ép nữ chính nhận lỗi, dư luận bắt đầu nghiêng sai hướng.
 Chương 3: First Counterattack — nữ chính tung một mảnh bằng chứng nhỏ, phản diện chưa sụp.
 Chương 4: Escalation — phản diện phản công bằng truyền thông bẩn/hợp đồng giả.
 Chương 5: Public Face-Slap — bằng chứng mạnh lên hot search, đồng minh phản diện dao động.
-Chương 6: Final Payoff — nữ chính tung đòn cuối, phản diện mất danh dự/tài sản/quyền lực.`
+Chương 6: Legal Reversal — hợp đồng/cổ phần trở thành vũ khí.
+Chương 7: Hidden Witness — nhân chứng bí mật xuất hiện.
+Chương 8: Hot Search Storm — toàn bộ Weibo đảo chiều.
+Chương 9: Final Trap — phản diện tưởng thắng nhưng đã rơi vào bẫy.
+Chương 10: Final Payoff — nữ chính tung đòn cuối, phản diện mất danh dự/tài sản/quyền lực.`
 }
 
 function buildChapterMock({
@@ -224,187 +246,81 @@ function buildChapterMock({
   selectedStory: StoryLite | null
   categoryOptions: Option[]
 }) {
-  const idea =
-    form.promptIdea.trim() ||
-    selectedStory?.title ||
-    'Một nữ chính bị phản bội trong hôn lễ và bắt đầu phản công.'
-
   const categoryLabel = findLabel(categoryOptions, form.category)
   const styleLabel = findLabel(mainCharacterOptions, form.mainCharacterStyle)
-  const lengthLabel = findLabel(chapterLengthOptions, form.chapterLength)
   const cliffLabel = findLabel(cliffhangerOptions, form.cliffhangerType)
-
-  const baseScene = `Tôi đứng giữa sảnh tiệc khách sạn năm sao ở Thượng Hải, váy cưới còn chưa kịp thay, đã nghe Lục Thành nói trước mặt hơn ba trăm khách mời:
-
-“Lâm An Nhiên, cô đừng làm loạn nữa. Người tôi yêu thật sự không phải cô.”
-
-Cả sảnh im phăng phắc.
-
-Màn hình lớn sau lưng anh ta vẫn đang chiếu ảnh cưới của chúng tôi. Còn người phụ nữ được anh ta nắm tay kéo lên sân khấu lại chính là Hạ Mạn Nhi, cô em gái nuôi mà mẹ tôi từng bắt tôi nhường phòng, nhường váy, nhường cả suất du học.
-
-Cô ta cúi đầu, nước mắt rơi đúng lúc.
-
-“Chị, em xin lỗi. Nhưng tình yêu không thể ép buộc.”
-
-Một câu nhẹ tênh, lại đủ biến tôi thành người thứ ba trong chính lễ đính hôn của mình.
-
-Dưới sân khấu, Lục phu nhân lạnh mặt đặt chén trà xuống.
-
-“An Nhiên, nhà họ Lục cần thể diện. Nếu cô còn hiểu chuyện, hãy tự bước xuống.”
-
-Tôi nhìn từng gương mặt quen thuộc.
-
-Người từng nói tôi là con dâu duy nhất của nhà họ Lục, giờ tránh ánh mắt tôi.
-
-Người từng nhận cổ phần hồi môn của tôi, giờ bảo tôi đừng làm mất mặt gia tộc.
-
-Tôi chợt bật cười.
-
-Không lớn.
-
-Nhưng đủ để micro trước mặt thu lại.
-
-Lục Thành nhíu mày. “Cô cười cái gì?”
-
-Tôi rút điện thoại khỏi túi xách, mở tin nhắn vừa nhận được từ phòng pháp vụ Vạn Thịnh.
-
-Trong đó có một dòng ngắn:
-
-“Hợp đồng liên minh giữa Lục thị và Vạn Thịnh có điều khoản hủy ngang nếu bên Lục thị vi phạm đạo đức thương nghiệp trong sự kiện công khai.”
-
-Tôi chưa bấm gửi.
-
-Chưa phải lúc.
-
-Một con bài đủ làm họ chảy máu, nhưng chưa đủ để kết thúc.
-
-Tôi ngẩng đầu nhìn Hạ Mạn Nhi.
-
-“Cô chắc hôm nay muốn đứng trên sân khấu này?”
-
-Mặt cô ta trắng đi trong một thoáng.
-
-Rất nhanh thôi.
-
-Nhanh đến mức người khác không nhận ra.
-
-Nhưng tôi nhận ra.
-
-Vì người đang nói dối luôn sợ người khác hỏi đúng chỗ đau.
-
-Lục Thành bước chắn trước mặt cô ta.
-
-“Đủ rồi. Nếu cô còn làm loạn, tôi sẽ yêu cầu bảo vệ đưa cô ra ngoài.”
-
-Tôi gật đầu.
-
-“Được.”
-
-Rồi tôi cầm micro, nhìn thẳng về phía camera livestream của khách sạn.
-
-“Vậy trước khi tôi ra ngoài, tôi chỉ hỏi một câu.”
-
-Tôi dừng lại, nhìn cả nhà họ Lục.
-
-“Đoạn camera hậu trường lúc 19 giờ 42 phút, các người muốn tự công bố, hay để tôi công bố?”`
-
-  const extraMedium = `
-
-Không khí trong sảnh tiệc đông cứng.
-
-Lục Thành vốn đang định giật micro khỏi tay tôi, bỗng khựng lại.
-
-Hạ Mạn Nhi nắm chặt tay áo anh ta. Móng tay cô ta bấm đến trắng bệch, nhưng giọng vẫn mềm như nước.
-
-“Chị, chị đang nói gì vậy? Em không hiểu.”
-
-Tôi nhìn cô ta.
-
-“Không hiểu cũng không sao. Camera hiểu.”
-
-Tiếng bàn tán bắt đầu nổi lên như sóng.
-
-“Camera gì?”
-
-“Hậu trường lúc 19 giờ 42 phút chẳng phải là lúc cô Hạ mất tích sao?”
-
-“Có phải còn chuyện khác không?”
-
-Lục phu nhân lập tức đứng dậy.
-
-“Lâm An Nhiên, cô muốn hủy cả buổi tiệc sao?”
-
-Tôi quay sang bà ta, bình tĩnh đến mức chính tôi cũng thấy xa lạ.
-
-“Không phải tôi hủy.”
-
-Tôi chỉ vào màn hình lớn phía sau.
-
-“Là các người tự dựng sân khấu này lên.”`
-
-  const extraLong = `
-
-Một nhân viên khách sạn ôm máy tính chạy từ phía sau cánh gà ra, mặt tái mét.
-
-“Lục tổng, hệ thống livestream bị người xem report quá nhiều, phòng kỹ thuật hỏi có cần tắt không?”
-
-Tắt?
-
-Muộn rồi.
-
-Trên Douyin, đoạn Lục Thành nắm tay Hạ Mạn Nhi tuyên bố hủy hôn đã bị cắt thành hàng chục video.
-
-Trên Weibo, hashtag #LụcThịHủyHônTrênSânKhấu đang leo lên hot search khu vực Thượng Hải.
-
-Tôi nhìn màn hình điện thoại.
-
-Bình luận chạy nhanh đến mức gần như không đọc kịp.
-
-“Đại tiểu thư bị cướp hôn phu ngay trong lễ đính hôn?”
-
-“Em gái nuôi? Lại là em gái nuôi?”
-
-“Camera hậu trường là gì? Mau công bố!”
-
-Lục Thành cuối cùng cũng nhận ra chuyện không còn nằm trong tầm kiểm soát.
-
-Anh ta nghiến răng, hạ giọng chỉ đủ cho tôi nghe.
-
-“An Nhiên, cô muốn gì?”
-
-Tôi cười nhạt.
-
-Câu này, đáng lẽ anh ta phải hỏi sớm hơn.
-
-Trước khi dùng tài sản hồi môn của tôi để đổi lấy dự án Nam Cảng.
-
-Trước khi để Hạ Mạn Nhi mặc chiếc váy tôi đặt riêng.
-
-Trước khi biến tôi thành trò cười trước toàn bộ Thượng Hải.
-
-Tôi đặt điện thoại xuống cạnh micro.
-
-“Lục Thành, tôi từng muốn một lời giải thích.”
-
-Tôi nhìn anh ta, từng chữ rất chậm.
-
-“Bây giờ tôi muốn thanh toán.”`
-
-  let body = baseScene
-
-  if (form.chapterLength === 'medium') {
-    body += extraMedium
-  }
-
-  if (form.chapterLength === 'long') {
-    body += extraMedium + extraLong
-  }
 
   return `# BẢN ĐỌC CHO ĐỘC GIẢ
 
-# Chương — ${selectedStory?.title || 'Cô Dâu Bị Phản Bội'}
+# Chương — Ảnh chụp trên hot search
 
-${body}
+Sáng nay tôi thức dậy vì tiếng điện thoại không ngừng.
+
+Weibo nổ tung.
+
+Tên Lục Thành treo trên hot search từ sáu giờ sáng.
+
+#TổngGiámĐốcLụcThịÔmNgườiPhụNữLạ#
+
+Trong ảnh, anh đứng trước cửa khách sạn Vân Đỉnh, tay ôm eo Hạ Mạn Nhi. Cô ta mặc chiếc váy trắng mà tôi từng thấy trong phòng thay đồ của nhà họ Lục. Nụ cười của cô ta ngọt đến mức làm người ta buồn nôn.
+
+Mẹ chồng tôi gọi điện.
+
+"An Nhiên, con đừng làm lớn. Nhà họ Lục cần thể diện."
+
+Tôi nhìn màn hình, bật cười rất khẽ.
+
+"Thể diện của nhà họ Lục quan trọng, vậy thể diện của tôi thì sao?"
+
+Đầu dây bên kia im lặng ba giây.
+
+Rồi giọng bà ta lạnh xuống.
+
+"Con đã gả vào Lục gia thì phải biết nhịn."
+
+Buổi chiều, tôi đến trụ sở Lục thị.
+
+Trong phòng họp tầng hai mươi bảy, Lục Thành đặt trước mặt tôi một bản thỏa thuận chia tài sản. Trên cùng là con số ba mươi triệu tệ. Bên cạnh là điều khoản yêu cầu tôi rút khỏi dự án Nam Cảng.
+
+Anh nói: "Ký đi. Cô còn có thể giữ chút mặt mũi."
+
+Tôi không cầm bút.
+
+Tôi nhìn anh.
+
+"Lục Thành, anh thật sự nghĩ tôi không đọc hợp đồng trước khi kết hôn à?"
+
+Sắc mặt anh khựng lại.
+
+Hạ Mạn Nhi đứng sau lưng anh, mắt đỏ hoe.
+
+"Chị An Nhiên, em biết chị hận em. Nhưng tình yêu không có lỗi."
+
+Tôi đứng dậy, nhìn thẳng vào camera giám sát ở góc phòng.
+
+"Đúng. Tình yêu không có lỗi."
+
+Tôi cầm bản thỏa thuận, xé làm đôi.
+
+"Nhưng lừa đảo thương mại thì có."
+
+Cả phòng họp chết lặng.
+
+Đúng lúc đó, điện thoại của Lục Thành rung lên.
+
+Một tin nhắn từ phòng PR hiện trên màn hình.
+
+"Không ổn rồi. Có người đang đẩy hashtag mới: #LụcThịLừaĐảoHợpĐồngNamCảng#."
+
+Lục Thành ngẩng phắt đầu nhìn tôi.
+
+Tôi mỉm cười.
+
+"Đừng nhìn tôi như vậy. Tôi mới chỉ gửi một trang thôi."
+
+Mặt Hạ Mạn Nhi trắng bệch.
+
+Còn tôi biết, trò chơi này cuối cùng cũng đến lượt tôi đặt luật.
 
 ---
 
@@ -412,39 +328,156 @@ ${body}
 
 === STORY PROGRESS CHECK ===
 - Mode: ${form.mode}
-- Ý tưởng: ${idea}
+- Truyện: ${selectedStory?.title || 'Chưa chọn truyện'}
 - Thể loại: ${categoryLabel}
 - Kiểu nữ chính: ${styleLabel}
-- Độ dài chương: ${lengthLabel}
 - Kiểu kết chương: ${cliffLabel}
 - Mức uất ức: ${form.humiliationLevel}/5
 - Mức trả thù: ${form.revengeIntensity}/5
 
 === STORY MEMORY ===
-- Nữ chính bị hủy hôn công khai tại khách sạn năm sao ở Thượng Hải.
-- Lục Thành công khai chọn Hạ Mạn Nhi.
-- Nữ chính giữ lại camera hậu trường lúc 19 giờ 42 phút, chưa tung toàn bộ.
+- Nữ chính bị phản bội công khai trên Weibo.
+- Lục Thành ép ký thỏa thuận chia tài sản và rút khỏi dự án Nam Cảng.
+- Hạ Mạn Nhi xuất hiện với vai người thứ ba giả yếu đuối.
+- Nữ chính đã bắt đầu phản công bằng hợp đồng.
 
 === PAYOFF SETUP TRACKER ===
-- Setup đã cài: camera hậu trường, hợp đồng liên minh Lục thị – Vạn Thịnh, hot search Weibo.
-- Payoff chưa thực hiện: công bố toàn bộ camera, điều khoản hủy hợp đồng, phản diện mất quyền/danh tiếng.
+- Dự án Nam Cảng là vũ khí thương chiến chính.
+- Hợp đồng có thể là bằng chứng lớn.
+- Hashtag mới mở đường cho vả mặt công khai.
 
 === EVIDENCE PACING TRACKER ===
-- Chỉ hé bằng chứng, chưa tung Tier 4.
-- Giữ đạn cuối cho giai đoạn public face-slap/final payoff.
+- Đã hé 1 trang hợp đồng.
+- Chưa tung toàn bộ hồ sơ.
+- Giữ payoff lớn cho chương sau.
 
 === CONFLICT ESCALATION LEDGER ===
-- Conflict tăng từ phản bội cá nhân lên scandal công khai + nguy cơ thương chiến.`
+- Dư luận trên Weibo tăng.
+- Gia tộc Lục ép nữ chính nhịn.
+- Nữ chính phản công nhỏ nhưng chưa kết liễu.`
 }
 
+function getMarkdownSection(markdown: string, heading: string) {
+  const lines = markdown.split('\n')
+  const headingIndex = lines.findIndex((line) => line.trim() === heading)
+
+  if (headingIndex === -1) return ''
+
+  const collected: string[] = []
+
+  for (let index = headingIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index]
+
+    if (line.trim().startsWith('## ') || line.trim().startsWith('# ')) break
+
+    collected.push(line)
+  }
+
+  return collected.join('\n').trim()
+}
+
+function extractReaderOnly(preview: string) {
+  const marker = '# BẢN ĐỌC CHO ĐỘC GIẢ'
+  const techMarker = '---'
+
+  const markerIndex = preview.indexOf(marker)
+
+  if (markerIndex === -1) return preview.trim()
+
+  const afterMarker = preview.slice(markerIndex).trim()
+  const techIndex = afterMarker.indexOf(techMarker)
+
+  if (techIndex === -1) return afterMarker.trim()
+
+  return afterMarker.slice(0, techIndex).trim()
+}
+
+function buildFullCoverPrompt({
+  selectedStory,
+  preview,
+  aiForm,
+  categoryOptions,
+}: {
+  selectedStory: StoryLite | null
+  preview: string
+  aiForm: AIFormState
+  categoryOptions: Option[]
+}) {
+  const title =
+    selectedStory?.title ||
+    getMarkdownSection(preview, '## Tên truyện')
+      .split('\n')
+      .find((line) => line.trim()) ||
+    'Sau Khi Bị Phản Bội, Tôi Khiến Cả Nhà Họ Quỳ Xin Lỗi'
+
+  const genreLabel = findLabel(categoryOptions, aiForm.category)
+  const styleLabel = findLabel(mainCharacterOptions, aiForm.mainCharacterStyle)
+  const coverStyleLabel = findLabel(coverStyleOptions, aiForm.coverStyle)
+  const colorThemeLabel = findLabel(colorThemeOptions, aiForm.colorTheme)
+  const characterVibeLabel = findLabel(characterVibeOptions, aiForm.characterVibe)
+
+  const summary =
+    aiForm.promptIdea.trim() ||
+    selectedStory?.description ||
+    getMarkdownSection(preview, '## Logline') ||
+    getMarkdownSection(preview, '## Tóm tắt') ||
+    'A betrayed bride is publicly humiliated during an engagement ceremony, but she secretly holds evidence that can destroy the wealthy family that betrayed her.'
+
+  return `Create a premium vertical web-novel cover illustration.
+
+Format: 2:3 vertical book cover, polished digital illustration, highly detailed, cinematic, premium, commercial-quality cover art.
+
+Story title: "${title}"
+Genre: ${genreLabel}
+Story engine style: Nữ tần đô thị viral Trung Quốc
+Story summary: ${summary}
+
+Visual style:
+${coverStyleLabel}, high-detail anime cover illustration, emotional facial expressions, cinematic framing, polished web-novel cover quality, dramatic lighting, glossy premium finish.
+
+Color direction:
+${colorThemeLabel}, dark luxury atmosphere, premium elite feeling, cinematic shadows, strong contrast.
+
+Character vibe:
+${characterVibeLabel}. The heroine should be emotionally wounded but proud, graceful, cold-eyed, elegant, fragile on the surface yet internally dangerous.
+
+Main subject:
+A beautiful female protagonist with the character direction "${styleLabel}". She should be the main focus of the cover. She looks emotionally wounded but strong, elegant, memorable, and ready to take revenge.
+
+Setting:
+Modern Chinese urban luxury environment, wealthy families, elite corporate circles, glamorous hotel or banquet hall, crystal chandeliers, luxury fashion, public scandal atmosphere, Weibo/Douyin viral drama feeling.
+
+Composition:
+The heroine stands in the foreground. In the blurred background, show hints of betrayal: a man in a formal black suit standing close to another woman, wealthy guests, luxury lights, or a grand engagement ceremony. Keep the heroine dominant and unforgettable.
+
+Mood:
+Dark luxury, emotional tension, betrayal, humiliation turning into revenge, female-oriented Chinese urban drama, high-click web novel cover energy.
+
+Important:
+Do not add any text, logo, watermark, random letters, or unreadable typography on the cover.
+No extra fingers, no distorted face, no low-quality anatomy.
+Make it look like a premium anime-style Chinese urban revenge novel cover.`
+}
+
+
+
 export default function AIGeneratePanel() {
+  const [, setStories] = useState<StoryLite[]>([])
+  const [storyOptions, setStoryOptions] = useState<StoryLite[]>([])
+  const [categories, setCategories] = useState<Option[]>(fallbackCategories)
+  const [selectedStory, setSelectedStory] = useState<StoryLite | null>(null)
+  const [storyQuery, setStoryQuery] = useState('')
+  const [preview, setPreview] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
   const [aiForm, setAiForm] = useState<AIFormState>({
     mode: 'chapter',
     provider: 'mock',
     moduleId: 'female-urban-viral',
-    category: 'hon-nhan-phan-boi-ngoai-tinh',
+    category: fallbackCategories[0].value,
     mainCharacterStyle: 'patient-counterattack',
-    chapterLength: 'short',
+    chapterLength: 'medium',
     cliffhangerType: 'new-evidence',
     coverStyle: 'minimal-portrait',
     colorTheme: 'warm-gold',
@@ -454,26 +487,55 @@ export default function AIGeneratePanel() {
     revengeIntensity: 3,
   })
 
-  const [selectedStory, setSelectedStory] = useState<StoryLite | null>(null)
-  const [storyOptions, setStoryOptions] = useState<StoryLite[]>([])
-  const [categories, setCategories] = useState<Option[]>([])
-  const [preview, setPreview] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const categoryOptions = categories.length ? categories : fallbackCategories
 
-  const categoryOptions = useMemo(() => {
-    return categories.length ? categories : fallbackCategories
-  }, [categories])
+  const filteredStories = useMemo(() => {
+    const q = storyQuery.trim().toLowerCase()
+
+    if (!q) return storyOptions.slice(0, 8)
+
+    return storyOptions.filter((story) => {
+      return (
+        story.title.toLowerCase().includes(q) ||
+        story.slug.toLowerCase().includes(q) ||
+        String(story.author || '').toLowerCase().includes(q)
+      )
+    })
+  }, [storyOptions, storyQuery])
 
   const previewStats = useMemo(() => {
-    return {
-      chars: preview.length,
-      lines: preview ? preview.split('\n').length : 1,
-    }
+    const chars = preview.length
+    const lines = preview ? preview.split('\n').length : 1
+
+    return { chars, lines }
   }, [preview])
+
+  const hasPreview = Boolean(preview.trim())
 
   useEffect(() => {
     let ignore = false
+
+    async function loadStories() {
+      try {
+        const { data, error } = await supabase
+          .from('stories')
+          .select('id, title, slug, author, status, description')
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        if (!ignore) {
+          setStories(data || [])
+          setStoryOptions(data || [])
+        }
+      } catch {
+        if (!ignore) {
+          setStories([])
+          setStoryOptions([])
+          setMessage('Không load được danh sách truyện.')
+        }
+      }
+    }
 
     async function loadCategories() {
       try {
@@ -491,9 +553,9 @@ export default function AIGeneratePanel() {
               label: item.name,
             })) || []
 
-          setCategories(mapped)
-
           if (mapped.length) {
+            setCategories(mapped)
+
             setAiForm((prev) => {
               const exists = mapped.some((item) => item.value === prev.category)
               return exists ? prev : { ...prev, category: mapped[0].value }
@@ -502,53 +564,97 @@ export default function AIGeneratePanel() {
         }
       } catch {
         if (!ignore) {
-          setCategories([])
+          setCategories(fallbackCategories)
         }
       }
     }
 
+    loadStories()
     loadCategories()
 
     return () => {
       ignore = true
     }
   }, [])
-  
-  useEffect(() => {
-    let ignore = false
 
-    async function loadStoriesForDraft() {
-      try {
-        const { data, error } = await supabase
-          .from('stories')
-          .select('id, title, slug, author, status, description')
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
-
-        if (!ignore) {
-          setStoryOptions(data || [])
-        }
-      } catch {
-        if (!ignore) {
-          setStoryOptions([])
-          setMessage('Không load được danh sách truyện để lưu draft.')
-        }
-      }
-    }
-
-    loadStoriesForDraft()
-
-    return () => {
-      ignore = true
-    }
-  }, [])
-  
   function updateAiForm<K extends keyof AIFormState>(key: K, value: AIFormState[K]) {
-    setAiForm((prev) => ({ ...prev, [key]: value }))
+    setAiForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  async function copyText(text: string, successMessage: string) {
+    if (!text.trim()) {
+      setMessage('Chưa có nội dung để copy.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(text)
+      setMessage(successMessage)
+    } catch {
+      setMessage('Không copy được. Trình duyệt có thể đang chặn clipboard.')
+    }
+  }
+
+  function getReaderOnly() {
+    return extractReaderOnly(preview)
+  }
+
+  function getDraftTitle() {
+    const readerOnly = getReaderOnly()
+
+    const chapterLine =
+      readerOnly
+        .split('\n')
+        .find((line) => line.trim().startsWith('# Chương')) ||
+      selectedStory?.title ||
+      'Chương nháp AI'
+
+    return chapterLine
+      .replace(/^#+\s*/, '')
+      .replace(/^Chương\s*[—-]\s*/i, '')
+      .trim()
+  }
+
+  function getStoryTitleFromPreview() {
+    const planTitle = getMarkdownSection(preview, '## Tên truyện')
+      .split('\n')
+      .find((line) => line.trim())
+
+    if (planTitle) return planTitle.replace(/^[-*]\s*/, '').trim()
+
+    const chapterTitle = preview.split('\n').find((line) => line.trim().startsWith('# Chương'))
+
+    if (chapterTitle) {
+      return chapterTitle
+        .replace(/^#+\s*/, '')
+        .replace(/^Chương\s*[—-]\s*/i, '')
+        .trim()
+    }
+
+    return selectedStory?.title || aiForm.promptIdea.trim() || 'Truyện nháp AI Writer'
+  }
+
+  function getStoryDescriptionFromPreview() {
+    const logline = getMarkdownSection(preview, '## Logline')
+    if (logline) return logline
+
+    const summary = getMarkdownSection(preview, '## Tóm tắt')
+    if (summary) return summary
+
+    const conflict = getMarkdownSection(preview, '## Mâu thuẫn cốt lõi')
+    if (conflict) return conflict
+
+    return aiForm.promptIdea.trim() || selectedStory?.description || 'Truyện được tạo từ AI Writer.'
+  }
+
+  function handleClear() {
+    setPreview('')
     setMessage(null)
   }
-  
+
   async function handleGenerate() {
     setLoading(true)
     setMessage(null)
@@ -570,9 +676,7 @@ export default function AIGeneratePanel() {
 
       const response = await fetch('/api/ai/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: aiForm.mode,
           moduleId: aiForm.moduleId,
@@ -601,122 +705,12 @@ export default function AIGeneratePanel() {
       setPreview(data.text)
       setMessage(`Đã generate bằng OpenAI API${data.model ? ` (${data.model})` : ''}.`)
     } catch (err: any) {
-      setMessage(
-        `Generate thất bại: ${String(err?.message ?? err)}. Nếu đang chạy localhost bằng npm run dev thì /api có thể chưa chạy; dùng vercel dev hoặc deploy lên Vercel để test API.`
-      )
+      setMessage(`Generate thất bại: ${String(err?.message ?? err)}`)
     } finally {
       setLoading(false)
     }
   }
-  
-  function handleClear() {
-    setPreview('')
-    setMessage(null)
-  }
 
-  async function copyText(text: string, successMessage: string) {
-    if (!text.trim()) return
-
-    await navigator.clipboard.writeText(text)
-    setMessage(successMessage)
-  }
-  
-  function getMarkdownSection(markdown: string, heading: string) {
-  const lines = markdown.split('\n')
-  const headingIndex = lines.findIndex((line) => line.trim() === heading)
-
-  if (headingIndex === -1) return ''
-
-  const collected: string[] = []
-
-  for (let index = headingIndex + 1; index < lines.length; index += 1) {
-    const line = lines[index]
-
-    if (line.trim().startsWith('## ') || line.trim().startsWith('# ')) {
-      break
-    }
-
-    collected.push(line)
-  }
-
-  return collected.join('\n').trim()
-  }
-
-  function getStoryTitleFromPreview() {
-    const planTitle = getMarkdownSection(preview, '## Tên truyện')
-      .split('\n')
-      .find((line) => line.trim())
-
-    if (planTitle) return planTitle.replace(/^[-*]\s*/, '').trim()
-
-    const chapterTitle = preview
-      .split('\n')
-      .find((line) => line.trim().startsWith('# Chương'))
-
-    if (chapterTitle) {
-      return chapterTitle
-        .replace(/^#+\s*/, '')
-        .replace(/^Chương\s*[—-]\s*/i, '')
-        .trim()
-    }
-
-    return (
-      selectedStory?.title ||
-      aiForm.promptIdea.trim() ||
-      'Truyện nháp AI Writer'
-    )
-  }
-
-  function getStoryDescriptionFromPreview() {
-    const logline = getMarkdownSection(preview, '## Logline')
-    if (logline) return logline
-
-    const summary = getMarkdownSection(preview, '## Tóm tắt')
-    if (summary) return summary
-
-    const conflict = getMarkdownSection(preview, '## Mâu thuẫn cốt lõi')
-    if (conflict) return conflict
-
-    return (
-      aiForm.promptIdea.trim() ||
-      selectedStory?.description ||
-      'Truyện được tạo từ AI Writer.'
-    )
-  }
-  
-  function getReaderOnly() {
-    if (!preview) return ''
-    return preview.split('\n---\n')[0] || preview
-  }
-
-  
-  function makeSlug(input: string) {
-    return input
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/\p{Diacritic}/gu, '')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .trim()
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-  }
-
-  function getDraftTitle() {
-    const readerOnly = getReaderOnly()
-
-    const chapterLine =
-      readerOnly
-        .split('\n')
-        .find((line) => line.trim().startsWith('# Chương')) ||
-      selectedStory?.title ||
-      'Chương nháp AI'
-
-    return chapterLine
-      .replace(/^#+\s*/, '')
-      .replace(/^Chương\s*[—-]\s*/i, '')
-      .trim()
-  }
-  
   async function createStoryDraftFromPreview() {
     if (!preview.trim()) {
       setMessage('Chưa có preview để tạo truyện.')
@@ -805,7 +799,7 @@ export default function AIGeneratePanel() {
       setMessage(`Tạo Story Draft thất bại: ${String(err?.message ?? err)}`)
     }
   }
-  
+
   async function saveDraft(source: 'insert' | 'draft') {
     if (!preview.trim()) {
       setMessage('Chưa có nội dung để lưu.')
@@ -836,22 +830,7 @@ export default function AIGeneratePanel() {
       return
     }
 
-    let storyId = selectedStory?.id || null
-
-    if (!storyId && selectedStory?.slug) {
-      const { data: storyRow, error: storyError } = await supabase
-        .from('stories')
-        .select('id')
-        .eq('slug', selectedStory.slug)
-        .single()
-
-      if (storyError) {
-        setMessage(`Không tìm được truyện đã chọn trong Supabase: ${String(storyError.message)}`)
-        return
-      }
-
-      storyId = storyRow?.id || null
-    }
+    const storyId = selectedStory?.id || null
 
     if (!storyId) {
       setMessage('Chọn truyện trước khi lưu draft chapter vào Supabase.')
@@ -874,13 +853,15 @@ export default function AIGeneratePanel() {
         const msg = String(error.message || error)
 
         if (msg.toLowerCase().includes('status')) {
-          setMessage(
-            'Chưa lưu Supabase được vì bảng chapters thiếu cột status. Đã lưu backup localStorage. Hãy chạy SQL thêm cột status.'
-          )
-          return
-        }
+          const fallbackPayload = { ...payload } as any
+          delete fallbackPayload.status
 
-        throw error
+          const fallback = await supabase.from('chapters').insert([fallbackPayload])
+
+          if (fallback.error) throw fallback.error
+        } else {
+          throw error
+        }
       }
 
       setMessage('Đã lưu draft chapter vào Supabase.')
@@ -888,148 +869,63 @@ export default function AIGeneratePanel() {
       setMessage(`Lưu draft thất bại: ${String(err?.message ?? err)}`)
     }
   }
- 
-  
- 
-  function buildFullCoverPrompt() {
-  const title =
-    selectedStory?.title ||
-    'Sau Khi Bị Phản Bội, Tôi Khiến Cả Nhà Họ Quỳ Xin Lỗi'
 
-  const genreLabel = findLabel(categoryOptions, aiForm.category)
-  const styleLabel = findLabel(mainCharacterOptions, aiForm.mainCharacterStyle)
-  const coverStyleLabel = findLabel(coverStyleOptions, aiForm.coverStyle)
-  const colorThemeLabel = findLabel(colorThemeOptions, aiForm.colorTheme)
-  const characterVibeLabel = findLabel(characterVibeOptions, aiForm.characterVibe)
-
-  const summary =
-    aiForm.promptIdea.trim() ||
-    selectedStory?.description ||
-    'A betrayed bride is publicly humiliated during an engagement ceremony, but she secretly holds evidence that can destroy the wealthy family that betrayed her.'
-
-  const coverStylePrompt =
-    aiForm.coverStyle === 'anime-drama'
-      ? 'high-detail anime cover illustration, emotional facial expressions, cinematic framing, polished web-novel cover quality, dramatic lighting, glossy premium finish'
-      : aiForm.coverStyle === 'luxury-wedding'
-        ? 'luxury wedding visual language, grand ballroom, crystal chandeliers, couture bridal fashion, glamorous and expensive atmosphere'
-        : aiForm.coverStyle === 'corporate-queen'
-          ? 'modern elite corporate aesthetics, sharp fashion styling, wealthy urban atmosphere, confident female lead, premium executive aura'
-          : aiForm.coverStyle === 'revenge-poster'
-            ? 'high-impact revenge drama poster style, visually bold composition, intense tension, striking contrast, viral web-fiction cover energy'
-            : 'clean portrait-focused cover, elegant composition, single-character emphasis, simple but premium visual hierarchy, refined illustration'
-
-  const colorPrompt =
-    aiForm.colorTheme === 'dark-luxury'
-      ? 'dark luxury color palette with black, charcoal, soft gold highlights, deep shadows, subtle champagne glow, premium elite atmosphere'
-      : aiForm.colorTheme === 'cold-blue'
-        ? 'cold blue palette, steel-blue shadows, cool highlights, dramatic emotional distance, elegant urban chill'
-        : aiForm.colorTheme === 'red-drama'
-          ? 'dramatic red accents, tension-heavy atmosphere, emotional intensity, high-conflict visual tone'
-          : aiForm.colorTheme === 'black-amber'
-            ? 'black and amber palette, moody rich shadows, cinematic warmth, sophisticated drama look'
-            : 'warm gold palette, golden highlights, soft amber light, elegant warm tones, luxurious romantic glow'
-
-  const vibePrompt =
-    aiForm.characterVibe === 'broken-bride'
-      ? 'the heroine should look like a betrayed bride: emotionally wounded but still proud, graceful, cold-eyed, elegant, fragile on the surface yet internally dangerous'
-      : aiForm.characterVibe === 'cold-queen'
-        ? 'the heroine should appear untouchable, regal, elegant, cold, dominant, and high-status'
-        : aiForm.characterVibe === 'elegant-revenge'
-          ? 'the heroine should appear refined, graceful, intelligent, and quietly vengeful, with a polished aristocratic aura'
-          : aiForm.characterVibe === 'soft-dangerous'
-            ? 'the heroine should look gentle at first glance but carry a hidden threat, sharp intelligence, and emotional danger underneath'
-            : 'the heroine should appear calm, restrained, composed, emotionally controlled, powerful through silence'
-
-  return `Create a premium vertical web-novel cover illustration.
-
-  Format: 2:3 vertical book cover, polished digital illustration, highly detailed, cinematic, premium, commercial-quality cover art.
-
-  Story title: "${title}"
-  Genre: ${genreLabel}
-  Story engine style: Nữ tần đô thị viral Trung Quốc
-  Story summary: ${summary}
-
-  Visual style:
-  ${coverStylePrompt}
-
-  Color direction:
-  ${colorPrompt}
-
-  Character vibe:
-  ${vibePrompt}
-
-  Main subject:
-  A beautiful female protagonist with the character direction "${styleLabel}". She should be the main focus of the cover. She looks emotionally wounded but strong, elegant, memorable, and ready to take revenge.
-
-  Setting:
-  Modern Chinese urban luxury environment, wealthy families, elite corporate circles, glamorous hotel or banquet hall, crystal chandeliers, luxury fashion, public scandal atmosphere, Weibo/Douyin viral drama feeling.
-
-  Composition:
-  The heroine stands in the foreground. In the blurred background, show hints of betrayal: a man in a formal black suit standing close to another woman, wealthy guests, luxury lights, or a grand engagement ceremony. Keep the heroine dominant and unforgettable.
-
-  Mood:
-  Dark luxury, emotional tension, betrayal, humiliation turning into revenge, female-oriented Chinese urban drama, high-click web novel cover energy.
-
-  Selected cover tags:
-  - Cover style: ${coverStyleLabel}
-  - Color theme: ${colorThemeLabel}
-  - Character vibe: ${characterVibeLabel}
-
-  Important:
-  Do not add any text, logo, watermark, random letters, or unreadable typography on the cover.
-  No extra fingers, no distorted face, no low-quality anatomy.
-  Make it look like a premium anime-style Chinese urban revenge novel cover.`
-  }
-  const hasPreview = Boolean(preview.trim())
+  const coverPrompt = buildFullCoverPrompt({
+    selectedStory,
+    preview,
+    aiForm,
+    categoryOptions,
+  })
 
   return (
-    <section className="mb-12 mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+    <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
       <h2 className="text-lg font-semibold text-zinc-100">AI Generate</h2>
-
+      <div className="mt-1 text-xs text-emerald-300">AI Writer UI v2 active</div>
 
       <div className="mt-5 grid gap-5">
         <div className="grid gap-2">
           <label className="grid gap-1 text-xs text-zinc-400">
             Chọn truyện để gán vào chapter / lưu draft
-            <select
-              value={selectedStory?.id ? String(selectedStory.id) : ''}
-              onChange={(event) => {
-                const storyId = event.target.value
-                const story = storyOptions.find((item) => String(item.id) === storyId) || null
-                setSelectedStory(story)
-
-                if (story) {
-                  setMessage(`Đã chọn truyện: ${story.title}`)
-                } else {
-                  setMessage(null)
-                }
-              }}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-sm font-medium text-zinc-100 outline-none focus:border-amber-400"
-            >
-              <option value="">-- Chọn truyện --</option>
-              {storyOptions.map((story) => (
-                <option key={story.id} value={String(story.id)}>
-                  {story.title} — {story.author || 'Không rõ tác giả'}
-                </option>
-              ))}
-            </select>
+            <input
+              value={storyQuery}
+              onChange={(event) => setStoryQuery(event.target.value)}
+              placeholder="Tìm truyện theo tên, slug, tác giả..."
+              className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-400"
+            />
           </label>
+
+          <div className="grid gap-2">
+            {filteredStories.map((story) => (
+              <button
+                key={story.id}
+                type="button"
+                onClick={() => {
+                  setSelectedStory(story)
+                  setStoryQuery(story.title)
+                  setMessage(`Đã chọn truyện: ${story.title}`)
+                }}
+                className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-left text-sm text-zinc-100 hover:border-amber-300"
+              >
+                <div className="font-semibold">{story.title}</div>
+                <div className="text-xs text-zinc-500">
+                  {story.author || 'Không rõ tác giả'} • {story.slug}
+                </div>
+              </button>
+            ))}
+          </div>
 
           {selectedStory ? (
             <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-sm text-zinc-200">
-              <div className="font-semibold text-zinc-100">
-                Đã chọn: {selectedStory.title}
-              </div>
-
+              <div className="font-semibold text-zinc-100">Đã chọn: {selectedStory.title}</div>
               <div className="mt-1 text-xs text-zinc-400">
                 ID: {selectedStory.id || 'chưa có'} • {selectedStory.author || 'Không rõ tác giả'} •{' '}
                 {selectedStory.slug}
               </div>
-
               <button
                 type="button"
                 onClick={() => {
                   setSelectedStory(null)
+                  setStoryQuery('')
                   setMessage(null)
                 }}
                 className="mt-2 rounded bg-zinc-800 px-3 py-1 text-xs text-zinc-100 hover:bg-zinc-700"
@@ -1039,19 +935,18 @@ export default function AIGeneratePanel() {
             </div>
           ) : null}
         </div>
-   
 
         <label className="grid gap-1 text-xs text-zinc-400">
           Prompt idea
           <input
-            className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-400"
-            placeholder="Ví dụ: Bị chồng sắp cưới hủy hôn ngay trên sân khấu"
             value={aiForm.promptIdea}
             onChange={(event) => updateAiForm('promptIdea', event.target.value)}
+            placeholder="Ví dụ: Bị chồng sắp cưới hủy hôn ngay trên sân khấu"
+            className="rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-400"
           />
         </label>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-5 lg:grid-cols-3">
           <SelectField
             label="Nguồn tạo nội dung"
             value={aiForm.provider}
@@ -1072,9 +967,7 @@ export default function AIGeneratePanel() {
             options={modeOptions}
             onChange={(value) => updateAiForm('mode', value as AIFormState['mode'])}
           />
-        </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
           <SelectField
             label="Thể loại"
             value={aiForm.category}
@@ -1093,35 +986,35 @@ export default function AIGeneratePanel() {
             label="Độ dài chương"
             value={aiForm.chapterLength}
             options={chapterLengthOptions}
-            onChange={(value) => updateAiForm('chapterLength', value as AIFormState['chapterLength'])}
+            onChange={(value) =>
+              updateAiForm('chapterLength', value as AIFormState['chapterLength'])
+            }
           />
-        </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
           <div>
             <label className="text-xs text-zinc-400">Mức uất ức</label>
             <input
-              className="mt-2 block w-full"
               type="range"
               min={1}
               max={5}
               value={aiForm.humiliationLevel}
               onChange={(event) => updateAiForm('humiliationLevel', Number(event.target.value))}
+              className="w-full"
             />
-            <div className="mt-1 text-xs text-zinc-400">{aiForm.humiliationLevel}</div>
+            <div className="text-xs text-zinc-400">{aiForm.humiliationLevel}</div>
           </div>
 
           <div>
             <label className="text-xs text-zinc-400">Mức trả thù</label>
             <input
-              className="mt-2 block w-full"
               type="range"
               min={1}
               max={5}
               value={aiForm.revengeIntensity}
               onChange={(event) => updateAiForm('revengeIntensity', Number(event.target.value))}
+              className="w-full"
             />
-            <div className="mt-1 text-xs text-zinc-400">{aiForm.revengeIntensity}</div>
+            <div className="text-xs text-zinc-400">{aiForm.revengeIntensity}</div>
           </div>
 
           <SelectField
@@ -1155,7 +1048,7 @@ export default function AIGeneratePanel() {
           </button>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-5 lg:grid-cols-3">
           <SelectField
             label="Phong cách bìa"
             value={aiForm.coverStyle}
@@ -1179,7 +1072,7 @@ export default function AIGeneratePanel() {
         </div>
 
         <div className="mt-3">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between gap-3">
             <div>
               <div className="text-xs text-zinc-400">Preview</div>
               <div className="text-xs text-zinc-500">Provider: {aiForm.provider}</div>
@@ -1191,7 +1084,11 @@ export default function AIGeneratePanel() {
           </div>
 
           <div className="max-h-[420px] w-full overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-zinc-900/40 p-4 text-sm leading-relaxed text-zinc-100 sm:max-h-[600px]">
-            {loading ? 'Đang tạo nội dung mock...' : preview || 'Chưa có nội dung.'}
+            {loading
+              ? aiForm.provider === 'openai'
+                ? 'Đang gọi OpenAI API...'
+                : 'Đang tạo nội dung mock...'
+              : preview || 'Chưa có nội dung.'}
           </div>
 
           {message ? (
@@ -1247,7 +1144,7 @@ export default function AIGeneratePanel() {
 
             <button
               type="button"
-              onClick={() => copyText(buildFullCoverPrompt(), 'Đã copy cover prompt đầy đủ.')}
+              onClick={() => copyText(coverPrompt, 'Đã copy cover prompt đầy đủ.')}
               className="w-full rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 sm:w-auto"
             >
               Copy Cover Prompt

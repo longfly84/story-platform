@@ -2,8 +2,13 @@ import MainLayout from '@/layouts/MainLayout'
 import { Link } from 'react-router-dom'
 import AIGeneratePanel from '@/components/admin/AIGeneratePanel'
 import StoryMemoryViewer from '@/components/admin/StoryMemoryViewer'
+import { useState } from 'react'
 
 export default function AdminAIPage() {
+  const [selectedMemorySlug, setSelectedMemorySlug] = useState<string | null>(null)
+  const [memoryData, setMemoryData] = useState<any>(null)
+  const [memoryCollapsed, setMemoryCollapsed] = useState<Record<string, boolean>>({})
+
   return (
     <MainLayout>
       <main className="mx-auto max-w-6xl px-4 py-6">
@@ -17,12 +22,14 @@ export default function AdminAIPage() {
 
         <StoryMemoryViewer
           stories={[]}
-          selectedMemorySlug={null}
-          setSelectedMemorySlug={() => {}}
-          memoryData={null}
-          memoryCollapsed={{}}
-          setMemoryCollapsed={() => {}}
-          loadStoryMemory={async () => {}}
+          selectedMemorySlug={selectedMemorySlug}
+          setSelectedMemorySlug={setSelectedMemorySlug}
+          memoryData={memoryData}
+          memoryCollapsed={memoryCollapsed}
+          setMemoryCollapsed={setMemoryCollapsed}
+          loadStoryMemory={async () => {
+            setMemoryData(null)
+          }}
           saveStoryMemoryToDb={() => {}}
         />
       </main>
