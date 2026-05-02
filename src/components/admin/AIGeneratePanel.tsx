@@ -17,7 +17,7 @@ type StoryLite = {
 
 type AIFormState = {
   mode: 'chapter' | 'story-plan'
-  provider: 'mock'
+  provider: 'mock' | 'openai'
   moduleId: 'female-urban-viral'
   category: string
   mainCharacterStyle: string
@@ -44,7 +44,10 @@ const modeOptions: Option[] = [
   { value: 'story-plan', label: 'Tạo dàn ý truyện' },
 ]
 
-const providerOptions: Option[] = [{ value: 'mock', label: 'Mock' }]
+const providerOptions: Option[] = [
+  { value: 'mock', label: 'Mock' },
+  { value: 'openai', label: 'OpenAI API' },
+]
 
 const moduleOptions: Option[] = [
   { value: 'female-urban-viral', label: 'Nữ tần đô thị viral Trung Quốc' },
@@ -545,22 +548,67 @@ export default function AIGeneratePanel() {
     setAiForm((prev) => ({ ...prev, [key]: value }))
     setMessage(null)
   }
-
-  function handleGenerate() {
+  
+  async function handleGenerate() {
     setLoading(true)
     setMessage(null)
 
-    window.setTimeout(() => {
-      const output =
-        aiForm.mode === 'story-plan'
-          ? buildStoryPlanMock({ form: aiForm, selectedStory, categoryOptions })
-          : buildChapterMock({ form: aiForm, selectedStory, categoryOptions })
+    try {
+      if (aiForm.provider === 'mock') {
+        window.setTimeout(() => {
+          const output =
+            aiForm.mode === 'story-plan'
+              ? buildStoryPlanMock({ form: aiForm, selectedStory, categoryOptions })
+              : buildChapterMock({ form: aiForm, selectedStory, categoryOptions })
 
-      setPreview(output)
+          setPreview(output)
+          setLoading(false)
+        }, 350)
+
+        return
+      }
+
+      const response = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode: aiForm.mode,
+          moduleId: aiForm.moduleId,
+          title: selectedStory?.title || '',
+          storySummary: selectedStory?.description || '',
+          promptIdea: aiForm.promptIdea,
+          genreLabel: findLabel(categoryOptions, aiForm.category),
+          mainCharacterStyleLabel: findLabel(mainCharacterOptions, aiForm.mainCharacterStyle),
+          chapterLengthLabel: findLabel(chapterLengthOptions, aiForm.chapterLength),
+          cliffhangerLabel: findLabel(cliffhangerOptions, aiForm.cliffhangerType),
+          humiliationLevel: aiForm.humiliationLevel,
+          revengeIntensity: aiForm.revengeIntensity,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'OpenAI API lỗi.')
+      }
+
+      if (!data?.text) {
+        throw new Error('OpenAI không trả nội dung.')
+      }
+
+      setPreview(data.text)
+      setMessage(`Đã generate bằng OpenAI API${data.model ? ` (${data.model})` : ''}.`)
+    } catch (err: any) {
+      setMessage(
+        `Generate thất bại: ${String(err?.message ?? err)}. Nếu đang chạy localhost bằng npm run dev thì /api có thể chưa chạy; dùng vercel dev hoặc deploy lên Vercel để test API.`
+      )
+    } finally {
       setLoading(false)
-    }, 350)
+    }
   }
-
+  
   function handleClear() {
     setPreview('')
     setMessage(null)
@@ -939,7 +987,11 @@ export default function AIGeneratePanel() {
             disabled={loading}
             className="rounded-lg bg-emerald-500 px-4 py-2 font-medium text-zinc-950 disabled:opacity-60"
           >
-            {loading ? 'Đang tạo nội dung mock...' : 'Generate'}
+            {loading
+              ? aiForm.provider === 'openai'
+                ? 'Đang gọi OpenAI API...'
+                : 'Đang tạo nội dung mock...'
+              : 'Generate'}
           </button>
 
           <button
