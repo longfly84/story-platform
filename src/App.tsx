@@ -15,6 +15,9 @@ import AdminAIPage from '@/pages/admin/AdminAIPage'
 import AdminEditStoryPage from "@/pages/AdminEditStoryPage"
 import LoginPage from "@/pages/LoginPage"
 import AdminCreateStoryPage from '@/pages/admin/AdminCreateStoryPage'
+import AdminCreateChapterPage from '@/pages/admin/AdminCreateChapterPage'
+import AdminCommentsPage from '@/pages/admin/AdminCommentsPage'
+import AdminCategoriesPage from '@/pages/admin/AdminCategoriesPage'
 
 export default function App() {
   return (
@@ -25,6 +28,9 @@ export default function App() {
         <Route path="/admin" element={<AdminDashboardPage />} />
         <Route path="/admin/content" element={<AdminContentPage />} />
         <Route path="/admin/content/new" element={<AdminCreateStoryPage />} />
+        <Route path="/admin/content/chapters/new" element={<AdminCreateChapterPage />} />
+        <Route path="/admin/content/categories" element={<AdminCategoriesPage />} />
+        <Route path="/admin/content/comments" element={<AdminCommentsPage />} />
         <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
         <Route path="/admin/ads" element={<AdminAdsPage />} />
         <Route path="/admin/ai-writer" element={<AdminAIPage />} />
@@ -32,6 +38,9 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/doc-truyen/:slug/:chapter" element={<ReaderPage />} />
         <Route path="*" element={<NotFoundPage />} />
+        
+        
+        
       </Routes>
     </BrowserRouter>
   )
