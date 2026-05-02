@@ -21,16 +21,17 @@ export default function HomeAds() {
   }, [])
 
   if (!ads || !ads.length) return null
-  const ad = ads[0]
+  // show up to 3 ads in sidebar sorted by priority (already sorted by query)
+  const list = ads.slice(0,3)
   return (
-    <div>
-      {/* desktop */}
+    <div className="space-y-3">
+      {/* desktop: stacked cards */}
       <div className="hidden lg:block">
-        <AdCard ad={ad} />
+        {list.map((a, i) => <div key={a.id ?? i} className="mb-3"><AdCard ad={a} /></div>)}
       </div>
-      {/* mobile */}
+      {/* mobile: show first ad compact (preserve existing behavior) */}
       <div className="block lg:hidden mt-4">
-        <AdCard ad={ad} compact />
+        <AdCard ad={list[0]} compact />
       </div>
     </div>
   )
