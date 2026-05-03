@@ -92,7 +92,7 @@ function ToggleChip({
       type="button"
       onClick={onClick}
       className={cx(
-        'rounded-full border px-3 py-2 text-left text-sm transition',
+        'rounded-full border px-2.5 py-1.5 text-left text-xs leading-tight transition sm:text-[13px]',
         active
           ? 'border-yellow-300 bg-yellow-300/10 text-yellow-200'
           : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/25 hover:bg-white/[0.06]',
@@ -946,32 +946,42 @@ export default function AIFactoryPanel() {
           </Section>
 
           <Section title="Genre Pool" desc="Factory sẽ random mỗi truyện một thể loại trong pool.">
-            <div className="flex flex-wrap gap-2">
-              {DEFAULT_FACTORY_GENRES.map((genre) => (
-                <ToggleChip
-                  key={genre.key}
-                  active={selectedGenres.some((item) => item.key === genre.key)}
-                  onClick={() => toggleGenre(genre)}
-                >
-                  {genre.label}
-                </ToggleChip>
-              ))}
+            <div className="max-h-44 overflow-auto rounded-xl border border-white/10 bg-black/20 p-2">
+                <div className="flex flex-wrap gap-1.5">
+                {DEFAULT_FACTORY_GENRES.map((genre) => (
+                    <ToggleChip
+                    key={genre.key}
+                    active={selectedGenres.some((item) => item.key === genre.key)}
+                    onClick={() => toggleGenre(genre)}
+                    >
+                    {genre.label}
+                    </ToggleChip>
+                ))}
+                </div>
             </div>
-          </Section>
+            <p className="mt-2 text-xs text-slate-500">
+                Đang chọn {selectedGenres.length}/{DEFAULT_FACTORY_GENRES.length} thể loại.
+            </p>
+           </Section>
 
           <Section title="Heroine Pool" desc="Factory sẽ random kiểu nữ chính để tránh truyện bị trùng vibe.">
-            <div className="flex flex-wrap gap-2">
-              {DEFAULT_HEROINE_OPTIONS.map((heroine) => (
-                <ToggleChip
-                  key={heroine.key}
-                  active={selectedHeroines.some((item) => item.key === heroine.key)}
-                  onClick={() => toggleHeroine(heroine)}
-                >
-                  {heroine.label}
-                </ToggleChip>
-              ))}
+            <div className="max-h-36 overflow-auto rounded-xl border border-white/10 bg-black/20 p-2">
+                <div className="flex flex-wrap gap-1.5">
+                {DEFAULT_HEROINE_OPTIONS.map((heroine) => (
+                    <ToggleChip
+                    key={heroine.key}
+                    active={selectedHeroines.some((item) => item.key === heroine.key)}
+                    onClick={() => toggleHeroine(heroine)}
+                    >
+                    {heroine.label}
+                    </ToggleChip>
+                ))}
+                </div>
             </div>
-          </Section>
+            <p className="mt-2 text-xs text-slate-500">
+                Đang chọn {selectedHeroines.length}/{DEFAULT_HEROINE_OPTIONS.length} kiểu nữ chính.
+            </p>
+           </Section>
 
           <Section title="Existing Library Scan" desc="Quét truyện gần nhất để build avoid context chống trùng.">
             <div className="grid gap-3 sm:grid-cols-4">
@@ -1135,29 +1145,37 @@ export default function AIFactoryPanel() {
 
       <Section title="Progress Log">
         <div className="max-h-[420px] space-y-2 overflow-auto rounded-xl bg-black/50 p-3">
-          {logs.length ? (
+            {logs.length ? (
             logs.map((log) => (
-              <div
+                <div
                 key={log.id}
                 className={cx(
-                  'rounded-lg border px-3 py-2 text-sm',
-                  log.type === 'info' && 'border-white/10 bg-white/[0.03] text-slate-300',
-                  log.type === 'success' &&
+                    'rounded-lg border px-3 py-2 text-sm',
+                    log.type === 'info' && 'border-white/10 bg-white/[0.03] text-slate-300',
+                    log.type === 'success' &&
                     'border-emerald-400/20 bg-emerald-500/10 text-emerald-100',
-                  log.type === 'warning' &&
+                    log.type === 'warning' &&
                     'border-yellow-400/20 bg-yellow-500/10 text-yellow-100',
-                  log.type === 'error' && 'border-red-400/20 bg-red-500/10 text-red-100',
+                    log.type === 'error' && 'border-red-400/20 bg-red-500/10 text-red-100',
                 )}
-              >
+                >
                 <span className="mr-2 text-xs opacity-70">[{log.time}]</span>
                 {log.message}
-              </div>
+                </div>
             ))
-          ) : (
+            ) : (
             <div className="text-sm text-slate-500">Log trống.</div>
-          )}
+            )}
         </div>
-      </Section>
+        </Section>
+
+        <button
+        type="button"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="fixed bottom-5 right-5 z-50 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-black/40 transition hover:border-yellow-300/60 hover:bg-zinc-800"
+        >
+        ↑ Lên đầu
+      </button>
     </div>
   )
 }
