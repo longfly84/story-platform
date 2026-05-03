@@ -324,7 +324,7 @@ Chương 10: [Payoff lớn]
 
 function buildChapterPrompt(payload: Required<GeneratePayload>) {
   const common = buildCommonPrompt(payload)
-
+  const lengthRule = getLengthRule(payload.chapterLengthLabel)
   return `
 ${common}
 
@@ -370,7 +370,7 @@ Thay bằng kiểu:
 - "Tôi đặt điện thoại xuống, ép mình nhìn thẳng vào bản cam kết trước mặt."
 
 CHAPTER QUALITY TARGET:
-- Độ dài mục tiêu: ${lengthRule}
+- Độ dài mục tiêu: ${lengthRule.readerLength}
 - Tăng đối thoại va chạm.
 - Giữ bối cảnh Trung Quốc hiện đại.
 - Nữ chính lạnh, sắc, không khóc lóc, nhưng chưa toàn thắng.
@@ -444,10 +444,12 @@ function buildPrompt(payload: GeneratePayload) {
     promptIdea: safeText(payload.promptIdea, 'Một nữ chính bị phản bội và bắt đầu phản công.'),
     genreLabel: safeText(payload.genreLabel, 'Hôn nhân phản bội / ngoại tình'),
     mainCharacterStyleLabel: safeText(payload.mainCharacterStyleLabel, 'Nhẫn nhịn rồi phản công'),
-    chapterLengthLabel: safeText(payload.chapterLengthLabel, 'Vừa 1.800–2.300 ký tự'),
+    chapterLengthLabel: safeText(payload.chapterLengthLabel, 'Vừa 2.500–3.500 ký tự'),
     cliffhangerLabel: safeText(payload.cliffhangerLabel, 'Bằng chứng mới xuất hiện'),
     humiliationLevel: safeNumber(payload.humiliationLevel, 3),
     revengeIntensity: safeNumber(payload.revengeIntensity, 3),
+    storyMemory: safeText(payload.storyMemory, ''),
+    recentChapters: Array.isArray(payload.recentChapters) ? payload.recentChapters : [],
   }
 
   if (normalizedPayload.mode === 'story-plan') {
