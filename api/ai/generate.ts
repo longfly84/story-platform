@@ -85,7 +85,7 @@ function normalizePayload(body: GeneratePayload): NormalizedGeneratePayload {
     genreLabel: safeText(body.genreLabel, 'Hôn nhân phản bội / ngoại tình'),
     mainCharacterStyleLabel: safeText(body.mainCharacterStyleLabel, 'Nhẫn nhịn rồi phản công'),
     chapterLengthLabel: safeText(body.chapterLengthLabel, 'Vừa 2.500–3.500 ký tự'),
-    cliffhangerLabel: safeText(body.cliffhangerLabel, 'Bằng chứng mới xuất hiện'),
+    cliffhangerLabel: safeText(body.cliffhangerLabel, 'auto'),
     humiliationLevel: safeNumber(body.humiliationLevel, 3),
     revengeIntensity: safeNumber(body.revengeIntensity, 3),
     nextChapterNumber: Math.max(1, Math.floor(safeNumber(body.nextChapterNumber, 1))),
@@ -235,6 +235,161 @@ CÔNG THỨC MODULE: Truyện drama nữ tần hiện đại.
 `.trim()
 }
 
+function getGenreInstruction(genreLabel: string) {
+  const genre = safeText(genreLabel).toLowerCase()
+
+  if (genre.includes('bạn thân') || genre.includes('tiểu tam')) {
+    return `
+GENRE LOCK: Bạn thân phản bội / tiểu tam
+- Trọng tâm bắt buộc: cú đâm sau lưng từ người nữ chính từng tin tưởng.
+- Hook nên xoay quanh: ảnh thân mật, tin nhắn, khách sạn, chuyến du lịch, hôn lễ, hoặc cảnh bắt quả tang.
+- Tiểu tam/bạn thân phải biết diễn, biết đổ lỗi, biết lợi dụng dư luận hoặc gia đình nam chính.
+- Nữ chính phản công bằng bằng chứng, nhân chứng, camera, ảnh chụp, lịch sử chuyển khoản hoặc ký ức cũ.
+- Không biến thành thương chiến thuần túy quá sớm.
+`.trim()
+  }
+
+  if (genre.includes('bí ẩn') || genre.includes('thân thế')) {
+    return `
+GENRE LOCK: Bí ẩn gia đình / thân thế
+- Trọng tâm bắt buộc: bí mật huyết thống, thân phận thật giả, hồ sơ cũ, người nhà che giấu sự thật.
+- Không hé toàn bộ thân thế trong một chương.
+- Mỗi chương chỉ hé một mảnh: ảnh cũ, giấy xét nghiệm, hồ sơ bệnh viện, di chúc, di vật, người quen cũ.
+- Nữ chính phải điều tra từng lớp, không tự nhiên biết hết.
+`.trim()
+  }
+
+  if (genre.includes('công sở') || genre.includes('nữ cường') || genre.includes('thương chiến')) {
+    return `
+GENRE LOCK: Công sở vả mặt / nữ cường thương chiến
+- Trọng tâm bắt buộc: năng lực, địa vị, hợp đồng, dự án, phòng họp, PR, pháp vụ, cổ phần, quyền điều hành.
+- Nữ chính phải thắng bằng năng lực thật: số liệu, hợp đồng, kế hoạch, bằng chứng, đàm phán, quyền biểu quyết.
+- Cảnh chính nên có: họp hội đồng, đàm phán dự án, tranh công, bị vu oan trong công ty, báo cáo bị đánh tráo, hợp đồng bị cướp.
+- Đối thoại phải sắc, ngắn, có chiến thuật.
+- Không biến thành chuyện tình cảm đơn thuần.
+`.trim()
+  }
+
+  if (genre.includes('cưới trước') || genre.includes('hợp đồng hôn nhân')) {
+    return `
+GENRE LOCK: Cưới trước yêu sau / hợp đồng hôn nhân
+- Trọng tâm bắt buộc: quan hệ bắt đầu bằng thỏa thuận, hợp đồng, lợi ích gia tộc/công ty, danh phận tạm thời.
+- Phải có điều khoản hoặc giới hạn rõ: thời hạn hôn nhân, quyền lợi, nghĩa vụ, không can thiệp đời tư, giữ thể diện, tài sản.
+- Không cho tình cảm tiến quá nhanh.
+- Xung đột nên đến từ: người cũ, gia đình ép, điều khoản bị phá, thân phận bị nghi ngờ, hợp đồng bị lộ.
+`.trim()
+  }
+
+  if (genre.includes('đổi tráo') || genre.includes('danh phận')) {
+    return `
+GENRE LOCK: Đổi tráo danh phận / hào môn
+- Trọng tâm bắt buộc: thân phận thật giả, thiên kim giả, người thay thế, danh phận bị cướp, gia tộc nhận nhầm người.
+- Không hé thân phận thật quá sớm.
+- Mỗi chương chỉ hé một sơ hở: thói quen, di vật, ảnh cũ, xét nghiệm, lời người hầu, hồ sơ bị sửa.
+- Nữ chính phải từng bước lấy lại vị trí, không thắng sạch trong một chương.
+`.trim()
+  }
+
+  if (genre.includes('gia đấu') || genre.includes('mẹ chồng') || genre.includes('nhà chồng')) {
+    return `
+GENRE LOCK: Gia đấu / mẹ chồng / nhà chồng
+- Trọng tâm bắt buộc: áp lực trong nhà chồng, danh phận, thể diện, mẹ chồng, bà nội chồng, chị em dâu, tài sản, con cái.
+- Vai vế phải thống nhất. Nếu là mẹ chồng thì gọi "mẹ chồng tôi" hoặc "Lục phu nhân". Nếu là bà nội chồng thì gọi "Lục lão phu nhân".
+- Cảnh mạnh nên có: bữa cơm gia đình, phòng khách biệt thự, ép ký, xét nét, đổ tội, so sánh, đòi tài sản.
+- Không biến thành cãi nhau vô nghĩa; mỗi xung đột phải làm lộ thêm quyền lực, bí mật hoặc lợi ích.
+`.trim()
+  }
+
+  if (genre.includes('hào môn') || genre.includes('liên hôn') || genre.includes('gia tộc')) {
+    return `
+GENRE LOCK: Hào môn / liên hôn / gia tộc
+- Trọng tâm bắt buộc: quyền lực gia tộc, liên hôn, thể diện, tài sản, cổ phần, danh phận, phu nhân, lão phu nhân.
+- Không khí phải sang, lạnh, áp lực, nhiều quy tắc ngầm.
+- Cảnh nên có biệt thự, khách sạn 5 sao, sảnh tiệc, phòng họp gia tộc, hoặc hội sở tập đoàn.
+- Nữ chính bị ép bởi danh phận nhưng không được hèn yếu.
+- Không để tình tiết thành ngoại tình đơn thuần; ngoại tình chỉ là ngòi nổ nếu có.
+`.trim()
+  }
+
+  if (genre.includes('hôn nhân') && (genre.includes('phản bội') || genre.includes('ngoại tình'))) {
+    return `
+GENRE LOCK: Hôn nhân phản bội / ngoại tình
+- Trọng tâm bắt buộc: lòng tin hôn nhân bị phá vỡ, người thứ ba, ảnh/tin nhắn/khách sạn, gia đình hai bên, thể diện xã hội.
+- Hook nên xoay quanh: hot search, ảnh thân mật, phòng khách sạn, cuộc gọi lạnh lùng của chồng, tiểu tam giả vô tội, hoặc gia đình ép nữ chính im lặng.
+- Nữ chính được đau nhưng không được khóc lóc quá lâu. Cảm xúc phải biến thành sự tỉnh táo.
+- Phản công nên đi bằng bằng chứng: ảnh, hóa đơn, camera, lịch sử đặt phòng, tài sản chung, hợp đồng, luật sư, sao kê, nhân chứng.
+- Không xả hết bằng chứng ngay chương đầu.
+`.trim()
+  }
+
+  if (genre.includes('hot search') || genre.includes('showbiz') || genre.includes('pr scandal')) {
+    return `
+GENRE LOCK: Hot search / showbiz / PR scandal
+- Trọng tâm bắt buộc: dư luận, Weibo, hot search, hashtag, tài khoản marketing, PR khủng hoảng, bình luận mạng.
+- Không được dùng từ "tweet". Phải dùng "bài đăng Weibo", "hot search", "hashtag", "lượt chia sẻ", "bình luận", "tài khoản marketing".
+- Cảnh mạnh nên có: bài bóc phốt viral, công ty PR họp khẩn, phóng viên chặn cửa, hợp đồng đại diện bị đe dọa, fandom quay xe.
+- Nữ chính phản công bằng thời điểm tung bằng chứng, luật sư, truyền thông, người trong cuộc, hoặc một bài đăng đúng lúc.
+`.trim()
+  }
+
+  if (genre.includes('mẹ con') || genre.includes('gia đình') || genre.includes('bảo vệ con')) {
+    return `
+GENRE LOCK: Mẹ con / gia đình / bảo vệ con
+- Trọng tâm bắt buộc: tình thân, bảo vệ con, quyền nuôi con, áp lực gia đình, bí mật thân thế của con, hoặc sự hy sinh của nữ chính.
+- Nữ chính mạnh nhưng không lạnh hoàn toàn. Cần có chiều sâu cảm xúc và trách nhiệm gia đình.
+- Nếu có con nhỏ, đứa trẻ phải phục vụ cốt truyện, không làm đạo cụ dễ thương ngẫu nhiên.
+- Cảnh mạnh nên có: tranh quyền nuôi con, bệnh viện, trường học, gia đình chồng gây áp lực, dư luận công kích mẹ con.
+`.trim()
+  }
+
+  if (genre.includes('tái sinh') || genre.includes('làm lại')) {
+    return `
+GENRE LOCK: Nữ chính tái sinh / làm lại cuộc đời
+- Trọng tâm bắt buộc: nữ chính biết trước tương lai hoặc có cơ hội sống lại/sửa sai.
+- Không để nữ chính nói thẳng quá nhiều về việc tái sinh cho người khác.
+- Nữ chính phải dùng ký ức tương lai để đi trước một bước, nhưng vẫn phải có biến số mới.
+- Cảnh mạnh nên có: sự kiện từng xảy ra ở kiếp trước, lựa chọn khác đi, người cũ lộ bản chất, bẫy cũ bị đảo ngược.
+`.trim()
+  }
+
+  if (genre.includes('pháp lý') || genre.includes('luật sư')) {
+    return `
+GENRE LOCK: Nữ cường pháp lý / luật sư
+- Trọng tâm bắt buộc: pháp luật, bằng chứng, hợp đồng, kiện tụng, luật sư, đối chất, điều khoản, thư pháp lý.
+- Logic bằng chứng phải rõ nhưng không quá khô.
+- Nữ chính phải sắc bén trong lập luận, biết giữ bằng chứng, biết bẫy đối phương nói hớ.
+- Cảnh mạnh nên có: văn phòng luật, phòng họp hòa giải, thư luật sư, điều khoản hợp đồng, ghi âm hợp pháp, hồ sơ bị khóa.
+`.trim()
+  }
+
+  if (genre.includes('tổng tài') || genre.includes('ngược luyến')) {
+    return `
+GENRE LOCK: Tổng tài ngược luyến / hối hận
+- Trọng tâm bắt buộc: quan hệ tình cảm căng, hiểu lầm, quyền lực lệch, tổn thương, lựa chọn sai, và sự hối hận muộn.
+- Nam chính/tổng tài không được được tẩy trắng quá nhanh.
+- Nữ chính phải có ranh giới, không mềm lòng vô lý.
+- Cảnh mạnh nên có: đối đầu lạnh, bệnh viện, hợp đồng, hiểu lầm bị lật, lời xin lỗi muộn, nam chính bắt đầu nghi ngờ sự thật.
+`.trim()
+  }
+
+  if (genre.includes('trả thù')) {
+    return `
+GENRE LOCK: Trả thù đô thị
+- Trọng tâm bắt buộc: nữ chính từng bị hại, tích lũy bằng chứng, đặt bẫy, lật từng lớp sự thật, khiến đối phương trả giá trong bối cảnh hiện đại.
+- Revenge pacing phải rõ: chương đầu/chương giữa không kết liễu ngay, chỉ đặt bẫy, hé một mảnh bằng chứng hoặc khiến phản diện tự lộ sơ hở.
+- Phản diện phải có phản công. Không được đứng yên chịu thua.
+- Nữ chính thông minh nhưng không toàn năng.
+`.trim()
+  }
+
+  return `
+GENRE LOCK: Drama nữ tần hiện đại
+- Bám sát thể loại đã chọn.
+- Ưu tiên xung đột rõ, nhân vật có động cơ, cảnh đối đầu trực diện, ending có hook.
+- Không viết lan man hoặc lệch khỏi premise chính.
+`.trim()
+}
+
 function buildStoryContext(payload: NormalizedGeneratePayload) {
   const memory = safeText(payload.storyMemory, '')
 
@@ -340,6 +495,7 @@ Lưu ý:
 
 function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const moduleInstruction = getModuleInstruction(payload.moduleId)
+  const genreInstruction = getGenreInstruction(payload.genreLabel)
 
   return `
 Bạn là Master Story Engine v2.6 chuyên thiết kế truyện nữ tần đô thị viral cho độc giả Việt.
@@ -361,12 +517,15 @@ THÔNG TIN ĐẦU VÀO:
 
 ${moduleInstruction}
 
+${genreInstruction}
+
 YÊU CẦU:
 - Dàn ý phải đủ rõ để viết được nhiều chương liên tục.
 - Không viết như tóm tắt máy móc.
 - Nhân vật phải có tên riêng rõ.
 - Bằng chứng phải được chia tầng, không dồn hết vào chương 1.
 - Phải có hook thương mại/đô thị/truyền thông nếu dùng module nữ tần đô thị.
+- Phải bám đúng GENRE LOCK đã chọn, không chuyển sang thể loại khác giữa chừng.
 
 OUTPUT BẮT BUỘC:
 # STORY PLAN
@@ -464,6 +623,7 @@ ENDING STRATEGY:
 function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const lengthRule = getLengthRule(payload.chapterLengthLabel)
   const moduleInstruction = getModuleInstruction(payload.moduleId)
+  const genreInstruction = getGenreInstruction(payload.genreLabel)
   const storyContext = buildStoryContext(payload)
   const technicalReport = getTechnicalReportInstruction()
   const cliffhangerRule = getCliffhangerRule(payload)
@@ -494,6 +654,8 @@ THÔNG TIN TRUYỆN:
 - Mức trả thù: ${payload.revengeIntensity}/5
 
 ${moduleInstruction}
+
+${genreInstruction}
 
 ${storyContext}
 
