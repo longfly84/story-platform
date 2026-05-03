@@ -34,6 +34,7 @@ const defaultConfig: AIFactoryConfig = {
   provider: 'mock',
   modelKey: 'economy',
   storyCount: 1,
+  batchSize: 5,
   chaptersToGenerateNow: 1,
   minTargetChapters: 10,
   maxTargetChapters: 20,
@@ -129,6 +130,7 @@ export default function AIFactoryPanel() {
   const totalTextRequests = config.storyCount * config.chaptersToGenerateNow
   const totalCoverRequests = config.generateCover ? config.storyCount : 0
   const totalRequests = totalTextRequests + totalCoverRequests
+  const totalBatches = Math.ceil(config.storyCount / Math.max(1, config.batchSize))
 
   const canStart =
     !isRunning &&
@@ -455,6 +457,12 @@ export default function AIFactoryPanel() {
     setLogs([])
 
     const factoryRunId = makeId('factory')
+    const totalBatchesForRun = Math.ceil(config.storyCount / Math.max(1, config.batchSize))
+
+        addLog(
+        `Factory sẽ tạo ${config.storyCount} truyện, chia thành ${totalBatchesForRun} batch, mỗi batch tối đa ${config.batchSize} truyện.`,
+        'info',
+    )
     const initialJobs: FactoryJob[] = Array.from({ length: config.storyCount }).map((_, index) => ({
       id: makeId('job'),
       index: index + 1,
@@ -474,6 +482,12 @@ export default function AIFactoryPanel() {
       let activeAvoidLibrary = scanResult.avoid
 
       for (let storyIndex = 1; storyIndex <= config.storyCount; storyIndex += 1) {
+        const currentBatch = Math.ceil(storyIndex / Math.max(1, config.batchSize))
+        const indexInBatch = ((storyIndex - 1) % Math.max(1, config.batchSize)) + 1
+
+        if (indexInBatch === 1) {
+        addLog(`Bắt đầu batch ${currentBatch}/${totalBatchesForRun}`, 'info')
+        }
         if (stopRequestedRef.current) {
           addLog('Đã nhận lệnh stop. Dừng trước story tiếp theo.', 'warning')
           break
@@ -497,8 +511,13 @@ export default function AIFactoryPanel() {
           chapterProgress: `0/${config.chaptersToGenerateNow}`,
         })
 
-        addLog(`Bắt đầu story ${storyIndex}/${config.storyCount}: ${genre.label}`, 'info')
-        setCurrentAction(`Đang tạo story ${storyIndex}/${config.storyCount}`)
+        addLog(
+        `Batch ${currentBatch}/${totalBatchesForRun} — bắt đầu story ${storyIndex}/${config.storyCount}: ${genre.label}`,
+        'info',
+        )
+        setCurrentAction(
+        `Batch ${currentBatch}/${totalBatchesForRun} — đang tạo story ${storyIndex}/${config.storyCount}`,
+        )
 
         let createdStory: { id: string; title: string; slug: string } | null = null
         let storyMemory = ''
@@ -674,8 +693,17 @@ export default function AIFactoryPanel() {
           ])
 
           if (storyIndex < config.storyCount && config.delayMs > 0) {
+            const isEndOfBatch = storyIndex % Math.max(1, config.batchSize) === 0
+
+            if (isEndOfBatch) {
+                addLog(
+                `Xong batch ${currentBatch}/${totalBatchesForRun}. Delay ${config.delayMs}ms trước batch tiếp theo...`,
+                'info',
+                )
+            }
+
             await sleep(config.delayMs)
-          }
+            }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
 
@@ -792,23 +820,42 @@ export default function AIFactoryPanel() {
               </div>
 
               <div>
-                <FieldLabel>Số truyện cần tạo</FieldLabel>
+                <FieldLabel>Tổng số truyện cần tạo</FieldLabel>
                 <input
-                  type="number"
-                  min={1}
-                  max={5}
-                  disabled={isRunning}
-                  value={config.storyCount}
-                  onChange={(event) =>
+                    type="number"
+                    min={1}
+                    max={50}
+                    disabled={isRunning}
+                    value={config.storyCount}
+                    onChange={(event) =>
                     updateConfig(
-                      'storyCount',
-                      clampNumber(Number(event.target.value), 1, 5),
+                        'storyCount',
+                        clampNumber(Number(event.target.value), 1, 50),
                     )
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
-                <SmallHint>MVP giới hạn 1–5 truyện/lần chạy.</SmallHint>
+                <SmallHint>Tối đa 50 truyện/lần chạy. Factory sẽ tự chia batch và chạy tuần tự.</SmallHint>
               </div>
+
+              <div>
+                <FieldLabel>Số truyện mỗi batch</FieldLabel>
+                <input
+                    type="number"
+                    min={1}
+                    max={5}
+                    disabled={isRunning}
+                    value={config.batchSize}
+                    onChange={(event) =>
+                    updateConfig(
+                        'batchSize',
+                        clampNumber(Number(event.target.value), 1, 5),
+                    )
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                />
+                <SmallHint>Mỗi batch nên để 3–5 truyện để dễ kiểm soát và tránh spam request.</SmallHint>
+                </div>
 
               <div>
                 <FieldLabel>Số chương tạo ngay mỗi truyện</FieldLabel>
@@ -966,7 +1013,9 @@ export default function AIFactoryPanel() {
                 <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">
                   <div className="font-bold">SẼ GỌI OPENAI API</div>
                   <div className="mt-2 grid gap-1 text-red-100/90">
-                    <div>Số truyện: {config.storyCount}</div>
+                    <div>Tổng số truyện: {config.storyCount}</div>
+                    <div>Số truyện mỗi batch: {config.batchSize}</div>
+                    <div>Tổng batch dự kiến: {totalBatches}</div>
                     <div>Số chương dự kiến: {totalTextRequests}</div>
                     <div>Text request: {totalTextRequests}</div>
                     <div>Cover request: {totalCoverRequests}</div>

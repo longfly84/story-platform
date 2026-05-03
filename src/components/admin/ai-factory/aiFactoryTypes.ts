@@ -18,6 +18,7 @@ export type AIFactoryConfig = {
   provider: FactoryProvider
   modelKey: FactoryModelKey
   storyCount: number
+  batchSize: number
   chaptersToGenerateNow: number
   minTargetChapters: number
   maxTargetChapters: number
