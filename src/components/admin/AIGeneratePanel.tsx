@@ -38,7 +38,8 @@ export default function AIGeneratePanel() {
   const [preview, setPreview] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-
+  const [recentChapters, setRecentChapters] = useState<any[]>([])
+  const [contextLoading, setContextLoading] = useState(false)
   const [aiForm, setAiForm] = useState<AIFormState>({
     mode: 'chapter',
     provider: 'mock',
@@ -145,6 +146,51 @@ export default function AIGeneratePanel() {
     }
   }, [])
 
+  useEffect(() => {
+    let ignore = false
+
+    async function loadRecentChapters() {
+      if (!selectedStory?.id) {
+        setRecentChapters([])
+        return
+      }
+
+      setContextLoading(true)
+
+      try {
+        const { data, error } = await supabase
+          .from('chapters')
+          .select('id, title, slug, summary, content, created_at')
+          .eq('story_id', selectedStory.id)
+          .order('created_at', { ascending: false })
+          .limit(3)
+
+        if (error) throw error
+
+        if (!ignore) {
+          setRecentChapters(data || [])
+        }
+      } catch {
+        if (!ignore) {
+          setRecentChapters([])
+          setMessage('Không load được chương gần nhất của truyện.')
+        }
+      } finally {
+        if (!ignore) {
+          setContextLoading(false)
+        }
+      }
+    }
+
+    void loadRecentChapters()
+
+    return () => {
+      ignore = true
+    }
+  }, [selectedStory?.id])
+
+  
+
   function updateAiForm<K extends keyof AIFormState>(key: K, value: AIFormState[K]) {
     setAiForm((prev) => ({
       ...prev,
@@ -228,6 +274,14 @@ export default function AIGeneratePanel() {
           cliffhangerLabel: findLabel(cliffhangerOptions, aiForm.cliffhangerType),
           humiliationLevel: aiForm.humiliationLevel,
           revengeIntensity: aiForm.revengeIntensity,
+          recentChapters: recentChapters.map((chapter) => ({
+            title: chapter.title || '',
+            summary: chapter.summary || '',
+            content: chapter.content || '',
+          })),
+          storyMemory: selectedStory
+            ? `Truyện đang chọn: ${selectedStory.title}. ${selectedStory.description || ''}`
+            : '',
         }),
       })
 
@@ -431,7 +485,17 @@ export default function AIGeneratePanel() {
           setSelectedStory={setSelectedStory}
           setMessage={setMessage}
         />
-
+        {selectedStory ? (
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-300">
+            {contextLoading ? (
+              <span>Đang load chương gần nhất...</span>
+            ) : (
+              <span>
+                Context: đã load {recentChapters.length} chương gần nhất để gửi vào AI.
+              </span>
+            )}
+          </div>
+        ) : null}
         <label className="grid gap-1 text-xs text-zinc-400">
           Prompt idea
           <input

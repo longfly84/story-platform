@@ -12,6 +12,12 @@ type GeneratePayload = {
   cliffhangerLabel?: string
   humiliationLevel?: number
   revengeIntensity?: number
+  storyMemory?: string
+  recentChapters?: Array<{
+    title?: string
+    summary?: string
+    content?: string
+  }>
 }
 
 function safeText(value: unknown, fallback = '') {
@@ -106,10 +112,60 @@ Công thức module: truyện drama nữ tần hiện đại.
 `.trim()
 }
 
+
+function buildStoryContext(payload: GeneratePayload) {
+  const memory = safeText(payload.storyMemory, '')
+
+  const recentChapters = Array.isArray(payload.recentChapters)
+    ? payload.recentChapters.slice(0, 3)
+    : []
+
+  const chapterText = recentChapters
+    .map((chapter, index) => {
+      const title = safeText(chapter.title, `Chương gần nhất ${index + 1}`)
+      const summary = safeText(chapter.summary, '')
+      const content = safeText(chapter.content, '')
+
+      const compactContent = content.length > 1800 ? `${content.slice(0, 1800)}...` : content
+
+      return `
+CHƯƠNG THAM CHIẾU ${index + 1}: ${title}
+Tóm tắt: ${summary || 'Không có tóm tắt riêng.'}
+Nội dung rút gọn:
+${compactContent || 'Không có nội dung.'}
+`.trim()
+    })
+    .join('\n\n')
+
+  if (!memory && !chapterText) {
+    return `
+STORY CONTEXT:
+- Chưa có dữ liệu chương trước.
+- Nếu đang viết chương 1, hãy mở truyện thật mạnh.
+- Nếu không chắc thứ tự chương, không tự bịa rằng đã có sự kiện trước đó.
+`.trim()
+  }
+
+  return `
+STORY CONTEXT:
+${memory ? `Memory đã lưu:\n${memory}` : 'Memory đã lưu: chưa có.'}
+
+${chapterText ? `Các chương gần nhất:\n${chapterText}` : 'Các chương gần nhất: chưa có.'}
+
+Quy tắc dùng context:
+- Phải nối logic với các chương gần nhất.
+- Không reset quan hệ nhân vật.
+- Không làm mất bằng chứng/payoff đã cài.
+- Không lặp lại y nguyên cảnh đã viết.
+- Nếu viết chương tiếp theo, hãy đẩy xung đột tiến thêm một nấc.
+`.trim()
+}
+
+
 function buildCommonPrompt(payload: Required<GeneratePayload>) {
   const lengthRule = getLengthRule(payload.chapterLengthLabel)
   const moduleInstruction = getModuleInstruction(payload.moduleId)
-
+  const storyContext = buildStoryContext(payload)
   return `
 Bạn là Master Story Engine v2.4 chuyên viết truyện ngắn nữ tần đô thị viral cho độc giả Việt.
 
@@ -134,6 +190,7 @@ THÔNG TIN TRUYỆN:
 - Mức trả thù: ${payload.revengeIntensity}/5
 
 ${moduleInstruction}
+${storyContext}
 
 QUY TẮC CHẤT LƯỢNG BẮT BUỘC:
 - Bắt buộc đặt tên riêng rõ ràng cho ít nhất 3 nhân vật quan trọng.
