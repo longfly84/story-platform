@@ -23,6 +23,13 @@ type GeneratePayload = {
     summary?: string
     content?: string
   }>
+  avoidStoryTitles?: string[]
+  avoidMotifs?: string[]
+  avoidCharacterNames?: string[]
+  avoidCompanyNames?: string[]
+  factoryRunId?: string
+  storyIndex?: number
+  chapterTarget?: number
 }
 
 type NormalizedGeneratePayload = {
@@ -46,6 +53,13 @@ type NormalizedGeneratePayload = {
     summary?: string
     content?: string
   }>
+  avoidStoryTitles: string[]
+  avoidMotifs: string[]
+  avoidCharacterNames: string[]
+  avoidCompanyNames: string[]
+  factoryRunId: string
+  storyIndex: number
+  chapterTarget: number
 }
 
 function safeText(value: unknown, fallback = '') {
@@ -63,6 +77,15 @@ function safeNumber(value: unknown, fallback: number) {
   return fallback
 }
 
+function safeStringArray(value: unknown, limit = 30) {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => safeText(item))
+    .filter(Boolean)
+    .slice(0, limit)
+}
+
 function createNameSeed() {
   const cryptoApi = globalThis.crypto
 
@@ -78,7 +101,6 @@ function normalizeModelKey(body: GeneratePayload): ModelKey {
     return body.modelKey
   }
 
-  // Tương thích ngược nếu frontend cũ còn gửi modelTier.
   if (body.modelTier === 'premium') return 'premium'
   if (body.modelTier === 'auto') return 'auto'
 
@@ -97,12 +119,19 @@ function normalizePayload(body: GeneratePayload): NormalizedGeneratePayload {
     genreLabel: safeText(body.genreLabel, 'Hôn nhân phản bội / ngoại tình'),
     mainCharacterStyleLabel: safeText(body.mainCharacterStyleLabel, 'Nhẫn nhịn rồi phản công'),
     chapterLengthLabel: safeText(body.chapterLengthLabel, 'Vừa 2.500–3.500 ký tự'),
-    cliffhangerLabel: safeText(body.cliffhangerLabel, 'Bằng chứng mới xuất hiện'),
+    cliffhangerLabel: safeText(body.cliffhangerLabel, 'auto'),
     humiliationLevel: safeNumber(body.humiliationLevel, 3),
     revengeIntensity: safeNumber(body.revengeIntensity, 3),
     nextChapterNumber: Math.max(1, Math.floor(safeNumber(body.nextChapterNumber, 1))),
     storyMemory: safeText(body.storyMemory, ''),
     recentChapters: Array.isArray(body.recentChapters) ? body.recentChapters : [],
+    avoidStoryTitles: safeStringArray(body.avoidStoryTitles, 50),
+    avoidMotifs: safeStringArray(body.avoidMotifs, 50),
+    avoidCharacterNames: safeStringArray(body.avoidCharacterNames, 80),
+    avoidCompanyNames: safeStringArray(body.avoidCompanyNames, 50),
+    factoryRunId: safeText(body.factoryRunId, ''),
+    storyIndex: Math.max(0, Math.floor(safeNumber(body.storyIndex, 0))),
+    chapterTarget: Math.max(0, Math.floor(safeNumber(body.chapterTarget, 0))),
   }
 }
 
@@ -186,13 +215,18 @@ function getTextModel(payload: NormalizedGeneratePayload) {
   }
 
   if (payload.modelKey === 'auto') {
+    const cliffhanger = payload.cliffhangerLabel.toLowerCase()
+
     const shouldUsePremium =
       payload.nextChapterNumber === 1 ||
       payload.humiliationLevel >= 4 ||
       payload.revengeIntensity >= 4 ||
-      payload.cliffhangerLabel.toLowerCase().includes('cao trào') ||
-      payload.cliffhangerLabel.toLowerCase().includes('final') ||
-      payload.cliffhangerLabel.toLowerCase().includes('kết')
+      cliffhanger.includes('cao trào') ||
+      cliffhanger.includes('final') ||
+      cliffhanger.includes('kết') ||
+      cliffhanger.includes('kết liễu') ||
+      cliffhanger.includes('vả mặt công khai') ||
+      cliffhanger.includes('pháp lý đảo chiều')
 
     return shouldUsePremium ? premiumModel : economyModel
   }
@@ -228,7 +262,7 @@ Cấu trúc chương:
 1. Mở bằng một cú sốc phù hợp thể loại: cảnh ép ký, bữa tiệc gia tộc, phòng họp, ảnh cũ, hồ sơ bệnh viện, hợp đồng, camera, di vật, hoặc hot search nếu thể loại/ý tưởng có yếu tố truyền thông.
 2. Đẩy áp lực bằng đối thoại trực diện.
 3. Nữ chính phản đòn một nhịp nhỏ nhưng chưa tung hết bài.
-4. Cuối chương xuất hiện bằng chứng mới, đòn truyền thông mới, người mới, hoặc tin nhắn lạ làm cliffhanger.
+4. Cuối chương xuất hiện phản công, bằng chứng mới, cú đảo chiều, người mới, tin nhắn lạ, hoặc một áp lực mới tùy mạch truyện.
 
 Lưu ý quan trọng:
 - Weibo/hot search là một công cụ, không phải mặc định bắt buộc.
@@ -240,6 +274,16 @@ Scene density:
 - Mỗi lượt đối thoại phải làm xung đột tăng lên.
 `.trim()
   }
+
+  return `
+CÔNG THỨC MODULE: Truyện drama nữ tần hiện đại.
+
+Đặc trưng bắt buộc:
+- Nữ chính là trung tâm.
+- Xung đột rõ, cảm xúc mạnh, có cú móc cuối chương.
+- Bằng chứng và điểm trả sau phải được cài từng lớp.
+`.trim()
+}
 
 function getGenreInstruction(genreLabel: string) {
   const genre = safeText(genreLabel).toLowerCase()
@@ -395,17 +439,6 @@ GENRE LOCK: Drama nữ tần hiện đại
 - Không viết lan man hoặc lệch khỏi premise chính.
 `.trim()
 }
-  
-  return `
-CÔNG THỨC MODULE: Truyện drama nữ tần hiện đại.
-
-Đặc trưng bắt buộc:
-- Nữ chính là trung tâm.
-- Xung đột rõ, cảm xúc mạnh, có cú móc cuối chương.
-- Bằng chứng và payoff phải được cài từng lớp.
-`.trim()
-}
-
 
 function getPremiseInstruction(payload: NormalizedGeneratePayload) {
   const genre = safeText(payload.genreLabel).toLowerCase()
@@ -710,14 +743,181 @@ function getNameDiversityInstruction(payload: NormalizedGeneratePayload) {
 CHARACTER NAME DIVERSITY LOCK:
 - Name seed của lần tạo này: ${payload.nameSeed}
 - Mỗi truyện mới phải tự tạo bộ tên nhân vật mới dựa trên seed này.
-- Không được mặc định dùng lại các tên ví dụ hoặc tên từng xuất hiện nhiều như: Lâm An Nhiên, Lục Thịnh, Lục Hạo, Tề Dương, Mã Lan, Hàn Liễu, Triệu Vũ, Tần Dực, Chu Bân, Vương Lệ, Diệp Khang, Trịnh Khang, Lục phu nhân, Lục lão phu nhân.
-- Không được dùng họ Lục hoặc họ Lâm quá thường xuyên. Chỉ dùng nếu Prompt idea chỉ định rõ.
+- Không được mặc định dùng lại các tên ví dụ cũ như: Lâm An Nhiên, Lục Thịnh, Lục Hạo, Tề Dương, Mã Lan, Hàn Liễu, Triệu Vũ, Lục phu nhân, Lục lão phu nhân.
+- Không được dùng họ Lục hoặc họ Lâm quá thường xuyên.
 - Không được lấy tên nhân vật từ ví dụ trong prompt làm tên mặc định.
 - Nếu Prompt idea không chỉ định tên nhân vật, hãy tự tạo tên Trung Quốc hiện đại khác nhau cho từng truyện.
 - Bộ tên phải nhất quán trong cùng một truyện, nhưng giữa các truyện mới phải khác nhau.
-- Nữ chính, nam phản diện, người thứ ba, mẹ chồng/bà nội/chủ tịch/luật sư phải có tên riêng hoặc danh xưng riêng rõ ràng.
 - Không đặt nữ chính cùng họ với chồng/nam phản diện nếu không có lý do thân phận/huyết thống đặc biệt.
-- Ưu tiên đa dạng họ: Giang, Tô, Hứa, Thẩm, Cố, Tống, Ninh, Ôn, Bạch, Trình, Diệp, Phó, Hạ, Chu, Kỷ, Mạnh, Đường, Dư, Tạ, Lương, Tưởng, Lạc, Từ, Khương.
+- Ưu tiên đa dạng họ: Giang, Tô, Hứa, Thẩm, Cố, Tống, Ninh, Ôn, Bạch, Trình, Diệp, Phó, Hạ, Chu, Kỷ, Mạnh, Đường, Dư, Tạ, Tần, Hàn, La, Mộ, Tưởng, Lạc, Viên.
+- Không dùng lại cùng một combo họ nữ chính + họ nam phản diện giữa các lần tạo truyện mới.
+`.trim()
+}
+
+function getLibraryAvoidanceInstruction(payload: NormalizedGeneratePayload) {
+  const hasAvoidance =
+    payload.avoidStoryTitles.length ||
+    payload.avoidMotifs.length ||
+    payload.avoidCharacterNames.length ||
+    payload.avoidCompanyNames.length
+
+  if (!hasAvoidance) {
+    return `
+EXISTING LIBRARY AVOIDANCE:
+- Chưa có danh sách tránh từ thư viện hiện có.
+- Vẫn phải tự đa dạng hóa tên truyện, motif, tên nhân vật và tên công ty.
+`.trim()
+  }
+
+  return `
+EXISTING LIBRARY AVOIDANCE:
+- Đây là truyện mới trong AI Factory hoặc AI Writer, không được lặp lại thư viện hiện có.
+- Tên truyện cần tránh:
+${payload.avoidStoryTitles.map((item) => `  - ${item}`).join('\n') || '  - Không có'}
+- Motif/premise cần tránh:
+${payload.avoidMotifs.map((item) => `  - ${item}`).join('\n') || '  - Không có'}
+- Tên nhân vật cần tránh:
+${payload.avoidCharacterNames.map((item) => `  - ${item}`).join('\n') || '  - Không có'}
+- Tên công ty/gia tộc cần tránh:
+${payload.avoidCompanyNames.map((item) => `  - ${item}`).join('\n') || '  - Không có'}
+- Nhiệm vụ: tạo truyện mới khác đáng kể, không chỉ đổi tên.
+- Không dùng lại cùng opening hook, bằng chứng đầu tiên, phòng khách sạn, quản gia cũ, hợp đồng đỏ, hot search, hoặc cảnh ép ký nếu các motif đó đã xuất hiện trong danh sách tránh.
+`.trim()
+}
+
+function getCliffhangerRule(payload: NormalizedGeneratePayload) {
+  const label = safeText(payload.cliffhangerLabel, '')
+  const normalized = label.toLowerCase()
+
+  if (
+    !label ||
+    normalized.includes('mặc định') ||
+    normalized.includes('tự chọn') ||
+    normalized.includes('auto')
+  ) {
+    return `
+ENDING STRATEGY:
+- Kiểu kết chương: AI tự chọn theo mạch truyện.
+- Không ép chương nào cũng phải có bằng chứng mới.
+- Hãy chọn kiểu ending hợp lý nhất dựa trên STORY CONTEXT, GENRE LOCK, PREMISE DIVERSITY LOCK, HEROINE LOCK, nhịp chương, và trạng thái xung đột.
+- Có thể chọn một trong các kiểu: phản diện phản công, bằng chứng mới hé một phần, tin nhắn/camera/file bí mật, hot search đảo chiều nếu hợp thể loại, câu vả mặt, gia tộc ép đến đường cùng, thân phận thật giả lộ sơ hở, nam chính dao động, người thân gặp nguy, hoặc vả mặt công khai.
+- Ending phải tự nhiên, không được ghi thẳng tên loại ending.
+- Không được kết bằng câu phân tích như "phản diện đang phản công" hoặc "mâu thuẫn được đẩy lên cao".
+- Nếu chương trước đã kết bằng bằng chứng, chương này nên ưu tiên phản công/đối đầu/cú đảo chiều để tránh lặp.
+`.trim()
+  }
+
+  if (normalized.includes('phản diện') || normalized.includes('counterattack')) {
+    return `
+ENDING STRATEGY: Phản diện phản công cuối chương
+- Kết chương bằng một cú phản công thật từ phản diện: thư luật sư, lệnh ép ký, cuộc gọi từ PR, email đe dọa, gia tộc gây áp lực, bằng chứng giả, hoặc bài đăng Weibo nếu hợp thể loại.
+- Phản công phải khiến nữ chính bị đẩy vào thế khó mới, không chỉ là lời dọa suông.
+`.trim()
+  }
+
+  if (normalized.includes('bằng chứng') || normalized.includes('evidence')) {
+    return `
+ENDING STRATEGY: Bằng chứng mới xuất hiện
+- Kết chương bằng một mảnh bằng chứng mới: ảnh, hóa đơn, camera, metadata, hợp đồng, phụ lục, sao kê, ghi âm, di vật, hồ sơ hoặc tin nhắn.
+- Chỉ hé một phần đủ gây tò mò, không xả hết toàn bộ bí mật.
+`.trim()
+  }
+
+  if (
+    normalized.includes('tin nhắn') ||
+    normalized.includes('camera') ||
+    normalized.includes('file') ||
+    normalized.includes('secret')
+  ) {
+    return `
+ENDING STRATEGY: Tin nhắn / camera / file bí mật
+- Kết chương bằng một tin nhắn lạ, đoạn camera bị khôi phục, file khóa, email ẩn, hoặc cuộc gọi không hiện số.
+- Nội dung phải tạo câu hỏi mới cho độc giả.
+- Không giải thích hết nguồn gốc file/tin nhắn ngay trong chương này.
+`.trim()
+  }
+
+  if (normalized.includes('hot search') || normalized.includes('weibo') || normalized.includes('đảo chiều')) {
+    return `
+ENDING STRATEGY: Hot search đảo chiều
+- Kết chương bằng việc Weibo/hot search đổi hướng: hashtag mới leo top, bình luận quay xe, tài khoản marketing tung bài mới, hoặc truyền thông đổ về phía nữ chính.
+- Chỉ dùng kiểu này làm hook chính nếu truyện có yếu tố truyền thông, scandal, showbiz, PR hoặc dư luận.
+- Không dùng từ "tweet".
+`.trim()
+  }
+
+  if (normalized.includes('vả mặt') && !normalized.includes('công khai')) {
+    return `
+ENDING STRATEGY: Nữ chính tung câu vả mặt
+- Kết chương bằng một câu thoại ngắn, lạnh, sắc của nữ chính.
+- Câu thoại phải dựa trên tình thế hoặc bằng chứng, không phải khẩu hiệu rỗng.
+`.trim()
+  }
+
+  if (normalized.includes('luật') || normalized.includes('hợp đồng') || normalized.includes('pháp lý')) {
+    return `
+ENDING STRATEGY: Luật sư / hợp đồng / pháp lý đảo chiều
+- Kết chương bằng một điều khoản, thư luật sư, phụ lục hợp đồng, quyền cổ phần, lệnh triệu tập, hoặc hồ sơ pháp lý làm đảo thế.
+- Logic pháp lý phải rõ vừa đủ cho độc giả hiểu.
+`.trim()
+  }
+
+  if (normalized.includes('gia tộc') || normalized.includes('đường cùng') || normalized.includes('family')) {
+    return `
+ENDING STRATEGY: Gia tộc ép đến đường cùng
+- Kết chương bằng áp lực từ gia tộc: ép ký, cắt quyền lợi, đe dọa danh phận, gọi người lớn ra mặt, hoặc dùng tài sản/con cái/thể diện để ép nữ chính.
+- Áp lực phải tạo lựa chọn khó cho nữ chính ở chương sau.
+`.trim()
+  }
+
+  if (normalized.includes('thân phận') || normalized.includes('identity')) {
+    return `
+ENDING STRATEGY: Thân phận thật giả lộ sơ hở
+- Kết chương bằng một sơ hở nhỏ về thân phận: ảnh cũ, di vật, giấy xét nghiệm, lời người hầu, thói quen, hồ sơ bị sửa, hoặc một cái tên cũ.
+- Chỉ hé một góc, không công bố toàn bộ thân thế.
+`.trim()
+  }
+
+  if (normalized.includes('nam chính') || normalized.includes('dao động') || normalized.includes('nghi ngờ') || normalized.includes('romance')) {
+    return `
+ENDING STRATEGY: Nam chính bắt đầu dao động / nghi ngờ
+- Kết chương bằng khoảnh khắc nam chính phát hiện một chi tiết khiến hắn bắt đầu nghi ngờ sự thật.
+- Không tẩy trắng nam chính quá sớm.
+- Nữ chính không được mềm lòng vô lý chỉ vì hắn dao động.
+`.trim()
+  }
+
+  if (normalized.includes('con') || normalized.includes('người thân') || normalized.includes('child')) {
+    return `
+ENDING STRATEGY: Con nhỏ / người thân gặp nguy
+- Kết chương bằng nguy cơ liên quan đến con nhỏ hoặc người thân: bệnh viện, trường học, quyền nuôi con, tin nhắn đe dọa, người lạ tiếp cận, hoặc gia đình chồng dùng con để ép.
+- Nữ chính phải có động lực bảo vệ rõ ràng ở chương sau.
+`.trim()
+  }
+
+  if (normalized.includes('công khai') || normalized.includes('tiệc') || normalized.includes('truyền thông')) {
+    return `
+ENDING STRATEGY: Vả mặt công khai ở tiệc / họp / truyền thông
+- Kết chương bằng một cú đảo thế trước đám đông: sảnh tiệc, họp báo, phòng họp, livestream, gia tộc, hoặc Weibo nếu hợp thể loại.
+- Cú vả mặt phải dựa trên vật chứng, nhân chứng, hợp đồng, camera hoặc lời tự thú.
+`.trim()
+  }
+
+  if (normalized.includes('cao trào') || normalized.includes('final') || normalized.includes('kết liễu')) {
+    return `
+ENDING STRATEGY: Cao trào / kết liễu phản diện
+- Chỉ dùng khi truyện đã đủ chi tiết đã cài hoặc chương hiện tại cần điểm trả sau mạnh.
+- Kết chương bằng đòn đánh lớn: bằng chứng quan trọng, luật sư vào cuộc, cổ phần đảo chiều, video hoàn chỉnh, nhân chứng xuất hiện, hoặc phản diện bị buộc lộ mặt.
+- Không xử lý tất cả mọi phản diện phụ trong một đoạn nếu truyện vẫn còn tiếp.
+`.trim()
+  }
+
+  return `
+ENDING STRATEGY:
+- Kiểu kết chương được chọn: ${label}.
+- Hãy kết chương theo đúng tinh thần này, nhưng vẫn phải tự nhiên như văn truyện.
+- Không được ghi thẳng nhãn "${label}" vào BẢN ĐỌC.
+- Không được kết bằng câu phân tích kỹ thuật.
 `.trim()
 }
 
@@ -748,7 +948,7 @@ ${compactContent || 'Không có nội dung.'}
     return `
 STORY CONTEXT:
 - Chưa có dữ liệu chương trước.
-- Nếu đang viết chương 1, hãy mở truyện thật mạnh.
+- Nếu đang viết chương 1, hãy mở truyện thật mạnh nhưng phải bám PREMISE DIVERSITY LOCK.
 - Nếu không chắc thứ tự chương, không tự bịa rằng đã có sự kiện trước đó.
 `.trim()
   }
@@ -762,7 +962,7 @@ ${chapterText ? `Các chương gần nhất:\n${chapterText}` : 'Các chương g
 Quy tắc dùng context:
 - Phải nối logic với các chương gần nhất.
 - Không reset quan hệ nhân vật.
-- Không làm mất bằng chứng/payoff đã cài.
+- Không làm mất bằng chứng/điểm trả sau đã cài.
 - Không lặp lại y nguyên cảnh đã viết.
 - Nếu viết chương tiếp theo, hãy đẩy xung đột tiến thêm một nấc.
 `.trim()
@@ -789,7 +989,6 @@ function getTechnicalReportInstruction() {
 - Nguồn gốc/lý do nữ chính có bằng chứng:
 - Quan hệ nhân vật:
 - Tên công ty/gia tộc/tổ chức cần giữ nhất quán:
-- Tên nhân vật cần giữ nhất quán:
 - Thứ chưa được tiết lộ:
 
 === KIỂM TRA BỐI CẢNH LIÊN TỤC ===
@@ -839,6 +1038,7 @@ function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const genreInstruction = getGenreInstruction(payload.genreLabel)
   const premiseInstruction = getPremiseInstruction(payload)
   const nameDiversityInstruction = getNameDiversityInstruction(payload)
+  const libraryAvoidanceInstruction = getLibraryAvoidanceInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const cliffhangerRule = getCliffhangerRule(payload)
 
@@ -859,6 +1059,9 @@ THÔNG TIN ĐẦU VÀO:
 - Kiểu kết chương ưu tiên: ${payload.cliffhangerLabel}
 - Mức uất ức: ${payload.humiliationLevel}/5
 - Mức trả thù: ${payload.revengeIntensity}/5
+- Factory run id: ${payload.factoryRunId || 'không có'}
+- Story index: ${payload.storyIndex || 0}
+- Target chapters: ${payload.chapterTarget || 'chưa đặt'}
 
 ${moduleInstruction}
 
@@ -867,6 +1070,8 @@ ${genreInstruction}
 ${premiseInstruction}
 
 ${nameDiversityInstruction}
+
+${libraryAvoidanceInstruction}
 
 ${heroineInstruction}
 
@@ -882,8 +1087,6 @@ YÊU CẦU:
 - Phải bám đúng PREMISE DIVERSITY LOCK, nếu prompt idea trống thì tự chọn premise theo thể loại.
 - Phải bám đúng HEROINE LOCK đã chọn, không đổi tính cách nữ chính giữa truyện.
 - Kiểu kết chương phải được phân bổ hợp lý trong outline, không chương nào cũng lặp cùng một kiểu.
-- Nam phản diện phải có áp lực riêng, không để mẹ chồng/gia tộc/PR gánh hết vai phản diện.
-- Nhân vật hỗ trợ chỉ hỗ trợ công cụ/thông tin, không được giải quyết thay nữ chính.
 
 OUTPUT BẮT BUỘC:
 # STORY PLAN
@@ -951,158 +1154,13 @@ Chương 10:
 `.trim()
 }
 
-function getCliffhangerRule(payload: NormalizedGeneratePayload) {
-  const label = safeText(payload.cliffhangerLabel, '')
-  const normalized = label.toLowerCase()
-
-  if (
-    !label ||
-    normalized.includes('mặc định') ||
-    normalized.includes('tự chọn') ||
-    normalized.includes('auto')
-  ) {
-    return `
-ENDING STRATEGY:
-- Kiểu kết chương: AI tự chọn theo mạch truyện.
-- Không ép chương nào cũng phải có bằng chứng mới.
-- Hãy chọn kiểu ending hợp lý nhất dựa trên STORY CONTEXT, GENRE LOCK, PREMISE DIVERSITY LOCK, HEROINE LOCK, nhịp chương, và trạng thái xung đột.
-- Có thể chọn một trong các kiểu:
-  1. Phản diện phản công bằng PR, luật sư, gia tộc, công ty hoặc dư luận.
-  2. Bằng chứng mới xuất hiện nhưng chỉ hé một phần.
-  3. Tin nhắn, camera, file, email hoặc cuộc gọi bí mật xuất hiện.
-  4. Hot search/Weibo đảo chiều nếu truyện có yếu tố truyền thông.
-  5. Nữ chính tung một câu vả mặt ngắn.
-  6. Gia tộc ép nữ chính đến đường cùng.
-  7. Thân phận thật giả lộ một sơ hở.
-  8. Nam phản diện bắt đầu dao động/nghi ngờ nhưng chưa được tẩy trắng.
-  9. Con nhỏ/người thân gặp nguy nếu đúng thể loại mẹ con/gia đình.
-  10. Vả mặt công khai ở tiệc, họp, truyền thông hoặc phòng họp.
-- Ending phải tự nhiên, không được ghi thẳng tên loại ending.
-- Không được kết bằng câu phân tích như "phản diện đang phản công" hoặc "mâu thuẫn được đẩy lên cao".
-`.trim()
-  }
-
-  if (normalized.includes('phản diện') || normalized.includes('counterattack')) {
-    return `
-ENDING STRATEGY: Phản diện phản công cuối chương
-- Kết chương bằng một cú phản công thật từ phản diện: bài đăng Weibo mới nếu hợp thể loại, thư luật sư, lệnh ép ký, cuộc gọi từ PR, email đe dọa, gia tộc gây áp lực, hoặc bằng chứng giả bị tung ra.
-- Phản công phải khiến nữ chính bị đẩy vào thế khó mới, không chỉ là lời dọa suông.
-- Không ghi thẳng "phản diện phản công".
-`.trim()
-  }
-
-  if (normalized.includes('bằng chứng') || normalized.includes('evidence')) {
-    return `
-ENDING STRATEGY: Bằng chứng mới xuất hiện
-- Kết chương bằng một mảnh bằng chứng mới: ảnh, hóa đơn, camera, metadata, hợp đồng, phụ lục, sao kê, ghi âm, tin nhắn, di vật hoặc hồ sơ.
-- Chỉ hé một phần đủ gây tò mò, không xả hết toàn bộ bí mật.
-- Bằng chứng phải liên quan trực tiếp đến xung đột chính.
-`.trim()
-  }
-
-  if (normalized.includes('tin nhắn') || normalized.includes('camera') || normalized.includes('file') || normalized.includes('secret')) {
-    return `
-ENDING STRATEGY: Tin nhắn / camera / file bí mật
-- Kết chương bằng một tin nhắn lạ, đoạn camera bị khôi phục, file khóa, email ẩn, hoặc cuộc gọi không hiện số.
-- Nội dung phải tạo câu hỏi mới cho độc giả.
-- Không giải thích hết nguồn gốc file/tin nhắn ngay trong chương này.
-`.trim()
-  }
-
-  if (normalized.includes('hot search') || normalized.includes('weibo') || normalized.includes('đảo chiều')) {
-    return `
-ENDING STRATEGY: Hot search đảo chiều
-- Kết chương bằng việc Weibo/hot search đổi hướng: hashtag mới leo top, bình luận quay xe, tài khoản marketing tung bài mới, hoặc truyền thông đổ về phía nữ chính.
-- Chỉ dùng kiểu này làm hook chính nếu truyện có yếu tố truyền thông, scandal, showbiz, PR hoặc dư luận.
-- Không dùng từ "tweet".
-`.trim()
-  }
-
-  if (normalized.includes('vả mặt') && !normalized.includes('công khai')) {
-    return `
-ENDING STRATEGY: Nữ chính tung câu vả mặt
-- Kết chương bằng một câu thoại ngắn, lạnh, sắc của nữ chính.
-- Câu thoại phải dựa trên tình thế hoặc bằng chứng, không phải khẩu hiệu rỗng.
-- Sau câu thoại nên có phản ứng cụ thể của đối phương hoặc cả phòng im lặng.
-`.trim()
-  }
-
-  if (normalized.includes('luật') || normalized.includes('hợp đồng') || normalized.includes('pháp lý')) {
-    return `
-ENDING STRATEGY: Luật sư / hợp đồng / pháp lý đảo chiều
-- Kết chương bằng một điều khoản, thư luật sư, phụ lục hợp đồng, quyền cổ phần, lệnh triệu tập, hoặc hồ sơ pháp lý làm đảo thế.
-- Logic pháp lý phải rõ vừa đủ cho độc giả hiểu.
-- Không giải thích quá khô; hãy biến điều khoản thành vật chứng/cảnh đối đầu.
-`.trim()
-  }
-
-  if (normalized.includes('gia tộc') || normalized.includes('đường cùng') || normalized.includes('family')) {
-    return `
-ENDING STRATEGY: Gia tộc ép đến đường cùng
-- Kết chương bằng áp lực từ gia tộc: ép ký, cắt quyền lợi, đe dọa danh phận, gọi người lớn ra mặt, hoặc dùng tài sản/con cái/thể diện để ép nữ chính.
-- Áp lực phải tạo lựa chọn khó cho nữ chính ở chương sau.
-- Không để nữ chính giải quyết sạch ngay trong đoạn cuối.
-`.trim()
-  }
-
-  if (normalized.includes('thân phận') || normalized.includes('identity')) {
-    return `
-ENDING STRATEGY: Thân phận thật giả lộ sơ hở
-- Kết chương bằng một sơ hở nhỏ về thân phận: ảnh cũ, di vật, giấy xét nghiệm, lời người hầu, thói quen, hồ sơ bị sửa, hoặc một cái tên cũ.
-- Chỉ hé một góc, không công bố toàn bộ thân thế.
-`.trim()
-  }
-
-  if (normalized.includes('nam chính') || normalized.includes('dao động') || normalized.includes('nghi ngờ') || normalized.includes('romance')) {
-    return `
-ENDING STRATEGY: Nam phản diện bắt đầu dao động / nghi ngờ
-- Kết chương bằng khoảnh khắc nam phản diện phát hiện một chi tiết khiến hắn bắt đầu nghi ngờ sự thật.
-- Không tẩy trắng nam phản diện quá sớm.
-- Nữ chính không được mềm lòng vô lý chỉ vì hắn dao động.
-`.trim()
-  }
-
-  if (normalized.includes('con') || normalized.includes('người thân') || normalized.includes('child')) {
-    return `
-ENDING STRATEGY: Con nhỏ / người thân gặp nguy
-- Kết chương bằng nguy cơ liên quan đến con nhỏ hoặc người thân: bệnh viện, trường học, quyền nuôi con, tin nhắn đe dọa, người lạ tiếp cận, hoặc gia đình chồng dùng con để ép.
-- Không khai thác nguy hiểm quá rẻ tiền; phải liên quan trực tiếp đến xung đột chính.
-`.trim()
-  }
-
-  if (normalized.includes('công khai') || normalized.includes('tiệc') || normalized.includes('truyền thông')) {
-    return `
-ENDING STRATEGY: Vả mặt công khai ở tiệc / họp / truyền thông
-- Kết chương bằng một cú đảo thế trước đám đông: sảnh tiệc, họp báo, phòng họp, livestream, gia tộc, hoặc Weibo nếu hợp thể loại.
-- Cú vả mặt phải dựa trên vật chứng, nhân chứng, hợp đồng, camera hoặc lời tự thú.
-- Không chỉ chửi; phải làm đối phương mất thế thật.
-`.trim()
-  }
-
-  if (normalized.includes('cao trào') || normalized.includes('final') || normalized.includes('kết liễu')) {
-    return `
-ENDING STRATEGY: Cao trào / kết liễu phản diện
-- Chỉ dùng khi truyện đã đủ chi tiết đã cài hoặc chương hiện tại cần điểm trả sau mạnh.
-- Kết chương bằng đòn đánh lớn: bằng chứng quan trọng, luật sư vào cuộc, cổ phần đảo chiều, video hoàn chỉnh, nhân chứng xuất hiện, hoặc phản diện bị buộc lộ mặt.
-- Không xử lý tất cả mọi phản diện phụ trong một đoạn nếu truyện vẫn còn tiếp.
-`.trim()
-  }
-
-  return `
-ENDING STRATEGY:
-- Kiểu kết chương được chọn: ${label}.
-- Hãy kết chương theo đúng tinh thần này, nhưng vẫn phải tự nhiên như văn truyện.
-- Không được ghi thẳng nhãn "${label}" vào BẢN ĐỌC.
-- Không được kết bằng câu phân tích kỹ thuật.
-`.trim()
-}
-
 function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const lengthRule = getLengthRule(payload.chapterLengthLabel)
   const moduleInstruction = getModuleInstruction(payload.moduleId)
   const genreInstruction = getGenreInstruction(payload.genreLabel)
   const premiseInstruction = getPremiseInstruction(payload)
   const nameDiversityInstruction = getNameDiversityInstruction(payload)
+  const libraryAvoidanceInstruction = getLibraryAvoidanceInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const storyContext = buildStoryContext(payload)
   const technicalReport = getTechnicalReportInstruction()
@@ -1132,6 +1190,9 @@ THÔNG TIN TRUYỆN:
 - Kiểu kết chương: ${payload.cliffhangerLabel}
 - Mức uất ức: ${payload.humiliationLevel}/5
 - Mức trả thù: ${payload.revengeIntensity}/5
+- Factory run id: ${payload.factoryRunId || 'không có'}
+- Story index: ${payload.storyIndex || 0}
+- Target chapters: ${payload.chapterTarget || 'chưa đặt'}
 
 ${moduleInstruction}
 
@@ -1140,6 +1201,8 @@ ${genreInstruction}
 ${premiseInstruction}
 
 ${nameDiversityInstruction}
+
+${libraryAvoidanceInstruction}
 
 ${heroineInstruction}
 
@@ -1165,26 +1228,33 @@ GENRE + PREMISE + HEROINE EXECUTION RULE:
 - Nếu GENRE LOCK là pháp lý, thương chiến, hào môn, mẹ con, tái sinh, hot search, ngoại tình hoặc thân thế, chương phải có chi tiết đúng thể loại đó.
 - Nếu HEROINE LOCK yêu cầu nữ chính lạnh, lý trí, bảo vệ con, tái sinh, vả mặt công khai hoặc im lặng gom bằng chứng, hành động của cô trong chương phải thể hiện đúng điều đó.
 - Không để nữ chính hành xử trái option đã chọn chỉ để tạo drama rẻ tiền.
-- Không để nhân vật phụ hoặc nam phản diện cướp vai trò giải quyết vấn đề của nữ chính.
+- Không để nhân vật phụ hoặc nam chính cướp vai trò giải quyết vấn đề của nữ chính.
 - Không dùng Weibo/hot search làm hook chính chỉ vì module có chữ viral. Chỉ dùng khi hợp thể loại/prompt.
 
 MALE ANTAGONIST PRESENCE RULE:
 - Nếu có nam phản diện/chồng/CEO/tổng tài, hắn phải có ít nhất 1–2 câu thoại sắc, gây tổn thương trực tiếp hoặc tạo áp lực thật.
 - Không để mẹ chồng/gia tộc/PR gánh toàn bộ vai phản diện nếu nam phản diện là nhân vật chính của xung đột.
-- Nam phản diện phải thể hiện quyền lực qua lựa chọn, đe dọa, hợp đồng, cổ phần, luật sư, thái độ phủ nhận nữ chính hoặc một câu sỉ nhục có trọng lượng.
-- Nam phản diện không được chỉ đứng im nhìn hoặc để người lớn nói thay toàn bộ.
+- Nam phản diện phải thể hiện quyền lực qua lựa chọn, đe dọa, hợp đồng, cổ phần, luật sư hoặc thái độ phủ nhận nữ chính.
+- Nếu nam phản diện là nhân vật chính của xung đột, chương phải có một hành động/lời nói khiến độc giả ghét hoặc nghi ngờ hắn.
 
 SUPPORT CHARACTER LIMIT RULE:
 - Nhân vật hỗ trợ như luật sư, trợ lý, bạn thân, quản gia chỉ được hỗ trợ công cụ/thông tin, không được giải quyết thay nữ chính.
 - Quyết định chính, đòn phản công chính và lựa chọn nguy hiểm phải thuộc về nữ chính.
-- Nếu nhân vật hỗ trợ xuất hiện quá mạnh, hãy giảm vai trò của họ thành cảnh báo, xác minh, chuẩn bị giấy tờ hoặc cung cấp một mảnh thông tin.
-- Không để luật sư/nam phụ trở thành người cứu nữ chính toàn năng.
+- Nếu nhân vật hỗ trợ xuất hiện quá mạnh, hãy giảm vai trò của họ thành cảnh báo, xác minh hoặc chuẩn bị giấy tờ.
+- Không để nam phụ/luật sư thành người giải cứu toàn năng.
 
 HUMILIATION SCENE RULE:
 - Nếu mức uất ức từ 4/5 trở lên, chương phải có ít nhất một câu sỉ nhục trực diện, cụ thể, gắn với thân phận nữ chính.
 - Câu sỉ nhục phải làm độc giả thấy tức thay nữ chính, ví dụ đánh vào danh phận, quyền lợi, con cái, hôn nhân, năng lực hoặc xuất thân.
 - Không chỉ viết chung chung "cô không xứng". Hãy viết câu có lực và có ngữ cảnh.
-- Nếu thể loại là thế thân/danh phận/hào môn, câu sỉ nhục nên đánh vào chữ "thế thân", "danh phận", "máu mủ", "cổ phần", hoặc "người ngoài".
+- Nếu mức uất ức 1–3, vẫn nên có áp lực/sỉ nhục nhẹ nhưng không quá lố.
+
+WORDING NATURALNESS RULE:
+- Tránh cụm từ sai tự nhiên như "tiếng dĩa chạm mặt". Hãy viết "tiếng dao nĩa chạm nhẹ vào đĩa".
+- Nếu nam phản diện/chồng/CEO còn trẻ hoặc cùng thế hệ nữ chính, không gọi là "ông ta". Ưu tiên "anh ta", "hắn", hoặc gọi tên riêng.
+- Danh xưng phải khớp tuổi tác, vai vế và quan hệ.
+- Không gọi mẹ chồng/bà nội/chủ tịch lẫn lộn.
+- Tránh câu dịch máy, cụm sai collocation, hình ảnh quá lạ hoặc không tự nhiên trong tiếng Việt.
 
 EVIDENCE PACING RULE:
 - Không được để nữ chính nói ra toàn bộ bằng chứng trong một chương.
@@ -1200,25 +1270,17 @@ EVIDENCE PACING RULE:
 
 CHARACTER CONSISTENCY RULE:
 - Nếu STORY CONTEXT hoặc chương tham chiếu đã có tên nhân vật, bắt buộc giữ nguyên tên đó.
-- Không đổi họ/tên nữ chính, nam phản diện, người thứ ba, mẹ chồng/bà nội/chủ tịch/luật sư giữa các chương.
-- Nếu chưa có tên nhân vật rõ trong context, tự tạo tên Trung Quốc hiện đại mới, không lấy tên ví dụ cũ làm mặc định.
+- Không đổi họ/tên nữ chính, nam phản diện, người thứ ba, mẹ chồng/bà nội chồng giữa các chương.
+- Nếu chưa có tên nhân vật rõ trong context, tự tạo tên Trung Quốc hiện đại và bám CHARACTER NAME DIVERSITY LOCK.
 - Không đặt nữ chính cùng họ với chồng/nam phản diện nếu không có lý do thân phận/huyết thống đặc biệt.
-- Không dùng lẫn "mẹ chồng" và "bà nội chồng" cho cùng một nhân vật.
-- Nếu là mẹ chồng, hãy gọi thống nhất bằng một danh xưng riêng theo họ của gia tộc đã tạo, ví dụ "phu nhân" hoặc "mẹ chồng tôi"; không mặc định dùng họ Lục.
-- Nếu là bà nội chồng, hãy gọi thống nhất bằng danh xưng riêng theo họ của gia tộc đã tạo, ví dụ "lão phu nhân"; không mặc định dùng họ Lục.
-- Trong một chương, chỉ chọn một vai gây áp lực chính nếu không có lý do rõ ràng để nhiều vai cùng xuất hiện.
+- Không dùng lẫn mẹ chồng và bà nội chồng cho cùng một nhân vật.
+- Trong một chương, chỉ chọn một vai gây áp lực chính nếu không có lý do rõ ràng để cả hai cùng xuất hiện.
 
 SETTING LANGUAGE RULE:
 - Khi viết về Weibo, không được dùng từ "tweet".
 - Weibo phải gọi là "bài đăng Weibo", "hot search", "hashtag", "bình luận", "lượt chia sẻ", "tài khoản marketing", hoặc "bài bóc phốt".
 - Không dùng thuật ngữ Twitter/X trong bối cảnh Weibo.
 - Không dùng từ nền tảng sai bối cảnh.
-
-WORDING NATURALNESS RULE:
-- Tránh cụm từ sai tự nhiên như "tiếng dĩa chạm mặt". Hãy viết "tiếng dao nĩa chạm nhẹ vào đĩa" hoặc một cụm tự nhiên tương đương.
-- Nếu nam phản diện/chồng/CEO còn trẻ hoặc cùng thế hệ nữ chính, không gọi là "ông ta". Ưu tiên "anh ta", "hắn", hoặc gọi tên riêng.
-- Danh xưng phải khớp tuổi tác, vai vế và quan hệ.
-- Không dùng cụm từ gượng như dịch máy; nếu câu nghe cứng, hãy viết lại thành tiếng Việt tự nhiên.
 
 NARRATIVE CRAFT RULE:
 - Mỗi đoạn văn phải làm ít nhất một việc: đẩy cốt truyện, tăng áp lực, bộc lộ cảm xúc, cài bằng chứng, trả điểm trả sau, hoặc mở hook.
@@ -1229,7 +1291,7 @@ NARRATIVE CRAFT RULE:
 - Phản diện phải có phản ứng và phản công hợp lý, không đứng yên chịu thua.
 
 CLEAN PROSE RULE:
-- BẢN ĐỌC CHO ĐỘC GIẢ không được dùng ngôn ngữ phân tích kỹ thuật như: "phản diện đang phản công", "nữ chính phản đòn", "mục tiêu chương", "genre lock", "heroine lock", "ending strategy", "premise diversity lock".
+- BẢN ĐỌC CHO ĐỘC GIẢ không được dùng ngôn ngữ phân tích kỹ thuật như: "phản diện đang phản công", "nữ chính phản đòn", "mục tiêu chương", "genre lock", "heroine lock", "ending strategy", "premise diversity lock", "character name diversity lock".
 - Những ý kỹ thuật phải được chuyển thành cảnh truyện tự nhiên, bằng hành động/tin nhắn/đối thoại/vật chứng/phản ứng cơ thể.
 - Không kết thúc phần đọc bằng câu kiểu phân tích. Kết chương phải là hình ảnh, hành động, tin nhắn, bằng chứng mới, áp lực mới, hoặc một câu thoại có hook.
 - Khi nữ chính phản đòn, ưu tiên dùng đối thoại ngắn, lạnh, sắc thay vì giải thích chiến thuật.
@@ -1273,28 +1335,24 @@ SELF-REVISION PASS BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
 Trước khi xuất kết quả cuối cùng, hãy tự đọc lại bản chương như một biên tập viên và tự sửa trong im lặng theo checklist này:
 1. Có đúng số chương cần viết không? Nếu là Chương ${nextChapterNumber}, không được ghi nhầm thành chương khác.
 2. Có đi lệch khỏi STORY CONTEXT không? Nếu lệch tên nhân vật, quan hệ, bằng chứng, bối cảnh, phải sửa.
-3. Có đi lệch khỏi GENRE LOCK, PREMISE DIVERSITY LOCK hoặc HEROINE LOCK không? Nếu lệch thể loại/premise/kiểu nữ chính, phải sửa.
+3. Có đi lệch khỏi GENRE LOCK, PREMISE DIVERSITY LOCK, CHARACTER NAME DIVERSITY LOCK hoặc HEROINE LOCK không? Nếu lệch thể loại/premise/tên/kiểu nữ chính, phải sửa.
 4. Nếu Prompt idea trống, chương có tự động dùng hot search không cần thiết không? Nếu có, đổi sang hook phù hợp thể loại.
-5. Có dùng lại tên mặc định cũ như Lâm An Nhiên, họ Lục, Lục phu nhân, Lục Hạo, Tề Dương, Mã Lan không? Nếu có, đổi sang bộ tên mới theo name seed, trừ khi STORY CONTEXT đã có tên đó từ chương trước.
-6. Nam phản diện có đủ hiện diện và có ít nhất 1 câu thoại gây áp lực thật chưa? Nếu chưa, thêm một câu thoại sắc nhưng tự nhiên.
-7. Nhân vật hỗ trợ có giải quyết thay nữ chính không? Nếu có, giảm vai trò hỗ trợ và trả quyết định chính về nữ chính.
-8. Nếu mức uất ức từ 4/5 trở lên, đã có câu sỉ nhục trực diện đủ đau chưa? Nếu chưa, thêm một câu gắn với thân phận/quyền lợi/xuất thân.
+5. Có dùng lại tên mặc định như Lâm An Nhiên/Lục Thịnh/Lục Hạo/Tề Dương/Mã Lan không? Nếu có, đổi sang bộ tên mới.
+6. Nam phản diện có đủ hiện diện chưa? Nếu mẹ chồng/gia tộc gánh hết vai phản diện, thêm 1–2 câu thoại hoặc hành động sắc cho nam phản diện.
+7. Nhân vật hỗ trợ có giải quyết thay nữ chính không? Nếu có, giảm vai trò và chuyển quyết định chính về nữ chính.
+8. Nếu mức uất ức >= 4, có câu sỉ nhục trực diện đủ lực chưa? Nếu chưa, thêm một câu gắn với danh phận/quyền lợi/xuất thân.
 9. Có câu nào giống phân tích kỹ thuật trong BẢN ĐỌC không? Nếu có, phải biến thành cảnh.
 10. Có từ sai bối cảnh như "tweet Weibo" không? Nếu có, sửa thành "bài đăng Weibo".
 11. Có đoạn nào lan man, chỉ giải thích mà không đẩy truyện không? Nếu có, cắt hoặc viết lại.
 12. Có xả quá nhiều bằng chứng không? Nếu có, giữ lại tối đa 1–2 mảnh, phần còn lại để chương sau.
 13. Kết chương có đúng ENDING STRATEGY và đủ hook để đọc tiếp không? Nếu chưa, viết lại đoạn cuối.
 14. BẢN ĐỌC có đọc như truyện thật không? Nếu còn như outline/tóm tắt, viết lại thành cảnh có hành động và đối thoại.
-15. Humanization pass: Nếu đoạn nào quá sạch, quá đều, quá giống checklist, hãy thêm chi tiết cảm giác/vật thể/nhịp im lặng để nó giống người thật viết hơn.
-16. Dialogue pass: Nếu thoại chỉ đang giải thích thông tin, hãy sửa thành đối thoại có giằng co, ngắt nhịp, châm chọc, hoặc né tránh.
-17. Texture pass: Mỗi cảnh chính phải có ít nhất 2 chi tiết cụ thể có thể nhìn/nghe/chạm được.
-18. Có hành động/chuyển cảnh nào mơ hồ không? Nếu có, sửa để rõ chủ thể: điện thoại rung, cửa mở, tin nhắn đến, người bước vào.
-19. Có bằng chứng nào xuất hiện quá tiện không? Nếu có, thêm một lý do ngắn, hợp lý vì sao nữ chính có được bằng chứng đó.
-20. Có tên công ty/gia tộc/tập đoàn chưa nếu chương đã nhắc PR, hội đồng quản trị, cổ phần hoặc luật sư? Nếu chưa, đặt tên cụ thể và giữ nhất quán.
-21. Phần kỹ thuật có lẫn Anh-Việt không? Nếu có, sửa sang tiếng Việt tự nhiên.
-22. Có câu văn nào quá giống AI, ẩn dụ dài hoặc quá trau chuốt không? Nếu có, rút gọn thành câu ngắn, sắc, dễ đọc.
-23. Danh xưng có lệch tuổi không, ví dụ gọi nam phản diện trẻ là "ông ta"? Nếu có, sửa thành "anh ta", "hắn" hoặc tên riêng.
-24. Nếu là Chương 1, phần kỹ thuật đã có "Tên truyện đề xuất" chưa? Nếu chưa, tự đặt tên truyện phù hợp với premise, không lấy tên chương làm tên truyện.
+15. Có hành động/chuyển cảnh nào mơ hồ không? Nếu có, sửa để rõ chủ thể: điện thoại rung, cửa mở, tin nhắn đến, người bước vào.
+16. Có bằng chứng nào xuất hiện quá tiện không? Nếu có, thêm một lý do ngắn, hợp lý vì sao nữ chính có được bằng chứng đó.
+17. Có tên công ty/gia tộc/tập đoàn chưa nếu chương đã nhắc PR, hội đồng quản trị, cổ phần hoặc luật sư? Nếu chưa, đặt tên cụ thể và giữ nhất quán.
+18. Phần kỹ thuật có lẫn Anh-Việt không? Nếu có, sửa sang tiếng Việt tự nhiên.
+19. Có câu văn nào quá giống AI, ẩn dụ dài hoặc quá trau chuốt không? Nếu có, rút gọn thành câu ngắn, sắc, dễ đọc.
+20. Nếu là Chương 1, phần kỹ thuật đã có "Tên truyện đề xuất" chưa? Nếu chưa, tự đặt tên truyện phù hợp với premise, không lấy tên chương làm tên truyện.
 
 QUY TẮC CHẤT LƯỢNG BẮT BUỘC:
 - Bắt buộc đặt tên riêng rõ ràng cho ít nhất 3 nhân vật quan trọng.
