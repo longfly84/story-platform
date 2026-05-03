@@ -422,12 +422,51 @@ Chương 10:
 `.trim()
 }
 
+function getCliffhangerRule(payload: NormalizedGeneratePayload) {
+  const label = safeText(payload.cliffhangerLabel, '')
+  const normalized = label.toLowerCase()
+
+  if (
+    !label ||
+    normalized.includes('mặc định') ||
+    normalized.includes('tự chọn') ||
+    normalized.includes('auto')
+  ) {
+    return `
+ENDING STRATEGY:
+- Kiểu kết chương: AI tự chọn theo mạch truyện.
+- Không ép chương nào cũng phải có bằng chứng mới.
+- Hãy chọn kiểu ending hợp lý nhất dựa trên STORY CONTEXT, nhịp chương, và trạng thái xung đột.
+- Có thể chọn một trong các kiểu:
+  1. Bằng chứng mới xuất hiện.
+  2. Phản diện phản công.
+  3. Nữ chính tung một câu vả mặt ngắn.
+  4. Một nhân vật mới xuất hiện.
+  5. Một tin nhắn/cuộc gọi bất ngờ.
+  6. Một bí mật cũ bị hé một góc.
+  7. Một lựa chọn khó buộc nữ chính phải quyết định.
+  8. Một cú đảo chiều truyền thông trên Weibo/hot search.
+- Ending phải tự nhiên, không được ghi thẳng tên loại ending.
+- Không được kết bằng câu phân tích như "phản diện đang phản công" hoặc "mâu thuẫn được đẩy lên cao".
+- Nếu chương trước đã kết bằng bằng chứng, chương này nên ưu tiên phản công/truyền thông/đối đầu/cú đảo chiều để tránh lặp.
+`.trim()
+  }
+
+  return `
+ENDING STRATEGY:
+- Kiểu kết chương được chọn: ${label}.
+- Hãy kết chương theo đúng tinh thần này, nhưng vẫn phải tự nhiên như văn truyện.
+- Không được ghi thẳng nhãn "${label}" vào BẢN ĐỌC.
+- Không được kết bằng câu phân tích kỹ thuật.
+`.trim()
+}
+
 function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const lengthRule = getLengthRule(payload.chapterLengthLabel)
   const moduleInstruction = getModuleInstruction(payload.moduleId)
   const storyContext = buildStoryContext(payload)
   const technicalReport = getTechnicalReportInstruction()
-
+  const cliffhangerRule = getCliffhangerRule(payload)
   const nextChapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
   const isContinuation = nextChapterNumber > 1
 
@@ -468,6 +507,8 @@ CHAPTER CONTINUATION RULE:
 - Nếu là chương tiếp theo, đoạn mở đầu phải nối từ sự kiện/hook/bằng chứng ở chương gần nhất.
 - Không tự tạo lại một vụ hot search mở đầu mới nếu chương trước đã có hook cụ thể, trừ khi đó là hệ quả trực tiếp của chương trước.
 - Tiêu đề chương bắt buộc dùng dạng: "# Chương ${nextChapterNumber} — [tên chương ngắn, có hook]".
+
+${cliffhangerRule}
 
 EVIDENCE PACING RULE:
 - Không được để nữ chính nói ra toàn bộ bằng chứng trong một chương.
@@ -570,7 +611,7 @@ CHAPTER QUALITY TARGET:
 - Giữ bối cảnh đã chọn.
 - Nữ chính lạnh, sắc, không khóc lóc, nhưng chưa toàn thắng.
 - Nếu có cảnh hội đồng/quản trị/pháp vụ, phải có đối thoại ép ký, đe dọa kiện, và phản đòn ngắn sắc của nữ chính.
-- Cuối chương phải có cliffhanger đúng loại: ${payload.cliffhangerLabel || 'bằng chứng mới xuất hiện'}.
+- Cuối chương phải có hook mạnh để đọc tiếp. Nếu ENDING STRATEGY là tự chọn, hãy tự chọn ending hợp mạch truyện nhất. Nếu ENDING STRATEGY có kiểu cụ thể, hãy theo tinh thần kiểu đó.
 
 NHIỆM VỤ:
 Viết một chương truyện hoàn chỉnh để đăng cho độc giả.

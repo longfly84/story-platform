@@ -14,12 +14,13 @@ export type StoryLite = {
 }
 
 export type AIFormState = {
-  mode: 'chapter' | 'story-plan'
   provider: 'mock' | 'openai'
-  moduleId: 'female-urban-viral'
+  mode: 'chapter' | 'story-plan'
+  modelKey: 'economy' | 'premium' | 'auto'
+  moduleId: string
   category: string
   mainCharacterStyle: string
-  chapterLength: 'short' | 'medium' | 'long'
+  chapterLength: string
   cliffhangerType: string
   coverStyle: string
   colorTheme: string
@@ -51,6 +52,36 @@ export const modeOptions: Option[] = [
 export const providerOptions: Option[] = [
   { value: 'mock', label: 'Mock' },
   { value: 'openai', label: 'OpenAI API' },
+]
+
+export const modelTierOptions: Option[] = [
+  {
+    value: 'draft',
+    label: 'Tiết kiệm — Draft hàng loạt',
+  },
+  {
+    value: 'premium',
+    label: 'Cao cấp — Chương quan trọng',
+  },
+  {
+    value: 'auto',
+    label: 'Tự động — AI chọn theo độ quan trọng',
+  },
+]
+
+export const modelKeyOptions: Option[] = [
+  {
+    value: 'economy',
+    label: 'Tiết kiệm — gpt-4.1-mini',
+  },
+  {
+    value: 'premium',
+    label: 'Cao cấp — model tốt hơn khi cần',
+  },
+  {
+    value: 'auto',
+    label: 'Tự động — AI chọn theo độ quan trọng',
+  },
 ]
 
 export const moduleOptions: Option[] = [

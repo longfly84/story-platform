@@ -11,6 +11,7 @@ import {
   mainCharacterOptions,
   makeSlug,
   modeOptions,
+  modelKeyOptions,
   moduleOptions,
   providerOptions,
   type AIFormState,
@@ -28,10 +29,6 @@ import {
 import SelectField from '@/components/admin/ai/SelectField'
 import StoryPicker from '@/components/admin/ai/StoryPicker'
 import AIWriterPreviewPanel from '@/components/admin/ai/AIWriterPreviewPanel'
-
-
-
-
 
 function base64ToBlob(base64: string, mimeType = 'image/png') {
   const byteCharacters = atob(base64)
@@ -99,9 +96,9 @@ function extractPublicDescriptionFromPreview(preview: string) {
 
   if (!body) return ''
 
-  const shortDescription = body.slice(0, 220).trim()
+  const shortDescription = body.slice(0, 320).trim()
 
-  return body.length > 220 ? `${shortDescription}...` : shortDescription
+  return body.length > 320 ? `${shortDescription}...` : shortDescription
 }
 
 export default function AIGeneratePanel() {
@@ -117,14 +114,16 @@ export default function AIGeneratePanel() {
   const [recentChapters, setRecentChapters] = useState<any[]>([])
   const [contextLoading, setContextLoading] = useState(false)
   const [nextChapterNumber, setNextChapterNumber] = useState(1)
+
   const [aiForm, setAiForm] = useState<AIFormState>({
     mode: 'chapter',
+    modelKey: 'economy',
     provider: 'mock',
     moduleId: 'female-urban-viral',
     category: fallbackCategories[0].value,
     mainCharacterStyle: 'patient-counterattack',
     chapterLength: 'medium',
-    cliffhangerType: 'new-evidence',
+    cliffhangerType: 'auto',
     coverStyle: 'minimal-portrait',
     colorTheme: 'warm-gold',
     characterVibe: 'stoic',
@@ -166,7 +165,7 @@ export default function AIGeneratePanel() {
       try {
         const { data, error } = await supabase
           .from('stories')
-          .select('id, title, slug, author, status, description')
+          .select('id, title, slug, author, status, description, cover_image, genres')
           .order('created_at', { ascending: false })
 
         if (error) throw error
@@ -216,8 +215,8 @@ export default function AIGeneratePanel() {
       }
     }
 
-    loadStories()
-    loadCategories()
+    void loadStories()
+    void loadCategories()
 
     return () => {
       ignore = true
@@ -252,9 +251,22 @@ export default function AIGeneratePanel() {
           .map((chapter: any) => Number(chapter.chapter_number || 0))
           .filter((number) => Number.isFinite(number) && number > 0)
 
+        let nextNumber = 1
+
+        if (numbers.length > 0) {
+          nextNumber = Math.max(...numbers) + 1
+        } else {
+          const { count } = await supabase
+            .from('chapters')
+            .select('id', { count: 'exact', head: true })
+            .eq('story_id', selectedStory.id)
+
+          nextNumber = typeof count === 'number' ? count + 1 : chapters.length + 1
+        }
+
         if (!ignore) {
           setRecentChapters(chapters)
-          setNextChapterNumber(numbers.length > 0 ? Math.max(...numbers) + 1 : chapters.length + 1)
+          setNextChapterNumber(nextNumber)
         }
       } catch {
         if (!ignore) {
@@ -276,7 +288,18 @@ export default function AIGeneratePanel() {
     }
   }, [selectedStory?.id])
 
-  
+  useEffect(() => {
+    const firstGenre = Array.isArray((selectedStory as any)?.genres)
+      ? (selectedStory as any).genres[0]
+      : ''
+
+    if (!firstGenre) return
+
+    setAiForm((prev) => ({
+      ...prev,
+      category: firstGenre,
+    }))
+  }, [selectedStory?.id])
 
   function updateAiForm<K extends keyof AIFormState>(key: K, value: AIFormState[K]) {
     setAiForm((prev) => ({
@@ -315,16 +338,44 @@ export default function AIGeneratePanel() {
   }
 
   function getStoryDescriptionFromPreview() {
-    return (
-      getStoryDescriptionFromPreviewText({
-        preview,
-        fallbackDescription: '',
-      }) ||
-      extractPublicDescriptionFromPreview(preview) ||
+    const fromStructuredPreview = getStoryDescriptionFromPreviewText({
+      preview,
+      fallbackDescription: '',
+    })
+
+    const fromReaderPreview = extractPublicDescriptionFromPreview(preview)
+
+    const rawDescription =
+      fromStructuredPreview ||
+      fromReaderPreview ||
       aiForm.promptIdea.trim() ||
       selectedStory?.description ||
       'Một câu chuyện mới đang chờ được khám phá.'
-    )
+
+    const lines = rawDescription
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+
+    if (lines.length >= 2) {
+      return lines.slice(0, 4).join('\n\n')
+    }
+
+    const sentences = rawDescription
+      .replace(/\s+/g, ' ')
+      .split(/(?<=[.!?。！？])\s+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+
+    if (sentences.length >= 2) {
+      return sentences.slice(0, 4).join('\n\n')
+    }
+
+    if (rawDescription.length > 320) {
+      return `${rawDescription.slice(0, 317).trim()}...`
+    }
+
+    return rawDescription
   }
 
   function handleClear() {
@@ -356,6 +407,8 @@ export default function AIGeneratePanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: aiForm.mode,
+          provider: aiForm.provider,
+          modelKey: aiForm.modelKey,
           moduleId: aiForm.moduleId,
           title: selectedStory?.title || '',
           storySummary: selectedStory?.description || '',
@@ -366,7 +419,7 @@ export default function AIGeneratePanel() {
           cliffhangerLabel: findLabel(cliffhangerOptions, aiForm.cliffhangerType),
           humiliationLevel: aiForm.humiliationLevel,
           revengeIntensity: aiForm.revengeIntensity,
-          nextChapterNumber,
+          nextChapterNumber: Number(nextChapterNumber || 1),
           recentChapters: recentChapters.map((chapter) => ({
             title: chapter.title || '',
             summary: chapter.summary || '',
@@ -389,7 +442,11 @@ export default function AIGeneratePanel() {
       }
 
       setPreview(data.text)
-      setMessage(`Đã generate bằng OpenAI API${data.model ? ` (${data.model})` : ''}.`)
+      setMessage(
+        `Đã generate bằng OpenAI API${data.model ? ` (${data.model})` : ''}${
+          data.modelKey ? ` • Profile: ${data.modelKey}` : ''
+        }.`
+      )
     } catch (err: any) {
       setMessage(`Generate thất bại: ${String(err?.message ?? err)}`)
     } finally {
@@ -473,12 +530,13 @@ export default function AIGeneratePanel() {
     const genreLabel = findLabel(categoryOptions, aiForm.category)
     const { data: authData } = await supabase.auth.getUser()
     const ownerId = authData.user?.id ?? null
+
     try {
       const payload = {
         title,
         slug,
         description,
-        author: 'AI Writer',
+        author: 'Sưu Tầm',
         status: 'draft',
         genres: aiForm.category ? [aiForm.category] : [],
         story_dna: {
@@ -502,7 +560,7 @@ export default function AIGeneratePanel() {
       const { data, error } = await supabase
         .from('stories')
         .insert([payload])
-        .select('id, title, slug, author, status, description')
+        .select('id, title, slug, author, status, description, cover_image, genres')
         .single()
 
       if (error) {
@@ -519,7 +577,7 @@ export default function AIGeneratePanel() {
             title,
             slug,
             description,
-            author: 'AI Writer',
+            author: 'Sưu Tầm',
             status: 'draft',
             owner_id: ownerId,
             genres: aiForm.category ? [aiForm.category] : [],
@@ -528,7 +586,7 @@ export default function AIGeneratePanel() {
           const fallback = await supabase
             .from('stories')
             .insert([fallbackPayload])
-            .select('id, title, slug, author, status, description')
+            .select('id, title, slug, author, status, description, cover_image, genres')
             .single()
 
           if (fallback.error) throw fallback.error
@@ -667,17 +725,20 @@ export default function AIGeneratePanel() {
           setSelectedStory={setSelectedStory}
           setMessage={setMessage}
         />
+
         {selectedStory ? (
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-300">
             {contextLoading ? (
               <span>Đang load chương gần nhất...</span>
             ) : (
               <span>
-                Context: đã load {recentChapters.length} chương gần nhất. Chương tiếp theo: {nextChapterNumber}.
+                Context: đã load {recentChapters.length} chương gần nhất. Chương tiếp theo:{' '}
+                <span className="font-semibold text-amber-300">{nextChapterNumber}</span>.
               </span>
             )}
           </div>
         ) : null}
+
         <label className="grid gap-1 text-xs text-zinc-400">
           Prompt idea
           <input
@@ -697,18 +758,36 @@ export default function AIGeneratePanel() {
           />
 
           <SelectField
-            label="Công thức viết truyện"
-            value={aiForm.moduleId}
-            options={moduleOptions}
-            onChange={(value) => updateAiForm('moduleId', value as AIFormState['moduleId'])}
-            disabled={isContinuationStory}
+            label="Model viết chương"
+            value={aiForm.modelKey}
+            options={modelKeyOptions}
+            onChange={(value) => updateAiForm('modelKey', value as AIFormState['modelKey'])}
           />
+
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-xs text-zinc-300">
+            Model profile hiện tại:{' '}
+            <span className="font-semibold text-amber-300">
+              {aiForm.modelKey === 'economy'
+                ? 'Tiết kiệm — gpt-4.1-mini'
+                : aiForm.modelKey === 'premium'
+                  ? 'Cao cấp — hiện đang map theo backend'
+                  : 'Tự động — hệ thống tự chọn theo độ quan trọng'}
+            </span>
+          </div>
 
           <SelectField
             label="Chế độ"
             value={aiForm.mode}
             options={modeOptions}
             onChange={(value) => updateAiForm('mode', value as AIFormState['mode'])}
+          />
+
+          <SelectField
+            label="Công thức viết truyện"
+            value={aiForm.moduleId}
+            options={moduleOptions}
+            onChange={(value) => updateAiForm('moduleId', value as AIFormState['moduleId'])}
+            disabled={isContinuationStory}
           />
 
           <SelectField
@@ -736,6 +815,13 @@ export default function AIGeneratePanel() {
             }
           />
 
+          <SelectField
+            label="Kiểu kết chương"
+            value={aiForm.cliffhangerType}
+            options={cliffhangerOptions}
+            onChange={(value) => updateAiForm('cliffhangerType', value)}
+          />
+
           <div>
             <label className="text-xs text-zinc-400">Mức uất ức</label>
             <input
@@ -761,13 +847,6 @@ export default function AIGeneratePanel() {
             />
             <div className="text-xs text-zinc-400">{aiForm.revengeIntensity}</div>
           </div>
-
-          <SelectField
-            label="Kiểu kết chương"
-            value={aiForm.cliffhangerType}
-            options={cliffhangerOptions}
-            onChange={(value) => updateAiForm('cliffhangerType', value)}
-          />
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -816,50 +895,48 @@ export default function AIGeneratePanel() {
           />
         </div>
 
-      <AIWriterPreviewPanel
-        preview={preview}
-        loading={loading}
-        provider={aiForm.provider}
-        hasPreview={hasPreview && !coverLoading}
-        previewStats={previewStats}
-        message={message}
-        onCreateStoryDraft={createStoryDraftFromPreview}
-        onInsertChapter={() => saveDraft('insert')}
-        onCopyAll={() => copyText(preview, 'Đã copy toàn bộ output.')}
-        onCopyReaderOnly={() => copyText(getReaderOnly(), 'Đã copy BẢN ĐỌC CHO ĐỘC GIẢ.')}
-        onClear={handleClear}
-        onCopyCoverPrompt={() => copyText(coverPrompt, 'Đã copy cover prompt đầy đủ.')}
-        onSaveDraftChapter={() => saveDraft('draft')}
-        canGenerateCover={Boolean(selectedStory?.id)}
-        coverLoading={coverLoading}
-        onGenerateCover={async () => {
-          try {
-            if (!selectedStory?.id) {
-              setMessage('Hãy chọn story trước.')
-              return
-            }
+        <AIWriterPreviewPanel
+          preview={preview}
+          loading={loading}
+          provider={aiForm.provider}
+          hasPreview={hasPreview && !coverLoading}
+          previewStats={previewStats}
+          message={message}
+          onCreateStoryDraft={createStoryDraftFromPreview}
+          onInsertChapter={() => saveDraft('insert')}
+          onCopyAll={() => copyText(preview, 'Đã copy toàn bộ output.')}
+          onCopyReaderOnly={() => copyText(getReaderOnly(), 'Đã copy BẢN ĐỌC CHO ĐỘC GIẢ.')}
+          onClear={handleClear}
+          onCopyCoverPrompt={() => copyText(coverPrompt, 'Đã copy cover prompt đầy đủ.')}
+          onSaveDraftChapter={() => saveDraft('draft')}
+          canGenerateCover={Boolean(selectedStory?.id)}
+          coverLoading={coverLoading}
+          onGenerateCover={async () => {
+            try {
+              if (!selectedStory?.id) {
+                setMessage('Hãy chọn story trước.')
+                return
+              }
 
-            setMessage('Đang generate cover...')
-            const coverUrl = await generateCoverAndAttachToStory(selectedStory)
+              setMessage('Đang generate cover...')
+              const coverUrl = await generateCoverAndAttachToStory(selectedStory)
 
-            setSelectedStory((prev) =>
-              prev ? { ...prev, cover_image: coverUrl } : prev
-            )
+              setSelectedStory((prev) => (prev ? { ...prev, cover_image: coverUrl } : prev))
 
-            setStoryOptions((prev) =>
-              prev.map((item) =>
-                String(item.id) === String(selectedStory.id)
-                  ? { ...item, cover_image: coverUrl }
-                  : item
+              setStoryOptions((prev) =>
+                prev.map((item) =>
+                  String(item.id) === String(selectedStory.id)
+                    ? { ...item, cover_image: coverUrl }
+                    : item
+                )
               )
-            )
 
-            setMessage('Đã generate và gắn cover vào truyện.')
-          } catch (error: any) {
-            setMessage(`Generate cover thất bại: ${String(error?.message ?? error)}`)
-          }
-        }}
-      />
+              setMessage('Đã generate và gắn cover vào truyện.')
+            } catch (error: any) {
+              setMessage(`Generate cover thất bại: ${String(error?.message ?? error)}`)
+            }
+          }}
+        />
       </div>
     </section>
   )
