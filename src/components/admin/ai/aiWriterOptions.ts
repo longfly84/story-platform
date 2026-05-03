@@ -10,6 +10,7 @@ export type StoryLite = {
   author?: string | null
   status?: string | null
   description?: string | null
+  cover_image?: string | null
 }
 
 export type AIFormState = {

@@ -29,6 +29,50 @@ import SelectField from '@/components/admin/ai/SelectField'
 import StoryPicker from '@/components/admin/ai/StoryPicker'
 import AIWriterPreviewPanel from '@/components/admin/ai/AIWriterPreviewPanel'
 
+
+
+
+
+function base64ToBlob(base64: string, mimeType = 'image/png') {
+  const byteCharacters = atob(base64)
+  const byteNumbers = new Array(byteCharacters.length)
+
+  for (let index = 0; index < byteCharacters.length; index += 1) {
+    byteNumbers[index] = byteCharacters.charCodeAt(index)
+  }
+
+  const byteArray = new Uint8Array(byteNumbers)
+
+  return new Blob([byteArray], { type: mimeType })
+}
+
+async function uploadGeneratedCover({
+  imageBase64,
+  storyId,
+  storyTitle,
+  mimeType = 'image/png',
+}: {
+  imageBase64: string
+  storyId: string | number
+  storyTitle: string
+  mimeType?: string
+}) {
+  const blob = base64ToBlob(imageBase64, mimeType)
+  const slug = makeSlug(storyTitle || 'story-cover')
+  const filePath = `stories/${storyId}/cover-${slug}-${Date.now()}.png`
+
+  const { error: uploadError } = await supabase.storage.from('covers').upload(filePath, blob, {
+    upsert: true,
+    contentType: mimeType,
+  })
+
+  if (uploadError) throw uploadError
+
+  const { data } = supabase.storage.from('covers').getPublicUrl(filePath)
+
+  return data.publicUrl
+}
+
 export default function AIGeneratePanel() {
   const [, setStories] = useState<StoryLite[]>([])
   const [storyOptions, setStoryOptions] = useState<StoryLite[]>([])
@@ -38,6 +82,7 @@ export default function AIGeneratePanel() {
   const [preview, setPreview] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [coverLoading, setCoverLoading] = useState(false)
   const [recentChapters, setRecentChapters] = useState<any[]>([])
   const [contextLoading, setContextLoading] = useState(false)
   const [aiForm, setAiForm] = useState<AIFormState>({
@@ -304,6 +349,69 @@ export default function AIGeneratePanel() {
     }
   }
 
+  async function generateCoverAndAttachToStory(story: StoryLite) {
+    if (!story?.id) {
+      throw new Error('Story chưa có id để gắn cover.')
+    }
+
+    setCoverLoading(true)
+
+    try {
+      const prompt = buildFullCoverPrompt({
+        selectedStory: story,
+        preview,
+        aiForm,
+        categoryOptions,
+      })
+
+      const response = await fetch('/api/ai/generate-cover', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          size: '1024x1536',
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Generate cover failed')
+      }
+
+      const publicUrl = await uploadGeneratedCover({
+        imageBase64: data.imageBase64,
+        mimeType: data.mimeType || 'image/png',
+        storyId: story.id,
+        storyTitle: story.title,
+      })
+
+      const { error: updateError } = await supabase
+        .from('stories')
+        .update({ cover_image: publicUrl })
+        .eq('id', story.id)
+
+      if (updateError) throw updateError
+
+      const updatedStory: StoryLite = {
+        ...story,
+        cover_image: publicUrl,
+      }
+
+      setSelectedStory(updatedStory)
+
+      setStoryOptions((prev) =>
+        prev.map((item) => (String(item.id) === String(story.id) ? updatedStory : item))
+      )
+
+      return publicUrl
+    } finally {
+      setCoverLoading(false)
+    }
+  }
+
   async function createStoryDraftFromPreview() {
     if (!preview.trim()) {
       setMessage('Chưa có preview để tạo truyện.')
@@ -379,7 +487,19 @@ export default function AIGeneratePanel() {
 
           setSelectedStory(fallback.data)
           setStoryOptions((prev) => [fallback.data, ...prev])
-          setMessage(`Đã tạo Story Draft: ${fallback.data.title}`)
+          setMessage(`Đã tạo Story Draft: ${fallback.data.title}. Đang vẽ ảnh bìa...`)
+
+          try {
+            await generateCoverAndAttachToStory(fallback.data)
+            setMessage(`Đã tạo Story Draft và gắn ảnh bìa: ${fallback.data.title}`)
+          } catch (coverError: any) {
+            setMessage(
+              `Đã tạo Story Draft nhưng vẽ/gắn ảnh bìa lỗi: ${String(
+                coverError?.message ?? coverError
+              )}`
+            )
+          }
+
           return
         }
 
@@ -388,7 +508,18 @@ export default function AIGeneratePanel() {
 
       setSelectedStory(data)
       setStoryOptions((prev) => [data, ...prev])
-      setMessage(`Đã tạo Story Draft: ${data.title}`)
+      setMessage(`Đã tạo Story Draft: ${data.title}. Đang vẽ ảnh bìa...`)
+
+      try {
+        await generateCoverAndAttachToStory(data)
+        setMessage(`Đã tạo Story Draft và gắn ảnh bìa: ${data.title}`)
+      } catch (coverError: any) {
+        setMessage(
+          `Đã tạo Story Draft nhưng vẽ/gắn ảnh bìa lỗi: ${String(
+            coverError?.message ?? coverError
+          )}`
+        )
+      }
     } catch (err: any) {
       setMessage(`Tạo Story Draft thất bại: ${String(err?.message ?? err)}`)
     }
@@ -635,7 +766,7 @@ export default function AIGeneratePanel() {
         preview={preview}
         loading={loading}
         provider={aiForm.provider}
-        hasPreview={hasPreview}
+        hasPreview={hasPreview && !coverLoading}
         previewStats={previewStats}
         message={message}
         onCreateStoryDraft={createStoryDraftFromPreview}
