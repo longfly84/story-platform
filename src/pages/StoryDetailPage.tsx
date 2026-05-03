@@ -271,8 +271,18 @@ export default function StoryDetailPage() {
             </div>
 
             <div>
-              <h1 className="text-3xl font-bold text-zinc-100">{story.title}</h1>
-              <p className="mt-3 text-zinc-300 whitespace-pre-line">{story.description}</p>
+              <h1 className="bg-gradient-to-r from-rose-200 via-amber-200 to-yellow-400 bg-clip-text text-4xl font-extrabold leading-tight text-transparent drop-shadow-[0_0_18px_rgba(251,191,36,0.16)]">
+                {story.title}
+              </h1>
+
+              <div className="mt-4 max-w-3xl space-y-3 text-base leading-8 text-zinc-300">
+                {(story.description || 'Chưa có mô tả truyện.')
+                  .split('\n')
+                  .filter(Boolean)
+                  .map((line: string, index: number) => (
+                    <p key={index}>{line}</p>
+                  ))}
+              </div>
 
               {/* Chapter list */}
               <div className="mt-6">
