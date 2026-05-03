@@ -67,7 +67,6 @@ function normalizeModelKey(body: GeneratePayload): ModelKey {
     return body.modelKey
   }
 
-  // Tương thích ngược nếu frontend cũ còn gửi modelTier.
   if (body.modelTier === 'premium') return 'premium'
   if (body.modelTier === 'auto') return 'auto'
 
@@ -218,7 +217,7 @@ Vibe truyện:
 - Không để nữ chính thắng sạch quá sớm.
 
 Cấu trúc chương:
-1. Mở bằng một cú sốc/hot search/cảnh ép ký/cảnh bị sỉ nhục.
+1. Mở bằng một cú sốc phù hợp thể loại: cảnh ép ký, bữa tiệc gia tộc, phòng họp, ảnh cũ, hồ sơ bệnh viện, hợp đồng, camera, di vật, hoặc hot search nếu thể loại/ý tưởng có yếu tố truyền thông.
 2. Đẩy áp lực bằng đối thoại trực diện.
 3. Nữ chính phản đòn một nhịp nhỏ nhưng chưa tung hết bài.
 4. Cuối chương xuất hiện phản công, bằng chứng mới, cú đảo chiều, người mới, tin nhắn lạ, hoặc một áp lực mới tùy mạch truyện.
@@ -227,6 +226,10 @@ Scene density:
 - Phải có ít nhất một cảnh chính dài, không chỉ kể lướt.
 - Cảnh chính nên có 4–8 lượt đối thoại qua lại.
 - Mỗi lượt đối thoại phải làm xung đột tăng lên.
+
+Lưu ý quan trọng:
+- Weibo/hot search là một công cụ, không phải mặc định bắt buộc.
+- Chỉ dùng hot search làm hook chính nếu thể loại, prompt idea, hoặc ending strategy thật sự cần truyền thông/dư luận.
 `.trim()
   }
 
@@ -236,7 +239,7 @@ CÔNG THỨC MODULE: Truyện drama nữ tần hiện đại.
 Đặc trưng bắt buộc:
 - Nữ chính là trung tâm.
 - Xung đột rõ, cảm xúc mạnh, có cú móc cuối chương.
-- Bằng chứng và payoff phải được cài từng lớp.
+- Bằng chứng và điểm trả sau phải được cài từng lớp.
 `.trim()
 }
 
@@ -395,6 +398,189 @@ GENRE LOCK: Drama nữ tần hiện đại
 `.trim()
 }
 
+function getPremiseInstruction(payload: NormalizedGeneratePayload) {
+  const genre = safeText(payload.genreLabel).toLowerCase()
+  const promptIdea = safeText(payload.promptIdea)
+  const hasPromptIdea = Boolean(promptIdea)
+
+  const common = `
+PREMISE DIVERSITY LOCK:
+- Không mặc định dùng hot search cho mọi truyện.
+- Hot search/Weibo chỉ là một công cụ mở truyện, không phải công thức bắt buộc.
+- Nếu Prompt idea trống, hãy tự chọn một premise phù hợp với GENRE LOCK, nhưng phải tránh lặp công thức hot search quá nhiều.
+- Nếu Prompt idea có nội dung rõ, bắt buộc ưu tiên Prompt idea hơn mọi gợi ý mặc định.
+- Chương 1 phải có một premise cụ thể, không mở chung chung.
+`.trim()
+
+  if (hasPromptIdea) {
+    return `
+${common}
+
+PROMPT IDEA OVERRIDE:
+- Prompt idea hiện có: ${promptIdea}
+- Hãy lấy prompt idea này làm mạch chính.
+- Chỉ thêm hot search nếu prompt idea có yếu tố dư luận, scandal, showbiz, PR, ảnh bị leak, hoặc truyền thông.
+`.trim()
+  }
+
+  if (genre.includes('hot search') || genre.includes('showbiz') || genre.includes('pr scandal')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Vì thể loại là Hot search / showbiz / PR scandal, có thể ưu tiên Weibo/hot search làm hook chính.
+- Mở truyện bằng một bài bóc phốt, hashtag leo top, clip bị leak, hợp đồng đại diện bị đe dọa, hoặc họp PR khẩn.
+- Dù dùng hot search, vẫn phải có cảnh trực diện sau đó: họp PR, đối chất với công ty, phóng viên chặn cửa, hoặc người trong cuộc xuất hiện.
+`.trim()
+  }
+
+  if (genre.includes('đổi tráo') || genre.includes('danh phận')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Đổi tráo danh phận / hào môn, KHÔNG ưu tiên hot search làm hook chính nếu prompt idea trống.
+- Ưu tiên mở bằng một trong các hook:
+  1. Bữa tiệc gia tộc nơi nữ chính bị gọi là kẻ thay thế.
+  2. Di vật cũ xuất hiện: lắc ngọc, ảnh cũ, hộp đồ đỏ, thư tay, con dấu.
+  3. Người hầu cũ hoặc quản gia gửi một mảnh bằng chứng.
+  4. Hồ sơ bệnh viện hoặc giấy xét nghiệm có dấu hiệu bị sửa.
+  5. Gia tộc ép nữ chính ký từ bỏ danh phận/tài sản/quyền điều tra.
+  6. Phòng họp gia tộc, luật sư và phụ lục thừa kế.
+- Nếu dùng Weibo, chỉ dùng làm áp lực phụ, không phải hook mặc định.
+`.trim()
+  }
+
+  if (genre.includes('bí ẩn') || genre.includes('thân thế')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Bí ẩn gia đình / thân thế, KHÔNG ưu tiên hot search làm hook chính nếu prompt idea trống.
+- Ưu tiên mở bằng ảnh cũ, giấy xét nghiệm, hồ sơ bệnh viện, di chúc, di vật, nhà kho cũ, người quen cũ, hoặc một cuộc gọi lạ.
+- Chỉ hé một mảnh bí mật. Không công bố toàn bộ thân thế ngay chương đầu.
+`.trim()
+  }
+
+  if (genre.includes('công sở') || genre.includes('nữ cường') || genre.includes('thương chiến')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Công sở / nữ cường / thương chiến, KHÔNG ưu tiên hot search làm hook chính nếu prompt idea trống.
+- Ưu tiên mở bằng phòng họp, dự án bị cướp, báo cáo bị đánh tráo, hợp đồng bị sửa, cuộc bỏ phiếu cổ đông, hoặc cuộc đàm phán bị gài bẫy.
+- Hook chính phải liên quan đến năng lực, quyền điều hành, hợp đồng, số liệu hoặc cổ phần.
+`.trim()
+  }
+
+  if (genre.includes('cưới trước') || genre.includes('hợp đồng hôn nhân')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Cưới trước yêu sau / hợp đồng hôn nhân, KHÔNG ưu tiên hot search làm hook chính nếu prompt idea trống.
+- Ưu tiên mở bằng điều khoản hợp đồng, buổi ký hôn ước, gia tộc ép cưới, thời hạn hôn nhân, người cũ quay lại, hoặc hợp đồng bị lộ.
+- Cảm xúc không tiến quá nhanh; xung đột đến từ điều khoản và danh phận.
+`.trim()
+  }
+
+  if (genre.includes('gia đấu') || genre.includes('mẹ chồng') || genre.includes('nhà chồng')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Gia đấu / mẹ chồng / nhà chồng, KHÔNG ưu tiên hot search làm hook chính nếu prompt idea trống.
+- Ưu tiên mở bằng bữa cơm gia đình, phòng khách biệt thự, cảnh ép ký, xét nét con cái, đổ tội, so sánh nàng dâu, hoặc tranh tài sản.
+- Áp lực chính phải đến từ vai vế và quyền lực trong nhà.
+`.trim()
+  }
+
+  if (genre.includes('hào môn') || genre.includes('liên hôn') || genre.includes('gia tộc')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Hào môn / liên hôn / gia tộc, không mặc định hot search.
+- Ưu tiên mở bằng sảnh tiệc, phòng họp gia tộc, biệt thự, di chúc, phụ lục cổ phần, hôn ước, hoặc quyết định gia tộc.
+- Nếu có truyền thông, chỉ để tăng áp lực bên ngoài, không thay thế xung đột gia tộc.
+`.trim()
+  }
+
+  if (genre.includes('hôn nhân') && (genre.includes('phản bội') || genre.includes('ngoại tình'))) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Hôn nhân phản bội / ngoại tình, có thể dùng hot search nhưng không bắt buộc.
+- Luân phiên chọn hook: ảnh khách sạn, tin nhắn lúc nửa đêm, hóa đơn phòng, cuộc gọi lạnh lùng, camera hành lang, tiểu tam giả vô tội, gia đình ép im lặng, hoặc hot search.
+- Nếu dùng hot search, phải có lý do rõ vì sao chuyện riêng bị đẩy ra dư luận.
+`.trim()
+  }
+
+  if (genre.includes('mẹ con') || genre.includes('gia đình') || genre.includes('bảo vệ con')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Mẹ con / gia đình / bảo vệ con, KHÔNG ưu tiên hot search làm hook chính nếu prompt idea trống.
+- Ưu tiên mở bằng bệnh viện, trường học, quyền nuôi con, gia đình chồng đe dọa, giấy khai sinh, xét nghiệm ADN, hoặc người lạ tiếp cận đứa trẻ.
+- Động lực bảo vệ con phải rõ ngay từ chương đầu.
+`.trim()
+  }
+
+  if (genre.includes('tái sinh') || genre.includes('làm lại')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Nữ chính tái sinh / làm lại cuộc đời, KHÔNG ưu tiên hot search làm hook chính nếu prompt idea trống.
+- Ưu tiên mở bằng khoảnh khắc nữ chính tỉnh lại trước một sự kiện từng hủy hoại đời cô: ký hợp đồng, tiệc đính hôn, tai nạn, bị vu oan, mất quyền thừa kế, hoặc bị ép lựa chọn.
+- Phải có chi tiết cho thấy cô biết trước một phần tương lai nhưng không toàn năng.
+`.trim()
+  }
+
+  if (genre.includes('pháp lý') || genre.includes('luật sư')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Nữ cường pháp lý / luật sư, KHÔNG ưu tiên hot search làm hook chính nếu prompt idea trống.
+- Ưu tiên mở bằng thư luật sư, điều khoản hợp đồng, hồ sơ bị khóa, biên bản hòa giải, ghi âm hợp pháp, tài sản chung, hoặc đối chất trong văn phòng luật.
+- Hook chính phải có logic pháp lý vừa đủ rõ.
+`.trim()
+  }
+
+  if (genre.includes('tổng tài') || genre.includes('ngược luyến')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Tổng tài ngược luyến / hối hận, không mặc định hot search.
+- Ưu tiên mở bằng hiểu lầm bị đẩy đến cực điểm, bệnh viện, hợp đồng lạnh lùng, lời xin lỗi muộn, người thứ ba dàn dựng, hoặc nam chính lựa chọn sai.
+- Nam chính không được được tẩy trắng quá sớm.
+`.trim()
+  }
+
+  if (genre.includes('trả thù')) {
+    return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Với Trả thù đô thị, không mặc định hot search.
+- Ưu tiên mở bằng một cái bẫy cũ, hồ sơ bị giấu, cuộc gặp lại phản diện, cảnh bị ép ký, giao dịch bí mật, hoặc nữ chính âm thầm lấy lại bằng chứng đầu tiên.
+- Phản diện phải có quyền lực thật và sẽ phản công.
+`.trim()
+  }
+
+  return `
+${common}
+
+DEFAULT PREMISE THEO THỂ LOẠI:
+- Hãy chọn hook phù hợp với thể loại đã chọn, không tự động dùng hot search nếu không cần.
+- Ưu tiên cảnh có hành động cụ thể: phòng họp, bữa cơm, khách sạn, bệnh viện, văn phòng luật, sảnh tiệc, hợp đồng, di vật, camera, hoặc người đưa tin bí mật.
+`.trim()
+}
+
 function getHeroineInstruction(styleLabel: string) {
   const style = safeText(styleLabel).toLowerCase()
 
@@ -530,12 +716,12 @@ function getCliffhangerRule(payload: NormalizedGeneratePayload) {
 ENDING STRATEGY:
 - Kiểu kết chương: AI tự chọn theo mạch truyện.
 - Không ép chương nào cũng phải có bằng chứng mới.
-- Hãy chọn kiểu ending hợp lý nhất dựa trên STORY CONTEXT, GENRE LOCK, HEROINE LOCK, nhịp chương, và trạng thái xung đột.
+- Hãy chọn kiểu ending hợp lý nhất dựa trên STORY CONTEXT, GENRE LOCK, PREMISE DIVERSITY LOCK, HEROINE LOCK, nhịp chương, và trạng thái xung đột.
 - Có thể chọn một trong các kiểu:
   1. Phản diện phản công bằng PR, luật sư, gia tộc, công ty hoặc dư luận.
   2. Bằng chứng mới xuất hiện nhưng chỉ hé một phần.
   3. Tin nhắn, camera, file, email hoặc cuộc gọi bí mật xuất hiện.
-  4. Hot search/Weibo đảo chiều.
+  4. Hot search/Weibo đảo chiều nếu truyện có yếu tố truyền thông.
   5. Nữ chính tung một câu vả mặt ngắn.
   6. Gia tộc ép nữ chính đến đường cùng.
   7. Thân phận thật giả lộ một sơ hở.
@@ -551,7 +737,7 @@ ENDING STRATEGY:
   if (normalized.includes('phản diện') || normalized.includes('counterattack')) {
     return `
 ENDING STRATEGY: Phản diện phản công cuối chương
-- Kết chương bằng một cú phản công thật từ phản diện: bài đăng Weibo mới, thư luật sư, lệnh ép ký, cuộc gọi từ PR, email đe dọa, gia tộc gây áp lực, hoặc bằng chứng giả bị tung ra.
+- Kết chương bằng một cú phản công thật từ phản diện: bài đăng Weibo mới nếu hợp thể loại, thư luật sư, lệnh ép ký, cuộc gọi từ PR, email đe dọa, gia tộc gây áp lực, hoặc bằng chứng giả bị tung ra.
 - Phản công phải khiến nữ chính bị đẩy vào thế khó mới, không chỉ là lời dọa suông.
 - Không ghi thẳng "phản diện phản công".
 `.trim()
@@ -584,6 +770,7 @@ ENDING STRATEGY: Tin nhắn / camera / file bí mật
     return `
 ENDING STRATEGY: Hot search đảo chiều
 - Kết chương bằng việc Weibo/hot search đổi hướng: hashtag mới leo top, bình luận quay xe, tài khoản marketing tung bài mới, hoặc truyền thông đổ về phía nữ chính.
+- Chỉ dùng kiểu này làm hook chính nếu truyện có yếu tố truyền thông, scandal, showbiz, PR hoặc dư luận.
 - Không dùng từ "tweet".
 - Cú đảo chiều phải có nguyên nhân cụ thể: một ảnh, một câu nói, một bài đăng, một video ngắn, hoặc một xác nhận từ người trong cuộc.
 `.trim()
@@ -647,7 +834,7 @@ ENDING STRATEGY: Con nhỏ / người thân gặp nguy
   if (normalized.includes('công khai') || normalized.includes('tiệc') || normalized.includes('truyền thông')) {
     return `
 ENDING STRATEGY: Vả mặt công khai ở tiệc / họp / truyền thông
-- Kết chương bằng một cú đảo thế trước đám đông: sảnh tiệc, họp báo, phòng họp, livestream, gia tộc, hoặc Weibo.
+- Kết chương bằng một cú đảo thế trước đám đông: sảnh tiệc, họp báo, phòng họp, livestream, gia tộc, hoặc Weibo nếu hợp thể loại.
 - Cú vả mặt phải dựa trên vật chứng, nhân chứng, hợp đồng, camera hoặc lời tự thú.
 - Không chỉ chửi; phải làm đối phương mất thế thật.
 `.trim()
@@ -656,7 +843,7 @@ ENDING STRATEGY: Vả mặt công khai ở tiệc / họp / truyền thông
   if (normalized.includes('cao trào') || normalized.includes('final') || normalized.includes('kết liễu')) {
     return `
 ENDING STRATEGY: Cao trào / kết liễu phản diện
-- Chỉ dùng khi truyện đã đủ setup hoặc chương hiện tại cần payoff mạnh.
+- Chỉ dùng khi truyện đã đủ chi tiết đã cài hoặc chương hiện tại cần điểm trả sau mạnh.
 - Kết chương bằng đòn đánh lớn: bằng chứng quan trọng, luật sư vào cuộc, cổ phần đảo chiều, video hoàn chỉnh, nhân chứng xuất hiện, hoặc phản diện bị buộc lộ mặt.
 - Không xử lý tất cả mọi phản diện phụ trong một đoạn nếu truyện vẫn còn tiếp.
 - Vẫn phải để lại một dư chấn/hậu quả cho chương sau.
@@ -699,7 +886,7 @@ ${compactContent || 'Không có nội dung.'}
     return `
 STORY CONTEXT:
 - Chưa có dữ liệu chương trước.
-- Nếu đang viết chương 1, hãy mở truyện thật mạnh.
+- Nếu đang viết chương 1, hãy mở truyện thật mạnh nhưng phải bám PREMISE DIVERSITY LOCK.
 - Nếu không chắc thứ tự chương, không tự bịa rằng đã có sự kiện trước đó.
 `.trim()
   }
@@ -713,7 +900,7 @@ ${chapterText ? `Các chương gần nhất:\n${chapterText}` : 'Các chương g
 Quy tắc dùng context:
 - Phải nối logic với các chương gần nhất.
 - Không reset quan hệ nhân vật.
-- Không làm mất bằng chứng hoặc điểm trả sau đã cài.
+- Không làm mất bằng chứng/điểm trả sau đã cài.
 - Không lặp lại y nguyên cảnh đã viết.
 - Nếu viết chương tiếp theo, hãy đẩy xung đột tiến thêm một nấc.
 `.trim()
@@ -722,6 +909,11 @@ Quy tắc dùng context:
 function getTechnicalReportInstruction() {
   return `
 # BẢN PHÂN TÍCH KỸ THUẬT / KHÔNG ĐĂNG
+
+=== THÔNG TIN TRUYỆN ĐỀ XUẤT ===
+- Tên truyện đề xuất:
+- Slug gợi ý:
+- Một câu mô tả ngắn:
 
 === KIỂM TRA TIẾN ĐỘ TRUYỆN ===
 - Nhân vật chính:
@@ -773,20 +965,21 @@ function getTechnicalReportInstruction() {
 - Hướng chương sau:
 
 Lưu ý:
-- Phần kỹ thuật phải viết thuần tiếng Việt, không dùng từ lẫn như "in/print", "or", "setup", "payoff", "evidence".
-- Nếu cần diễn đạt, dùng "bản in", "hoặc", "chi tiết đã cài", "điểm trả sau", "bằng chứng".
 - Phần kỹ thuật này chỉ để admin debug, không đăng cho độc giả.
+- Nội dung mô tả trong phần kỹ thuật phải viết sạch, rõ, ưu tiên tiếng Việt tự nhiên.
+- Không dùng từ lẫn kiểu "in/print" hoặc "or"; hãy viết "bản in" và "hoặc".
 `.trim()
 }
 
 function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const moduleInstruction = getModuleInstruction(payload.moduleId)
   const genreInstruction = getGenreInstruction(payload.genreLabel)
+  const premiseInstruction = getPremiseInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const cliffhangerRule = getCliffhangerRule(payload)
 
   return `
-Bạn là Master Story Engine v2.6 chuyên thiết kế truyện nữ tần đô thị viral cho độc giả Việt.
+Bạn là Master Story Engine v2.7 chuyên thiết kế truyện nữ tần đô thị viral cho độc giả Việt.
 
 NHIỆM VỤ:
 Tạo dàn ý truyện có thể dùng để viết thành web novel nhiều chương.
@@ -807,6 +1000,8 @@ ${moduleInstruction}
 
 ${genreInstruction}
 
+${premiseInstruction}
+
 ${heroineInstruction}
 
 ${cliffhangerRule}
@@ -816,8 +1011,9 @@ YÊU CẦU:
 - Không viết như tóm tắt máy móc.
 - Nhân vật phải có tên riêng rõ.
 - Bằng chứng phải được chia tầng, không dồn hết vào chương 1.
-- Phải có hook thương mại/đô thị/truyền thông nếu dùng module nữ tần đô thị.
+- Phải có hook thương mại/đô thị/truyền thông nếu đúng thể loại, nhưng không mặc định dùng hot search cho mọi truyện.
 - Phải bám đúng GENRE LOCK đã chọn, không chuyển sang thể loại khác giữa chừng.
+- Phải bám đúng PREMISE DIVERSITY LOCK, nếu prompt idea trống thì tự chọn premise theo thể loại.
 - Phải bám đúng HEROINE LOCK đã chọn, không đổi tính cách nữ chính giữa truyện.
 - Kiểu kết chương phải được phân bổ hợp lý trong outline, không chương nào cũng lặp cùng một kiểu.
 
@@ -825,7 +1021,7 @@ OUTPUT BẮT BUỘC:
 # STORY PLAN
 
 ## Tên truyện
-[Đề xuất tên truyện viral]
+[Đề xuất tên truyện viral, không được dùng "Chương 1" làm tên truyện]
 
 ## Công thức viết
 [Nêu công thức/vibe chính]
@@ -835,6 +1031,9 @@ OUTPUT BẮT BUỘC:
 
 ## Kiểu nữ chính
 [Nêu rõ arc nữ chính]
+
+## Premise chính
+[Nêu hook mở truyện theo đúng thể loại, không mặc định hot search nếu không cần]
 
 ## Bối cảnh
 [Nêu bối cảnh rõ ràng]
@@ -864,7 +1063,7 @@ OUTPUT BẮT BUỘC:
 ## Hành trình nữ chính
 [Nêu hành trình nữ chính qua 10 chương]
 
-## Bản đồ kiểu kết chương
+## Bản đồ kết chương
 [Phân bổ kiểu kết chương phù hợp từng giai đoạn]
 
 ## Outline 10 chương
@@ -879,7 +1078,7 @@ Chương 8:
 Chương 9:
 Chương 10:
 
-## Gợi ý prompt bìa
+## Cover Prompt Seed
 [Tóm tắt hình ảnh bìa truyện nên vẽ]
 `.trim()
 }
@@ -888,6 +1087,7 @@ function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const lengthRule = getLengthRule(payload.chapterLengthLabel)
   const moduleInstruction = getModuleInstruction(payload.moduleId)
   const genreInstruction = getGenreInstruction(payload.genreLabel)
+  const premiseInstruction = getPremiseInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const storyContext = buildStoryContext(payload)
   const technicalReport = getTechnicalReportInstruction()
@@ -896,7 +1096,7 @@ function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const isContinuation = nextChapterNumber > 1
 
   return `
-Bạn là Master Story Engine v2.6 chuyên viết truyện nữ tần đô thị viral cho độc giả Việt.
+Bạn là Master Story Engine v2.7 chuyên viết truyện nữ tần đô thị viral cho độc giả Việt.
 
 Nhiệm vụ của bạn:
 - Viết bằng tiếng Việt tự nhiên, dễ đọc, giàu drama.
@@ -922,6 +1122,8 @@ ${moduleInstruction}
 
 ${genreInstruction}
 
+${premiseInstruction}
+
 ${heroineInstruction}
 
 ${storyContext}
@@ -931,28 +1133,31 @@ CHAPTER CONTINUATION RULE:
 - ${
     isContinuation
       ? 'Đây là chương tiếp theo của truyện đã có chương trước. Tuyệt đối không viết lại chương 1, không mở truyện lại từ đầu, không reset quan hệ nhân vật, không đổi tên nhân vật chính/phản diện, không đổi tính cách nữ chính.'
-      : 'Đây là chương mở đầu. Có thể mở bằng cú sốc mạnh, nhưng vẫn phải giữ evidence pacing và heroine arc.'
+      : 'Đây là chương mở đầu. Có thể mở bằng cú sốc mạnh, nhưng phải chọn premise theo GENRE LOCK và PREMISE DIVERSITY LOCK, không mặc định hot search nếu không cần.'
   }
 - Nếu là chương tiếp theo, đoạn mở đầu phải nối từ sự kiện/hook/bằng chứng ở chương gần nhất.
 - Không tự tạo lại một vụ hot search mở đầu mới nếu chương trước đã có hook cụ thể, trừ khi đó là hệ quả trực tiếp của chương trước.
 - Tiêu đề chương bắt buộc dùng dạng: "# Chương ${nextChapterNumber} — [tên chương ngắn, có hook]".
+- Nếu là Chương 1, phần kỹ thuật bắt buộc có "Tên truyện đề xuất" khác với tiêu đề chương.
 
 ${cliffhangerRule}
 
-GENRE + HEROINE EXECUTION RULE:
-- Thể loại đã chọn và kiểu nữ chính đã chọn là khóa cốt lõi, không được viết lệch.
+GENRE + PREMISE + HEROINE EXECUTION RULE:
+- Thể loại, premise và kiểu nữ chính đã chọn là khóa cốt lõi, không được viết lệch.
+- Nếu Prompt idea trống, phải tự chọn hook theo PREMISE DIVERSITY LOCK.
 - Nếu GENRE LOCK là pháp lý, thương chiến, hào môn, mẹ con, tái sinh, hot search, ngoại tình hoặc thân thế, chương phải có chi tiết đúng thể loại đó.
 - Nếu HEROINE LOCK yêu cầu nữ chính lạnh, lý trí, bảo vệ con, tái sinh, vả mặt công khai hoặc im lặng gom bằng chứng, hành động của cô trong chương phải thể hiện đúng điều đó.
 - Không để nữ chính hành xử trái option đã chọn chỉ để tạo drama rẻ tiền.
 - Không để nhân vật phụ hoặc nam chính cướp vai trò giải quyết vấn đề của nữ chính.
+- Không dùng Weibo/hot search làm hook chính chỉ vì module có chữ viral. Chỉ dùng khi hợp thể loại/prompt.
 
 EVIDENCE PACING RULE:
 - Không được để nữ chính nói ra toàn bộ bằng chứng trong một chương.
 - Nếu có phụ lục chuyển nhượng/cổ phần/sao kê/video/hóa đơn, chỉ chọn tối đa 2 thứ để hé trong chương này.
 - Bằng chứng nên chia tầng:
-  Tier 1: ảnh hot search / tin đồn / hóa đơn / tin nhắn.
-  Tier 2: hợp đồng / phụ lục / camera / metadata.
-  Tier 3: sao kê / chuyển tiền / nhân chứng / ghi âm.
+  Tier 1: ảnh hot search / tin đồn / hóa đơn / tin nhắn / di vật / ảnh cũ.
+  Tier 2: hợp đồng / phụ lục / camera / metadata / hồ sơ bệnh viện / giấy xét nghiệm.
+  Tier 3: sao kê / chuyển tiền / nhân chứng / ghi âm / nhật ký.
   Tier 4: video hoàn chỉnh / hồ sơ pháp lý đầy đủ / đòn kết liễu.
 - Chương đầu hoặc chương giữa chỉ nên dùng Tier 1–2.
 - Tier 3–4 phải giữ cho các chương sau hoặc final payoff.
@@ -975,24 +1180,24 @@ SETTING LANGUAGE RULE:
 - Không dùng từ nền tảng sai bối cảnh.
 
 NARRATIVE CRAFT RULE:
-- Mỗi đoạn văn phải làm ít nhất một việc: đẩy cốt truyện, tăng áp lực, bộc lộ cảm xúc, cài bằng chứng, trả payoff, hoặc mở hook.
+- Mỗi đoạn văn phải làm ít nhất một việc: đẩy cốt truyện, tăng áp lực, bộc lộ cảm xúc, cài bằng chứng, trả điểm trả sau, hoặc mở hook.
 - Nếu một đoạn chỉ giải thích chung chung mà không có hành động/cảm xúc/thông tin mới, phải tự bỏ hoặc viết lại thành cảnh.
 - Không kể lướt quá nhiều sự kiện. Hãy chọn một cảnh trọng tâm để đào sâu.
-- Ưu tiên hành động cụ thể, vật chứng cụ thể, ánh mắt, tiếng chuông điện thoại, màn hình Weibo, bản hợp đồng, chữ ký, dấu đỏ, phòng họp, camera, luật sư, PR.
+- Ưu tiên hành động cụ thể, vật chứng cụ thể, ánh mắt, tiếng chuông điện thoại, màn hình Weibo nếu hợp thể loại, bản hợp đồng, chữ ký, dấu đỏ, phòng họp, camera, luật sư, PR.
 - Nữ chính thông minh nhưng không toàn năng. Cô được thắng một nhịp nhỏ, không được thắng sạch quá sớm.
 - Phản diện phải có phản ứng và phản công hợp lý, không đứng yên chịu thua.
 
 CLEAN PROSE RULE:
-- BẢN ĐỌC CHO ĐỘC GIẢ không được dùng ngôn ngữ phân tích kỹ thuật như: "phản diện đang phản công", "nữ chính phản đòn", "mục tiêu chương", "payoff", "setup", "evidence pacing", "conflict escalation", "story memory", "mâu thuẫn được đẩy lên cao", "genre lock", "heroine lock", "ending strategy".
+- BẢN ĐỌC CHO ĐỘC GIẢ không được dùng ngôn ngữ phân tích kỹ thuật như: "phản diện đang phản công", "nữ chính phản đòn", "mục tiêu chương", "genre lock", "heroine lock", "ending strategy", "premise diversity lock".
 - Những ý kỹ thuật phải được chuyển thành cảnh truyện tự nhiên, bằng hành động/tin nhắn/đối thoại/vật chứng/phản ứng cơ thể.
 - Không kết thúc phần đọc bằng câu kiểu phân tích. Kết chương phải là hình ảnh, hành động, tin nhắn, bằng chứng mới, áp lực mới, hoặc một câu thoại có hook.
 - Khi nữ chính phản đòn, ưu tiên dùng đối thoại ngắn, lạnh, sắc thay vì giải thích chiến thuật.
 
 QUY TẮC CHUYỂN Ý KỸ THUẬT THÀNH CẢNH:
-- Nếu muốn nói "phản diện phản công" → hãy viết thành một bài đăng Weibo mới, một cuộc gọi từ PR, một email luật sư, một đoạn chat bị tung ra, hoặc một ánh mắt/câu thoại cho thấy đối phương đã ra tay.
+- Nếu muốn nói "phản diện phản công" → hãy viết thành một bài đăng Weibo mới nếu hợp thể loại, một cuộc gọi từ PR, một email luật sư, một đoạn chat bị tung ra, hoặc một ánh mắt/câu thoại cho thấy đối phương đã ra tay.
 - Nếu muốn nói "nữ chính phản công" → hãy viết thành hành động: cô đặt tài liệu lên bàn, mở một trang phụ lục, gửi một tin nhắn, nhìn thẳng vào đối phương, hoặc nói một câu ngắn khiến cả phòng im lặng.
-- Nếu muốn nói "bằng chứng quan trọng" → hãy mô tả vật chứng: ảnh chụp, dấu đỏ, chữ ký, thời gian chuyển khoản, camera khách sạn, metadata, phong bì, email, file bị khóa.
-- Nếu muốn nói "mâu thuẫn được đẩy lên cao" → hãy tăng áp lực bằng lời đe dọa, tiếng chuông điện thoại, cổ đông quay sang nhìn, màn hình hot search đổi thứ hạng, hoặc phóng viên chặn cửa.
+- Nếu muốn nói "bằng chứng quan trọng" → hãy mô tả vật chứng: ảnh chụp, dấu đỏ, chữ ký, thời gian chuyển khoản, camera khách sạn, metadata, phong bì, email, file bị khóa, di vật, hồ sơ.
+- Nếu muốn nói "mâu thuẫn được đẩy lên cao" → hãy tăng áp lực bằng lời đe dọa, tiếng chuông điện thoại, cổ đông quay sang nhìn, màn hình hot search đổi thứ hạng nếu hợp thể loại, hoặc phóng viên chặn cửa.
 - Nếu muốn tạo cliffhanger → hãy kết bằng hành động/sự kiện chưa giải quyết, không kết bằng câu phân tích.
 
 HUMAN PROSE RULE:
@@ -1008,12 +1213,12 @@ REALISM + CLEAN OUTPUT PATCH:
 - Tránh câu ẩn dụ dài, quá văn mẫu, quá trau chuốt kiểu AI. Nếu một câu so sánh dài hơn 25 từ, hãy tự rút gọn thành 1–2 câu ngắn, sắc, dễ đọc.
 - Không dùng hình ảnh ẩn dụ chung chung như "vết nứt", "món đồ vỡ", "con dao", "ván cờ" nếu không gắn trực tiếp với vật thể đang có trong cảnh.
 - Mọi hành động/chuyển cảnh phải rõ chủ thể. Không viết câu mơ hồ kiểu "Tiếng cửa bật. Chuông tin nhắn." nếu thực tế chỉ là điện thoại báo tin. Hãy viết rõ: "Điện thoại tôi rung lên", "Một tiếng ting vang lên", hoặc "Màn hình sáng lên".
-- Nếu có bằng chứng như lịch sử đặt phòng, sao kê, email, file, ảnh, camera, hợp đồng, phải giải thích ngắn gọn vì sao nữ chính có quyền hoặc có cách lấy được nó.
-- Không để bằng chứng xuất hiện quá tiện. Cần một lý do hợp lý: email chung, tài khoản gia đình, số điện thoại tích điểm, thư ký gửi nhầm, camera tòa nhà, quyền vợ/chồng, hợp đồng chung, luật sư hỗ trợ, hoặc người trong cuộc gửi.
+- Nếu có bằng chứng như lịch sử đặt phòng, sao kê, email, file, ảnh, camera, hợp đồng, hồ sơ, di vật, phải giải thích ngắn gọn vì sao nữ chính có quyền hoặc có cách lấy được nó.
+- Không để bằng chứng xuất hiện quá tiện. Cần một lý do hợp lý: email chung, tài khoản gia đình, số điện thoại tích điểm, thư ký gửi nhầm, camera tòa nhà, quyền vợ/chồng, hợp đồng chung, luật sư hỗ trợ, người hầu cũ, quản gia, hồ sơ gia tộc, hoặc người trong cuộc gửi.
 - Bắt buộc đặt tên cụ thể cho tổ chức/công ty/gia tộc nếu đã nhắc đến hội đồng quản trị, PR, cổ phần, luật sư hoặc khủng hoảng hình ảnh. Ví dụ: "Tập đoàn Tề thị", "Lục thị", "Giang thị", "Tập đoàn Thịnh Hoa".
 - Sau khi đặt tên công ty/gia tộc, phải giữ nhất quán trong cả chương và phần kỹ thuật.
 - Phần BẢN PHÂN TÍCH KỸ THUẬT / KHÔNG ĐĂNG phải viết sạch, rõ, ưu tiên tiếng Việt tự nhiên.
-- Các tiêu đề kỹ thuật có thể giữ dạng cố định nếu hệ thống yêu cầu, nhưng nội dung bên dưới không được lẫn từ Anh-Việt kiểu "in/print", "or".
+- Nội dung mô tả trong phần kỹ thuật không được lẫn từ Anh-Việt kiểu "in/print", "or".
 - Trong nội dung mô tả của phần kỹ thuật, ưu tiên dùng:
   "bản in" thay cho "in/print"
   "chi tiết đã cài" thay cho "setup"
@@ -1033,28 +1238,30 @@ SELF-REVISION PASS BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
 Trước khi xuất kết quả cuối cùng, hãy tự đọc lại bản chương như một biên tập viên và tự sửa trong im lặng theo checklist này:
 1. Có đúng số chương cần viết không? Nếu là Chương ${nextChapterNumber}, không được ghi nhầm thành chương khác.
 2. Có đi lệch khỏi STORY CONTEXT không? Nếu lệch tên nhân vật, quan hệ, bằng chứng, bối cảnh, phải sửa.
-3. Có đi lệch khỏi GENRE LOCK hoặc HEROINE LOCK không? Nếu lệch thể loại/kiểu nữ chính, phải sửa.
-4. Có câu nào giống phân tích kỹ thuật trong BẢN ĐỌC không? Nếu có, phải biến thành cảnh.
-5. Có từ sai bối cảnh như "tweet Weibo" không? Nếu có, sửa thành "bài đăng Weibo".
-6. Có đoạn nào lan man, chỉ giải thích mà không đẩy truyện không? Nếu có, cắt hoặc viết lại.
-7. Có xả quá nhiều bằng chứng không? Nếu có, giữ lại tối đa 1–2 mảnh, phần còn lại để chương sau.
-8. Kết chương có đúng ENDING STRATEGY và đủ hook để đọc tiếp không? Nếu chưa, viết lại đoạn cuối.
-9. BẢN ĐỌC có đọc như truyện thật không? Nếu còn như outline/tóm tắt, viết lại thành cảnh có hành động và đối thoại.
-10. Humanization pass: Nếu đoạn nào quá sạch, quá đều, quá giống checklist, hãy thêm chi tiết cảm giác/vật thể/nhịp im lặng để nó giống người thật viết hơn.
-11. Dialogue pass: Nếu thoại chỉ đang giải thích thông tin, hãy sửa thành đối thoại có giằng co, ngắt nhịp, châm chọc, hoặc né tránh.
-12. Texture pass: Mỗi cảnh chính phải có ít nhất 2 chi tiết cụ thể có thể nhìn/nghe/chạm được.
-13. Có hành động/chuyển cảnh nào mơ hồ không? Nếu có, sửa để rõ chủ thể: điện thoại rung, cửa mở, tin nhắn đến, người bước vào.
-14. Có bằng chứng nào xuất hiện quá tiện không? Nếu có, thêm một lý do ngắn, hợp lý vì sao nữ chính có được bằng chứng đó.
-15. Có tên công ty/gia tộc/tập đoàn chưa nếu chương đã nhắc PR, hội đồng quản trị, cổ phần hoặc luật sư? Nếu chưa, đặt tên cụ thể và giữ nhất quán.
-16. Phần kỹ thuật có lẫn tiếng Anh không? Nếu có, sửa sang tiếng Việt thuần.
-17. Có câu văn nào quá giống AI, ẩn dụ dài hoặc quá trau chuốt không? Nếu có, rút gọn thành câu ngắn, sắc, dễ đọc.
+3. Có đi lệch khỏi GENRE LOCK, PREMISE DIVERSITY LOCK hoặc HEROINE LOCK không? Nếu lệch thể loại/premise/kiểu nữ chính, phải sửa.
+4. Nếu Prompt idea trống, chương có tự động dùng hot search không cần thiết không? Nếu có, đổi sang hook phù hợp thể loại.
+5. Có câu nào giống phân tích kỹ thuật trong BẢN ĐỌC không? Nếu có, phải biến thành cảnh.
+6. Có từ sai bối cảnh như "tweet Weibo" không? Nếu có, sửa thành "bài đăng Weibo".
+7. Có đoạn nào lan man, chỉ giải thích mà không đẩy truyện không? Nếu có, cắt hoặc viết lại.
+8. Có xả quá nhiều bằng chứng không? Nếu có, giữ lại tối đa 1–2 mảnh, phần còn lại để chương sau.
+9. Kết chương có đúng ENDING STRATEGY và đủ hook để đọc tiếp không? Nếu chưa, viết lại đoạn cuối.
+10. BẢN ĐỌC có đọc như truyện thật không? Nếu còn như outline/tóm tắt, viết lại thành cảnh có hành động và đối thoại.
+11. Humanization pass: Nếu đoạn nào quá sạch, quá đều, quá giống checklist, hãy thêm chi tiết cảm giác/vật thể/nhịp im lặng để nó giống người thật viết hơn.
+12. Dialogue pass: Nếu thoại chỉ đang giải thích thông tin, hãy sửa thành đối thoại có giằng co, ngắt nhịp, châm chọc, hoặc né tránh.
+13. Texture pass: Mỗi cảnh chính phải có ít nhất 2 chi tiết cụ thể có thể nhìn/nghe/chạm được.
+14. Có hành động/chuyển cảnh nào mơ hồ không? Nếu có, sửa để rõ chủ thể: điện thoại rung, cửa mở, tin nhắn đến, người bước vào.
+15. Có bằng chứng nào xuất hiện quá tiện không? Nếu có, thêm một lý do ngắn, hợp lý vì sao nữ chính có được bằng chứng đó.
+16. Có tên công ty/gia tộc/tập đoàn chưa nếu chương đã nhắc PR, hội đồng quản trị, cổ phần hoặc luật sư? Nếu chưa, đặt tên cụ thể và giữ nhất quán.
+17. Phần kỹ thuật có lẫn Anh-Việt không? Nếu có, sửa sang tiếng Việt tự nhiên.
+18. Có câu văn nào quá giống AI, ẩn dụ dài hoặc quá trau chuốt không? Nếu có, rút gọn thành câu ngắn, sắc, dễ đọc.
+19. Nếu là Chương 1, phần kỹ thuật đã có "Tên truyện đề xuất" chưa? Nếu chưa, tự đặt tên truyện phù hợp với premise, không lấy tên chương làm tên truyện.
 
 QUY TẮC CHẤT LƯỢNG BẮT BUỘC:
 - Bắt buộc đặt tên riêng rõ ràng cho ít nhất 3 nhân vật quan trọng.
 - Nếu có chồng/nam phản diện, phải có tên riêng.
 - Nếu có người phụ nữ thứ ba, phải có tên riêng.
 - Không dùng đại từ "anh", "cô ta", "bà ấy" quá lâu mà không nhắc lại tên.
-- Bắt buộc có ít nhất 1 chi tiết đô thị Trung Quốc: Weibo hot search hashtag, tập đoàn, cổ phần, hợp đồng, pháp vụ, hội đồng quản trị, RMB/tệ.
+- Bắt buộc có ít nhất 1 chi tiết đô thị Trung Quốc: Weibo hot search hashtag nếu hợp thể loại, tập đoàn, cổ phần, hợp đồng, pháp vụ, hội đồng quản trị, RMB/tệ, luật sư, bệnh viện, trường học, hoặc gia tộc.
 - Nếu nhắc hot search, hãy viết hashtag cụ thể, ví dụ: #TổngGiámĐốcLụcThịNgoạiTình#.
 - Nếu mức trả thù từ 4/5 trở lên, chương phải có ít nhất 1 cú phản công nhỏ của nữ chính.
 - Nếu mức uất ức từ 4/5 trở lên, chương phải có một cảnh nữ chính bị ép, bị sỉ nhục hoặc bị cô lập rõ ràng.
@@ -1068,6 +1275,7 @@ CHAPTER QUALITY TARGET:
 - Độ dài mục tiêu: ${lengthRule.readerLength}.
 - Tăng đối thoại va chạm.
 - Giữ bối cảnh đã chọn.
+- Giữ đúng premise theo thể loại.
 - Giữ đúng kiểu nữ chính đã chọn.
 - Nữ chính có cảm xúc nhưng không yếu đuối kéo dài, chưa toàn thắng quá sớm.
 - Nếu có cảnh hội đồng/quản trị/pháp vụ, phải có đối thoại ép ký, đe dọa kiện, và phản đòn ngắn sắc của nữ chính.
