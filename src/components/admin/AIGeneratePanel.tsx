@@ -776,7 +776,36 @@ export default function AIGeneratePanel() {
         onClear={handleClear}
         onCopyCoverPrompt={() => copyText(coverPrompt, 'Đã copy cover prompt đầy đủ.')}
         onSaveDraftChapter={() => saveDraft('draft')}
-      />  
+        canGenerateCover={Boolean(selectedStory?.id)}
+        coverLoading={coverLoading}
+        onGenerateCover={async () => {
+          try {
+            if (!selectedStory?.id) {
+              setMessage('Hãy chọn story trước.')
+              return
+            }
+
+            setMessage('Đang generate cover...')
+            const coverUrl = await generateCoverAndAttachToStory(selectedStory)
+
+            setSelectedStory((prev) =>
+              prev ? { ...prev, cover_image: coverUrl } : prev
+            )
+
+            setStoryOptions((prev) =>
+              prev.map((item) =>
+                String(item.id) === String(selectedStory.id)
+                  ? { ...item, cover_image: coverUrl }
+                  : item
+              )
+            )
+
+            setMessage('Đã generate và gắn cover vào truyện.')
+          } catch (error: any) {
+            setMessage(`Generate cover thất bại: ${String(error?.message ?? error)}`)
+          }
+        }}
+      />
       </div>
     </section>
   )

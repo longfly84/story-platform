@@ -17,6 +17,9 @@ type AIWriterPreviewPanelProps = {
   onClear: () => void
   onCopyCoverPrompt: () => void | Promise<void>
   onSaveDraftChapter: () => void | Promise<void>
+  onGenerateCover: () => void | Promise<void>
+  canGenerateCover: boolean
+  coverLoading: boolean
 }
 
 export default function AIWriterPreviewPanel({
@@ -33,6 +36,9 @@ export default function AIWriterPreviewPanel({
   onClear,
   onCopyCoverPrompt,
   onSaveDraftChapter,
+  onGenerateCover,
+  canGenerateCover,
+  coverLoading,
 }: AIWriterPreviewPanelProps) {
   return (
     <div className="mt-3">
@@ -112,6 +118,15 @@ export default function AIWriterPreviewPanel({
           className="w-full rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 sm:w-auto"
         >
           Copy Cover Prompt
+        </button>
+
+        <button
+            type="button"
+            disabled={!canGenerateCover || coverLoading}
+            onClick={onGenerateCover}
+            className="w-full rounded-lg bg-fuchsia-500 px-4 py-2 text-zinc-950 disabled:opacity-50 sm:w-auto"
+            >
+            {coverLoading ? 'Đang vẽ cover...' : 'Vẽ cover + gắn vào truyện'}
         </button>
 
         <button
