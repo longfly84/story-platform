@@ -92,13 +92,29 @@ function getModuleInstruction(moduleId?: string) {
     return `
 Công thức module: Nữ tần đô thị viral Trung Quốc.
 
-Đặc trưng bắt buộc:
-- Bối cảnh Trung Quốc hiện đại: Thượng Hải/Bắc Kinh/Thâm Quyến, khách sạn 5 sao, tập đoàn, phòng họp, pháp vụ, truyền thông, Weibo/Douyin.
-- Xung đột chính: phản bội, hôn nhân/hủy hôn, hào môn, công sở, cổ phần, hợp đồng, dư luận, hot search.
-- Nữ chính phải có nội lực: bị ép trước, nhịn có tính toán, phản công bằng bằng chứng/hợp đồng/pháp lý/dư luận.
-- Không để nam chính/nam phụ thắng hộ nữ chính.
-- Không giải quyết quá nhanh. Mỗi chương chỉ mở một phần bằng chứng.
-- Phải có nhịp viral: mở đầu gây sốc, giữa chương ép căng, cuối chương móc đọc tiếp.
+Bối cảnh bắt buộc:
+- Trung Quốc hiện đại.
+- Có thể dùng Weibo, Douyin, hot search, Thượng Hải/Bắc Kinh/Thâm Quyến, khách sạn 5 sao, tập đoàn, hội đồng quản trị, luật sư, hợp đồng, cổ phần, RMB/tệ.
+- Không dùng vibe Việt Nam, không dùng tên Việt.
+- Tên nhân vật nên theo Trung Quốc hiện đại.
+
+Vibe truyện:
+- Nữ chính bị sỉ nhục/ép im lặng nhưng giữ được tự trọng.
+- Phản diện có quyền lực gia tộc/công ty/truyền thông.
+- Trả thù bằng bằng chứng, hợp đồng, truyền thông, pháp lý, cổ phần, nhân chứng.
+- Không để nữ chính khóc lóc yếu đuối quá lâu.
+- Không để nữ chính thắng sạch quá sớm.
+
+Cấu trúc chương:
+1. Mở bằng một cú sốc/hot search/cảnh ép ký/cảnh bị sỉ nhục.
+2. Đẩy áp lực bằng đối thoại trực diện.
+3. Nữ chính phản đòn một nhịp nhỏ nhưng chưa tung hết bài.
+4. Cuối chương xuất hiện bằng chứng mới, người mới, hoặc tin nhắn lạ làm cliffhanger.
+
+Yêu cầu scene density:
+- Phải có ít nhất một cảnh chính dài, không chỉ kể lướt.
+- Cảnh chính nên có 4–8 lượt đối thoại qua lại.
+- Mỗi lượt đối thoại phải làm xung đột tăng lên.
 `.trim()
   }
 
@@ -189,6 +205,17 @@ THÔNG TIN TRUYỆN:
 - Mức uất ức: ${payload.humiliationLevel}/5
 - Mức trả thù: ${payload.revengeIntensity}/5
 
+EVIDENCE PACING RULE:
+- Không được để nữ chính nói ra toàn bộ bằng chứng trong một chương.
+- Nếu có phụ lục chuyển nhượng/cổ phần/sao kê/video/hóa đơn, chỉ chọn tối đa 2 thứ để hé trong chương này.
+- Bằng chứng nên chia tầng:
+  Tier 1: ảnh hot search / tin đồn / hóa đơn / tin nhắn.
+  Tier 2: hợp đồng / phụ lục / camera / metadata.
+  Tier 3: sao kê / chuyển tiền / nhân chứng / ghi âm.
+  Tier 4: video hoàn chỉnh / hồ sơ pháp lý đầy đủ / đòn kết liễu.
+- Chương đầu hoặc chương giữa chỉ nên dùng Tier 1–2.
+- Tier 3–4 phải giữ cho các chương sau hoặc final payoff.
+- Khi nữ chính phản đòn, cô chỉ cho đối phương thấy "một góc bằng chứng", không đọc hết số tài khoản, không xả hết tỷ lệ cổ phần, không công bố toàn bộ sao kê.
 ${moduleInstruction}
 ${storyContext}
 
@@ -208,6 +235,16 @@ QUY TẮC CHẤT LƯỢNG BẮT BUỘC:
 - Không để nữ chính thắng quá dễ.
 - Không tung hết bằng chứng ngay.
 - Không dùng bullet trong phần truyện đọc cho độc giả.
+- KHÔNG viết kiểu tóm tắt ý tưởng. Phải viết thành cảnh truyện có hành động, đối thoại, phản ứng, nhịp cảm xúc.
+- Mỗi chương phải có ít nhất 1 cảnh va chạm chính được kéo đủ lâu bằng đối thoại trực diện.
+- Không nhảy cảnh quá nhanh. Nếu có nhiều sự kiện, chọn 1 cảnh trọng tâm để đào sâu.
+- Không dùng câu sáo/rỗng/sai nghĩa kiểu: "một bức ảnh bôi trơn mọi thứ", "ảnh hot search cứ xoay và chịu", "gom từng mảnh bình tĩnh".
+- Ưu tiên câu văn rõ, lạnh, sắc, có hình ảnh cụ thể.
+- Nữ chính không được toàn năng quá sớm. Cô có thể giữ bài, nhưng không được biết hoặc công bố tất cả bằng chứng ngay chương đầu.
+- Evidence pacing bắt buộc: mỗi chương chỉ hé 1–2 mảnh bằng chứng chính, không xả toàn bộ video/sao kê/hợp đồng/số tài khoản cùng lúc.
+- Nếu là chương mở đầu, chỉ được hé một phần bằng chứng đủ gây sợ, phần còn lại phải che lại để giữ payoff.
+- Cảnh phản công phải có giới hạn: nữ chính thắng một nhịp nhỏ, chưa toàn thắng.
+- Đối thoại phải có lực ép: phản diện đe dọa, gaslight, ép ký, ép im lặng; nữ chính đáp ngắn, lạnh, sắc.
 
 QUY TẮC ĐỘ DÀI:
 - Nếu độ dài là "Ngắn", phần BẢN ĐỌC CHO ĐỘC GIẢ khoảng 1.800–2.500 ký tự.
@@ -298,26 +335,49 @@ OUTPUT BẮT BUỘC:
   1. # BẢN ĐỌC CHO ĐỘC GIẢ
   2. # BẢN PHÂN TÍCH KỸ THUẬT / KHÔNG ĐĂNG
 - Hai phần cách nhau bằng dòng "---".
-- Phần BẢN ĐỌC CHO ĐỘC GIẢ là phần duy nhất được đăng cho độc giả.
-- Phần BẢN ĐỌC CHO ĐỘC GIẢ không được dùng bullet.
-- Phần kỹ thuật được phép bullet để lưu memory.
+- Phần "# BẢN ĐỌC CHO ĐỘC GIẢ" là phần duy nhất được đăng cho độc giả.
+- Phần "# BẢN PHÂN TÍCH KỸ THUẬT / KHÔNG ĐĂNG" chỉ để admin debug/lưu memory.
+- Tuyệt đối không đưa nhãn kỹ thuật, tracker, checklist vào BẢN ĐỌC CHO ĐỘC GIẢ.
+- BẢN ĐỌC CHO ĐỘC GIẢ phải đọc như một chương truyện hoàn chỉnh.
+- BẢN ĐỌC CHO ĐỘC GIẢ không được dùng bullet/list.
 
-FORMAT BẮT BUỘC:
-
+FORMAT PHẦN ĐỌC:
 # BẢN ĐỌC CHO ĐỘC GIẢ
 
 # Chương — [tên chương hấp dẫn, ngắn, có hook]
 
-[Viết nội dung chương ở đây.
-Phải có:
-- Ít nhất 3 tên riêng rõ ràng.
-- Ít nhất 1 cảnh đối đầu hoặc bị ép trực diện.
-- Ít nhất 1 chi tiết Weibo/hot search/hợp đồng/cổ phần/pháp vụ/RMB/tập đoàn.
-- Ít nhất 1 câu thoại sắc.
-- Cuối chương phải móc đọc tiếp theo kiểu: ${payload.cliffhangerLabel}.
-Không được kết thúc nhạt.
-Không được dùng câu vô nghĩa/sai nghĩa.
-Không được dùng bullet trong phần này.]
+[Viết nội dung chương bằng văn xuôi liên tục.]
+
+YÊU CẦU CHƯƠNG:
+- Có ít nhất 3 tên riêng rõ ràng.
+- Có ít nhất 1 cảnh đối đầu hoặc bị ép trực diện.
+- Có ít nhất 1 chi tiết thuộc hệ đô thị Trung Quốc: Weibo, hot search, hợp đồng, cổ phần, pháp vụ, RMB/tệ, tập đoàn, khách sạn 5 sao, hội đồng quản trị.
+- Có ít nhất 1 câu thoại sắc.
+- Cuối chương phải móc đọc tiếp theo kiểu: ${payload.cliffhangerLabel || 'bằng chứng mới xuất hiện'}.
+- Không kết thúc nhạt.
+- Không dùng câu vô nghĩa/sai nghĩa.
+- Không viết kiểu tóm tắt ý tưởng.
+- Không xả hết bằng chứng trong một chương.
+CẤM CÂU VĂN LỖI / VĂN AI:
+- Không viết: "Một bức ảnh bôi trơn mọi thứ."
+- Không viết: "Ảnh trên hot search cứ xoay và chịu."
+- Không viết: "Tôi gom từng mảnh bình tĩnh."
+- Không viết các câu mơ hồ không rõ hành động.
+
+Thay bằng kiểu:
+- "Một bức ảnh đủ để kéo mọi thứ xuống bùn."
+- "Bức ảnh bị chia sẻ lại, phóng to, cắt ghép, rồi đóng đinh tôi vào vị trí kẻ thua cuộc."
+- "Tôi đặt điện thoại xuống, ép mình nhìn thẳng vào bản cam kết trước mặt."
+
+CHAPTER QUALITY TARGET:
+- Độ dài mục tiêu: ${lengthRule}
+- Tăng đối thoại va chạm.
+- Giữ bối cảnh Trung Quốc hiện đại.
+- Nữ chính lạnh, sắc, không khóc lóc, nhưng chưa toàn thắng.
+- Nếu có cảnh hội đồng/quản trị/pháp vụ, phải có đối thoại ép ký, đe dọa kiện, và phản đòn ngắn sắc của nữ chính.
+- Cuối chương phải có cliffhanger đúng loại: ${payload.cliffhangerLabel || 'bằng chứng mới xuất hiện'}.
+
+Sau phần đọc, thêm dòng "---", rồi viết phần kỹ thuật theo mẫu đã yêu cầu.
 
 ---
 
@@ -335,6 +395,24 @@ Không được dùng bullet trong phần này.]
 - Quan hệ nhân vật:
 - Thứ chưa được tiết lộ:
 
+=== SETTING CONTINUITY CHECK ===
+- Thời gian:
+- Địa điểm:
+- Bối cảnh xã hội/công ty:
+- Tiền tệ/quyền lực/liên quan pháp lý:
+
+=== SUPPORT CHARACTER CHECK ===
+- Nhân vật phụ xuất hiện:
+- Vai trò:
+- Có lấn át nữ chính không:
+- Có cần giữ lại cho payoff sau không:
+
+=== REVEAL LOAD CHECK ===
+- Chương này đã hé bao nhiêu bằng chứng:
+- Có hé quá nhiều không:
+- Bằng chứng nào phải giữ lại:
+- Payoff nào chưa được dùng:
+
 === PAYOFF SETUP TRACKER ===
 - Setup đã cài:
 - Payoff tương lai:
@@ -350,6 +428,10 @@ Không được dùng bullet trong phần này.]
 - Áp lực gia đình/công ty:
 - Phản công của nữ chính:
 - Hướng chương sau:
+
+Lưu ý:
+- Không dùng tiếng Anh lẫn trong phần kỹ thuật, ví dụ không viết "or", phải viết "hoặc".
+- Phần kỹ thuật này chỉ để admin debug, không đăng cho độc giả.
 `.trim()
 }
 
