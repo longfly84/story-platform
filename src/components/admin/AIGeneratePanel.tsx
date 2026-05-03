@@ -73,6 +73,37 @@ async function uploadGeneratedCover({
   return data.publicUrl
 }
 
+function extractPublicDescriptionFromPreview(preview: string) {
+  if (!preview) return ''
+
+  const lines = preview
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  const readerStart = lines.findIndex((line) => line.includes('# BẢN ĐỌC CHO ĐỘC GIẢ'))
+  const technicalStart = lines.findIndex((line) =>
+    line.includes('# BẢN PHÂN TÍCH KỸ THUẬT')
+  )
+
+  const readerLines =
+    readerStart >= 0
+      ? lines.slice(readerStart + 1, technicalStart > readerStart ? technicalStart : undefined)
+      : lines
+
+  const body = readerLines
+    .filter((line) => !line.startsWith('#') && line !== '---')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!body) return ''
+
+  const shortDescription = body.slice(0, 220).trim()
+
+  return body.length > 220 ? `${shortDescription}...` : shortDescription
+}
+
 export default function AIGeneratePanel() {
   const [, setStories] = useState<StoryLite[]>([])
   const [storyOptions, setStoryOptions] = useState<StoryLite[]>([])
@@ -273,11 +304,16 @@ export default function AIGeneratePanel() {
   }
 
   function getStoryDescriptionFromPreview() {
-    return getStoryDescriptionFromPreviewText({
-      preview,
-      fallbackDescription:
-        aiForm.promptIdea.trim() || selectedStory?.description || 'Truyện được tạo từ AI Writer.',
-    })
+    return (
+      getStoryDescriptionFromPreviewText({
+        preview,
+        fallbackDescription: '',
+      }) ||
+      extractPublicDescriptionFromPreview(preview) ||
+      aiForm.promptIdea.trim() ||
+      selectedStory?.description ||
+      'Một câu chuyện mới đang chờ được khám phá.'
+    )
   }
 
   function handleClear() {
