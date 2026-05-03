@@ -131,6 +131,7 @@ export default function AIGeneratePanel() {
   const [recentChapters, setRecentChapters] = useState<any[]>([])
   const [contextLoading, setContextLoading] = useState(false)
   const [nextChapterNumber, setNextChapterNumber] = useState(1)
+  const [confirmOpenAIPayload, setConfirmOpenAIPayload] = useState(false)
 
   const [aiForm, setAiForm] = useState<AIFormState>({
     mode: 'chapter',
@@ -156,6 +157,55 @@ export default function AIGeneratePanel() {
   const selectedChapterLengthLabel = findLabel(chapterLengthOptions, aiForm.chapterLength)
   const selectedCliffhangerLabel = findLabel(cliffhangerOptions, aiForm.cliffhangerType)
   const selectedModelLabel = findLabel(modelKeyOptions, aiForm.modelKey)
+  const willSendToOpenAI = aiForm.provider === 'openai'
+
+  const requestPreview = useMemo(
+    () => ({
+      provider: aiForm.provider,
+      endpoint: willSendToOpenAI ? '/api/ai/generate' : '(mock local)',
+      mode: aiForm.mode,
+      modelKey: aiForm.modelKey,
+      modelLabel: selectedModelLabel,
+      moduleId: aiForm.moduleId,
+      moduleLabel: findLabel(moduleOptions, aiForm.moduleId),
+      genreKey: aiForm.category,
+      genreLabel: selectedGenreLabel,
+      mainCharacterStyleKey: aiForm.mainCharacterStyle,
+      mainCharacterStyleLabel: selectedHeroineLabel,
+      chapterLengthKey: aiForm.chapterLength,
+      chapterLengthLabel: selectedChapterLengthLabel,
+      cliffhangerTypeKey: aiForm.cliffhangerType,
+      cliffhangerLabel: selectedCliffhangerLabel,
+      humiliationLevel: aiForm.humiliationLevel,
+      revengeIntensity: aiForm.revengeIntensity,
+      nextChapterNumber: Number(nextChapterNumber || 1),
+      selectedStoryTitle: selectedStory?.title || '(chưa chọn story)',
+      selectedStoryId: selectedStory?.id || null,
+      recentChaptersCount: recentChapters.length,
+    }),
+    [
+      aiForm.provider,
+      aiForm.mode,
+      aiForm.modelKey,
+      aiForm.moduleId,
+      aiForm.category,
+      aiForm.mainCharacterStyle,
+      aiForm.chapterLength,
+      aiForm.cliffhangerType,
+      aiForm.humiliationLevel,
+      aiForm.revengeIntensity,
+      nextChapterNumber,
+      selectedModelLabel,
+      selectedGenreLabel,
+      selectedHeroineLabel,
+      selectedChapterLengthLabel,
+      selectedCliffhangerLabel,
+      selectedStory?.title,
+      selectedStory?.id,
+      recentChapters.length,
+      willSendToOpenAI,
+    ]
+  )
 
   const filteredStories = useMemo(() => {
     const q = storyQuery.trim().toLowerCase()
@@ -361,6 +411,24 @@ export default function AIGeneratePanel() {
     })
   }, [categories])
 
+  useEffect(() => {
+    setConfirmOpenAIPayload(false)
+  }, [
+    aiForm.provider,
+    aiForm.mode,
+    aiForm.modelKey,
+    aiForm.moduleId,
+    aiForm.category,
+    aiForm.mainCharacterStyle,
+    aiForm.chapterLength,
+    aiForm.cliffhangerType,
+    aiForm.humiliationLevel,
+    aiForm.revengeIntensity,
+    aiForm.promptIdea,
+    selectedStory?.id,
+    nextChapterNumber,
+  ])
+
   function updateAiForm<K extends keyof AIFormState>(key: K, value: AIFormState[K]) {
     setAiForm((prev) => ({
       ...prev,
@@ -444,6 +512,11 @@ export default function AIGeneratePanel() {
   }
 
   async function handleGenerate() {
+    if (aiForm.provider === 'openai' && !confirmOpenAIPayload) {
+      setMessage('Hãy xác nhận payload trước khi gửi vào OpenAI API.')
+      return
+    }
+
     setLoading(true)
     setMessage(null)
 
@@ -862,15 +935,25 @@ export default function AIGeneratePanel() {
             onChange={(value) => updateAiForm('modelKey', value as AIFormState['modelKey'])}
           />
 
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-xs text-zinc-300">
-            Model profile hiện tại:{' '}
-            <span className="font-semibold text-amber-300">
+          <div className="flex min-h-[88px] flex-col justify-center rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <div className="text-[11px] uppercase tracking-wide text-zinc-400">
+              Model profile hiện tại
+            </div>
+
+            <div className="mt-1 text-sm font-semibold leading-snug text-amber-300">
               {aiForm.modelKey === 'economy'
                 ? 'Tiết kiệm — gpt-4.1-mini'
                 : aiForm.modelKey === 'premium'
-                  ? 'Cao cấp — hiện đang map theo backend'
-                  : 'Tự động — hệ thống tự chọn theo độ quan trọng'}
-            </span>
+                  ? 'Cao cấp — map theo backend'
+                  : 'Tự động — chọn theo độ quan trọng'}
+            </div>
+
+            <div className="mt-2 text-xs text-zinc-400">
+              Provider:{' '}
+              <span className="font-medium text-zinc-200">
+                {aiForm.provider === 'openai' ? 'OpenAI API' : 'Mock local'}
+              </span>
+            </div>
           </div>
 
           <SelectField
@@ -947,36 +1030,126 @@ export default function AIGeneratePanel() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-300">
-          <div className="font-medium text-zinc-200">Option đang gửi vào AI</div>
-          <div className="mt-2 grid gap-1">
+        <div
+          className={`rounded-xl border p-4 text-xs ${
+            willSendToOpenAI
+              ? 'border-emerald-500/20 bg-emerald-500/5 text-zinc-200'
+              : 'border-amber-500/20 bg-amber-500/5 text-zinc-200'
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold">
+              {willSendToOpenAI
+                ? 'Payload chuẩn bị gửi vào OpenAI API'
+                : 'Payload hiện tại chỉ dùng mock, chưa gửi OpenAI API'}
+            </div>
+
+            <span
+              className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                willSendToOpenAI
+                  ? 'bg-emerald-500/15 text-emerald-300'
+                  : 'bg-amber-500/15 text-amber-300'
+              }`}
+            >
+              {willSendToOpenAI ? 'SẼ GỬI API' : 'KHÔNG GỬI API'}
+            </span>
+          </div>
+
+          <div className="mt-3 grid gap-1.5 text-sm">
+            <div>
+              Endpoint:{' '}
+              <span className="font-semibold text-zinc-100">{requestPreview.endpoint}</span>
+            </div>
+            <div>
+              Provider:{' '}
+              <span className="font-semibold text-zinc-100">
+                {requestPreview.provider === 'openai' ? 'OpenAI API' : 'Mock local'}
+              </span>
+            </div>
+            <div>
+              Story:{' '}
+              <span className="font-semibold text-zinc-100">
+                {requestPreview.selectedStoryTitle}
+              </span>
+            </div>
             <div>
               Thể loại:{' '}
-              <span className="font-semibold text-amber-300">{selectedGenreLabel}</span>
+              <span className="font-semibold text-amber-300">{requestPreview.genreLabel}</span>
             </div>
             <div>
               Kiểu nữ chính:{' '}
-              <span className="font-semibold text-amber-300">{selectedHeroineLabel}</span>
+              <span className="font-semibold text-amber-300">
+                {requestPreview.mainCharacterStyleLabel}
+              </span>
             </div>
             <div>
               Kiểu kết chương:{' '}
-              <span className="font-semibold text-amber-300">{selectedCliffhangerLabel}</span>
+              <span className="font-semibold text-amber-300">
+                {requestPreview.cliffhangerLabel}
+              </span>
+            </div>
+            <div>
+              Model:{' '}
+              <span className="font-semibold text-zinc-100">
+                {requestPreview.modelLabel} ({requestPreview.modelKey})
+              </span>
+            </div>
+            <div>
+              Chương tiếp theo:{' '}
+              <span className="font-semibold text-zinc-100">
+                {requestPreview.nextChapterNumber}
+              </span>{' '}
+              <span className="text-zinc-400">
+                • Context: {requestPreview.recentChaptersCount} chương gần nhất
+              </span>
             </div>
           </div>
+
+          <details className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">
+            <summary className="cursor-pointer text-xs font-medium text-zinc-300">
+              Xem payload preview
+            </summary>
+
+            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-zinc-400">
+              {JSON.stringify(requestPreview, null, 2)}
+            </pre>
+          </details>
+
+          {willSendToOpenAI ? (
+            <label className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-zinc-950/40 p-3">
+              <input
+                type="checkbox"
+                checked={confirmOpenAIPayload}
+                onChange={(event) => setConfirmOpenAIPayload(event.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="text-xs text-zinc-300">
+                Tao xác nhận các option ở trên là đúng và cho phép gửi payload này vào OpenAI
+                API trước khi generate.
+              </span>
+            </label>
+          ) : (
+            <div className="mt-4 rounded-lg border border-amber-500/20 bg-zinc-950/40 p-3 text-xs text-zinc-300">
+              Hiện đang ở chế độ <span className="font-semibold text-amber-300">Mock</span>,
+              nên chưa gửi sang OpenAI API.
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={loading}
-            className="rounded-lg bg-emerald-500 px-4 py-2 font-medium text-zinc-950 disabled:opacity-60"
+            disabled={loading || (willSendToOpenAI && !confirmOpenAIPayload)}
+            className="rounded-lg bg-emerald-500 px-4 py-2 font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading
               ? aiForm.provider === 'openai'
                 ? 'Đang gọi OpenAI API...'
                 : 'Đang tạo nội dung mock...'
-              : 'Generate'}
+              : willSendToOpenAI && !confirmOpenAIPayload
+                ? 'Xác nhận payload để Generate'
+                : 'Generate'}
           </button>
 
           <button
