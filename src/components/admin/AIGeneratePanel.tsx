@@ -116,6 +116,7 @@ export default function AIGeneratePanel() {
   const [coverLoading, setCoverLoading] = useState(false)
   const [recentChapters, setRecentChapters] = useState<any[]>([])
   const [contextLoading, setContextLoading] = useState(false)
+  const [nextChapterNumber, setNextChapterNumber] = useState(1)
   const [aiForm, setAiForm] = useState<AIFormState>({
     mode: 'chapter',
     provider: 'mock',
@@ -156,6 +157,7 @@ export default function AIGeneratePanel() {
   }, [preview])
 
   const hasPreview = Boolean(preview.trim())
+  const isContinuationStory = Boolean(selectedStory?.id && recentChapters.length > 0)
 
   useEffect(() => {
     let ignore = false
@@ -228,6 +230,7 @@ export default function AIGeneratePanel() {
     async function loadRecentChapters() {
       if (!selectedStory?.id) {
         setRecentChapters([])
+        setNextChapterNumber(1)
         return
       }
 
@@ -236,19 +239,27 @@ export default function AIGeneratePanel() {
       try {
         const { data, error } = await supabase
           .from('chapters')
-          .select('id, title, slug, summary, content, created_at')
+          .select('id, title, slug, summary, content, chapter_number, created_at')
           .eq('story_id', selectedStory.id)
-          .order('created_at', { ascending: false })
+          .order('chapter_number', { ascending: false })
           .limit(3)
 
         if (error) throw error
 
+        const chapters = data || []
+
+        const numbers = chapters
+          .map((chapter: any) => Number(chapter.chapter_number || 0))
+          .filter((number) => Number.isFinite(number) && number > 0)
+
         if (!ignore) {
-          setRecentChapters(data || [])
+          setRecentChapters(chapters)
+          setNextChapterNumber(numbers.length > 0 ? Math.max(...numbers) + 1 : chapters.length + 1)
         }
       } catch {
         if (!ignore) {
           setRecentChapters([])
+          setNextChapterNumber(1)
           setMessage('Không load được chương gần nhất của truyện.')
         }
       } finally {
@@ -355,6 +366,7 @@ export default function AIGeneratePanel() {
           cliffhangerLabel: findLabel(cliffhangerOptions, aiForm.cliffhangerType),
           humiliationLevel: aiForm.humiliationLevel,
           revengeIntensity: aiForm.revengeIntensity,
+          nextChapterNumber,
           recentChapters: recentChapters.map((chapter) => ({
             title: chapter.title || '',
             summary: chapter.summary || '',
@@ -580,6 +592,7 @@ export default function AIGeneratePanel() {
       slug,
       content: readerOnly,
       full_output: preview,
+      chapter_number: nextChapterNumber,
       created_at: new Date().toISOString(),
       source,
     }
@@ -605,6 +618,7 @@ export default function AIGeneratePanel() {
         slug,
         content: readerOnly,
         summary: aiForm.promptIdea.trim() || null,
+        chapter_number: nextChapterNumber,
         status: 'draft',
       }
 
@@ -625,7 +639,8 @@ export default function AIGeneratePanel() {
         }
       }
 
-      setMessage('Đã lưu draft chapter vào Supabase.')
+      setMessage(`Đã lưu Draft Chapter: Chương ${nextChapterNumber} — ${title}`)
+      setNextChapterNumber((prev) => prev + 1)
     } catch (err: any) {
       setMessage(`Lưu draft thất bại: ${String(err?.message ?? err)}`)
     }
@@ -658,7 +673,7 @@ export default function AIGeneratePanel() {
               <span>Đang load chương gần nhất...</span>
             ) : (
               <span>
-                Context: đã load {recentChapters.length} chương gần nhất để gửi vào AI.
+                Context: đã load {recentChapters.length} chương gần nhất. Chương tiếp theo: {nextChapterNumber}.
               </span>
             )}
           </div>
@@ -686,6 +701,7 @@ export default function AIGeneratePanel() {
             value={aiForm.moduleId}
             options={moduleOptions}
             onChange={(value) => updateAiForm('moduleId', value as AIFormState['moduleId'])}
+            disabled={isContinuationStory}
           />
 
           <SelectField
@@ -700,6 +716,7 @@ export default function AIGeneratePanel() {
             value={aiForm.category}
             options={categoryOptions}
             onChange={(value) => updateAiForm('category', value)}
+            disabled={isContinuationStory}
           />
 
           <SelectField
@@ -707,6 +724,7 @@ export default function AIGeneratePanel() {
             value={aiForm.mainCharacterStyle}
             options={mainCharacterOptions}
             onChange={(value) => updateAiForm('mainCharacterStyle', value)}
+            disabled={isContinuationStory}
           />
 
           <SelectField
