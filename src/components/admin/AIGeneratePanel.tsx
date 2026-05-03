@@ -101,6 +101,23 @@ function extractPublicDescriptionFromPreview(preview: string) {
   return body.length > 320 ? `${shortDescription}...` : shortDescription
 }
 
+function optionExists(options: Option[], value: string) {
+  return options.some((option) => option.value === value)
+}
+
+function getDefaultOptionValue(options: Option[], preferredValue: string, fallbackValue: string) {
+  if (optionExists(options, preferredValue)) return preferredValue
+  return options[0]?.value || fallbackValue
+}
+
+const DEFAULT_MAIN_CHARACTER_STYLE = getDefaultOptionValue(
+  mainCharacterOptions,
+  'endure-then-counter',
+  'patient-counterattack'
+)
+
+const DEFAULT_CLIFFHANGER_TYPE = getDefaultOptionValue(cliffhangerOptions, 'auto', 'auto')
+
 export default function AIGeneratePanel() {
   const [, setStories] = useState<StoryLite[]>([])
   const [storyOptions, setStoryOptions] = useState<StoryLite[]>([])
@@ -120,10 +137,10 @@ export default function AIGeneratePanel() {
     modelKey: 'economy',
     provider: 'mock',
     moduleId: 'female-urban-viral',
-    category: fallbackCategories[0].value,
-    mainCharacterStyle: 'patient-counterattack',
+    category: fallbackCategories[0]?.value || '',
+    mainCharacterStyle: DEFAULT_MAIN_CHARACTER_STYLE,
     chapterLength: 'medium',
-    cliffhangerType: 'auto',
+    cliffhangerType: DEFAULT_CLIFFHANGER_TYPE,
     coverStyle: 'minimal-portrait',
     colorTheme: 'warm-gold',
     characterVibe: 'stoic',
@@ -133,6 +150,12 @@ export default function AIGeneratePanel() {
   })
 
   const categoryOptions = categories.length ? categories : fallbackCategories
+
+  const selectedGenreLabel = findLabel(categoryOptions, aiForm.category)
+  const selectedHeroineLabel = findLabel(mainCharacterOptions, aiForm.mainCharacterStyle)
+  const selectedChapterLengthLabel = findLabel(chapterLengthOptions, aiForm.chapterLength)
+  const selectedCliffhangerLabel = findLabel(cliffhangerOptions, aiForm.cliffhangerType)
+  const selectedModelLabel = findLabel(modelKeyOptions, aiForm.modelKey)
 
   const filteredStories = useMemo(() => {
     const q = storyQuery.trim().toLowerCase()
@@ -295,11 +318,48 @@ export default function AIGeneratePanel() {
 
     if (!firstGenre) return
 
-    setAiForm((prev) => ({
-      ...prev,
-      category: firstGenre,
-    }))
-  }, [selectedStory?.id])
+    setAiForm((prev) => {
+      const exists = categoryOptions.some((item) => item.value === firstGenre)
+
+      if (!exists) return prev
+
+      return {
+        ...prev,
+        category: firstGenre,
+      }
+    })
+  }, [selectedStory?.id, categories])
+
+  useEffect(() => {
+    setAiForm((prev) => {
+      const nextCategory = categoryOptions.some((item) => item.value === prev.category)
+        ? prev.category
+        : categoryOptions[0]?.value || prev.category
+
+      const nextMainCharacterStyle = optionExists(mainCharacterOptions, prev.mainCharacterStyle)
+        ? prev.mainCharacterStyle
+        : DEFAULT_MAIN_CHARACTER_STYLE
+
+      const nextCliffhangerType = optionExists(cliffhangerOptions, prev.cliffhangerType)
+        ? prev.cliffhangerType
+        : DEFAULT_CLIFFHANGER_TYPE
+
+      if (
+        nextCategory === prev.category &&
+        nextMainCharacterStyle === prev.mainCharacterStyle &&
+        nextCliffhangerType === prev.cliffhangerType
+      ) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        category: nextCategory,
+        mainCharacterStyle: nextMainCharacterStyle,
+        cliffhangerType: nextCliffhangerType,
+      }
+    })
+  }, [categories])
 
   function updateAiForm<K extends keyof AIFormState>(key: K, value: AIFormState[K]) {
     setAiForm((prev) => ({
@@ -396,6 +456,7 @@ export default function AIGeneratePanel() {
               : buildChapterMock({ form: aiForm, selectedStory, categoryOptions })
 
           setPreview(output)
+          setMessage('Đã tạo nội dung mock.')
           setLoading(false)
         }, 350)
 
@@ -413,10 +474,10 @@ export default function AIGeneratePanel() {
           title: selectedStory?.title || '',
           storySummary: selectedStory?.description || '',
           promptIdea: aiForm.promptIdea,
-          genreLabel: findLabel(categoryOptions, aiForm.category),
-          mainCharacterStyleLabel: findLabel(mainCharacterOptions, aiForm.mainCharacterStyle),
-          chapterLengthLabel: findLabel(chapterLengthOptions, aiForm.chapterLength),
-          cliffhangerLabel: findLabel(cliffhangerOptions, aiForm.cliffhangerType),
+          genreLabel: selectedGenreLabel,
+          mainCharacterStyleLabel: selectedHeroineLabel,
+          chapterLengthLabel: selectedChapterLengthLabel,
+          cliffhangerLabel: selectedCliffhangerLabel,
           humiliationLevel: aiForm.humiliationLevel,
           revengeIntensity: aiForm.revengeIntensity,
           nextChapterNumber: Number(nextChapterNumber || 1),
@@ -426,8 +487,22 @@ export default function AIGeneratePanel() {
             content: chapter.content || '',
           })),
           storyMemory: selectedStory
-            ? `Truyện đang chọn: ${selectedStory.title}. ${selectedStory.description || ''}`
-            : '',
+            ? [
+                `Truyện đang chọn: ${selectedStory.title}.`,
+                selectedStory.description || '',
+                `Thể loại khóa: ${selectedGenreLabel}.`,
+                `Kiểu nữ chính khóa: ${selectedHeroineLabel}.`,
+                `Kiểu kết chương: ${selectedCliffhangerLabel}.`,
+                `Model profile: ${selectedModelLabel}.`,
+              ]
+                .filter(Boolean)
+                .join('\n')
+            : [
+                `Thể loại khóa: ${selectedGenreLabel}.`,
+                `Kiểu nữ chính khóa: ${selectedHeroineLabel}.`,
+                `Kiểu kết chương: ${selectedCliffhangerLabel}.`,
+                `Model profile: ${selectedModelLabel}.`,
+              ].join('\n'),
         }),
       })
 
@@ -527,7 +602,9 @@ export default function AIGeneratePanel() {
     const description = getStoryDescriptionFromPreview()
     const slugBase = makeSlug(title || 'truyen-nhap-ai')
     const slug = `${slugBase}-${Date.now()}`
-    const genreLabel = findLabel(categoryOptions, aiForm.category)
+    const genreLabel = selectedGenreLabel
+    const heroineLabel = selectedHeroineLabel
+    const cliffhangerLabel = selectedCliffhangerLabel
     const { data: authData } = await supabase.auth.getUser()
     const ownerId = authData.user?.id ?? null
 
@@ -541,20 +618,31 @@ export default function AIGeneratePanel() {
         genres: aiForm.category ? [aiForm.category] : [],
         story_dna: {
           source: 'ai-writer',
-          module: aiForm.moduleId,
+          provider: aiForm.provider,
+          model_key: aiForm.modelKey,
+          model_label: selectedModelLabel,
+          module_key: aiForm.moduleId,
+          module_label: findLabel(moduleOptions, aiForm.moduleId),
+          genre_key: aiForm.category,
           genre: genreLabel,
-          main_character_style: findLabel(mainCharacterOptions, aiForm.mainCharacterStyle),
-          chapter_length: findLabel(chapterLengthOptions, aiForm.chapterLength),
-          cliffhanger_type: findLabel(cliffhangerOptions, aiForm.cliffhangerType),
+          main_character_style_key: aiForm.mainCharacterStyle,
+          main_character_style: heroineLabel,
+          chapter_length_key: aiForm.chapterLength,
+          chapter_length: selectedChapterLengthLabel,
+          cliffhanger_type_key: aiForm.cliffhangerType,
+          cliffhanger_type: cliffhangerLabel,
           humiliation_level: aiForm.humiliationLevel,
           revenge_intensity: aiForm.revengeIntensity,
         },
         story_memory: {
           created_from: 'ai-writer-story-plan',
+          genre: genreLabel,
+          heroine: heroineLabel,
+          cliffhanger: cliffhangerLabel,
           preview,
         },
         current_arc: 'Khởi đầu truyện / setup xung đột chính',
-        emotion_tags: [genreLabel, findLabel(mainCharacterOptions, aiForm.mainCharacterStyle)],
+        emotion_tags: [genreLabel, heroineLabel, cliffhangerLabel].filter(Boolean),
       }
 
       const { data, error } = await supabase
@@ -653,6 +741,16 @@ export default function AIGeneratePanel() {
       chapter_number: nextChapterNumber,
       created_at: new Date().toISOString(),
       source,
+      ai_options: {
+        provider: aiForm.provider,
+        model_key: aiForm.modelKey,
+        genre_key: aiForm.category,
+        genre_label: selectedGenreLabel,
+        main_character_style_key: aiForm.mainCharacterStyle,
+        main_character_style_label: selectedHeroineLabel,
+        cliffhanger_type_key: aiForm.cliffhangerType,
+        cliffhanger_type_label: selectedCliffhangerLabel,
+      },
     }
 
     localStorage.setItem('storyPlatform.aiWriter.chapterDraft', JSON.stringify(localPayload))
@@ -846,6 +944,24 @@ export default function AIGeneratePanel() {
               className="w-full"
             />
             <div className="text-xs text-zinc-400">{aiForm.revengeIntensity}</div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-300">
+          <div className="font-medium text-zinc-200">Option đang gửi vào AI</div>
+          <div className="mt-2 grid gap-1">
+            <div>
+              Thể loại:{' '}
+              <span className="font-semibold text-amber-300">{selectedGenreLabel}</span>
+            </div>
+            <div>
+              Kiểu nữ chính:{' '}
+              <span className="font-semibold text-amber-300">{selectedHeroineLabel}</span>
+            </div>
+            <div>
+              Kiểu kết chương:{' '}
+              <span className="font-semibold text-amber-300">{selectedCliffhangerLabel}</span>
+            </div>
           </div>
         </div>
 

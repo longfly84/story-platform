@@ -32,16 +32,20 @@ export type AIFormState = {
 
 export const fallbackCategories: Option[] = [
   { value: 'hon-nhan-phan-boi-ngoai-tinh', label: 'Hôn nhân phản bội / ngoại tình' },
-  {
-    value: 'cong-so-va-mat-nu-cuong-thuong-chien',
-    label: 'Công sở vả mặt / nữ cường thương chiến',
-  },
-  {
-    value: 'hon-nhan-phan-boi-huy-hon-chong-cu-hoi-han',
-    label: 'Hôn nhân phản bội / hủy hôn / chồng cũ hối hận',
-  },
-  { value: 'hao-mon-lien-hon', label: 'Hào môn liên hôn' },
+  { value: 'ly-hon-va-mat-chong-cu-hoi-han', label: 'Ly hôn vả mặt / chồng cũ hối hận' },
+  { value: 'hao-mon-lien-hon-gia-toc', label: 'Hào môn / liên hôn / gia tộc' },
+  { value: 'cong-so-thuong-chien-nu-cuong', label: 'Công sở thương chiến / nữ cường' },
   { value: 'tra-thu-do-thi', label: 'Trả thù đô thị' },
+  { value: 'hot-search-showbiz-pr-scandal', label: 'Hot search / showbiz / PR scandal' },
+  { value: 'me-con-gia-dinh-bao-ve-con', label: 'Mẹ con / gia đình / bảo vệ con' },
+  { value: 'ban-than-phan-boi-tieu-tam', label: 'Bạn thân phản bội / tiểu tam' },
+  { value: 'cuoi-truoc-yeu-sau-hop-dong-hon-nhan', label: 'Cưới trước yêu sau / hợp đồng hôn nhân' },
+  { value: 'nu-chinh-tai-sinh-lam-lai-cuoc-doi', label: 'Nữ chính tái sinh / làm lại cuộc đời' },
+  { value: 'bi-an-gia-dinh-than-the', label: 'Bí ẩn gia đình / thân thế' },
+  { value: 'tong-tai-nguoc-luyen-hoi-han', label: 'Tổng tài ngược luyến / hối hận' },
+  { value: 'gia-dau-me-chong-nha-chong', label: 'Gia đấu / mẹ chồng / nhà chồng' },
+  { value: 'nu-cuong-phap-ly-luat-su', label: 'Nữ cường pháp lý / luật sư' },
+  { value: 'doi-tra-danh-phan-hao-mon', label: 'Đổi tráo danh phận / hào môn' },
 ]
 
 export const modeOptions: Option[] = [
@@ -89,11 +93,50 @@ export const moduleOptions: Option[] = [
 ]
 
 export const mainCharacterOptions: Option[] = [
-  { value: 'patient-counterattack', label: 'Nhẫn nhịn rồi phản công' },
-  { value: 'cold-sharp', label: 'Lạnh lùng sắc bén' },
-  { value: 'business-queen', label: 'Nữ cường thương chiến' },
-  { value: 'hidden-heiress', label: 'Giàu ngầm / thân phận ẩn' },
-  { value: 'betrayed-bride', label: 'Cô dâu bị phản bội' },
+  {
+    value: 'endure-then-counter',
+    label: 'Nhẫn nhịn rồi phản công',
+  },
+  {
+    value: 'cold-revenge',
+    label: 'Lạnh lùng trả thù',
+  },
+  {
+    value: 'soft-outside-hard-inside',
+    label: 'Ngoài mềm trong cứng',
+  },
+  {
+    value: 'legal-minded',
+    label: 'Lý trí, giỏi pháp lý',
+  },
+  {
+    value: 'business-queen',
+    label: 'Nữ cường thương chiến',
+  },
+  {
+    value: 'reborn-calculator',
+    label: 'Tái sinh, đi trước một bước',
+  },
+  {
+    value: 'protective-mother',
+    label: 'Người mẹ bảo vệ con',
+  },
+  {
+    value: 'wealthy-family-daughter',
+    label: 'Thiên kim hào môn bị xem thường',
+  },
+  {
+    value: 'silent-evidence-collector',
+    label: 'Im lặng gom bằng chứng',
+  },
+  {
+    value: 'public-face-slapper',
+    label: 'Vả mặt công khai cực gắt',
+  },
+  {
+    value: 'broken-heart-to-power',
+    label: 'Từ đau khổ thành kiểm soát thế cục',
+  },
 ]
 
 export const chapterLengthOptions: Option[] = [
@@ -103,13 +146,58 @@ export const chapterLengthOptions: Option[] = [
 ]
 
 export const cliffhangerOptions: Option[] = [
-  { value: 'new-evidence', label: 'Bằng chứng mới xuất hiện' },
-  { value: 'villain-counterattack', label: 'Phản diện phản công' },
-  { value: 'hot-search', label: 'Hot search bùng nổ' },
-  { value: 'key-character', label: 'Nhân vật quan trọng xuất hiện' },
-  { value: 'face-slap-line', label: 'Nữ chính tung câu vả mặt' },
-  { value: 'secret-message-camera', label: 'Tin nhắn / camera bí mật' },
-  { value: 'legal-reversal', label: 'Hợp đồng / pháp lý đảo chiều' },
+  {
+    value: 'auto',
+    label: 'Mặc định — AI tự chọn theo mạch truyện',
+  },
+  {
+    value: 'villain-counterattack',
+    label: 'Phản diện phản công cuối chương',
+  },
+  {
+    value: 'new-evidence',
+    label: 'Bằng chứng mới xuất hiện',
+  },
+  {
+    value: 'secret-message-camera',
+    label: 'Tin nhắn / camera / file bí mật',
+  },
+  {
+    value: 'hot-search-reversal',
+    label: 'Hot search đảo chiều',
+  },
+  {
+    value: 'face-slap-line',
+    label: 'Nữ chính tung câu vả mặt',
+  },
+  {
+    value: 'legal-reversal',
+    label: 'Luật sư / hợp đồng / pháp lý đảo chiều',
+  },
+  {
+    value: 'family-pressure',
+    label: 'Gia tộc ép đến đường cùng',
+  },
+  {
+    value: 'identity-crack',
+    label: 'Thân phận thật giả lộ sơ hở',
+  },
+  {
+    value: 'romance-crack',
+    label: 'Nam chính bắt đầu dao động / nghi ngờ',
+  },
+  {
+    value: 'child-danger',
+    label: 'Con nhỏ / người thân gặp nguy',
+  },
+  {
+    value: 'public-banquet-face-slap',
+    label: 'Vả mặt công khai ở tiệc / họp / truyền thông',
+  },
+  {
+    value: 'final-payoff',
+    label: 'Cao trào / kết liễu phản diện',
+  },
 ]
 
 export const coverStyleOptions: Option[] = [
