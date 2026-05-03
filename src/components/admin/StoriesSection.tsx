@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 type Props = {
   stories: any[]
@@ -14,6 +14,8 @@ type Props = {
   onOpenChapters: (slug: string, title?: string) => void | Promise<void>
 }
 
+const STORIES_PER_PAGE = 10
+
 export default function StoriesSection({
   stories,
   categories,
@@ -27,21 +29,42 @@ export default function StoriesSection({
   onOpenChapters,
 }: Props) {
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
 
   const q = query.trim().toLowerCase()
 
-  const filtered = q
-    ? stories.filter((story: any) => {
-        const inTitle = String(story.title || '').toLowerCase().includes(q)
-        const inAuthor = String(story.author || '').toLowerCase().includes(q)
-        const inSlug = String(story.slug || '').toLowerCase().includes(q)
-        const inStatus = String(story.status || '').toLowerCase().includes(q)
-        const inGenres =
-          Array.isArray(story.genres) && story.genres.join(' ').toLowerCase().includes(q)
+  const filtered = useMemo(() => {
+    if (!q) return stories
 
-        return inTitle || inAuthor || inSlug || inStatus || inGenres
-      })
-    : stories
+    return stories.filter((story: any) => {
+      const inTitle = String(story.title || '').toLowerCase().includes(q)
+      const inAuthor = String(story.author || '').toLowerCase().includes(q)
+      const inSlug = String(story.slug || '').toLowerCase().includes(q)
+      const inStatus = String(story.status || '').toLowerCase().includes(q)
+      const inGenres =
+        Array.isArray(story.genres) && story.genres.join(' ').toLowerCase().includes(q)
+
+      return inTitle || inAuthor || inSlug || inStatus || inGenres
+    })
+  }, [q, stories])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / STORIES_PER_PAGE))
+
+  const pagedStories = useMemo(() => {
+    const safePage = Math.min(Math.max(page, 1), totalPages)
+    const start = (safePage - 1) * STORIES_PER_PAGE
+    return filtered.slice(start, start + STORIES_PER_PAGE)
+  }, [filtered, page, totalPages])
+
+  useEffect(() => {
+    setPage(1)
+  }, [query])
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [page, totalPages])
 
   function getCoverSrc(story: any) {
     const rawCover =
@@ -98,6 +121,18 @@ export default function StoriesSection({
     await onDeleteStory(story.id)
   }
 
+  function getVisiblePageNumbers() {
+    const pages: number[] = []
+    const start = Math.max(1, page - 2)
+    const end = Math.min(totalPages, page + 2)
+
+    for (let item = start; item <= end; item += 1) {
+      pages.push(item)
+    }
+
+    return pages
+  }
+
   return (
     <section className="mb-6">
       <div>
@@ -116,14 +151,19 @@ export default function StoriesSection({
         />
       </div>
 
+      <div className="mt-2 text-xs text-zinc-500">
+        Hiển thị {pagedStories.length} / {filtered.length} truyện
+        {q ? ` cho từ khóa "${query}"` : ''}
+      </div>
+
       {loading ? <div className="mt-3 text-sm text-zinc-400">Loading...</div> : null}
       {error ? <div className="mt-3 text-sm text-red-400">{error}</div> : null}
 
       <ul className="mt-3 grid grid-cols-1 gap-3">
-        {filtered.length === 0 ? (
+        {pagedStories.length === 0 ? (
           <div className="mt-3 text-sm text-zinc-400">Không tìm thấy truyện phù hợp.</div>
         ) : (
-          filtered.map((story: any) => {
+          pagedStories.map((story: any) => {
             const coverSrc = getCoverSrc(story)
             const coverErrored = imageErrors?.[story?.id]
             const categoryName = getCategoryName(story)
@@ -241,6 +281,48 @@ export default function StoriesSection({
           })
         )}
       </ul>
+
+      {filtered.length > STORIES_PER_PAGE ? (
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 hover:border-amber-300"
+          >
+            Trước
+          </button>
+
+          {getVisiblePageNumbers().map((pageNumber) => (
+            <button
+              key={pageNumber}
+              type="button"
+              onClick={() => setPage(pageNumber)}
+              className={[
+                'rounded-lg px-3 py-2 text-sm font-semibold',
+                pageNumber === page
+                  ? 'bg-amber-300 text-zinc-950'
+                  : 'border border-zinc-700 text-zinc-100 hover:border-amber-300',
+              ].join(' ')}
+            >
+              {pageNumber}
+            </button>
+          ))}
+
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 hover:border-amber-300"
+          >
+            Sau
+          </button>
+
+          <span className="ml-2 text-xs text-zinc-500">
+            Trang {page}/{totalPages}
+          </span>
+        </div>
+      ) : null}
     </section>
   )
 }
