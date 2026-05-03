@@ -174,13 +174,18 @@ function getTextModel(payload: NormalizedGeneratePayload) {
   }
 
   if (payload.modelKey === 'auto') {
+    const cliffhanger = payload.cliffhangerLabel.toLowerCase()
+
     const shouldUsePremium =
       payload.nextChapterNumber === 1 ||
       payload.humiliationLevel >= 4 ||
       payload.revengeIntensity >= 4 ||
-      payload.cliffhangerLabel.toLowerCase().includes('cao trào') ||
-      payload.cliffhangerLabel.toLowerCase().includes('final') ||
-      payload.cliffhangerLabel.toLowerCase().includes('kết')
+      cliffhanger.includes('cao trào') ||
+      cliffhanger.includes('final') ||
+      cliffhanger.includes('kết') ||
+      cliffhanger.includes('kết liễu') ||
+      cliffhanger.includes('vả mặt công khai') ||
+      cliffhanger.includes('pháp lý đảo chiều')
 
     return shouldUsePremium ? premiumModel : economyModel
   }
@@ -216,7 +221,7 @@ Cấu trúc chương:
 1. Mở bằng một cú sốc/hot search/cảnh ép ký/cảnh bị sỉ nhục.
 2. Đẩy áp lực bằng đối thoại trực diện.
 3. Nữ chính phản đòn một nhịp nhỏ nhưng chưa tung hết bài.
-4. Cuối chương xuất hiện bằng chứng mới, đòn truyền thông mới, người mới, hoặc tin nhắn lạ làm cliffhanger.
+4. Cuối chương xuất hiện phản công, bằng chứng mới, cú đảo chiều, người mới, tin nhắn lạ, hoặc một áp lực mới tùy mạch truyện.
 
 Scene density:
 - Phải có ít nhất một cảnh chính dài, không chỉ kể lướt.
@@ -390,6 +395,283 @@ GENRE LOCK: Drama nữ tần hiện đại
 `.trim()
 }
 
+function getHeroineInstruction(styleLabel: string) {
+  const style = safeText(styleLabel).toLowerCase()
+
+  if (style.includes('nhẫn nhịn') || style.includes('phản công')) {
+    return `
+HEROINE LOCK: Nhẫn nhịn rồi phản công
+- Nữ chính ban đầu biết nhịn để quan sát, không bùng nổ vô nghĩa.
+- Khi phản công, cô dùng bằng chứng, thời điểm, nhân chứng hoặc một câu nói ngắn để xoay thế.
+- Cảm xúc có thể đau nhưng không được bi lụy quá lâu.
+- Arc nên đi từ chịu đựng → tỉnh ngộ → lạnh lòng → kiểm soát thế cục.
+`.trim()
+  }
+
+  if (style.includes('lạnh lùng') || style.includes('trả thù')) {
+    return `
+HEROINE LOCK: Lạnh lùng trả thù
+- Nữ chính ít giải thích, hành động nhiều hơn nói.
+- Cô không mềm lòng trước lời xin lỗi rẻ tiền.
+- Trả thù phải có kế hoạch, không nóng vội.
+- Mỗi chương nên cho thấy cô tiến thêm một bước trong việc siết lưới.
+`.trim()
+  }
+
+  if (style.includes('ngoài mềm') || style.includes('trong cứng')) {
+    return `
+HEROINE LOCK: Ngoài mềm trong cứng
+- Bề ngoài nữ chính bình tĩnh, thậm chí dịu dàng, nhưng bên trong rất rõ ranh giới.
+- Cô không cần nói lời cay độc liên tục, nhưng một khi ra tay thì chính xác.
+- Phản diện thường xem thường cô vì vẻ mềm yếu bên ngoài.
+- Cú vả mặt nên đến từ việc đối phương đánh giá sai cô.
+`.trim()
+  }
+
+  if (style.includes('pháp lý') || style.includes('luật')) {
+    return `
+HEROINE LOCK: Lý trí, giỏi pháp lý
+- Nữ chính suy nghĩ theo bằng chứng, điều khoản, quyền lợi và hậu quả pháp lý.
+- Cô biết giữ chứng cứ, không tung hết một lúc.
+- Đối thoại nên có tính đối chất, gài bẫy, ép đối phương tự lộ sơ hở.
+- Không viết cô như người chỉ biết cãi nhau cảm tính.
+`.trim()
+  }
+
+  if (style.includes('thương chiến') || style.includes('nữ cường')) {
+    return `
+HEROINE LOCK: Nữ cường thương chiến
+- Nữ chính có năng lực thật trong công việc, dự án, hợp đồng, cổ phần hoặc quản trị.
+- Cô thắng bằng số liệu, quyền biểu quyết, chiến lược và đàm phán.
+- Không để cô chỉ dựa vào nam chính hoặc may mắn.
+- Cảnh phản công nên có không khí phòng họp, hợp đồng, PR, hội đồng hoặc cổ đông.
+`.trim()
+  }
+
+  if (style.includes('tái sinh') || style.includes('đi trước')) {
+    return `
+HEROINE LOCK: Tái sinh, đi trước một bước
+- Nữ chính có ký ức hoặc kinh nghiệm từ tương lai/kiếp trước.
+- Cô không nói thẳng bí mật tái sinh cho người khác.
+- Cô dùng điều biết trước để tránh bẫy, nhưng vẫn gặp biến số mới.
+- Không để cô toàn năng; ký ức chỉ giúp đi trước một bước, không giúp thắng sạch.
+`.trim()
+  }
+
+  if (style.includes('mẹ') || style.includes('bảo vệ con')) {
+    return `
+HEROINE LOCK: Người mẹ bảo vệ con
+- Động lực lớn nhất của nữ chính là bảo vệ con và giữ phẩm giá.
+- Cô có thể mềm với con nhưng cứng với người làm hại con.
+- Xung đột nên có chiều sâu cảm xúc, không chỉ trả thù lạnh.
+- Nếu có con nhỏ, đứa trẻ phải ảnh hưởng trực tiếp đến lựa chọn của nữ chính.
+`.trim()
+  }
+
+  if (style.includes('thiên kim') || style.includes('hào môn')) {
+    return `
+HEROINE LOCK: Thiên kim hào môn bị xem thường
+- Nữ chính có khí chất và nền tảng, nhưng bị che giấu hoặc bị đánh giá thấp.
+- Cú vả mặt nên liên quan đến thân phận, tài sản, giáo dưỡng, quan hệ gia tộc hoặc quyền thừa kế.
+- Không hé toàn bộ thân phận quá sớm.
+- Cô lấy lại vị trí bằng từng bước, không thắng sạch trong một chương.
+`.trim()
+  }
+
+  if (style.includes('gom bằng chứng') || style.includes('im lặng')) {
+    return `
+HEROINE LOCK: Im lặng gom bằng chứng
+- Nữ chính không phản ứng quá sớm, cô để đối phương tưởng mình yếu.
+- Cô âm thầm lưu ảnh, ghi âm, giữ hóa đơn, sao kê, camera hoặc hợp đồng.
+- Càng bị ép, cô càng có thêm dữ liệu để phản công.
+- Khi tung bằng chứng, chỉ tung một phần đủ làm đối phương rối loạn.
+`.trim()
+  }
+
+  if (style.includes('vả mặt công khai')) {
+    return `
+HEROINE LOCK: Vả mặt công khai cực gắt
+- Nữ chính không chỉ thắng riêng tư, cô khiến đối phương mất mặt trước đám đông.
+- Cảnh mạnh nên diễn ra ở tiệc, phòng họp, livestream, họp báo, Weibo hoặc trước gia tộc.
+- Cú vả mặt phải có bằng chứng cụ thể, không chỉ chửi cho sướng.
+- Không dùng quá nhiều câu khẩu hiệu; ưu tiên một câu ngắn, lạnh, sắc.
+`.trim()
+  }
+
+  if (style.includes('đau khổ') || style.includes('kiểm soát thế cục')) {
+    return `
+HEROINE LOCK: Từ đau khổ thành kiểm soát thế cục
+- Đầu truyện cho thấy nữ chính bị tổn thương thật, nhưng không chìm trong bi lụy.
+- Mỗi chương cần cho thấy cô tỉnh táo hơn, bớt phụ thuộc hơn.
+- Cô dần chuyển từ người bị lựa chọn sang người đặt luật chơi.
+- Arc cảm xúc rất quan trọng: đau → tỉnh → lạnh → quyết → phản đòn.
+`.trim()
+  }
+
+  return `
+HEROINE LOCK: Nữ chính đô thị hiện đại
+- Nữ chính có tự trọng, có cảm xúc, nhưng không yếu đuối kéo dài.
+- Cô phải có lựa chọn chủ động trong chương.
+- Không để nam chính hoặc nhân vật phụ giải quyết thay toàn bộ vấn đề.
+`.trim()
+}
+
+function getCliffhangerRule(payload: NormalizedGeneratePayload) {
+  const label = safeText(payload.cliffhangerLabel, '')
+  const normalized = label.toLowerCase()
+
+  if (
+    !label ||
+    normalized.includes('mặc định') ||
+    normalized.includes('tự chọn') ||
+    normalized.includes('auto')
+  ) {
+    return `
+ENDING STRATEGY:
+- Kiểu kết chương: AI tự chọn theo mạch truyện.
+- Không ép chương nào cũng phải có bằng chứng mới.
+- Hãy chọn kiểu ending hợp lý nhất dựa trên STORY CONTEXT, GENRE LOCK, HEROINE LOCK, nhịp chương, và trạng thái xung đột.
+- Có thể chọn một trong các kiểu:
+  1. Phản diện phản công bằng PR, luật sư, gia tộc, công ty hoặc dư luận.
+  2. Bằng chứng mới xuất hiện nhưng chỉ hé một phần.
+  3. Tin nhắn, camera, file, email hoặc cuộc gọi bí mật xuất hiện.
+  4. Hot search/Weibo đảo chiều.
+  5. Nữ chính tung một câu vả mặt ngắn.
+  6. Gia tộc ép nữ chính đến đường cùng.
+  7. Thân phận thật giả lộ một sơ hở.
+  8. Nam chính bắt đầu dao động/nghi ngờ nhưng chưa được tẩy trắng.
+  9. Con nhỏ/người thân gặp nguy nếu đúng thể loại mẹ con/gia đình.
+  10. Vả mặt công khai ở tiệc, họp, truyền thông hoặc phòng họp.
+- Ending phải tự nhiên, không được ghi thẳng tên loại ending.
+- Không được kết bằng câu phân tích như "phản diện đang phản công" hoặc "mâu thuẫn được đẩy lên cao".
+- Nếu chương trước đã kết bằng bằng chứng, chương này nên ưu tiên phản công/truyền thông/đối đầu/cú đảo chiều để tránh lặp.
+`.trim()
+  }
+
+  if (normalized.includes('phản diện') || normalized.includes('counterattack')) {
+    return `
+ENDING STRATEGY: Phản diện phản công cuối chương
+- Kết chương bằng một cú phản công thật từ phản diện: bài đăng Weibo mới, thư luật sư, lệnh ép ký, cuộc gọi từ PR, email đe dọa, gia tộc gây áp lực, hoặc bằng chứng giả bị tung ra.
+- Phản công phải khiến nữ chính bị đẩy vào thế khó mới, không chỉ là lời dọa suông.
+- Không ghi thẳng "phản diện phản công".
+`.trim()
+  }
+
+  if (normalized.includes('bằng chứng') || normalized.includes('evidence')) {
+    return `
+ENDING STRATEGY: Bằng chứng mới xuất hiện
+- Kết chương bằng một mảnh bằng chứng mới: ảnh, hóa đơn, camera, metadata, hợp đồng, phụ lục, sao kê, ghi âm hoặc tin nhắn.
+- Chỉ hé một phần đủ gây tò mò, không xả hết toàn bộ bí mật.
+- Bằng chứng phải liên quan trực tiếp đến xung đột chính.
+`.trim()
+  }
+
+  if (
+    normalized.includes('tin nhắn') ||
+    normalized.includes('camera') ||
+    normalized.includes('file') ||
+    normalized.includes('secret')
+  ) {
+    return `
+ENDING STRATEGY: Tin nhắn / camera / file bí mật
+- Kết chương bằng một tin nhắn lạ, đoạn camera bị khôi phục, file khóa, email ẩn, hoặc cuộc gọi không hiện số.
+- Nội dung phải tạo câu hỏi mới cho độc giả.
+- Không giải thích hết nguồn gốc file/tin nhắn ngay trong chương này.
+`.trim()
+  }
+
+  if (normalized.includes('hot search') || normalized.includes('weibo') || normalized.includes('đảo chiều')) {
+    return `
+ENDING STRATEGY: Hot search đảo chiều
+- Kết chương bằng việc Weibo/hot search đổi hướng: hashtag mới leo top, bình luận quay xe, tài khoản marketing tung bài mới, hoặc truyền thông đổ về phía nữ chính.
+- Không dùng từ "tweet".
+- Cú đảo chiều phải có nguyên nhân cụ thể: một ảnh, một câu nói, một bài đăng, một video ngắn, hoặc một xác nhận từ người trong cuộc.
+`.trim()
+  }
+
+  if (normalized.includes('vả mặt') && !normalized.includes('công khai')) {
+    return `
+ENDING STRATEGY: Nữ chính tung câu vả mặt
+- Kết chương bằng một câu thoại ngắn, lạnh, sắc của nữ chính.
+- Câu thoại phải dựa trên tình thế hoặc bằng chứng, không phải khẩu hiệu rỗng.
+- Sau câu thoại nên có phản ứng cụ thể của đối phương hoặc cả phòng im lặng.
+`.trim()
+  }
+
+  if (normalized.includes('luật') || normalized.includes('hợp đồng') || normalized.includes('pháp lý')) {
+    return `
+ENDING STRATEGY: Luật sư / hợp đồng / pháp lý đảo chiều
+- Kết chương bằng một điều khoản, thư luật sư, phụ lục hợp đồng, quyền cổ phần, lệnh triệu tập, hoặc hồ sơ pháp lý làm đảo thế.
+- Logic pháp lý phải rõ vừa đủ cho độc giả hiểu.
+- Không giải thích quá khô; hãy biến điều khoản thành vật chứng/cảnh đối đầu.
+`.trim()
+  }
+
+  if (normalized.includes('gia tộc') || normalized.includes('đường cùng') || normalized.includes('family')) {
+    return `
+ENDING STRATEGY: Gia tộc ép đến đường cùng
+- Kết chương bằng áp lực từ gia tộc: ép ký, cắt quyền lợi, đe dọa danh phận, gọi người lớn ra mặt, hoặc dùng tài sản/con cái/thể diện để ép nữ chính.
+- Áp lực phải tạo lựa chọn khó cho nữ chính ở chương sau.
+- Không để nữ chính giải quyết sạch ngay trong đoạn cuối.
+`.trim()
+  }
+
+  if (normalized.includes('thân phận') || normalized.includes('identity')) {
+    return `
+ENDING STRATEGY: Thân phận thật giả lộ sơ hở
+- Kết chương bằng một sơ hở nhỏ về thân phận: ảnh cũ, di vật, giấy xét nghiệm, lời người hầu, thói quen, hồ sơ bị sửa, hoặc một cái tên cũ.
+- Chỉ hé một góc, không công bố toàn bộ thân thế.
+- Sơ hở phải đủ khiến độc giả muốn đọc tiếp.
+`.trim()
+  }
+
+  if (normalized.includes('nam chính') || normalized.includes('dao động') || normalized.includes('nghi ngờ') || normalized.includes('romance')) {
+    return `
+ENDING STRATEGY: Nam chính bắt đầu dao động / nghi ngờ
+- Kết chương bằng khoảnh khắc nam chính phát hiện một chi tiết khiến hắn bắt đầu nghi ngờ sự thật.
+- Không tẩy trắng nam chính quá sớm.
+- Nữ chính không được mềm lòng vô lý chỉ vì hắn dao động.
+- Hook nên nằm ở việc hắn nhìn thấy bằng chứng/trái ngược ký ức/lời nói dối của người thứ ba.
+`.trim()
+  }
+
+  if (normalized.includes('con') || normalized.includes('người thân') || normalized.includes('child')) {
+    return `
+ENDING STRATEGY: Con nhỏ / người thân gặp nguy
+- Kết chương bằng nguy cơ liên quan đến con nhỏ hoặc người thân: bệnh viện, trường học, quyền nuôi con, tin nhắn đe dọa, người lạ tiếp cận, hoặc gia đình chồng dùng con để ép.
+- Không khai thác nguy hiểm quá rẻ tiền; phải liên quan trực tiếp đến xung đột chính.
+- Nữ chính phải có động lực bảo vệ rõ ràng ở chương sau.
+`.trim()
+  }
+
+  if (normalized.includes('công khai') || normalized.includes('tiệc') || normalized.includes('truyền thông')) {
+    return `
+ENDING STRATEGY: Vả mặt công khai ở tiệc / họp / truyền thông
+- Kết chương bằng một cú đảo thế trước đám đông: sảnh tiệc, họp báo, phòng họp, livestream, gia tộc, hoặc Weibo.
+- Cú vả mặt phải dựa trên vật chứng, nhân chứng, hợp đồng, camera hoặc lời tự thú.
+- Không chỉ chửi; phải làm đối phương mất thế thật.
+`.trim()
+  }
+
+  if (normalized.includes('cao trào') || normalized.includes('final') || normalized.includes('kết liễu')) {
+    return `
+ENDING STRATEGY: Cao trào / kết liễu phản diện
+- Chỉ dùng khi truyện đã đủ setup hoặc chương hiện tại cần payoff mạnh.
+- Kết chương bằng đòn đánh lớn: bằng chứng quan trọng, luật sư vào cuộc, cổ phần đảo chiều, video hoàn chỉnh, nhân chứng xuất hiện, hoặc phản diện bị buộc lộ mặt.
+- Không xử lý tất cả mọi phản diện phụ trong một đoạn nếu truyện vẫn còn tiếp.
+- Vẫn phải để lại một dư chấn/hậu quả cho chương sau.
+`.trim()
+  }
+
+  return `
+ENDING STRATEGY:
+- Kiểu kết chương được chọn: ${label}.
+- Hãy kết chương theo đúng tinh thần này, nhưng vẫn phải tự nhiên như văn truyện.
+- Không được ghi thẳng nhãn "${label}" vào BẢN ĐỌC.
+- Không được kết bằng câu phân tích kỹ thuật.
+`.trim()
+}
+
 function buildStoryContext(payload: NormalizedGeneratePayload) {
   const memory = safeText(payload.storyMemory, '')
 
@@ -496,6 +778,8 @@ Lưu ý:
 function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const moduleInstruction = getModuleInstruction(payload.moduleId)
   const genreInstruction = getGenreInstruction(payload.genreLabel)
+  const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
+  const cliffhangerRule = getCliffhangerRule(payload)
 
   return `
 Bạn là Master Story Engine v2.6 chuyên thiết kế truyện nữ tần đô thị viral cho độc giả Việt.
@@ -519,6 +803,10 @@ ${moduleInstruction}
 
 ${genreInstruction}
 
+${heroineInstruction}
+
+${cliffhangerRule}
+
 YÊU CẦU:
 - Dàn ý phải đủ rõ để viết được nhiều chương liên tục.
 - Không viết như tóm tắt máy móc.
@@ -526,6 +814,8 @@ YÊU CẦU:
 - Bằng chứng phải được chia tầng, không dồn hết vào chương 1.
 - Phải có hook thương mại/đô thị/truyền thông nếu dùng module nữ tần đô thị.
 - Phải bám đúng GENRE LOCK đã chọn, không chuyển sang thể loại khác giữa chừng.
+- Phải bám đúng HEROINE LOCK đã chọn, không đổi tính cách nữ chính giữa truyện.
+- Kiểu kết chương phải được phân bổ hợp lý trong outline, không chương nào cũng lặp cùng một kiểu.
 
 OUTPUT BẮT BUỘC:
 # STORY PLAN
@@ -538,6 +828,9 @@ OUTPUT BẮT BUỘC:
 
 ## Thể loại
 [Nêu thể loại]
+
+## Kiểu nữ chính
+[Nêu rõ arc nữ chính]
 
 ## Bối cảnh
 [Nêu bối cảnh rõ ràng]
@@ -564,6 +857,12 @@ OUTPUT BẮT BUỘC:
 ## Evidence Pacing
 [Chia tầng bằng chứng]
 
+## Heroine Arc
+[Nêu hành trình nữ chính qua 10 chương]
+
+## Ending Strategy Map
+[Phân bổ kiểu kết chương phù hợp từng giai đoạn]
+
 ## Outline 10 chương
 Chương 1:
 Chương 2:
@@ -581,49 +880,11 @@ Chương 10:
 `.trim()
 }
 
-function getCliffhangerRule(payload: NormalizedGeneratePayload) {
-  const label = safeText(payload.cliffhangerLabel, '')
-  const normalized = label.toLowerCase()
-
-  if (
-    !label ||
-    normalized.includes('mặc định') ||
-    normalized.includes('tự chọn') ||
-    normalized.includes('auto')
-  ) {
-    return `
-ENDING STRATEGY:
-- Kiểu kết chương: AI tự chọn theo mạch truyện.
-- Không ép chương nào cũng phải có bằng chứng mới.
-- Hãy chọn kiểu ending hợp lý nhất dựa trên STORY CONTEXT, nhịp chương, và trạng thái xung đột.
-- Có thể chọn một trong các kiểu:
-  1. Bằng chứng mới xuất hiện.
-  2. Phản diện phản công.
-  3. Nữ chính tung một câu vả mặt ngắn.
-  4. Một nhân vật mới xuất hiện.
-  5. Một tin nhắn/cuộc gọi bất ngờ.
-  6. Một bí mật cũ bị hé một góc.
-  7. Một lựa chọn khó buộc nữ chính phải quyết định.
-  8. Một cú đảo chiều truyền thông trên Weibo/hot search.
-- Ending phải tự nhiên, không được ghi thẳng tên loại ending.
-- Không được kết bằng câu phân tích như "phản diện đang phản công" hoặc "mâu thuẫn được đẩy lên cao".
-- Nếu chương trước đã kết bằng bằng chứng, chương này nên ưu tiên phản công/truyền thông/đối đầu/cú đảo chiều để tránh lặp.
-`.trim()
-  }
-
-  return `
-ENDING STRATEGY:
-- Kiểu kết chương được chọn: ${label}.
-- Hãy kết chương theo đúng tinh thần này, nhưng vẫn phải tự nhiên như văn truyện.
-- Không được ghi thẳng nhãn "${label}" vào BẢN ĐỌC.
-- Không được kết bằng câu phân tích kỹ thuật.
-`.trim()
-}
-
 function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const lengthRule = getLengthRule(payload.chapterLengthLabel)
   const moduleInstruction = getModuleInstruction(payload.moduleId)
   const genreInstruction = getGenreInstruction(payload.genreLabel)
+  const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const storyContext = buildStoryContext(payload)
   const technicalReport = getTechnicalReportInstruction()
   const cliffhangerRule = getCliffhangerRule(payload)
@@ -657,20 +918,29 @@ ${moduleInstruction}
 
 ${genreInstruction}
 
+${heroineInstruction}
+
 ${storyContext}
 
 CHAPTER CONTINUATION RULE:
 - Số chương cần viết: Chương ${nextChapterNumber}.
 - ${
     isContinuation
-      ? 'Đây là chương tiếp theo của truyện đã có chương trước. Tuyệt đối không viết lại chương 1, không mở truyện lại từ đầu, không reset quan hệ nhân vật, không đổi tên nhân vật chính/phản diện.'
-      : 'Đây là chương mở đầu. Có thể mở bằng cú sốc mạnh, nhưng vẫn phải giữ evidence pacing.'
+      ? 'Đây là chương tiếp theo của truyện đã có chương trước. Tuyệt đối không viết lại chương 1, không mở truyện lại từ đầu, không reset quan hệ nhân vật, không đổi tên nhân vật chính/phản diện, không đổi tính cách nữ chính.'
+      : 'Đây là chương mở đầu. Có thể mở bằng cú sốc mạnh, nhưng vẫn phải giữ evidence pacing và heroine arc.'
   }
 - Nếu là chương tiếp theo, đoạn mở đầu phải nối từ sự kiện/hook/bằng chứng ở chương gần nhất.
 - Không tự tạo lại một vụ hot search mở đầu mới nếu chương trước đã có hook cụ thể, trừ khi đó là hệ quả trực tiếp của chương trước.
 - Tiêu đề chương bắt buộc dùng dạng: "# Chương ${nextChapterNumber} — [tên chương ngắn, có hook]".
 
 ${cliffhangerRule}
+
+GENRE + HEROINE EXECUTION RULE:
+- Thể loại đã chọn và kiểu nữ chính đã chọn là khóa cốt lõi, không được viết lệch.
+- Nếu GENRE LOCK là pháp lý, thương chiến, hào môn, mẹ con, tái sinh, hot search, ngoại tình hoặc thân thế, chương phải có chi tiết đúng thể loại đó.
+- Nếu HEROINE LOCK yêu cầu nữ chính lạnh, lý trí, bảo vệ con, tái sinh, vả mặt công khai hoặc im lặng gom bằng chứng, hành động của cô trong chương phải thể hiện đúng điều đó.
+- Không để nữ chính hành xử trái option đã chọn chỉ để tạo drama rẻ tiền.
+- Không để nhân vật phụ hoặc nam chính cướp vai trò giải quyết vấn đề của nữ chính.
 
 EVIDENCE PACING RULE:
 - Không được để nữ chính nói ra toàn bộ bằng chứng trong một chương.
@@ -709,9 +979,9 @@ NARRATIVE CRAFT RULE:
 - Phản diện phải có phản ứng và phản công hợp lý, không đứng yên chịu thua.
 
 CLEAN PROSE RULE:
-- BẢN ĐỌC CHO ĐỘC GIẢ không được dùng ngôn ngữ phân tích kỹ thuật như: "phản diện đang phản công", "nữ chính phản đòn", "mục tiêu chương", "payoff", "setup", "evidence pacing", "conflict escalation", "story memory", "mâu thuẫn được đẩy lên cao".
+- BẢN ĐỌC CHO ĐỘC GIẢ không được dùng ngôn ngữ phân tích kỹ thuật như: "phản diện đang phản công", "nữ chính phản đòn", "mục tiêu chương", "payoff", "setup", "evidence pacing", "conflict escalation", "story memory", "mâu thuẫn được đẩy lên cao", "genre lock", "heroine lock", "ending strategy".
 - Những ý kỹ thuật phải được chuyển thành cảnh truyện tự nhiên, bằng hành động/tin nhắn/đối thoại/vật chứng/phản ứng cơ thể.
-- Không kết thúc phần đọc bằng câu kiểu phân tích. Kết chương phải là hình ảnh, hành động, tin nhắn, bằng chứng mới, hoặc một câu thoại có hook.
+- Không kết thúc phần đọc bằng câu kiểu phân tích. Kết chương phải là hình ảnh, hành động, tin nhắn, bằng chứng mới, áp lực mới, hoặc một câu thoại có hook.
 - Khi nữ chính phản đòn, ưu tiên dùng đối thoại ngắn, lạnh, sắc thay vì giải thích chiến thuật.
 
 QUY TẮC CHUYỂN Ý KỸ THUẬT THÀNH CẢNH:
@@ -742,15 +1012,16 @@ SELF-REVISION PASS BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
 Trước khi xuất kết quả cuối cùng, hãy tự đọc lại bản chương như một biên tập viên và tự sửa trong im lặng theo checklist này:
 1. Có đúng số chương cần viết không? Nếu là Chương ${nextChapterNumber}, không được ghi nhầm thành chương khác.
 2. Có đi lệch khỏi STORY CONTEXT không? Nếu lệch tên nhân vật, quan hệ, bằng chứng, bối cảnh, phải sửa.
-3. Có câu nào giống phân tích kỹ thuật trong BẢN ĐỌC không? Nếu có, phải biến thành cảnh.
-4. Có từ sai bối cảnh như "tweet Weibo" không? Nếu có, sửa thành "bài đăng Weibo".
-5. Có đoạn nào lan man, chỉ giải thích mà không đẩy truyện không? Nếu có, cắt hoặc viết lại.
-6. Có xả quá nhiều bằng chứng không? Nếu có, giữ lại tối đa 1–2 mảnh, phần còn lại để chương sau.
-7. Kết chương có đủ hook để đọc tiếp không? Nếu chưa, viết lại đoạn cuối.
-8. BẢN ĐỌC có đọc như truyện thật không? Nếu còn như outline/tóm tắt, viết lại thành cảnh có hành động và đối thoại.
-9. Humanization pass: Nếu đoạn nào quá sạch, quá đều, quá giống checklist, hãy thêm chi tiết cảm giác/vật thể/nhịp im lặng để nó giống người thật viết hơn.
-10. Dialogue pass: Nếu thoại chỉ đang giải thích thông tin, hãy sửa thành đối thoại có giằng co, ngắt nhịp, châm chọc, hoặc né tránh.
-11. Texture pass: Mỗi cảnh chính phải có ít nhất 2 chi tiết cụ thể có thể nhìn/nghe/chạm được.
+3. Có đi lệch khỏi GENRE LOCK hoặc HEROINE LOCK không? Nếu lệch thể loại/kiểu nữ chính, phải sửa.
+4. Có câu nào giống phân tích kỹ thuật trong BẢN ĐỌC không? Nếu có, phải biến thành cảnh.
+5. Có từ sai bối cảnh như "tweet Weibo" không? Nếu có, sửa thành "bài đăng Weibo".
+6. Có đoạn nào lan man, chỉ giải thích mà không đẩy truyện không? Nếu có, cắt hoặc viết lại.
+7. Có xả quá nhiều bằng chứng không? Nếu có, giữ lại tối đa 1–2 mảnh, phần còn lại để chương sau.
+8. Kết chương có đúng ENDING STRATEGY và đủ hook để đọc tiếp không? Nếu chưa, viết lại đoạn cuối.
+9. BẢN ĐỌC có đọc như truyện thật không? Nếu còn như outline/tóm tắt, viết lại thành cảnh có hành động và đối thoại.
+10. Humanization pass: Nếu đoạn nào quá sạch, quá đều, quá giống checklist, hãy thêm chi tiết cảm giác/vật thể/nhịp im lặng để nó giống người thật viết hơn.
+11. Dialogue pass: Nếu thoại chỉ đang giải thích thông tin, hãy sửa thành đối thoại có giằng co, ngắt nhịp, châm chọc, hoặc né tránh.
+12. Texture pass: Mỗi cảnh chính phải có ít nhất 2 chi tiết cụ thể có thể nhìn/nghe/chạm được.
 
 QUY TẮC CHẤT LƯỢNG BẮT BUỘC:
 - Bắt buộc đặt tên riêng rõ ràng cho ít nhất 3 nhân vật quan trọng.
@@ -771,7 +1042,8 @@ CHAPTER QUALITY TARGET:
 - Độ dài mục tiêu: ${lengthRule.readerLength}.
 - Tăng đối thoại va chạm.
 - Giữ bối cảnh đã chọn.
-- Nữ chính lạnh, sắc, không khóc lóc, nhưng chưa toàn thắng.
+- Giữ đúng kiểu nữ chính đã chọn.
+- Nữ chính có cảm xúc nhưng không yếu đuối kéo dài, chưa toàn thắng quá sớm.
 - Nếu có cảnh hội đồng/quản trị/pháp vụ, phải có đối thoại ép ký, đe dọa kiện, và phản đòn ngắn sắc của nữ chính.
 - Cuối chương phải có hook mạnh để đọc tiếp. Nếu ENDING STRATEGY là tự chọn, hãy tự chọn ending hợp mạch truyện nhất. Nếu ENDING STRATEGY có kiểu cụ thể, hãy theo tinh thần kiểu đó.
 
