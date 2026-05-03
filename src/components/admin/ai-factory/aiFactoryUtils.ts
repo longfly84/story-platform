@@ -10,14 +10,14 @@ export const AI_FACTORY_STORAGE_KEY = 'storyPlatform.aiFactory.lastRun'
 
 export const DEFAULT_FACTORY_GENRES: FactoryGenreOption[] = [
   {
-    key: 'marriage-betrayal',
-    label: 'Hôn nhân phản bội / ngoại tình',
-    slug: 'hon-nhan-phan-boi-ngoai-tinh',
+    key: 'friend-betrayal-mistress',
+    label: 'Bạn thân phản bội / tiểu tam',
+    slug: 'ban-than-phan-boi-tieu-tam',
   },
   {
-    key: 'identity-swap-wealthy',
-    label: 'Đổi tráo danh phận / hào môn',
-    slug: 'doi-tra-danh-phan-hao-mon',
+    key: 'family-secret-identity',
+    label: 'Bí ẩn gia đình / thân thế',
+    slug: 'bi-an-gia-dinh-than-the',
   },
   {
     key: 'business-face-slap',
@@ -25,24 +25,112 @@ export const DEFAULT_FACTORY_GENRES: FactoryGenreOption[] = [
     slug: 'cong-so-va-mat-nu-cuong-thuong-chien',
   },
   {
+    key: 'contract-marriage',
+    label: 'Cưới trước yêu sau / hợp đồng hôn nhân',
+    slug: 'cuoi-truoc-yeu-sau-hop-dong-hon-nhan',
+  },
+  {
+    key: 'identity-swap-wealthy',
+    label: 'Đổi tráo danh phận / hào môn',
+    slug: 'doi-tra-danh-phan-hao-mon',
+  },
+  {
+    key: 'in-law-family-fight',
+    label: 'Gia đấu / mẹ chồng / nhà chồng',
+    slug: 'gia-dau-me-chong-nha-chong',
+  },
+  {
+    key: 'wealthy-family-marriage',
+    label: 'Hào môn / liên hôn / gia tộc',
+    slug: 'hao-mon-lien-hon-gia-toc',
+  },
+  {
+    key: 'betrayal-divorce-regret',
+    label: 'Hôn nhân phản bội / hủy hôn / chồng cũ hối hận',
+    slug: 'hon-nhan-phan-boi-huy-hon-chong-cu-hoi-han',
+  },
+  {
+    key: 'marriage-betrayal',
+    label: 'Hôn nhân phản bội / ngoại tình',
+    slug: 'hon-nhan-phan-boi-ngoai-tinh',
+  },
+  {
+    key: 'hot-search-showbiz-pr',
+    label: 'Hot search / showbiz / PR scandal',
+    slug: 'hot-search-showbiz-pr-scandal',
+  },
+  {
     key: 'mother-child',
     label: 'Mẹ con / gia đình / bảo vệ con',
     slug: 'me-con-gia-dinh-bao-ve-con',
+  },
+  {
+    key: 'rebirth-life-again',
+    label: 'Nữ chính tái sinh / làm lại cuộc đời',
+    slug: 'nu-chinh-tai-sinh-lam-lai-cuoc-doi',
   },
   {
     key: 'legal-heroine',
     label: 'Nữ cường pháp lý / luật sư',
     slug: 'nu-cuong-phap-ly-luat-su',
   },
+  {
+    key: 'ceo-abuse-regret',
+    label: 'Tổng tài ngược luyến / hối hận',
+    slug: 'tong-tai-nguoc-luyen-hoi-han',
+  },
+  {
+    key: 'urban-revenge',
+    label: 'Trả thù đô thị',
+    slug: 'tra-thu-do-thi',
+  },
 ]
 
 export const DEFAULT_HEROINE_OPTIONS: FactoryHeroineOption[] = [
-  { key: 'cold-revenge', label: 'Lạnh lùng trả thù' },
-  { key: 'soft-outside-hard-inside', label: 'Ngoài mềm trong cứng' },
-  { key: 'business-queen', label: 'Nữ cường thương chiến' },
-  { key: 'silent-evidence', label: 'Im lặng gom bằng chứng' },
-  { key: 'wealthy-daughter', label: 'Thiên kim hào môn bị xem thường' },
-  { key: 'protective-mother', label: 'Người mẹ bảo vệ con' },
+  {
+    key: 'endure-then-counterattack',
+    label: 'Nhẫn nhịn rồi phản công',
+  },
+  {
+    key: 'cold-revenge',
+    label: 'Lạnh lùng trả thù',
+  },
+  {
+    key: 'soft-outside-hard-inside',
+    label: 'Ngoài mềm trong cứng',
+  },
+  {
+    key: 'legal-rational',
+    label: 'Lý trí, giỏi pháp lý',
+  },
+  {
+    key: 'business-queen',
+    label: 'Nữ cường thương chiến',
+  },
+  {
+    key: 'reborn-one-step-ahead',
+    label: 'Tái sinh, đi trước một bước',
+  },
+  {
+    key: 'protective-mother',
+    label: 'Người mẹ bảo vệ con',
+  },
+  {
+    key: 'wealthy-daughter',
+    label: 'Thiên kim hào môn bị xem thường',
+  },
+  {
+    key: 'silent-evidence',
+    label: 'Im lặng gom bằng chứng',
+  },
+  {
+    key: 'public-face-slap',
+    label: 'Vả mặt công khai cực gắt',
+  },
+  {
+    key: 'pain-to-control',
+    label: 'Từ đau khổ thành kiểm soát thế cục',
+  },
 ]
 
 export function makeId(prefix = 'id') {
