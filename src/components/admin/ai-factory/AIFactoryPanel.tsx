@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import type {
   AIFactoryConfig,
@@ -1019,6 +1020,14 @@ export default function AIFactoryPanel() {
               >
                 Clear log
               </button>
+
+               <Link
+                to="/admin/ai-factory/results"
+                className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/20"
+                >
+                Xem kết quả
+                </Link>     
+
             </div>
 
             <div className="mt-4 rounded-xl border border-white/10 bg-black/50 p-3">

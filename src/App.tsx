@@ -16,6 +16,7 @@ import AdminCreateChapterPage from '@/pages/admin/AdminCreateChapterPage'
 import AdminCommentsPage from '@/pages/admin/AdminCommentsPage'
 import AdminCategoriesPage from '@/pages/admin/AdminCategoriesPage'
 import AIFactoryPage from '@/pages/admin/AIFactoryPage'
+import AIFactoryResultsPage from '@/pages/admin/AIFactoryResultsPage'
 
 export default function App() {
   return (
@@ -34,7 +35,7 @@ export default function App() {
         <Route path="/admin/ads" element={<AdminAdsPage />} />
         <Route path="/admin/ai-writer" element={<AdminAIPage />} />
         <Route path="/admin/ai-factory" element={<AIFactoryPage />} />
-
+        <Route path="/admin/ai-factory/results" element={<AIFactoryResultsPage />} />
         <Route path="/admin/stories/:id/edit" element={<AdminEditStoryPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/doc-truyen/:slug/:chapter" element={<ReaderPage />} />
