@@ -942,14 +942,14 @@ export default function AIFactoryPanel() {
                 <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-200">
                   <input
                     type="checkbox"
-                    disabled={isRunning}
-                    checked={config.generateCover}
-                    onChange={(event) => updateConfig('generateCover', event.target.checked)}
+                    disabled
+                    checked={false}
+                    onChange={() => updateConfig('generateCover', false)}
                     className="h-4 w-4 accent-yellow-300"
                   />
                   Generate cover
                 </label>
-                <span className="ml-2 text-xs text-slate-500">Phase 1 đang skip an toàn</span>
+                <span className="ml-2 text-xs text-slate-500">Phase 2 — tạm khóa để tránh tốn phí/lỗi storage</span>
               </div>
             </div>
           </Section>

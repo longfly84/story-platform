@@ -349,22 +349,36 @@ export function getChapterTitleFromReader(readerOnly: string, chapterNumber: num
   return `Chương ${chapterNumber}`
 }
 
-export function buildFallbackStoryTitle(genreLabel: string, runShortId: string) {
-  let base = 'Bí Mật Sau Cánh Cửa Đóng'
-
+export function buildFallbackStoryTitle(genreLabel: string) {
   if (/đổi tráo|hào môn|gia tộc/i.test(genreLabel)) {
-    base = 'Bí Mật Trong Gia Phả'
-  } else if (/hôn nhân|ngoại tình|phản bội/i.test(genreLabel)) {
-    base = 'Sau Bức Ảnh Cuối Cùng'
-  } else if (/công sở|thương chiến|nữ cường/i.test(genreLabel)) {
-    base = 'Bản Hợp Đồng Bị Đánh Tráo'
-  } else if (/mẹ con|bảo vệ con|gia đình/i.test(genreLabel)) {
-    base = 'Đừng Động Vào Con Tôi'
-  } else if (/pháp lý|luật sư/i.test(genreLabel)) {
-    base = 'Lá Thư Luật Sư Cuối Cùng'
+    return 'Bí Mật Trong Gia Phả'
   }
 
-  return `${base} ${runShortId}`.trim()
+  if (/hôn nhân|ngoại tình|phản bội|hủy hôn|chồng cũ/i.test(genreLabel)) {
+    return 'Sau Bức Ảnh Cuối Cùng'
+  }
+
+  if (/công sở|thương chiến|nữ cường/i.test(genreLabel)) {
+    return 'Bản Hợp Đồng Bị Đánh Tráo'
+  }
+
+  if (/mẹ con|bảo vệ con|gia đình/i.test(genreLabel)) {
+    return 'Đừng Động Vào Con Tôi'
+  }
+
+  if (/pháp lý|luật sư/i.test(genreLabel)) {
+    return 'Lá Thư Luật Sư Cuối Cùng'
+  }
+
+  if (/tái sinh|làm lại cuộc đời/i.test(genreLabel)) {
+    return 'Lần Này Tôi Không Còn Im Lặng'
+  }
+
+  if (/hot search|showbiz|scandal/i.test(genreLabel)) {
+    return 'Sau Hot Search Đêm Đó'
+  }
+
+  return 'Bí Mật Sau Cánh Cửa Đóng'
 }
 
 export function parseChapterOutput(params: {
@@ -377,8 +391,7 @@ export function parseChapterOutput(params: {
   const technicalReport = extractTechnicalReport(params.output)
 
   const parsedTitle = getSuggestedStoryTitleFromPreview(params.output)
-  const storyTitle =
-    parsedTitle || buildFallbackStoryTitle(params.genreLabel, params.runShortId)
+  const storyTitle = parsedTitle || buildFallbackStoryTitle(params.genreLabel)
 
   const parsedSlug = getSuggestedSlugFromPreview(params.output)
   const storySlug = parsedSlug || `${slugifyVietnamese(storyTitle)}-${params.runShortId}`
@@ -498,8 +511,8 @@ export function buildMockChapterOutput(params: {
   heroineLabel: string
   runShortId: string
 }) {
-  const title = buildFallbackStoryTitle(params.genreLabel, params.runShortId)
-  const slug = slugifyVietnamese(title)
+  const title = buildFallbackStoryTitle(params.genreLabel)
+  const slug = `${slugifyVietnamese(title)}-${params.runShortId}`
   const chapterName =
     params.chapterNumber === 1
       ? 'Tờ Giấy Không Nên Xuất Hiện'
