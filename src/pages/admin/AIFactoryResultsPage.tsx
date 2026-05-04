@@ -13,6 +13,8 @@ type FactoryJob = {
   chapterProgress: string
   coverStatus: 'off' | 'pending' | 'success' | 'failed' | 'skipped'
   error?: string
+  storyId?: string
+  storySlug?: string
 }
 
 type FactoryLog = {
@@ -32,12 +34,19 @@ type FactoryRunSnapshot = {
 
 const AI_FACTORY_STORAGE_KEY = 'storyPlatform.aiFactory.lastRun'
 
-function statusClass(status: FactoryJobStatus) {
+function getStatusClass(status: FactoryJobStatus) {
   if (status === 'success') return 'bg-emerald-500/15 text-emerald-200'
   if (status === 'failed') return 'bg-red-500/15 text-red-200'
   if (status === 'stopped') return 'bg-orange-500/15 text-orange-200'
   if (status === 'running') return 'bg-yellow-500/15 text-yellow-200'
   return 'bg-slate-500/15 text-slate-300'
+}
+
+function getLogClass(type: FactoryLog['type']) {
+  if (type === 'success') return 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100'
+  if (type === 'warning') return 'border-yellow-400/20 bg-yellow-500/10 text-yellow-100'
+  if (type === 'error') return 'border-red-400/20 bg-red-500/10 text-red-100'
+  return 'border-white/10 bg-white/[0.03] text-slate-300'
 }
 
 export default function AIFactoryResultsPage() {
@@ -56,6 +65,7 @@ export default function AIFactoryResultsPage() {
   const successJobs = jobs.filter((job) => job.status === 'success')
   const failedJobs = jobs.filter((job) => job.status === 'failed')
   const stoppedJobs = jobs.filter((job) => job.status === 'stopped')
+  const unfinishedJobs = [...failedJobs, ...stoppedJobs]
 
   return (
     <div className="min-h-screen bg-[#050609] text-white">
@@ -84,8 +94,8 @@ export default function AIFactoryResultsPage() {
             <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
               Kết quả lần chạy Factory
             </h1>
-            <p className="mt-2 text-sm text-slate-400">
-              Trang này chỉ hiển thị các truyện Factory vừa tạo, kèm lỗi nếu có.
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400">
+              Trang này hiển thị riêng các truyện Factory vừa tạo, kèm trạng thái và lỗi nếu có.
             </p>
           </div>
 
@@ -96,11 +106,12 @@ export default function AIFactoryResultsPage() {
             >
               Quay lại Factory
             </Link>
+
             <Link
               to="/admin/content"
               className="rounded-xl bg-yellow-300 px-4 py-2 text-sm font-black text-black transition hover:bg-yellow-200"
             >
-              Xem trong Admin Content
+              Xem Admin Content
             </Link>
           </div>
         </div>
@@ -119,14 +130,17 @@ export default function AIFactoryResultsPage() {
                 <div className="text-2xl font-black text-white">{jobs.length}</div>
                 <div className="text-sm text-slate-400">Tổng job</div>
               </div>
+
               <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
                 <div className="text-2xl font-black text-emerald-100">{successJobs.length}</div>
                 <div className="text-sm text-emerald-200/80">Thành công</div>
               </div>
+
               <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
                 <div className="text-2xl font-black text-red-100">{failedJobs.length}</div>
                 <div className="text-sm text-red-200/80">Lỗi</div>
               </div>
+
               <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4">
                 <div className="text-2xl font-black text-orange-100">{stoppedJobs.length}</div>
                 <div className="text-sm text-orange-200/80">Đã dừng</div>
@@ -134,7 +148,18 @@ export default function AIFactoryResultsPage() {
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 sm:p-5">
-              <h2 className="text-lg font-bold text-white">Truyện đã tạo thành công</h2>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-white">Truyện đã tạo thành công</h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Chỉ hiển thị các job có trạng thái success trong lần chạy gần nhất.
+                  </p>
+                </div>
+
+                <span className="w-fit rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-200">
+                  {successJobs.length} truyện
+                </span>
+              </div>
 
               <div className="mt-4 space-y-3">
                 {successJobs.length ? (
@@ -143,22 +168,49 @@ export default function AIFactoryResultsPage() {
                       key={job.id}
                       className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4"
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <div className="text-base font-bold text-white">
-                            #{job.index} — {job.title}
+                            #{job.index} — {job.title || 'Chưa có title'}
                           </div>
+
                           <div className="mt-1 text-sm text-slate-300">
-                            {job.genreLabel} • {job.heroineLabel}
+                            {job.genreLabel || 'Chưa có thể loại'} •{' '}
+                            {job.heroineLabel || 'Chưa có kiểu nữ chính'}
                           </div>
+
                           <div className="mt-2 text-xs text-slate-400">
                             Chapter: {job.chapterProgress} • Cover: {job.coverStatus}
                           </div>
+
+                          {job.storySlug ? (
+                            <div className="mt-1 text-xs text-slate-500">/{job.storySlug}</div>
+                          ) : null}
                         </div>
 
-                        <span className="w-fit rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-200">
-                          success
-                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {job.storyId ? (
+                            <Link
+                              to={`/admin/stories/${job.storyId}/edit`}
+                              className="rounded-lg bg-blue-500 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-400"
+                            >
+                              Edit
+                            </Link>
+                          ) : null}
+
+                          {job.storySlug ? (
+                            <Link
+                              to={`/truyen/${job.storySlug}`}
+                              className="rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black text-black transition hover:bg-yellow-200"
+                            >
+                              View
+                            </Link>
+                          ) : null}
+
+                          <span className="rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-bold text-emerald-200">
+                            success
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -171,26 +223,41 @@ export default function AIFactoryResultsPage() {
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 sm:p-5">
-              <h2 className="text-lg font-bold text-white">Truyện lỗi / chưa hoàn tất</h2>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-white">Truyện lỗi / chưa hoàn tất</h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Các job failed hoặc stopped sẽ hiện ở đây để biết lỗi nào cần chạy lại.
+                  </p>
+                </div>
+
+                <span className="w-fit rounded-full bg-red-500/15 px-3 py-1 text-xs font-bold text-red-200">
+                  {unfinishedJobs.length} job
+                </span>
+              </div>
 
               <div className="mt-4 space-y-3">
-                {[...failedJobs, ...stoppedJobs].length ? (
-                  [...failedJobs, ...stoppedJobs].map((job) => (
+                {unfinishedJobs.length ? (
+                  unfinishedJobs.map((job) => (
                     <div
                       key={job.id}
                       className="rounded-xl border border-red-400/20 bg-red-500/10 p-4"
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <div className="text-base font-bold text-white">
                             #{job.index} — {job.title || 'Chưa tạo được title'}
                           </div>
+
                           <div className="mt-1 text-sm text-slate-300">
-                            {job.genreLabel} • {job.heroineLabel}
+                            {job.genreLabel || 'Chưa có thể loại'} •{' '}
+                            {job.heroineLabel || 'Chưa có kiểu nữ chính'}
                           </div>
+
                           <div className="mt-2 text-xs text-slate-400">
                             Chapter: {job.chapterProgress} • Cover: {job.coverStatus}
                           </div>
+
                           {job.error ? (
                             <div className="mt-3 rounded-lg border border-red-400/20 bg-black/30 p-3 text-sm text-red-100">
                               {job.error}
@@ -198,7 +265,11 @@ export default function AIFactoryResultsPage() {
                           ) : null}
                         </div>
 
-                        <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass(job.status)}`}>
+                        <span
+                          className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
+                            job.status,
+                          )}`}
+                        >
                           {job.status}
                         </span>
                       </div>
@@ -220,7 +291,7 @@ export default function AIFactoryResultsPage() {
                   logs.map((log) => (
                     <div
                       key={log.id}
-                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-300"
+                      className={`rounded-lg border px-3 py-2 text-sm ${getLogClass(log.type)}`}
                     >
                       <span className="mr-2 text-xs opacity-70">[{log.time}]</span>
                       {log.message}
@@ -233,6 +304,14 @@ export default function AIFactoryResultsPage() {
             </section>
           </>
         )}
+
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-5 right-5 z-50 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-black/40 transition hover:border-yellow-300/60 hover:bg-zinc-800"
+        >
+          ↑ Lên đầu
+        </button>
       </main>
     </div>
   )

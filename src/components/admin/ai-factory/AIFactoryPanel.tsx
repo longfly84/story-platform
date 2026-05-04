@@ -627,6 +627,8 @@ export default function AIFactoryPanel() {
 
               updateJob(job.id, {
                 title: createdStory.title,
+                storyId: createdStory.id,
+                storySlug: createdStory.slug,
               })
 
               addLog(`Insert story draft thành công: ${createdStory.title}`, 'success')
@@ -1079,6 +1081,13 @@ export default function AIFactoryPanel() {
               >
                 Clear log
               </button>
+
+                <Link
+                to="/admin/ai-factory/results"
+                className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/20"
+                >
+                Xem kết quả
+                </Link>
 
                <Link
                 to="/admin/ai-factory/results"

@@ -65,6 +65,8 @@ export type FactoryJob = {
   chapterProgress: string
   coverStatus: 'off' | 'pending' | 'success' | 'failed' | 'skipped'
   error?: string
+  storyId?: string
+  storySlug?: string
 }
 
 export type ParsedChapterOutput = {
