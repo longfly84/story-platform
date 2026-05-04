@@ -103,6 +103,31 @@ function ToggleChip({
   )
 }
 
+function base64ToBlob(base64: string, contentType = 'image/png') {
+  const byteCharacters = atob(base64)
+  const byteArrays = []
+
+  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+    const slice = byteCharacters.slice(offset, offset + 512)
+    const byteNumbers = new Array(slice.length)
+
+    for (let i = 0; i < slice.length; i += 1) {
+      byteNumbers[i] = slice.charCodeAt(i)
+    }
+
+    byteArrays.push(new Uint8Array(byteNumbers))
+  }
+
+  return new Blob(byteArrays, { type: contentType })
+}
+
+function dataUrlToBlob(dataUrl: string) {
+  const [meta, data] = dataUrl.split(',')
+  const mimeMatch = meta.match(/data:(.*?);base64/)
+  const mimeType = mimeMatch?.[1] || 'image/png'
+  return base64ToBlob(data, mimeType)
+}
+
 export default function AIFactoryPanel() {
   const stopRequestedRef = useRef(false)
 
@@ -189,6 +214,50 @@ export default function AIFactoryPanel() {
 
   function updateConfig<K extends keyof AIFactoryConfig>(key: K, value: AIFactoryConfig[K]) {
     setConfig((prev) => ({ ...prev, [key]: value }))
+  }
+
+  async function uploadCoverToStorage(params: {
+    storyId: string
+    storySlug: string
+    fileBlob: Blob
+    }) {
+    const filePath = `ai-factory/${params.storyId}/${Date.now()}-${params.storySlug}.png`
+
+    const uploadResult = await supabase.storage
+        .from('story-covers')
+        .upload(filePath, params.fileBlob, {
+        contentType: 'image/png',
+        upsert: true,
+        })
+
+    if (uploadResult.error) {
+        throw new Error(`Upload cover lỗi: ${uploadResult.error.message}`)
+    }
+
+    const publicUrlResult = supabase.storage.from('story-covers').getPublicUrl(filePath)
+    const publicUrl = publicUrlResult.data?.publicUrl
+
+    if (!publicUrl) {
+        throw new Error('Không lấy được public URL của cover.')
+    }
+
+    return publicUrl
+    }
+
+    async function updateStoryCover(params: {
+    storyId: string
+    coverUrl: string
+    }) {
+    const result = await supabase
+        .from('stories')
+        .update({
+        cover_image: params.coverUrl,
+        })
+        .eq('id', params.storyId)
+
+    if (result.error) {
+        throw new Error(`Update story cover lỗi: ${result.error.message}`)
+    }
   }
 
   async function scanExistingStories() {
@@ -448,6 +517,82 @@ export default function AIFactoryPanel() {
     return result.data as { id: string; title: string; chapter_number: number }
   }
 
+  
+  async function generateAndAttachCover(params: {
+    storyId: string
+    storyTitle: string
+    storySlug: string
+    storyDescription: string
+    genreLabel: string
+    heroineLabel: string
+    }) {
+    const response = await fetch('/api/ai/generate-cover', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+        provider: 'openai',
+        modelKey: config.modelKey,
+        title: params.storyTitle,
+        storySummary: params.storyDescription,
+        genreLabel: params.genreLabel,
+        heroineLabel: params.heroineLabel,
+        styleLabel: 'webnovel dramatic vertical cover',
+        aspectRatio: '2:3',
+        }),
+    })
+
+    const data = await response.json().catch(() => null)
+
+    if (!response.ok) {
+        throw new Error(data?.error || data?.message || 'Generate cover API failed.')
+    }
+
+    // Case 1: API trả public URL sẵn
+    if (data?.publicUrl && typeof data.publicUrl === 'string') {
+        await updateStoryCover({
+        storyId: params.storyId,
+        coverUrl: data.publicUrl,
+        })
+        return data.publicUrl as string
+    }
+
+    if (data?.imageUrl && typeof data.imageUrl === 'string') {
+        await updateStoryCover({
+        storyId: params.storyId,
+        coverUrl: data.imageUrl,
+        })
+        return data.imageUrl as string
+    }
+
+    // Case 2: API trả base64
+    let imageBlob: Blob | null = null
+
+    if (data?.b64_json && typeof data.b64_json === 'string') {
+        imageBlob = base64ToBlob(data.b64_json, 'image/png')
+    } else if (data?.dataUrl && typeof data.dataUrl === 'string') {
+        imageBlob = dataUrlToBlob(data.dataUrl)
+    }
+
+    if (!imageBlob) {
+        throw new Error('API cover không trả imageUrl/publicUrl/b64_json/dataUrl hợp lệ.')
+    }
+
+    const publicUrl = await uploadCoverToStorage({
+        storyId: params.storyId,
+        storySlug: params.storySlug,
+        fileBlob: imageBlob,
+    })
+
+    await updateStoryCover({
+        storyId: params.storyId,
+        coverUrl: publicUrl,
+    })
+
+    return publicUrl
+    }
+  
   async function startFactory() {
     if (!canStart) return
 
@@ -472,7 +617,11 @@ export default function AIFactoryPanel() {
       heroineLabel: 'Chưa chọn',
       status: 'pending',
       chapterProgress: `0/${config.chaptersToGenerateNow}`,
-      coverStatus: config.generateCover ? 'pending' : 'off',
+      coverStatus: config.generateCover
+        ? config.provider === 'openai'
+            ? 'pending'
+            : 'skipped'
+        : 'off',
     }))
 
     setJobs(initialJobs)
@@ -668,8 +817,40 @@ export default function AIFactoryPanel() {
           }
 
           if (config.generateCover) {
-            updateJob(job.id, { coverStatus: 'skipped' })
-            addLog('Cover generation đang để Phase 2, MVP tạm skip để tránh lỗi API/storage.', 'warning')
+            if (config.provider === 'mock') {
+                updateJob(job.id, { coverStatus: 'skipped' })
+                addLog('Mock mode: skip cover generation.', 'warning')
+            } else if (createdStory) {
+                try {
+                updateJob(job.id, { coverStatus: 'pending' })
+                setCurrentAction(`Story ${storyIndex}: generate cover`)
+                addLog(`Story ${storyIndex}: generate cover...`)
+
+                const coverUrl = await generateAndAttachCover({
+                    storyId: createdStory.id,
+                    storyTitle: createdStory.title,
+                    storySlug: createdStory.slug,
+                    storyDescription: recentChapters[0]?.content?.slice(0, 500) || '',
+                    genreLabel: genre.label,
+                    heroineLabel: heroine.label,
+                })
+
+                updateJob(job.id, {
+                    coverStatus: 'success',
+                    coverUrl,
+                })
+
+                addLog(`Generate cover thành công`, 'success')
+                } catch (error) {
+                const message = error instanceof Error ? error.message : String(error)
+
+                updateJob(job.id, {
+                    coverStatus: 'failed',
+                })
+
+                addLog(`Generate cover lỗi: ${message}`, 'error')
+                }
+            }
           }
 
           if (stopRequestedRef.current) {
@@ -860,7 +1041,7 @@ export default function AIFactoryPanel() {
                 </div>
 
               <div>
-                <FieldLabel>Số chương thật sự tạo mỗi truyện</FieldLabel>
+                <FieldLabel>Số chương tạo NGAY mỗi truyện</FieldLabel>
                 <input
                     type="number"
                     min={1}
@@ -876,8 +1057,8 @@ export default function AIFactoryPanel() {
                     className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
                 <SmallHint>
-                    Đây là số chương Factory sẽ insert thật vào Supabase cho mỗi truyện.
-                    Ví dụ 10 truyện × 10 chương = 100 chương.
+                    Muốn tạo đủ 10 chương/truyện thì nhập 10 ở ô này.
+                    Hai ô mục tiêu bên dưới chỉ là kế hoạch cho AI, không tự tạo thêm chương.
                 </SmallHint>
               </div>
 
@@ -942,14 +1123,16 @@ export default function AIFactoryPanel() {
                 <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-200">
                   <input
                     type="checkbox"
-                    disabled
-                    checked={false}
-                    onChange={() => updateConfig('generateCover', false)}
+                    disabled={isRunning}
+                    checked={config.generateCover}
+                    onChange={(event) => updateConfig('generateCover', event.target.checked)}
                     className="h-4 w-4 accent-yellow-300"
-                  />
+                   />
                   Generate cover
                 </label>
-                <span className="ml-2 text-xs text-slate-500">Phase 2 — tạm khóa để tránh tốn phí/lỗi storage</span>
+                <span className="ml-2 text-xs text-slate-500">
+                    Mock sẽ skip, OpenAI sẽ tạo ảnh thật + upload public
+                </span>
               </div>
             </div>
           </Section>

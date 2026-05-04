@@ -67,6 +67,7 @@ export type FactoryJob = {
   error?: string
   storyId?: string
   storySlug?: string
+  coverUrl?: string
 }
 
 export type ParsedChapterOutput = {
