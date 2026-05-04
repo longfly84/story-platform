@@ -19,10 +19,6 @@ export default function AdminContentPage() {
   const [editingChapterId, setEditingChapterId] = useState<number | null>(null)
   const [editChapterData, setEditChapterData] = useState<any>(null)
 
-    
-  
-  
-
   async function fetchStories() {
     setLoading(true)
 
@@ -33,11 +29,58 @@ export default function AdminContentPage() {
         q = q.eq('owner_id', user.id)
       }
 
-      const res = await q.order('id', { ascending: true })
+      const res = await q.order('created_at', { ascending: false })
 
       if (res.error) throw res.error
 
-      setStories(res.data ?? [])
+      const baseStories = res.data ?? []
+      const storyIds = baseStories.map((story: any) => story.id).filter(Boolean)
+
+      let chapterCountMap: Record<string, number> = {}
+      let latestChapterMap: Record<string, number> = {}
+
+      if (storyIds.length > 0) {
+        const { data: chapterRows, error: chapterError } = await supabase
+          .from('chapters')
+          .select('id, story_id, chapter_number')
+          .in('story_id', storyIds)
+
+        if (chapterError) {
+          console.warn('Fetch chapter count failed:', chapterError.message)
+        } else {
+          for (const chapter of chapterRows ?? []) {
+            const storyId = String(chapter.story_id)
+            const chapterNumber = Number(chapter.chapter_number || 0)
+
+            chapterCountMap[storyId] = (chapterCountMap[storyId] || 0) + 1
+
+            if (chapterNumber > (latestChapterMap[storyId] || 0)) {
+              latestChapterMap[storyId] = chapterNumber
+            }
+          }
+        }
+      }
+
+      const enrichedStories = baseStories
+        .map((story: any) => {
+          const storyId = String(story.id)
+
+          return {
+            ...story,
+            _chapter_count: chapterCountMap[storyId] || 0,
+            _latest_chapter_number: latestChapterMap[storyId] || 0,
+          }
+        })
+        .sort((a: any, b: any) => {
+          const aTime = new Date(a.created_at || a.updated_at || 0).getTime()
+          const bTime = new Date(b.created_at || b.updated_at || 0).getTime()
+
+          if (aTime !== bTime) return bTime - aTime
+
+          return Number(b.id || 0) - Number(a.id || 0)
+        })
+
+      setStories(enrichedStories)
       setError(null)
     } catch (e: any) {
       setError(String(e?.message ?? e))
@@ -67,16 +110,6 @@ export default function AdminContentPage() {
     void fetchStories()
     void fetchCategories()
   }, [sessionLoading, role, user])
-
-  
-
-  
-
-  
-
-  
-
-  
 
   async function togglePublish(story: any) {
     try {
@@ -214,6 +247,7 @@ export default function AdminContentPage() {
         await openManageChapters(storySlug || selectedStoryForChapters!)
       }
 
+      await fetchStories()
       alert('Đã xóa chương.')
     } catch (e: any) {
       alert('Delete chapter failed: ' + String(e?.message ?? e))
@@ -228,7 +262,7 @@ export default function AdminContentPage() {
             ← Quay lại Admin Dashboard
           </Link>
         </div>
-        
+
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-xl font-semibold text-zinc-100">Stories</h1>
@@ -267,8 +301,7 @@ export default function AdminContentPage() {
             </Link>
           </div>
         </div>
-        
-        
+
         <StoriesSection
           stories={stories}
           categories={categories}
@@ -296,11 +329,8 @@ export default function AdminContentPage() {
             onClose={() => setSelectedStoryForChapters(null)}
           />
         </div>
-     
-        
-        <div className="mt-6">
-          
-        </div>
+
+        <div className="mt-6" />
       </main>
     </MainLayout>
   )
