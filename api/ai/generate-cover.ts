@@ -29,7 +29,8 @@ function buildCoverPromptFromBody(body: CoverRequestBody) {
   const genreLabel = normalizeText(body.genreLabel)
   const heroineLabel = normalizeText(body.heroineLabel)
   const styleLabel =
-    normalizeText(body.styleLabel) || 'east asian romance webnovel vertical cover'
+    normalizeText(body.styleLabel) ||
+    'semi-realistic asian romance manhua webnovel cover, no text'
 
   if (!title) {
     return ''
@@ -85,57 +86,57 @@ function buildCoverPromptFromBody(body: CoverRequestBody) {
 
   if (isAncient) {
     characterDirection = isRevenge
-      ? 'Main character: a beautiful East Asian heroine in elegant ancient Chinese-inspired clothing, calm but sharp gaze, poised, intelligent, graceful, and quietly dangerous.'
-      : 'Main character: a beautiful East Asian heroine in elegant ancient Chinese-inspired clothing, refined Asian facial features, expressive eyes, graceful posture, and strong female lead aura.'
+      ? 'Main character: one beautiful East Asian heroine in elegant ancient Chinese-inspired clothing, calm sharp gaze, graceful pose, intelligent aura, refined Asian facial features, premium manhua heroine.'
+      : 'Main character: one beautiful East Asian heroine in elegant ancient Chinese-inspired clothing, expressive eyes, graceful posture, refined Asian facial features, premium historical romance manhua heroine.'
 
     sceneDirection =
-      'Background: elegant East Asian palace, manor, courtyard, garden pavilion, lanterns, silk details, traditional architecture, refined historical romance atmosphere.'
+      'Background: elegant East Asian palace, manor, courtyard, silk curtains, lantern light, refined traditional architecture, soft depth of field, not cluttered.'
 
     moodDirection =
-      'Mood: emotional, dramatic, refined, visually beautiful, premium Asian historical webnovel cover.'
+      'Mood: premium Asian historical romance webnovel cover, elegant, emotional, beautiful, polished, not dark western fantasy.'
   } else {
     if (isFamily) {
       characterDirection =
-        'Main character: a beautiful modern East Asian woman, emotionally strong, protective, elegant but realistic, expressive eyes, polished Asian webnovel protagonist aura.'
+        'Main character: one beautiful modern East Asian woman, elegant but realistic, emotionally strong, protective mother energy, expressive eyes, soft polished Asian webnovel heroine.'
       sceneDirection =
-        'Background: emotionally tense family setting, elegant home interior, soft cinematic depth, subtle modern Asian drama atmosphere.'
+        'Background: elegant modern Asian home interior, soft cinematic depth, warm emotional family-drama atmosphere, clean and not cluttered.'
       moodDirection =
-        'Mood: emotional, protective, dramatic, warm but tense, attractive for women-oriented webnovel readers.'
+        'Mood: emotional, protective, warm but tense, polished, attractive for women-oriented Asian webnovel readers.'
     } else if (isOffice) {
       characterDirection =
-        'Main character: a beautiful modern East Asian heroine with a smart and polished appearance, confident gaze, elegant office or luxury fashion styling, intelligent and powerful aura.'
+        'Main character: one beautiful modern East Asian heroine, polished office or luxury fashion styling, confident gaze, intelligent aura, elegant and powerful female lead.'
       sceneDirection =
-        'Background: luxury office, upscale penthouse, hotel, city lights, mansion interior, or high-society modern Asian drama setting.'
+        'Background: luxury office, city lights, upscale penthouse, mansion interior, or hotel lobby, soft bokeh, clean commercial composition.'
       moodDirection =
-        'Mood: polished, dramatic, emotionally intense, upscale, commercially attractive, premium Asian webnovel cover.'
+        'Mood: upscale modern Asian drama, polished, romantic tension, confident, premium mobile-reading-app cover.'
     } else if (isMarriageDrama) {
       characterDirection =
-        'Main character: a beautiful modern East Asian heroine, elegant styling, expressive eyes, emotionally hurt but strong, clearly the focal point of the cover.'
+        'Main character: one beautiful modern East Asian heroine, elegant styling, expressive eyes, emotionally hurt but strong, graceful and memorable webnovel female lead.'
       sceneDirection =
-        'Background: luxury apartment, villa, hotel corridor, bedroom doorway, balcony at night, or emotionally charged domestic setting with romantic-drama tension.'
+        'Background: luxury apartment, villa, hotel corridor, balcony at night, bedroom doorway, or elegant domestic setting with soft cinematic bokeh.'
       moodDirection =
-        'Mood: romantic drama, betrayal tension, emotional intensity, polished lighting, attractive Asian webnovel cover aesthetic.'
+        'Mood: romantic drama, betrayal tension, emotional intensity, soft glamorous lighting, Asian webnovel cover aesthetic.'
     } else if (isRevenge) {
       characterDirection =
-        'Main character: a beautiful modern East Asian heroine, sharp gaze, calm expression, elegant styling, controlled anger, strong revenge-female-lead aura.'
+        'Main character: one beautiful modern East Asian heroine, sharp gaze, calm expression, elegant styling, controlled anger, strong revenge-female-lead aura.'
       sceneDirection =
-        'Background: cinematic modern Asian drama atmosphere, luxury interior, city lights, elegant mansion or emotionally tense setting, visually rich but not cluttered.'
+        'Background: modern Asian drama setting, luxury interior, city lights, elegant mansion, soft depth of field, visually rich but clean.'
       moodDirection =
-        'Mood: dramatic, revenge-driven, emotionally intense, elegant, highly clickable cover for a trending Asian webnovel.'
+        'Mood: dramatic, revenge-driven, elegant, polished, highly clickable cover for a trending Asian webnovel.'
     } else {
       characterDirection =
-        'Main character: a beautiful modern East Asian heroine, expressive eyes, elegant styling, clearly Asian facial features, attractive and memorable webnovel protagonist aura.'
+        'Main character: one beautiful modern East Asian heroine, expressive eyes, elegant styling, clear Asian facial features, attractive and memorable romance webnovel protagonist.'
       sceneDirection =
-        'Background: modern Asian drama atmosphere, luxury apartment, city lights, elegant interior, balcony, hotel, or emotionally rich domestic setting.'
+        'Background: modern Asian drama atmosphere, luxury apartment, city lights, elegant interior, balcony, hotel, or emotionally rich domestic setting, soft bokeh.'
       moodDirection =
-        'Mood: cinematic, dramatic, emotionally engaging, polished, attractive for Asian webnovel readers.'
+        'Mood: cinematic, romantic-drama, emotionally engaging, polished, clean, attractive for Asian webnovel readers.'
     }
   }
 
   return [
-    `Create a high-quality vertical Asian webnovel cover illustration in ${styleLabel} style.`,
-    `Story title: "${title}".`,
-    storySummary ? `Story summary: ${storySummary}.` : '',
+    `Create a high-quality vertical cover illustration in ${styleLabel} style.`,
+    `Story title for internal context only: "${title}". Do not write the title on the image.`,
+    storySummary ? `Story summary for visual context: ${storySummary}.` : '',
     genreLabel ? `Genre: ${genreLabel}.` : '',
     heroineLabel ? `Female lead archetype: ${heroineLabel}.` : '',
 
@@ -143,21 +144,26 @@ function buildCoverPromptFromBody(body: CoverRequestBody) {
     sceneDirection,
     moodDirection,
 
+    'Art style: polished semi-realistic Asian webnovel cover, modern manhua / Korean romance illustration influence, beautiful commercial mobile-reading-app cover.',
+    'Composition: one large beautiful East Asian heroine as the clear focal point, upper-body or full-body portrait, elegant pose, expressive eyes, clean silhouette.',
+    'Background: soft cinematic depth of field, blurred luxury interior or city night lights, not too detailed, not cluttered.',
+    'Lighting: soft glamorous lighting, warm highlights, gentle rim light, attractive skin tones, refined romantic-drama atmosphere.',
+    'Color palette: bright, elegant, clean, premium, not muddy, not overly dark, not brown-heavy.',
+    'Face quality: beautiful East Asian female face, symmetrical features, delicate makeup, clear eyes, attractive novel-cover look.',
+    'Image quality: high detail, sharp face, polished hair, elegant clothing, clean hands, professional digital illustration.',
     'The image must look like a popular Chinese/Korean/Vietnamese online novel cover.',
     'The main character must clearly look East Asian / Asian, not Western or European.',
-    'Use a beautiful Asian female lead as the dominant focal point.',
     'Supporting characters are optional, but should remain secondary and also look East Asian.',
-    'Use polished lighting, emotional drama, elegant composition, and commercially attractive mobile reading-platform aesthetics.',
-    'Prefer soft cinematic colors, romantic-drama mood, and a strong visual hook.',
     'Avoid Western oil painting style.',
     'Avoid European-looking characters.',
     'Avoid medieval European costumes.',
     'Avoid dark gothic fantasy poster vibe.',
     'Avoid horror movie poster style.',
     'Avoid a Hollywood movie-poster composition.',
-    'No watermark, no logo, no UI overlay.',
-    'Do not place random readable text.',
-    'If text is included, only include the main story title, styled elegantly.',
+    'Avoid old face, distorted face, bad hands, extra fingers, messy anatomy.',
+    'Avoid cluttered background and ugly typography.',
+    'No text on the image.',
+    'No title text, no random letters, no watermark, no logo, no UI overlay.',
     'Portrait orientation, cover art suitable for a mobile reading app.',
   ]
     .filter(Boolean)

@@ -403,10 +403,10 @@ export default function StoriesSection({
 
             return (
               <li key={story.id}>
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 transition hover:border-zinc-700 hover:bg-zinc-950/60">
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
-                    <div className="flex min-w-0 gap-4">
-                      <div className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 sm:h-32 sm:w-24">
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3 transition hover:border-zinc-700 hover:bg-zinc-950/60">
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_220px] lg:items-start">
+                    <div className="flex min-w-0 gap-3">
+                      <div className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
                         {coverSrc && !coverErrored ? (
                           <img
                             src={coverSrc}
@@ -427,7 +427,7 @@ export default function StoriesSection({
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <h3 className="line-clamp-2 text-base font-semibold text-zinc-100">
+                        <h3 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-100">
                           {story.title}
                         </h3>
 
@@ -510,23 +510,27 @@ export default function StoriesSection({
                       </div>
                     </div>
 
-                    <div className="rounded-lg border border-zinc-800 bg-black/20 p-3">
-                      <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3 lg:grid-cols-2">
+                    <div className="rounded-lg border border-zinc-800 bg-black/20 p-2.5 lg:min-h-28">
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
                         <div>
                           <div className="text-zinc-500">Ngày tạo</div>
-                          <div className="mt-1 font-medium text-zinc-200">{createdAt}</div>
+                          <div className="mt-0.5 whitespace-nowrap font-semibold text-zinc-200">
+                            {createdAt}
+                          </div>
                         </div>
 
                         <div>
                           <div className="text-zinc-500">Cập nhật</div>
-                          <div className="mt-1 font-medium text-zinc-200">{updatedAt}</div>
+                          <div className="mt-0.5 whitespace-nowrap font-semibold text-zinc-200">
+                            {updatedAt}
+                          </div>
                         </div>
 
                         <div>
                           <div className="text-zinc-500">Public</div>
                           <div
                             className={[
-                              'mt-1 inline-flex rounded px-2 py-1 font-semibold',
+                              'mt-0.5 inline-flex rounded px-2 py-0.5 font-semibold',
                               isPublished
                                 ? 'bg-emerald-950 text-emerald-300'
                                 : 'bg-amber-950/70 text-amber-300',
@@ -540,7 +544,7 @@ export default function StoriesSection({
                           <div className="text-zinc-500">Tiến độ</div>
                           <div
                             className={[
-                              'mt-1 inline-flex rounded px-2 py-1 font-semibold',
+                              'mt-0.5 inline-flex rounded px-2 py-0.5 font-semibold',
                               completionLabel === 'Full'
                                 ? 'bg-emerald-950 text-emerald-300'
                                 : 'bg-zinc-800 text-zinc-300',
@@ -552,14 +556,16 @@ export default function StoriesSection({
 
                         <div>
                           <div className="text-zinc-500">Chương</div>
-                          <div className="mt-1 text-base font-bold text-amber-300">
+                          <div className="mt-0.5 text-base font-bold leading-none text-amber-300">
                             {chapterDisplay}
                           </div>
                         </div>
 
                         <div>
                           <div className="text-zinc-500">ID</div>
-                          <div className="mt-1 font-mono text-zinc-300">#{story.id}</div>
+                          <div className="mt-0.5 max-w-[90px] truncate font-mono text-[10px] text-zinc-400">
+                            #{story.id}
+                          </div>
                         </div>
                       </div>
                     </div>
