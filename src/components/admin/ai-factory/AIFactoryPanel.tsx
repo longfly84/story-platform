@@ -660,7 +660,7 @@ export default function AIFactoryPanel() {
         storySummary: params.storyDescription,
         genreLabel: params.genreLabel,
         heroineLabel: params.heroineLabel,
-        styleLabel: 'webnovel dramatic vertical cover',
+        styleLabel: 'east asian romance webnovel vertical cover',
         aspectRatio: '2:3',
         }),
     })
