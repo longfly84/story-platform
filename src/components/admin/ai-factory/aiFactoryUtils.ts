@@ -184,6 +184,188 @@ export function slugifyVietnamese(input: string) {
     .slice(0, 90)
 }
 
+function hashText(input: string) {
+  let hash = 0
+
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i)
+    hash |= 0
+  }
+
+  return Math.abs(hash)
+}
+
+const FACTORY_TITLE_BANK = {
+  betrayal: [
+    'Sau Bức Ảnh Cuối Cùng',
+    'Đêm Anh Phản Bội Tôi',
+    'Tấm Vé Du Lịch Định Mệnh',
+    'Người Bạn Thân Sau Cánh Cửa',
+    'Ngày Tôi Ngừng Tha Thứ',
+    'Bữa Tiệc Của Kẻ Thứ Ba',
+    'Lời Nói Dối Trong Phòng Khách Sạn',
+    'Khi Tôi Ký Đơn Ly Hôn',
+    'Hủy Hôn Trước Cả Nhà',
+    'Bức Ảnh Trong Máy Của Chồng Tôi',
+    'Người Đứng Sau Chuyến Du Lịch',
+    'Đêm Tôi Rời Khỏi Căn Nhà Đó',
+  ],
+  wealthy: [
+    'Bí Mật Trong Gia Phả',
+    'Trái Dấu Trong Giang Gia',
+    'Thiên Kim Bị Đánh Tráo',
+    'Di Chúc Sau Bức Chân Dung',
+    'Người Thừa Kế Bị Xóa Tên',
+    'Bữa Tiệc Hào Môn Đêm Đó',
+    'Tờ Xét Nghiệm Bị Giấu Kín',
+    'Cô Gái Không Có Tên Trong Gia Phả',
+    'Chiếc Vòng Ngọc Của Người Mất Tích',
+    'Sảnh Tiệc Không Dành Cho Tôi',
+    'Hợp Đồng Đỏ Trong Biệt Thự',
+    'Đêm Gia Tộc Bắt Tôi Cúi Đầu',
+  ],
+  business: [
+    'Bản Hợp Đồng Bị Đánh Tráo',
+    'Ngày Tôi Lấy Lại Dự Án',
+    'Cuộc Họp Khiến Họ Câm Lặng',
+    'Báo Cáo Cuối Cùng Trên Bàn Họp',
+    'Cổ Phần Không Thể Chối Bỏ',
+    'Nữ Giám Đốc Bị Loại Khỏi Cuộc Chơi',
+    'Chữ Ký Trong Hồ Sơ Mật',
+    'Tôi Trở Lại Phòng Hội Đồng',
+    'Dự Án Bị Cướp Trong Đêm',
+    'Biên Bản Họ Không Dám Công Bố',
+    'Ngày Hội Đồng Quản Trị Đổi Chủ',
+    'Bản Sao Kê Trên Màn Hình Lớn',
+  ],
+  mother: [
+    'Đừng Động Vào Con Tôi',
+    'Giấy Khai Sinh Trong Ngăn Tủ',
+    'Người Mẹ Không Còn Im Lặng',
+    'Ngày Tôi Giành Lại Quyền Nuôi Con',
+    'Đứa Trẻ Họ Không Được Chạm Vào',
+    'Sau Cánh Cửa Phòng Bệnh',
+    'Lời Hứa Dưới Mưa',
+    'Tôi Không Để Con Mình Khóc Nữa',
+    'Bản ADN Lúc Bình Minh',
+    'Chiếc Cặp Sách Bị Giấu Kín',
+    'Người Mẹ Trở Lại Phiên Tòa',
+    'Đêm Tôi Đưa Con Rời Khỏi Nhà Họ',
+  ],
+  legal: [
+    'Lá Thư Luật Sư Cuối Cùng',
+    'Bằng Chứng Trước Phiên Tòa',
+    'Điều Khoản Bị Bỏ Quên',
+    'Bản Ghi Âm Lúc Nửa Đêm',
+    'Ngày Tòa Án Gọi Tên Tôi',
+    'Tập Hồ Sơ Không Thể Đốt',
+    'Chữ Ký Trong Hợp Đồng Cũ',
+    'Tôi Đứng Về Phía Sự Thật',
+    'Thư Luật Sư Gửi Đến Biệt Thự',
+    'Bản Cam Kết Bị Xé Nát',
+    'Phiên Điều Trần Không Ai Ngờ',
+    'Tệp Ghi Âm Trong Chiếc USB Đen',
+  ],
+  rebirth: [
+    'Lần Này Tôi Không Còn Im Lặng',
+    'Tỉnh Lại Trước Ngày Bị Hủy Hôn',
+    'Kiếp Này Tôi Tự Cứu Mình',
+    'Trở Về Đêm Định Mệnh',
+    'Tôi Biết Trước Tất Cả',
+    'Ngày Tôi Sống Lại',
+    'Ván Cờ Thứ Hai Của Tôi',
+    'Lần Này Đến Lượt Họ Trả Giá',
+    'Tôi Trở Lại Trước Khi Mọi Thứ Sụp Đổ',
+    'Đêm Tái Sinh Trong Căn Phòng Lạnh',
+    'Kiếp Này Tôi Không Gả Nữa',
+    'Ngày Tôi Xé Lá Thư Định Mệnh',
+  ],
+  scandal: [
+    'Sau Hot Search Đêm Đó',
+    'Bức Ảnh Đẩy Tôi Lên Đầu Sóng',
+    'Khi Cả Mạng Chờ Tôi Sụp Đổ',
+    'Thông Cáo Cuối Cùng',
+    'Đêm Weibo Nổ Tung',
+    'Scandal Không Thể Dập Tắt',
+    'Nụ Cười Trong Buổi Họp Báo',
+    'Tôi Tự Tay Lật Ngược Hot Search',
+    'Clip Bị Cắt Trong Đêm Mưa',
+    'Buổi Livestream Khiến Họ Câm Lặng',
+    'Đêm Cả Mạng Gọi Tên Tôi',
+    'Bản Hợp Đồng Sau Ánh Đèn Sân Khấu',
+  ],
+  default: [
+    'Bí Mật Sau Cánh Cửa Đóng',
+    'Tờ Giấy Không Nên Xuất Hiện',
+    'Đêm Cả Nhà Buộc Tôi Im Lặng',
+    'Người Phụ Nữ Bước Ra Khỏi Bóng Tối',
+    'Căn Phòng Có Hai Lời Nói Dối',
+    'Tin Nhắn Lúc Nửa Đêm',
+    'Ngày Tôi Không Còn Cúi Đầu',
+    'Bằng Chứng Nằm Trong Tay Tôi',
+    'Cánh Cửa Họ Không Muốn Tôi Mở',
+    'Tờ Giấy Trên Bàn Trà',
+    'Đêm Tôi Nhìn Rõ Tất Cả',
+    'Người Bị Xóa Tên Trong Hồ Sơ',
+  ],
+}
+
+function getTitleBankKey(genreLabel: string): keyof typeof FACTORY_TITLE_BANK {
+  if (/bạn thân|tiểu tam|hôn nhân|ngoại tình|phản bội|hủy hôn|chồng cũ|cưới trước yêu sau|hợp đồng hôn nhân/i.test(genreLabel)) {
+    return 'betrayal'
+  }
+
+  if (/đổi tráo|hào môn|gia tộc|liên hôn|thân thế|bí ẩn gia đình|mẹ chồng|nhà chồng|gia đấu/i.test(genreLabel)) {
+    return 'wealthy'
+  }
+
+  if (/công sở|thương chiến|nữ cường/i.test(genreLabel)) {
+    return 'business'
+  }
+
+  if (/mẹ con|bảo vệ con|gia đình/i.test(genreLabel)) {
+    return 'mother'
+  }
+
+  if (/pháp lý|luật sư/i.test(genreLabel)) {
+    return 'legal'
+  }
+
+  if (/tái sinh|làm lại cuộc đời/i.test(genreLabel)) {
+    return 'rebirth'
+  }
+
+  if (/hot search|showbiz|scandal|PR/i.test(genreLabel)) {
+    return 'scandal'
+  }
+
+  return 'default'
+}
+
+export function buildUniqueFactoryTitle(params: {
+  genreLabel: string
+  seed: string
+  avoidTitles?: string[]
+}) {
+  const bankKey = getTitleBankKey(params.genreLabel)
+  const bank = FACTORY_TITLE_BANK[bankKey]
+  const avoidSet = new Set((params.avoidTitles ?? []).map((title) => title.trim().toLowerCase()))
+
+  const startIndex = hashText(`${params.genreLabel}-${params.seed}`) % bank.length
+
+  for (let offset = 0; offset < bank.length; offset += 1) {
+    const title = bank[(startIndex + offset) % bank.length]
+
+    if (!avoidSet.has(title.toLowerCase())) {
+      return title
+    }
+  }
+
+  const fallback = bank[startIndex]
+  const suffixNumber = (hashText(params.seed) % 90) + 10
+  return `${fallback} ${suffixNumber}`
+}
+
 export function safeJsonStringify(value: unknown) {
   try {
     return JSON.stringify(value)
@@ -261,34 +443,43 @@ export function buildAvoidLibrary(stories: ExistingStory[]): AvoidLibrary {
 export function extractReaderOnly(output: string) {
   if (!output) return ''
 
-  const readerStart = output.search(/#\s*BẢN ĐỌC CHO ĐỘC GIẢ/i)
-  const technicalStart = output.search(/#\s*BẢN PHÂN TÍCH KỸ THUẬT/i)
+  let text = output.trim()
 
-  if (readerStart >= 0 && technicalStart > readerStart) {
-    return output
-      .slice(readerStart, technicalStart)
-      .replace(/#\s*BẢN ĐỌC CHO ĐỘC GIẢ/i, '')
-      .replace(/---\s*$/g, '')
-      .trim()
+  const technicalPatterns = [
+    /#\s*BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i,
+    /BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i,
+    /===\s*THÔNG TIN TRUYỆN ĐỀ XUẤT\s*===[\s\S]*$/i,
+    /===\s*KIỂM TRA TIẾN ĐỘ TRUYỆN\s*===[\s\S]*$/i,
+    /===\s*BỘ NHỚ TRUYỆN\s*===[\s\S]*$/i,
+    /===\s*KIỂM TRA BỐI CẢNH LIÊN TỤC\s*===[\s\S]*$/i,
+    /===\s*KIỂM TRA NHÂN VẬT PHỤ\s*===[\s\S]*$/i,
+    /===\s*KIỂM TRA LƯỢNG TIẾT LỘ\s*===[\s\S]*$/i,
+    /===\s*THEO DÕI[\s\S]*$/i,
+  ]
+
+  for (const pattern of technicalPatterns) {
+    text = text.replace(pattern, '').trim()
   }
 
-  if (readerStart >= 0) {
-    return output
-      .slice(readerStart)
-      .replace(/#\s*BẢN ĐỌC CHO ĐỘC GIẢ/i, '')
-      .trim()
-  }
+  text = text
+    .replace(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*/i, '')
+    .replace(/^BẢN ĐỌC CHO ĐỘC GIẢ\s*/i, '')
+    .replace(/---\s*$/g, '')
+    .trim()
 
-  return output.trim()
+  return text
 }
 
 export function extractTechnicalReport(output: string) {
   if (!output) return ''
 
   const technicalStart = output.search(/#\s*BẢN PHÂN TÍCH KỸ THUẬT/i)
-  if (technicalStart < 0) return ''
+  if (technicalStart >= 0) return output.slice(technicalStart).trim()
 
-  return output.slice(technicalStart).trim()
+  const infoStart = output.search(/===\s*THÔNG TIN TRUYỆN ĐỀ XUẤT\s*===/i)
+  if (infoStart >= 0) return output.slice(infoStart).trim()
+
+  return ''
 }
 
 export function getSuggestedStoryTitleFromPreview(output: string) {
@@ -340,45 +531,26 @@ export function getSuggestedDescriptionFromPreview(output: string, readerOnly: s
 }
 
 export function getChapterTitleFromReader(readerOnly: string, chapterNumber: number) {
-  const match = readerOnly.match(/^#\s*(Chương\s*\d+\s*[—-]\s*.+)$/im)
-  if (match?.[1]) return match[1].trim().slice(0, 120)
+  const headingMatch = readerOnly.match(/^#\s*Chương\s*\d+\s*[—-]\s*(.+)$/im)
+
+  if (headingMatch?.[1]) {
+    return headingMatch[1].trim().slice(0, 120)
+  }
 
   const plainMatch = readerOnly.match(/Chương\s*\d+\s*[—-]\s*(.+)/i)
-  if (plainMatch?.[0]) return plainMatch[0].trim().slice(0, 120)
+
+  if (plainMatch?.[1]) {
+    return plainMatch[1].trim().slice(0, 120)
+  }
 
   return `Chương ${chapterNumber}`
 }
 
-export function buildFallbackStoryTitle(genreLabel: string) {
-  if (/đổi tráo|hào môn|gia tộc/i.test(genreLabel)) {
-    return 'Bí Mật Trong Gia Phả'
-  }
-
-  if (/hôn nhân|ngoại tình|phản bội|hủy hôn|chồng cũ/i.test(genreLabel)) {
-    return 'Sau Bức Ảnh Cuối Cùng'
-  }
-
-  if (/công sở|thương chiến|nữ cường/i.test(genreLabel)) {
-    return 'Bản Hợp Đồng Bị Đánh Tráo'
-  }
-
-  if (/mẹ con|bảo vệ con|gia đình/i.test(genreLabel)) {
-    return 'Đừng Động Vào Con Tôi'
-  }
-
-  if (/pháp lý|luật sư/i.test(genreLabel)) {
-    return 'Lá Thư Luật Sư Cuối Cùng'
-  }
-
-  if (/tái sinh|làm lại cuộc đời/i.test(genreLabel)) {
-    return 'Lần Này Tôi Không Còn Im Lặng'
-  }
-
-  if (/hot search|showbiz|scandal/i.test(genreLabel)) {
-    return 'Sau Hot Search Đêm Đó'
-  }
-
-  return 'Bí Mật Sau Cánh Cửa Đóng'
+export function buildFallbackStoryTitle(genreLabel: string, runShortId = '') {
+  return buildUniqueFactoryTitle({
+    genreLabel,
+    seed: runShortId || `${Date.now()}-${Math.random()}`,
+  })
 }
 
 export function parseChapterOutput(params: {
@@ -391,7 +563,7 @@ export function parseChapterOutput(params: {
   const technicalReport = extractTechnicalReport(params.output)
 
   const parsedTitle = getSuggestedStoryTitleFromPreview(params.output)
-  const storyTitle = parsedTitle || buildFallbackStoryTitle(params.genreLabel)
+  const storyTitle = parsedTitle || buildFallbackStoryTitle(params.genreLabel, params.runShortId)
 
   const parsedSlug = getSuggestedSlugFromPreview(params.output)
   const storySlug = parsedSlug || `${slugifyVietnamese(storyTitle)}-${params.runShortId}`
@@ -448,6 +620,10 @@ export function validateChapterOutput(params: {
     'PAYOFF SETUP TRACKER',
     'EVIDENCE PACING TRACKER',
     'CONFLICT ESCALATION LEDGER',
+    'BẢN PHÂN TÍCH KỸ THUẬT',
+    'THÔNG TIN TRUYỆN ĐỀ XUẤT',
+    'KIỂM TRA TIẾN ĐỘ TRUYỆN',
+    'BỘ NHỚ TRUYỆN',
   ]
 
   for (const label of forbiddenReaderLabels) {
@@ -469,10 +645,10 @@ export function buildFactoryPromptIdea(params: {
   avoidLibrary: AvoidLibrary
   premiseSeed: string
 }) {
-  const avoidTitles = params.avoidLibrary.titles.slice(0, 20).join(' | ')
-  const avoidMotifs = params.avoidLibrary.motifs.slice(0, 12).join(' | ')
-  const avoidNames = params.avoidLibrary.characterNames.slice(0, 20).join(' | ')
-  const avoidCompanies = params.avoidLibrary.companyNames.slice(0, 15).join(' | ')
+  const avoidTitles = params.avoidLibrary.titles.slice(0, 35).join(' | ')
+  const avoidMotifs = params.avoidLibrary.motifs.slice(0, 16).join(' | ')
+  const avoidNames = params.avoidLibrary.characterNames.slice(0, 25).join(' | ')
+  const avoidCompanies = params.avoidLibrary.companyNames.slice(0, 18).join(' | ')
 
   return `
 Yêu cầu Factory: tạo một truyện mới khác đáng kể với kho truyện đã có.
@@ -495,6 +671,7 @@ Tránh lặp tên công ty/gia tộc:
 ${avoidCompanies || 'Chưa có dữ liệu.'}
 
 Bắt buộc:
+- Tên truyện phải khác rõ rệt với các tên đã có, không chỉ đổi 1-2 chữ.
 - Không lấy "Chương 1 — ..." làm tên truyện.
 - Nếu là chương 1, phần kỹ thuật phải có:
   - Tên truyện đề xuất:
@@ -511,7 +688,7 @@ export function buildMockChapterOutput(params: {
   heroineLabel: string
   runShortId: string
 }) {
-  const title = buildFallbackStoryTitle(params.genreLabel)
+  const title = buildFallbackStoryTitle(params.genreLabel, params.runShortId)
   const slug = `${slugifyVietnamese(title)}-${params.runShortId}`
   const chapterName =
     params.chapterNumber === 1
