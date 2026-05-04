@@ -67,6 +67,21 @@ export default function AIFactoryResultsPage() {
   const stoppedJobs = jobs.filter((job) => job.status === 'stopped')
   const unfinishedJobs = [...failedJobs, ...stoppedJobs]
 
+  function getCreatedChapterCount(chapterProgress: string) {
+  const match = chapterProgress.match(/^(\d+)\s*\/\s*(\d+)/)
+    if (!match) return 0
+    return Number(match[1]) || 0
+    }
+
+    const totalCreatedChapters = successJobs.reduce(
+    (sum, job) => sum + getCreatedChapterCount(job.chapterProgress),
+    0,
+    )
+
+    const averageChaptersPerStory = successJobs.length
+    ? Math.round((totalCreatedChapters / successJobs.length) * 10) / 10
+    : 0
+
   return (
     <div className="min-h-screen bg-[#050609] text-white">
       <div className="border-b border-white/10 bg-[#151309]">
@@ -125,26 +140,31 @@ export default function AIFactoryResultsPage() {
           </section>
         ) : (
           <>
-            <section className="grid gap-3 sm:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
-                <div className="text-2xl font-black text-white">{jobs.length}</div>
-                <div className="text-sm text-slate-400">Tổng job</div>
-              </div>
+            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
+                    <div className="text-2xl font-black text-white">{jobs.length}</div>
+                    <div className="text-sm text-slate-400">Tổng job</div>
+                </div>
 
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
-                <div className="text-2xl font-black text-emerald-100">{successJobs.length}</div>
-                <div className="text-sm text-emerald-200/80">Thành công</div>
-              </div>
+                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+                    <div className="text-2xl font-black text-emerald-100">{successJobs.length}</div>
+                    <div className="text-sm text-emerald-200/80">Truyện thành công</div>
+                </div>
 
-              <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
-                <div className="text-2xl font-black text-red-100">{failedJobs.length}</div>
-                <div className="text-sm text-red-200/80">Lỗi</div>
-              </div>
+                <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4">
+                    <div className="text-2xl font-black text-cyan-100">{totalCreatedChapters}</div>
+                    <div className="text-sm text-cyan-200/80">Chương đã tạo</div>
+                </div>
 
-              <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4">
-                <div className="text-2xl font-black text-orange-100">{stoppedJobs.length}</div>
-                <div className="text-sm text-orange-200/80">Đã dừng</div>
-              </div>
+                <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
+                    <div className="text-2xl font-black text-red-100">{failedJobs.length}</div>
+                    <div className="text-sm text-red-200/80">Lỗi</div>
+                </div>
+
+                <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4">
+                    <div className="text-2xl font-black text-orange-100">{stoppedJobs.length}</div>
+                    <div className="text-sm text-orange-200/80">Đã dừng</div>
+                </div>
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 sm:p-5">
@@ -153,6 +173,7 @@ export default function AIFactoryResultsPage() {
                   <h2 className="text-lg font-bold text-white">Truyện đã tạo thành công</h2>
                   <p className="mt-1 text-sm text-slate-400">
                     Chỉ hiển thị các job có trạng thái success trong lần chạy gần nhất.
+                    Tổng {totalCreatedChapters} chương, trung bình {averageChaptersPerStory} chương/truyện.
                   </p>
                 </div>
 

@@ -860,22 +860,24 @@ export default function AIFactoryPanel() {
                 </div>
 
               <div>
-                <FieldLabel>Số chương tạo ngay mỗi truyện</FieldLabel>
+                <FieldLabel>Số chương thật sự tạo mỗi truyện</FieldLabel>
                 <input
-                  type="number"
-                  min={1}
-                  max={3}
-                  disabled={isRunning}
-                  value={config.chaptersToGenerateNow}
-                  onChange={(event) =>
+                    type="number"
+                    min={1}
+                    max={25}
+                    disabled={isRunning}
+                    value={config.chaptersToGenerateNow}
+                    onChange={(event) =>
                     updateConfig(
-                      'chaptersToGenerateNow',
-                      clampNumber(Number(event.target.value), 1, 3),
+                        'chaptersToGenerateNow',
+                        clampNumber(Number(event.target.value), 1, 25),
                     )
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
-                <SmallHint>MVP giới hạn 1–3 chương để tránh cháy phí.</SmallHint>
+                <SmallHint>
+                    Đây là số chương Factory sẽ insert thật vào Supabase cho mỗi truyện. Ví dụ 10 truyện × 10 chương = 100 chương.
+                </SmallHint>
               </div>
 
               <div>
@@ -894,6 +896,7 @@ export default function AIFactoryPanel() {
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
+                <SmallHint>Chỉ là kế hoạch toàn truyện để AI hiểu độ dài series, không phải số chương tạo ngay.</SmallHint>
               </div>
 
               <div>
@@ -912,6 +915,7 @@ export default function AIFactoryPanel() {
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
+                <SmallHint>Factory sẽ random target trong khoảng này và lưu vào story_dna/prompt.</SmallHint>
               </div>
 
               <div>
@@ -1028,7 +1032,7 @@ export default function AIFactoryPanel() {
                     <div>Tổng số truyện: {config.storyCount}</div>
                     <div>Số truyện mỗi batch: {config.batchSize}</div>
                     <div>Tổng batch dự kiến: {totalBatches}</div>
-                    <div>Số chương dự kiến: {totalTextRequests}</div>
+                    <div>Số chương thật sự sẽ tạo: {totalTextRequests}</div>
                     <div>Text request: {totalTextRequests}</div>
                     <div>Cover request: {totalCoverRequests}</div>
                     <div>Tổng request dự kiến: {totalRequests}</div>
@@ -1082,12 +1086,6 @@ export default function AIFactoryPanel() {
                 Clear log
               </button>
 
-                <Link
-                to="/admin/ai-factory/results"
-                className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/20"
-                >
-                Xem kết quả
-                </Link>
 
                <Link
                 to="/admin/ai-factory/results"
