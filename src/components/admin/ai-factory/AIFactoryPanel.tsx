@@ -876,27 +876,30 @@ export default function AIFactoryPanel() {
                     className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
                 <SmallHint>
-                    Đây là số chương Factory sẽ insert thật vào Supabase cho mỗi truyện. Ví dụ 10 truyện × 10 chương = 100 chương.
+                    Đây là số chương Factory sẽ insert thật vào Supabase cho mỗi truyện.
+                    Ví dụ 10 truyện × 10 chương = 100 chương.
                 </SmallHint>
               </div>
 
               <div>
                 <FieldLabel>Số chương mục tiêu tối thiểu</FieldLabel>
                 <input
-                  type="number"
-                  min={5}
-                  max={50}
-                  disabled={isRunning}
-                  value={config.minTargetChapters}
-                  onChange={(event) =>
+                    type="number"
+                    min={5}
+                    max={50}
+                    disabled={isRunning}
+                    value={config.minTargetChapters}
+                    onChange={(event) =>
                     updateConfig(
-                      'minTargetChapters',
-                      clampNumber(Number(event.target.value), 5, 50),
+                        'minTargetChapters',
+                        clampNumber(Number(event.target.value), 5, 50),
                     )
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
-                <SmallHint>Chỉ là kế hoạch toàn truyện để AI hiểu độ dài series, không phải số chương tạo ngay.</SmallHint>
+                <SmallHint>
+                    Chỉ là kế hoạch toàn truyện để AI hiểu độ dài series, không phải số chương tạo ngay.
+                </SmallHint>
               </div>
 
               <div>
