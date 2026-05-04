@@ -21,9 +21,84 @@ import {
 } from '@/lib/supabase'
 import { submitComment, getApprovedComments } from '@/lib/analytics/comments'
 import { Textarea } from '@/components/ui/textarea'
-import ChapterList from '@/components/ChapterList'
 import { getStoryViewCount } from '@/lib/analytics/viewStats'
 import { formatCount } from "@/lib/formatters"
+
+function cleanPublicChapterText(text?: string | null) {
+  if (!text) return ''
+
+  let cleaned = String(text)
+
+  const cutPatterns = [
+    '# BẢN PHÂN TÍCH KỸ THUẬT',
+    'BẢN PHÂN TÍCH KỸ THUẬT',
+    '=== THÔNG TIN TRUYỆN ĐỀ XUẤT ===',
+    'THÔNG TIN TRUYỆN ĐỀ XUẤT',
+    '=== KIỂM TRA TIẾN ĐỘ TRUYỆN ===',
+    'KIỂM TRA TIẾN ĐỘ TRUYỆN',
+    '=== BỘ NHỚ TRUYỆN ===',
+    'BỘ NHỚ TRUYỆN',
+    '=== KIỂM TRA BỐI CẢNH LIÊN TỤC ===',
+    'KIỂM TRA BỐI CẢNH LIÊN TỤC',
+    '=== KIỂM TRA NHÂN VẬT PHỤ ===',
+    'KIỂM TRA NHÂN VẬT PHỤ',
+    '=== KIỂM TRA LƯỢNG TIẾT LỘ ===',
+    'KIỂM TRA LƯỢNG TIẾT LỘ',
+    '=== THEO DÕI',
+    'THEO DÕI LEO THANG XUNG ĐỘT',
+  ]
+
+  for (const pattern of cutPatterns) {
+    const index = cleaned.toLowerCase().indexOf(pattern.toLowerCase())
+
+    if (index >= 0) {
+      cleaned = cleaned.slice(0, index)
+    }
+  }
+
+  return cleaned
+    .replace(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*/i, '')
+    .replace(/^BẢN ĐỌC CHO ĐỘC GIẢ\s*/i, '')
+    .replace(/^#\s*/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function getChapterNumber(chapter: any, index: number) {
+  const rawNumber = chapter?.chapter_number ?? chapter?.number
+  const number = Number(rawNumber)
+
+  if (Number.isFinite(number) && number > 0) return number
+
+  return index + 1
+}
+
+function getChapterSlug(chapter: any, index: number) {
+  return chapter?.slug || `chuong-${getChapterNumber(chapter, index)}`
+}
+
+function cleanChapterTitle(title?: string | null, chapterNumber?: number) {
+  const rawTitle = String(title || '').trim()
+
+  if (!rawTitle) return chapterNumber ? `Chương ${chapterNumber}` : 'Chương'
+
+  const cleanedTitle = cleanPublicChapterText(rawTitle)
+
+  const match = cleanedTitle.match(/^Chương\s*\d+\s*[—-]\s*(.+)$/i)
+
+  if (match?.[1]) return match[1].trim()
+
+  return cleanedTitle || (chapterNumber ? `Chương ${chapterNumber}` : 'Chương')
+}
+
+function getChapterPreview(chapter: any) {
+  const source = chapter?.summary || chapter?.content || chapter?.body || chapter?.text || ''
+  const cleaned = cleanPublicChapterText(source)
+
+  if (!cleaned) return ''
+
+  return cleaned.slice(0, 180)
+}
 
 export default function StoryDetailPage() {
   const { slug } = useParams()
@@ -55,8 +130,8 @@ export default function StoryDetailPage() {
   const safeViewCount = typeof viewsToShow === 'number' ? viewsToShow : 0
   const statusLabel = story?.status === "completed" ? "Hoàn thành" : "Đang ra"
   const chapterCount = chapters.length
-  const firstChapterSlug = chapters[0]?.slug ?? 'chuong-1'
-  const latestChapterSlug = chapters.at(-1)?.slug ?? 'chuong-1'
+  const firstChapterSlug = chapters[0] ? getChapterSlug(chapters[0], 0) : 'chuong-1'
+  const latestChapterSlug = chapters.length ? getChapterSlug(chapters[chapters.length - 1], chapters.length - 1) : 'chuong-1'
 
   useEffect(() => {
     if (!story) return
@@ -97,17 +172,23 @@ export default function StoryDetailPage() {
             if (!mounted) return
 
             if (Array.isArray(remoteChapters) && remoteChapters.length) {
-              setStory((prev: any) => ({
-                ...(prev || {}),
-                chapters: remoteChapters.map((chapter: any) => ({
-                  number: chapter.chapter_number ?? chapter.number,
-                  slug: chapter.slug,
-                  id: chapter.id ?? chapter.slug,
-                  title: chapter.title,
-                  content: chapter.content ?? chapter.body ?? chapter.text,
-                  publishedAt: chapter.published_at ?? chapter.created_at,
-                })),
-              }))
+              setStory((prev: any) => {
+                if (!prev) return prev
+
+                return {
+                  ...prev,
+                  chapters: remoteChapters.map((chapter: any) => ({
+                    number: chapter.chapter_number ?? chapter.number,
+                    chapter_number: chapter.chapter_number ?? chapter.number,
+                    slug: chapter.slug,
+                    id: chapter.id ?? chapter.slug,
+                    title: chapter.title,
+                    summary: chapter.summary,
+                    content: chapter.content ?? chapter.body ?? chapter.text,
+                    publishedAt: chapter.published_at ?? chapter.created_at,
+                  })),
+                }
+              })
             }
           } catch {
             // ignore chapter load errors
@@ -460,7 +541,39 @@ export default function StoryDetailPage() {
                 <h3 className="mb-3 text-lg font-semibold text-zinc-100">
                   Danh sách chương
                 </h3>
-                <ChapterList chapters={chapters} storySlug={story.slug} />
+
+                <div className="space-y-3">
+                  {chapters.length ? (
+                    chapters.map((chapter: any, index: number) => {
+                      const chapterNumber = getChapterNumber(chapter, index)
+                      const chapterSlug = getChapterSlug(chapter, index)
+                      const chapterTitle = cleanChapterTitle(chapter.title, chapterNumber)
+                      const chapterPreview = getChapterPreview(chapter)
+
+                      return (
+                        <Link
+                          key={chapter.id ?? chapter.slug ?? index}
+                          to={`/doc-truyen/${story.slug}/${chapterSlug}`}
+                          className="block rounded-lg border border-transparent p-3 transition hover:border-amber-300/40 hover:bg-zinc-900/40"
+                        >
+                          <div className="font-semibold text-zinc-100">
+                            Chương {chapterNumber} — {chapterTitle}
+                          </div>
+
+                          {chapterPreview ? (
+                            <div className="mt-1 line-clamp-2 text-sm leading-6 text-zinc-400">
+                              {chapterPreview}
+                            </div>
+                          ) : null}
+                        </Link>
+                      )
+                    })
+                  ) : (
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-950/30 p-4 text-sm text-zinc-400">
+                      Chưa có chương nào.
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-8">

@@ -594,7 +594,16 @@ export default function AIFactoryPanel() {
         title: params.parsed.chapterTitle,
         slug: params.parsed.chapterSlug,
         content: params.parsed.readerOnly,
-        summary: params.parsed.technicalReport.slice(0, 1200),
+        summary: params.parsed.readerOnly
+          .replace(/^#\s*Chương\s*\d+\s*[—-].*$/gim, '')
+          .replace(/#\s*BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
+          .replace(/BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
+          .replace(/===\s*THÔNG TIN TRUYỆN ĐỀ XUẤT\s*===[\s\S]*$/i, '')
+          .replace(/===\s*KIỂM TRA TIẾN ĐỘ TRUYỆN\s*===[\s\S]*$/i, '')
+          .replace(/===\s*BỘ NHỚ TRUYỆN\s*===[\s\S]*$/i, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 350),
         chapter_number: params.chapterNumber,
         status: params.status,
       })
@@ -611,7 +620,16 @@ export default function AIFactoryPanel() {
           title: params.parsed.chapterTitle,
           slug: params.parsed.chapterSlug,
           content: params.parsed.readerOnly,
-          summary: params.parsed.technicalReport.slice(0, 1200),
+          summary: params.parsed.readerOnly
+            .replace(/^#\s*Chương\s*\d+\s*[—-].*$/gim, '')
+            .replace(/#\s*BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
+            .replace(/BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
+            .replace(/===\s*THÔNG TIN TRUYỆN ĐỀ XUẤT\s*===[\s\S]*$/i, '')
+            .replace(/===\s*KIỂM TRA TIẾN ĐỘ TRUYỆN\s*===[\s\S]*$/i, '')
+            .replace(/===\s*BỘ NHỚ TRUYỆN\s*===[\s\S]*$/i, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 350),
           chapter_number: params.chapterNumber,
         })
         .select('id, title, chapter_number')
@@ -867,7 +885,11 @@ export default function AIFactoryPanel() {
               chapter_number: chapterNumber,
               title: safeParsed.chapterTitle,
               content: safeParsed.readerOnly,
-              summary: safeParsed.technicalReport.slice(0, 600),
+              summary: safeParsed.readerOnly
+                .replace(/^#\s*Chương\s*\d+\s*[—-].*$/gim, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 350),
             })
 
             storyMemory = [storyMemory, safeParsed.technicalReport].filter(Boolean).join('\n\n---\n\n')
