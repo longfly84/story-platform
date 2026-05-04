@@ -582,7 +582,6 @@ Yêu cầu:
     technicalReport: string
     premiseSeed: string
     nameSeed: string
-    storySeed?: FactoryStorySeed | null
   }) {
     const generatedChaptersNow = params.config.autoCompleteByTarget
       ? params.targetChapters
@@ -1017,6 +1016,7 @@ Yêu cầu:
               .from('stories')
               .update({
                 story_memory: storyMemory,
+              story_dna: { factory_seed: storySeed },
                 current_arc: `Factory continue — chapter ${nextChapterNumber} generated`,
               })
               .eq('id', storyId)

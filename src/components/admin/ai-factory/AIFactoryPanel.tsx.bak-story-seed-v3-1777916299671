@@ -11,7 +11,6 @@ import type {
   FactoryLog,
   FactoryRunSnapshot,
   FactoryStatus,
-  FactoryStorySeed,
   ParsedChapterOutput,
 } from './aiFactoryTypes'
 import {
@@ -21,7 +20,6 @@ import {
   buildAvoidLibrary,
   buildFactoryPromptIdea,
   buildMockChapterOutput,
-  buildMockStorySeed,
   clampNumber,
   getLogTime,
   makeId,
@@ -483,7 +481,6 @@ export default function AIFactoryPanel() {
     storyMemory: string
     factoryPromptIdea: string
     runShortId: string
-    storySeed?: FactoryStorySeed | null
   }) {
     if (params.provider === 'mock') {
       await sleep(500)
@@ -543,7 +540,6 @@ Yêu cầu:
       nextChapterNumber: params.chapterNumber,
       targetChapters: params.targetChapters,
       isFinalChapter: Boolean(params.isFinalChapter),
-      storySeed: params.storySeed ?? null,
       recentChapters: params.recentChapters,
       storyMemory: [params.storyMemory, finalChapterInstruction].filter(Boolean).join('\n\n---\n\n'),
     }
@@ -582,7 +578,6 @@ Yêu cầu:
     technicalReport: string
     premiseSeed: string
     nameSeed: string
-    storySeed?: FactoryStorySeed | null
   }) {
     const generatedChaptersNow = params.config.autoCompleteByTarget
       ? params.targetChapters
@@ -599,7 +594,6 @@ Yêu cầu:
       model_key: params.config.modelKey,
       module_id: 'female-urban-viral',
       target_chapters: params.targetChapters,
-      factory_seed: params.storySeed ?? null,
       generated_chapters_now: generatedChaptersNow,
       auto_complete_by_target: params.config.autoCompleteByTarget,
       chapter_length_label: params.config.chapterLengthLabel,
@@ -1168,12 +1162,6 @@ Yêu cầu:
           .slice(2, 5)}`
         const premiseSeed = makeId('premise')
         const nameSeed = makeId('name')
-        const storySeed = buildMockStorySeed({
-          genreLabel: genre.label,
-          heroineLabel: heroine.label,
-          avoidLibrary: activeAvoidLibrary,
-          seed: `${factoryRunId}-${storyIndex}-${premiseSeed}`,
-        })
 
         updateJob(job.id, {
           status: 'running',
@@ -1190,9 +1178,7 @@ Yêu cầu:
           `Batch ${currentBatch}/${totalBatchesForRun} — bắt đầu story ${storyIndex}/${config.storyCount}: ${genre.label}. Target: ${targetChapters} chương, tạo thật: ${chaptersToCreate} chương.`,
           'info',
         )
-        
-        addLog(`Story seed fingerprint: ${storySeed.shortFingerprint}`, 'info')
-setCurrentAction(
+        setCurrentAction(
           `Batch ${currentBatch}/${totalBatchesForRun} — đang tạo story ${storyIndex}/${config.storyCount}`,
         )
 
@@ -1230,7 +1216,6 @@ setCurrentAction(
               targetChapters,
               avoidLibrary: activeAvoidLibrary,
               premiseSeed,
-              storySeed,
             })
 
             let output = ''
@@ -1252,7 +1237,6 @@ setCurrentAction(
                 storyMemory,
                 factoryPromptIdea,
                 runShortId,
-                storySeed,
               })
 
               parsed = parseChapterOutput({
@@ -1304,7 +1288,6 @@ setCurrentAction(
                 technicalReport: parsed.technicalReport,
                 premiseSeed,
                 nameSeed,
-                storySeed,
               })
 
               updateJob(job.id, {
