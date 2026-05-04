@@ -135,6 +135,20 @@ function dataUrlToBlob(dataUrl: string) {
   return base64ToBlob(data, mimeType)
 }
 
+
+function buildPublicChapterSummary(readerOnly: string) {
+  return readerOnly
+    .replace(/^#\s*Chương\s*\d+\s*[—-].*$/gim, '')
+    .replace(/#\s*BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
+    .replace(/BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
+    .replace(/===\s*THÔNG TIN TRUYỆN ĐỀ XUẤT\s*===[\s\S]*$/i, '')
+    .replace(/===\s*KIỂM TRA TIẾN ĐỘ TRUYỆN\s*===[\s\S]*$/i, '')
+    .replace(/===\s*BỘ NHỚ TRUYỆN\s*===[\s\S]*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 350)
+}
+
 export default function AIFactoryPanel() {
   const stopRequestedRef = useRef(false)
 
@@ -594,7 +608,7 @@ export default function AIFactoryPanel() {
         title: params.parsed.chapterTitle,
         slug: params.parsed.chapterSlug,
         content: params.parsed.readerOnly,
-        summary: params.parsed.readerOnly
+        summary: buildPublicChapterSummary(params.parsed.readerOnly)
           .replace(/^#\s*Chương\s*\d+\s*[—-].*$/gim, '')
           .replace(/#\s*BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
           .replace(/BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
@@ -620,7 +634,7 @@ export default function AIFactoryPanel() {
           title: params.parsed.chapterTitle,
           slug: params.parsed.chapterSlug,
           content: params.parsed.readerOnly,
-          summary: params.parsed.readerOnly
+          summary: buildPublicChapterSummary(params.parsed.readerOnly)
             .replace(/^#\s*Chương\s*\d+\s*[—-].*$/gim, '')
             .replace(/#\s*BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
             .replace(/BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
@@ -885,7 +899,7 @@ export default function AIFactoryPanel() {
               chapter_number: chapterNumber,
               title: safeParsed.chapterTitle,
               content: safeParsed.readerOnly,
-              summary: safeParsed.readerOnly
+              summary: buildPublicChapterSummary(safeParsed.readerOnly)
                 .replace(/^#\s*Chương\s*\d+\s*[—-].*$/gim, '')
                 .replace(/\s+/g, ' ')
                 .trim()
