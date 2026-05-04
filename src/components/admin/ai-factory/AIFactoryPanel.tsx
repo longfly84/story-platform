@@ -40,6 +40,7 @@ const defaultConfig: AIFactoryConfig = {
   maxTargetChapters: 20,
   delayMs: 2000,
   generateCover: false,
+  autoCompleteByTarget: false,
   storyStatus: 'draft',
   chapterStatus: 'draft',
   chapterLengthLabel: 'Vừa — khoảng 1.800–2.300 ký tự',
@@ -193,6 +194,12 @@ function getStoryDnaValue(story: ExistingStory, key: string) {
 }
 
 function getTargetChapters(story: ExistingStory, fallback: number) {
+  const directTarget = Number((story as any).target_chapters)
+
+  if (Number.isFinite(directTarget) && directTarget > 0) {
+    return directTarget
+  }
+
   const rawTarget = getStoryDnaValue(story, 'target_chapters')
   const target = Number(rawTarget)
 
@@ -249,9 +256,15 @@ export default function AIFactoryPanel() {
   const isRunning = status === 'running'
 
   const safeBatchSize = Number.isFinite(config.batchSize) && config.batchSize > 0 ? config.batchSize : 5
+  const averageTargetChapters = Math.round(
+    (config.minTargetChapters + config.maxTargetChapters) / 2,
+  )
+  const createNewTextRequests = config.autoCompleteByTarget
+    ? config.storyCount * averageTargetChapters
+    : config.storyCount * config.chaptersToGenerateNow
   const totalTextRequests =
     factoryMode === 'create-new'
-      ? config.storyCount * config.chaptersToGenerateNow
+      ? createNewTextRequests
       : Math.max(1, continueStoryLimit) * Math.max(1, continueChaptersPerStory)
   const totalCoverRequests = factoryMode === 'create-new' && config.generateCover ? config.storyCount : 0
   const totalRequests = totalTextRequests + totalCoverRequests
@@ -276,7 +289,13 @@ export default function AIFactoryPanel() {
 
     try {
       const snapshot = JSON.parse(raw) as FactoryRunSnapshot
-      if (snapshot.config) setConfig(snapshot.config)
+      if (snapshot.config) {
+        setConfig({
+          ...defaultConfig,
+          ...snapshot.config,
+          autoCompleteByTarget: Boolean((snapshot.config as any).autoCompleteByTarget),
+        })
+      }
       if (Array.isArray(snapshot.jobs)) setJobs(snapshot.jobs)
       if (Array.isArray(snapshot.logs)) setLogs(snapshot.logs)
       if (snapshot.status && snapshot.status !== 'running') setStatus(snapshot.status)
@@ -321,31 +340,31 @@ export default function AIFactoryPanel() {
     storyId: string
     storySlug: string
     fileBlob: Blob
-    }) {
+  }) {
     const filePath = `ai-factory/${params.storyId}/${Date.now()}-${params.storySlug}.png`
 
     const uploadResult = await supabase.storage
-        .from('story-covers')
-        .upload(filePath, params.fileBlob, {
+      .from('story-covers')
+      .upload(filePath, params.fileBlob, {
         contentType: 'image/png',
         upsert: true,
-        })
+      })
 
     if (uploadResult.error) {
-        throw new Error(`Upload cover lỗi: ${uploadResult.error.message}`)
+      throw new Error(`Upload cover lỗi: ${uploadResult.error.message}`)
     }
 
     const publicUrlResult = supabase.storage.from('story-covers').getPublicUrl(filePath)
     const publicUrl = publicUrlResult.data?.publicUrl
 
     if (!publicUrl) {
-        throw new Error('Không lấy được public URL của cover.')
+      throw new Error('Không lấy được public URL của cover.')
     }
 
     return publicUrl
-    }
+  }
 
-    async function updateStoryCover(params: {
+  async function updateStoryCover(params: {
     storyId: string
     coverUrl: string
   }) {
@@ -387,33 +406,31 @@ export default function AIFactoryPanel() {
     addLog('Quét kho truyện gần nhất từ Supabase...')
 
     const extendedSelect =
-      'id, title, description, genres, story_dna, story_memory, created_at'
+      'id, title, description, genres, story_dna, story_memory, completion_status, target_chapters, created_at'
 
-    
     let result: {
-        data: ExistingStory[] | null
-        error: { message: string } | null
-        } = await supabase
+      data: ExistingStory[] | null
+      error: { message: string } | null
+    } = await supabase
+      .from('stories')
+      .select(extendedSelect)
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    if (result.error) {
+      addLog(`Select mở rộng lỗi, thử select tối thiểu: ${result.error.message}`, 'warning')
+
+      const fallbackResult = await supabase
         .from('stories')
-        .select(extendedSelect)
+        .select('id, title, description, genres, created_at')
         .order('created_at', { ascending: false })
         .limit(100)
 
-        if (result.error) {
-        addLog(`Select mở rộng lỗi, thử select tối thiểu: ${result.error.message}`, 'warning')
-
-        const fallbackResult = await supabase
-            .from('stories')
-            .select('id, title, description, genres, created_at')
-            .order('created_at', { ascending: false })
-            .limit(100)
-
-        result = {
-            data: (fallbackResult.data ?? []) as ExistingStory[],
-            error: fallbackResult.error,
-        }
-        }
-    
+      result = {
+        data: (fallbackResult.data ?? []) as ExistingStory[],
+        error: fallbackResult.error,
+      }
+    }
 
     if (result.error) {
       addLog(`Không quét được kho truyện: ${result.error.message}`, 'error')
@@ -454,6 +471,7 @@ export default function AIFactoryPanel() {
     heroineLabel: string
     chapterNumber: number
     targetChapters: number
+    isFinalChapter?: boolean
     recentChapters: Array<{
       chapter_number: number
       title: string
@@ -474,6 +492,32 @@ export default function AIFactoryPanel() {
       })
     }
 
+    const finalChapterInstruction = params.isFinalChapter
+      ? `
+ĐÂY LÀ CHƯƠNG CUỐI CỦA TRUYỆN.
+
+Yêu cầu bắt buộc:
+- Đây là chương ${params.chapterNumber}/${params.targetChapters}, phải kết thúc toàn bộ truyện.
+- Phải giải quyết xung đột chính.
+- Phải trả giá/payoff các bí mật, bằng chứng, mâu thuẫn đã cài từ các chương trước.
+- Phản diện phải nhận hậu quả rõ ràng.
+- Nữ chính phải có kết cục rõ ràng.
+- Không mở thêm tuyến truyện mới.
+- Không tạo cliffhanger giả.
+- Không kết bằng kiểu "mọi chuyện chỉ mới bắt đầu".
+- Kết chương phải cho độc giả cảm giác truyện đã hoàn thành.
+- Trong bản kỹ thuật ghi completion_status = full.
+`
+      : `
+Đây chưa phải chương cuối.
+Vị trí hiện tại: chương ${params.chapterNumber}/${params.targetChapters}.
+Yêu cầu:
+- Không kết thúc toàn bộ truyện quá sớm.
+- Không cho phản diện sụp đổ hoàn toàn quá sớm.
+- Vẫn phải giữ mạch để đọc tiếp chương sau.
+- Trong bản kỹ thuật ghi completion_status = ongoing.
+`
+
     const payload = {
       mode: 'chapter',
       provider: params.provider,
@@ -481,7 +525,12 @@ export default function AIFactoryPanel() {
       moduleId: 'female-urban-viral',
       title: params.storyTitle,
       storySummary: params.storyDescription,
-      promptIdea: params.chapterNumber === 1 ? params.factoryPromptIdea : '',
+      promptIdea: [
+        params.chapterNumber === 1 ? params.factoryPromptIdea : '',
+        params.isFinalChapter ? finalChapterInstruction : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
       genreLabel: params.genreLabel,
       mainCharacterStyleLabel: params.heroineLabel,
       chapterLengthLabel: config.chapterLengthLabel,
@@ -489,8 +538,10 @@ export default function AIFactoryPanel() {
       humiliationLevel: randomInt(3, 5),
       revengeIntensity: randomInt(3, 5),
       nextChapterNumber: params.chapterNumber,
+      targetChapters: params.targetChapters,
+      isFinalChapter: Boolean(params.isFinalChapter),
       recentChapters: params.recentChapters,
-      storyMemory: params.storyMemory,
+      storyMemory: [params.storyMemory, finalChapterInstruction].filter(Boolean).join('\n\n---\n\n'),
     }
 
     const response = await fetch('/api/ai/generate', {
@@ -528,6 +579,10 @@ export default function AIFactoryPanel() {
     premiseSeed: string
     nameSeed: string
   }) {
+    const generatedChaptersNow = params.config.autoCompleteByTarget
+      ? params.targetChapters
+      : params.config.chaptersToGenerateNow
+
     const storyDna = {
       source: 'ai-factory',
       factory_run_id: params.factoryRunId,
@@ -539,7 +594,8 @@ export default function AIFactoryPanel() {
       model_key: params.config.modelKey,
       module_id: 'female-urban-viral',
       target_chapters: params.targetChapters,
-      generated_chapters_now: params.config.chaptersToGenerateNow,
+      generated_chapters_now: generatedChaptersNow,
+      auto_complete_by_target: params.config.autoCompleteByTarget,
       chapter_length_label: params.config.chapterLengthLabel,
       cliffhanger_type_key: 'auto',
       humiliation_level: 'random_3_5',
@@ -562,6 +618,8 @@ export default function AIFactoryPanel() {
       description: params.parsed.storyDescription,
       author: 'Sưu Tầm',
       status: params.config.storyStatus,
+      completion_status: 'ongoing',
+      target_chapters: params.targetChapters,
       genres: [params.genre.slug],
       story_dna: storyDna,
       story_memory: params.technicalReport,
@@ -639,7 +697,6 @@ export default function AIFactoryPanel() {
     return result.data as { id: string; title: string; chapter_number: number }
   }
 
-  
   async function generateAndAttachCover(params: {
     storyId: string
     storyTitle: string
@@ -647,13 +704,13 @@ export default function AIFactoryPanel() {
     storyDescription: string
     genreLabel: string
     heroineLabel: string
-    }) {
+  }) {
     const response = await fetch('/api/ai/generate-cover', {
-        method: 'POST',
-        headers: {
+      method: 'POST',
+      headers: {
         'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      },
+      body: JSON.stringify({
         provider: 'openai',
         modelKey: config.modelKey,
         title: params.storyTitle,
@@ -662,59 +719,56 @@ export default function AIFactoryPanel() {
         heroineLabel: params.heroineLabel,
         styleLabel: 'semi-realistic asian romance manhua webnovel cover, no text',
         aspectRatio: '2:3',
-        }),
+      }),
     })
 
     const data = await response.json().catch(() => null)
 
     if (!response.ok) {
-        throw new Error(data?.error || data?.message || 'Generate cover API failed.')
+      throw new Error(data?.error || data?.message || 'Generate cover API failed.')
     }
 
-    // Case 1: API trả public URL sẵn
     if (data?.publicUrl && typeof data.publicUrl === 'string') {
-        await updateStoryCover({
+      await updateStoryCover({
         storyId: params.storyId,
         coverUrl: data.publicUrl,
-        })
-        return data.publicUrl as string
+      })
+      return data.publicUrl as string
     }
 
     if (data?.imageUrl && typeof data.imageUrl === 'string') {
-        await updateStoryCover({
+      await updateStoryCover({
         storyId: params.storyId,
         coverUrl: data.imageUrl,
-        })
-        return data.imageUrl as string
+      })
+      return data.imageUrl as string
     }
 
-    // Case 2: API trả base64
     let imageBlob: Blob | null = null
 
     if (data?.b64_json && typeof data.b64_json === 'string') {
-        imageBlob = base64ToBlob(data.b64_json, 'image/png')
+      imageBlob = base64ToBlob(data.b64_json, 'image/png')
     } else if (data?.dataUrl && typeof data.dataUrl === 'string') {
-        imageBlob = dataUrlToBlob(data.dataUrl)
+      imageBlob = dataUrlToBlob(data.dataUrl)
     }
 
     if (!imageBlob) {
-        throw new Error('API cover không trả imageUrl/publicUrl/b64_json/dataUrl hợp lệ.')
+      throw new Error('API cover không trả imageUrl/publicUrl/b64_json/dataUrl hợp lệ.')
     }
 
     const publicUrl = await uploadCoverToStorage({
-        storyId: params.storyId,
-        storySlug: params.storySlug,
-        fileBlob: imageBlob,
+      storyId: params.storyId,
+      storySlug: params.storySlug,
+      fileBlob: imageBlob,
     })
 
     await updateStoryCover({
-        storyId: params.storyId,
-        coverUrl: publicUrl,
+      storyId: params.storyId,
+      coverUrl: publicUrl,
     })
 
     return publicUrl
-    }
-  
+  }
 
   async function scanIncompleteStories() {
     setCurrentAction('Đang quét truyện dang dở...')
@@ -722,7 +776,9 @@ export default function AIFactoryPanel() {
 
     let query = supabase
       .from('stories')
-      .select('id, title, slug, description, status, genres, story_dna, story_memory, created_at')
+      .select(
+        'id, title, slug, description, status, completion_status, target_chapters, genres, story_dna, story_memory, created_at',
+      )
       .order('created_at', { ascending: false })
       .limit(100)
 
@@ -813,13 +869,18 @@ export default function AIFactoryPanel() {
         index: index + 1,
         title: story.title || 'Truyện chưa có tên',
         genreLabel: getStoryGenreLabel(story),
-        genreSlug: Array.isArray((story as any).genres) ? String((story as any).genres[0] ?? '') : String((story as any).genres ?? ''),
+        genreSlug: Array.isArray((story as any).genres)
+          ? String((story as any).genres[0] ?? '')
+          : String((story as any).genres ?? ''),
         heroineLabel: getStoryHeroineLabel(story),
         status: 'pending',
         storyId: String((story as any).id),
         storySlug: String((story as any).slug || ''),
         chapterProgress: `${story.currentChapters}/${story.targetChapters}`,
         coverStatus: 'off',
+        targetChapters: story.targetChapters,
+        createdChapters: story.currentChapters,
+        completionStatus: 'ongoing',
       }))
 
       setJobs(initialJobs)
@@ -840,9 +901,10 @@ export default function AIFactoryPanel() {
           Math.max(1, continueChaptersPerStory),
           story.missingChapters,
         )
-        let storyMemory = typeof (story as any).story_memory === 'string'
-          ? (story as any).story_memory
-          : safeJson((story as any).story_memory)
+        let storyMemory =
+          typeof (story as any).story_memory === 'string'
+            ? (story as any).story_memory
+            : safeJson((story as any).story_memory)
         const recentChapters = story.chapters.slice(-5).map((chapter, index) => ({
           chapter_number: Number(chapter.chapter_number ?? story.nextChapterNumber - 5 + index),
           title: chapter.title || `Chương ${chapter.chapter_number ?? index + 1}`,
@@ -872,8 +934,12 @@ export default function AIFactoryPanel() {
               break
             }
 
+            const isFinalChapter = nextChapterNumber >= story.targetChapters
+
             setCurrentAction(`${storyTitle}: generate chương ${nextChapterNumber}`)
-            addLog(`${storyTitle}: generate chương ${nextChapterNumber}...`)
+            addLog(
+              `${storyTitle}: generate chương ${nextChapterNumber}${isFinalChapter ? ' — chương cuối' : ''}...`,
+            )
 
             let output = ''
             let parsed: ParsedChapterOutput | null = null
@@ -889,6 +955,7 @@ export default function AIFactoryPanel() {
                 heroineLabel,
                 chapterNumber: nextChapterNumber,
                 targetChapters: story.targetChapters,
+                isFinalChapter,
                 recentChapters,
                 storyMemory,
                 factoryPromptIdea: '',
@@ -950,6 +1017,8 @@ export default function AIFactoryPanel() {
 
             updateJob(job.id, {
               chapterProgress: `${story.currentChapters + offset + 1}/${story.targetChapters}`,
+              createdChapters: story.currentChapters + offset + 1,
+              targetChapters: story.targetChapters,
             })
 
             addLog(`Insert chương ${nextChapterNumber} thành công`, 'success')
@@ -962,11 +1031,35 @@ export default function AIFactoryPanel() {
           }
 
           if (!stopRequestedRef.current) {
+            const finalChapterCount = Math.min(story.currentChapters + chaptersToCreate, story.targetChapters)
+            const isStoryFull = finalChapterCount >= story.targetChapters
+
+            await supabase
+              .from('stories')
+              .update({
+                story_memory: storyMemory,
+                current_arc: isStoryFull
+                  ? `Factory continue — completed at chapter ${finalChapterCount}`
+                  : `Factory continue — chapter ${finalChapterCount} generated`,
+                completion_status: isStoryFull ? 'full' : 'ongoing',
+                target_chapters: story.targetChapters,
+              })
+              .eq('id', storyId)
+
             updateJob(job.id, {
               status: 'success',
-              chapterProgress: `${Math.min(story.currentChapters + chaptersToCreate, story.targetChapters)}/${story.targetChapters}`,
+              chapterProgress: `${finalChapterCount}/${story.targetChapters}`,
+              createdChapters: finalChapterCount,
+              targetChapters: story.targetChapters,
+              completionStatus: isStoryFull ? 'full' : 'ongoing',
             })
-            addLog(`Xong viết tiếp ${storyTitle}`, 'success')
+
+            addLog(
+              isStoryFull
+                ? `Xong viết tiếp ${storyTitle} — truyện đã Full.`
+                : `Xong viết tiếp ${storyTitle}`,
+              'success',
+            )
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
@@ -1011,10 +1104,18 @@ export default function AIFactoryPanel() {
     const factoryRunId = makeId('factory')
     const totalBatchesForRun = Math.ceil(config.storyCount / Math.max(1, config.batchSize))
 
-        addLog(
-        `Factory sẽ tạo ${config.storyCount} truyện, chia thành ${totalBatchesForRun} batch, mỗi batch tối đa ${config.batchSize} truyện.`,
-        'info',
+    addLog(
+      `Factory sẽ tạo ${config.storyCount} truyện, chia thành ${totalBatchesForRun} batch, mỗi batch tối đa ${config.batchSize} truyện.`,
+      'info',
     )
+
+    if (config.autoCompleteByTarget) {
+      addLog(
+        `Đang bật full target mode: mỗi truyện sẽ random ${config.minTargetChapters}-${config.maxTargetChapters} chương và tạo đủ để kết truyện.`,
+        'warning',
+      )
+    }
+
     const initialJobs: FactoryJob[] = Array.from({ length: config.storyCount }).map((_, index) => ({
       id: makeId('job'),
       index: index + 1,
@@ -1023,12 +1124,11 @@ export default function AIFactoryPanel() {
       genreSlug: '',
       heroineLabel: 'Chưa chọn',
       status: 'pending',
-      chapterProgress: `0/${config.chaptersToGenerateNow}`,
-      coverStatus: config.generateCover
-        ? config.provider === 'openai'
-            ? 'pending'
-            : 'skipped'
-        : 'off',
+      chapterProgress: config.autoCompleteByTarget
+        ? `0/${config.minTargetChapters}-${config.maxTargetChapters}`
+        : `0/${config.chaptersToGenerateNow}`,
+      coverStatus: config.generateCover ? (config.provider === 'openai' ? 'pending' : 'skipped') : 'off',
+      completionStatus: 'ongoing',
     }))
 
     setJobs(initialJobs)
@@ -1042,8 +1142,9 @@ export default function AIFactoryPanel() {
         const indexInBatch = ((storyIndex - 1) % Math.max(1, config.batchSize)) + 1
 
         if (indexInBatch === 1) {
-        addLog(`Bắt đầu batch ${currentBatch}/${totalBatchesForRun}`, 'info')
+          addLog(`Bắt đầu batch ${currentBatch}/${totalBatchesForRun}`, 'info')
         }
+
         if (stopRequestedRef.current) {
           addLog('Đã nhận lệnh stop. Dừng trước story tiếp theo.', 'warning')
           break
@@ -1053,6 +1154,9 @@ export default function AIFactoryPanel() {
         const genre = pickOne(selectedGenres, DEFAULT_FACTORY_GENRES[0])
         const heroine = pickOne(selectedHeroines, DEFAULT_HEROINE_OPTIONS[0])
         const targetChapters = randomInt(config.minTargetChapters, config.maxTargetChapters)
+        const chaptersToCreate = config.autoCompleteByTarget
+          ? targetChapters
+          : config.chaptersToGenerateNow
         const runShortId = `${new Date().getMonth() + 1}${new Date().getDate()}${storyIndex}${Math.random()
           .toString(36)
           .slice(2, 5)}`
@@ -1064,19 +1168,23 @@ export default function AIFactoryPanel() {
           genreLabel: genre.label,
           genreSlug: genre.slug,
           heroineLabel: heroine.label,
-          chapterProgress: `0/${config.chaptersToGenerateNow}`,
+          chapterProgress: `0/${chaptersToCreate}`,
+          targetChapters,
+          createdChapters: 0,
+          completionStatus: 'ongoing',
         })
 
         addLog(
-        `Batch ${currentBatch}/${totalBatchesForRun} — bắt đầu story ${storyIndex}/${config.storyCount}: ${genre.label}`,
-        'info',
+          `Batch ${currentBatch}/${totalBatchesForRun} — bắt đầu story ${storyIndex}/${config.storyCount}: ${genre.label}. Target: ${targetChapters} chương, tạo thật: ${chaptersToCreate} chương.`,
+          'info',
         )
         setCurrentAction(
-        `Batch ${currentBatch}/${totalBatchesForRun} — đang tạo story ${storyIndex}/${config.storyCount}`,
+          `Batch ${currentBatch}/${totalBatchesForRun} — đang tạo story ${storyIndex}/${config.storyCount}`,
         )
 
         let createdStory: { id: string; title: string; slug: string } | null = null
         let storyMemory = ''
+        let createdChapterCount = 0
         const recentChapters: Array<{
           chapter_number: number
           title: string
@@ -1085,22 +1193,22 @@ export default function AIFactoryPanel() {
         }> = []
 
         try {
-          for (
-            let chapterNumber = 1;
-            chapterNumber <= config.chaptersToGenerateNow;
-            chapterNumber += 1
-          ) {
+          for (let chapterNumber = 1; chapterNumber <= chaptersToCreate; chapterNumber += 1) {
             if (stopRequestedRef.current) {
               updateJob(job.id, {
                 status: 'stopped',
-                chapterProgress: `${chapterNumber - 1}/${config.chaptersToGenerateNow}`,
+                chapterProgress: `${chapterNumber - 1}/${chaptersToCreate}`,
               })
               addLog(`Dừng sau request hiện tại tại story ${storyIndex}.`, 'warning')
               break
             }
 
+            const isFinalChapter = config.autoCompleteByTarget && chapterNumber === chaptersToCreate
+
             setCurrentAction(`Story ${storyIndex}: generate chương ${chapterNumber}`)
-            addLog(`Story ${storyIndex}: generate chương ${chapterNumber}...`)
+            addLog(
+              `Story ${storyIndex}: generate chương ${chapterNumber}${isFinalChapter ? ' — chương cuối' : ''}...`,
+            )
 
             const factoryPromptIdea = buildFactoryPromptIdea({
               genreLabel: genre.label,
@@ -1124,6 +1232,7 @@ export default function AIFactoryPanel() {
                 heroineLabel: heroine.label,
                 chapterNumber,
                 targetChapters,
+                isFinalChapter,
                 recentChapters,
                 storyMemory,
                 factoryPromptIdea,
@@ -1210,62 +1319,96 @@ export default function AIFactoryPanel() {
             })
 
             storyMemory = [storyMemory, parsed.technicalReport].filter(Boolean).join('\n\n---\n\n')
+            createdChapterCount = chapterNumber
 
             updateJob(job.id, {
-              chapterProgress: `${chapterNumber}/${config.chaptersToGenerateNow}`,
+              chapterProgress: `${chapterNumber}/${chaptersToCreate}`,
+              createdChapters: chapterNumber,
+              targetChapters,
+              completionStatus:
+                config.autoCompleteByTarget && chapterNumber >= chaptersToCreate ? 'full' : 'ongoing',
             })
 
             addLog(`Insert chapter ${chapterNumber} thành công`, 'success')
 
-            if (chapterNumber < config.chaptersToGenerateNow && config.delayMs > 0) {
+            if (chapterNumber < chaptersToCreate && config.delayMs > 0) {
               addLog(`Delay ${config.delayMs}ms trước request tiếp theo...`)
               await sleep(config.delayMs)
             }
           }
 
+          if (createdStory) {
+            const isStoryFull = config.autoCompleteByTarget && createdChapterCount >= targetChapters
+
+            await supabase
+              .from('stories')
+              .update({
+                story_memory: storyMemory,
+                current_arc: isStoryFull
+                  ? `Factory completed — full at chapter ${createdChapterCount}/${targetChapters}`
+                  : `Factory draft — chapter ${createdChapterCount}/${targetChapters} generated`,
+                completion_status: isStoryFull ? 'full' : 'ongoing',
+                target_chapters: targetChapters,
+              })
+              .eq('id', createdStory.id)
+
+            addLog(
+              isStoryFull
+                ? `Story ${storyIndex}: đã tạo đủ ${targetChapters}/${targetChapters} chương và đánh dấu Full.`
+                : `Story ${storyIndex}: lưu trạng thái ongoing ${createdChapterCount}/${targetChapters}.`,
+              isStoryFull ? 'success' : 'info',
+            )
+          }
+
           if (config.generateCover) {
             if (config.provider === 'mock') {
-                updateJob(job.id, { coverStatus: 'skipped' })
-                addLog('Mock mode: skip cover generation.', 'warning')
+              updateJob(job.id, { coverStatus: 'skipped' })
+              addLog('Mock mode: skip cover generation.', 'warning')
             } else if (createdStory) {
-                try {
+              try {
                 updateJob(job.id, { coverStatus: 'pending' })
                 setCurrentAction(`Story ${storyIndex}: generate cover`)
                 addLog(`Story ${storyIndex}: generate cover...`)
 
                 const coverUrl = await generateAndAttachCover({
-                    storyId: createdStory.id,
-                    storyTitle: createdStory.title,
-                    storySlug: createdStory.slug,
-                    storyDescription: recentChapters[0]?.content?.slice(0, 500) || '',
-                    genreLabel: genre.label,
-                    heroineLabel: heroine.label,
+                  storyId: createdStory.id,
+                  storyTitle: createdStory.title,
+                  storySlug: createdStory.slug,
+                  storyDescription: recentChapters[0]?.content?.slice(0, 500) || '',
+                  genreLabel: genre.label,
+                  heroineLabel: heroine.label,
                 })
 
                 updateJob(job.id, {
-                    coverStatus: 'success',
-                    coverUrl,
+                  coverStatus: 'success',
+                  coverUrl,
                 })
 
                 addLog(`Generate cover thành công`, 'success')
-                } catch (error) {
+              } catch (error) {
                 const message = error instanceof Error ? error.message : String(error)
 
                 updateJob(job.id, {
-                    coverStatus: 'failed',
-                    error: `Cover lỗi: ${message}`,
+                  coverStatus: 'failed',
+                  error: `Cover lỗi: ${message}`,
                 })
 
                 addLog(`Generate cover lỗi: ${message}`, 'error')
-                }
+              }
             }
           }
 
           if (stopRequestedRef.current) {
             updateJob(job.id, { status: 'stopped' })
           } else {
+            const isStoryFull = config.autoCompleteByTarget && createdChapterCount >= targetChapters
+
             updateJob(job.id, {
               status: 'success',
+              chapterProgress: `${createdChapterCount}/${chaptersToCreate}`,
+              createdChapters: createdChapterCount,
+              targetChapters,
+              completionStatus: isStoryFull ? 'full' : 'ongoing',
             })
             addLog(`Xong story ${storyIndex}/${config.storyCount}`, 'success')
           }
@@ -1286,14 +1429,14 @@ export default function AIFactoryPanel() {
             const isEndOfBatch = storyIndex % Math.max(1, config.batchSize) === 0
 
             if (isEndOfBatch) {
-                addLog(
+              addLog(
                 `Xong batch ${currentBatch}/${totalBatchesForRun}. Delay ${config.delayMs}ms trước batch tiếp theo...`,
                 'info',
-                )
+              )
             }
 
             await sleep(config.delayMs)
-            }
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
 
@@ -1388,7 +1531,7 @@ export default function AIFactoryPanel() {
                 <option value="continue-existing">Viết tiếp truyện dang dở</option>
               </select>
               <SmallHint>
-                Tạo truyện mới sẽ insert story mới. Viết tiếp truyện dang dở sẽ quét target_chapters trong story_dna và tạo chương còn thiếu.
+                Tạo truyện mới sẽ insert story mới. Viết tiếp truyện dang dở sẽ quét target_chapters trong story_dna hoặc cột target_chapters và tạo chương còn thiếu.
               </SmallHint>
             </div>
 
@@ -1475,18 +1618,18 @@ export default function AIFactoryPanel() {
               <div>
                 <FieldLabel>Tổng số truyện cần tạo</FieldLabel>
                 <input
-                    type="number"
-                    min={1}
-                    max={50}
-                    disabled={isRunning}
-                    value={config.storyCount}
-                    onChange={(event) =>
+                  type="number"
+                  min={1}
+                  max={50}
+                  disabled={isRunning}
+                  value={config.storyCount}
+                  onChange={(event) =>
                     updateConfig(
-                        'storyCount',
-                        clampNumber(Number(event.target.value), 1, 50),
+                      'storyCount',
+                      clampNumber(Number(event.target.value), 1, 50),
                     )
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
                 <SmallHint>Tối đa 50 truyện/lần chạy. Factory sẽ tự chia batch và chạy tuần tự.</SmallHint>
               </div>
@@ -1494,62 +1637,63 @@ export default function AIFactoryPanel() {
               <div>
                 <FieldLabel>Số truyện mỗi batch</FieldLabel>
                 <input
-                    type="number"
-                    min={1}
-                    max={5}
-                    disabled={isRunning}
-                    value={config.batchSize}
-                    onChange={(event) =>
+                  type="number"
+                  min={1}
+                  max={5}
+                  disabled={isRunning}
+                  value={config.batchSize}
+                  onChange={(event) =>
                     updateConfig(
-                        'batchSize',
-                        clampNumber(Number(event.target.value), 1, 5),
+                      'batchSize',
+                      clampNumber(Number(event.target.value), 1, 5),
                     )
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
                 <SmallHint>Mỗi batch nên để 3–5 truyện để dễ kiểm soát và tránh spam request.</SmallHint>
-                </div>
+              </div>
 
               <div>
                 <FieldLabel>Số chương tạo NGAY mỗi truyện</FieldLabel>
                 <input
-                    type="number"
-                    min={1}
-                    max={25}
-                    disabled={isRunning}
-                    value={config.chaptersToGenerateNow}
-                    onChange={(event) =>
+                  type="number"
+                  min={1}
+                  max={25}
+                  disabled={isRunning || config.autoCompleteByTarget}
+                  value={config.chaptersToGenerateNow}
+                  onChange={(event) =>
                     updateConfig(
-                        'chaptersToGenerateNow',
-                        clampNumber(Number(event.target.value), 1, 25),
+                      'chaptersToGenerateNow',
+                      clampNumber(Number(event.target.value), 1, 25),
                     )
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300 disabled:opacity-50"
                 />
                 <SmallHint>
-                    Muốn tạo đủ 10 chương/truyện thì nhập 10 ở ô này.
-                    Hai ô mục tiêu bên dưới chỉ là kế hoạch cho AI, không tự tạo thêm chương.
+                  {config.autoCompleteByTarget
+                    ? 'Đang bật mode full target random: ô này sẽ bị bỏ qua. Số chương thật sẽ lấy theo target random của từng truyện.'
+                    : 'Đây là số chương tạo thật ngay mỗi truyện. Hai ô mục tiêu bên dưới chỉ là kế hoạch cho AI, không tự tạo thêm chương.'}
                 </SmallHint>
               </div>
 
               <div>
                 <FieldLabel>Số chương mục tiêu tối thiểu</FieldLabel>
                 <input
-                    type="number"
-                    min={5}
-                    max={50}
-                    disabled={isRunning}
-                    value={config.minTargetChapters}
-                    onChange={(event) =>
+                  type="number"
+                  min={5}
+                  max={50}
+                  disabled={isRunning}
+                  value={config.minTargetChapters}
+                  onChange={(event) =>
                     updateConfig(
-                        'minTargetChapters',
-                        clampNumber(Number(event.target.value), 5, 50),
+                      'minTargetChapters',
+                      clampNumber(Number(event.target.value), 5, 50),
                     )
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
                 <SmallHint>
-                    Chỉ là kế hoạch toàn truyện để AI hiểu độ dài series, không phải số chương tạo ngay.
+                  Khi bật full target mode, đây là số chương tối thiểu có thể tạo thật cho mỗi truyện.
                 </SmallHint>
               </div>
 
@@ -1569,7 +1713,7 @@ export default function AIFactoryPanel() {
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
-                <SmallHint>Factory sẽ random target trong khoảng này và lưu vào story_dna/prompt.</SmallHint>
+                <SmallHint>Factory sẽ random target trong khoảng này và lưu vào story_dna + cột target_chapters.</SmallHint>
               </div>
 
               <div>
@@ -1589,6 +1733,29 @@ export default function AIFactoryPanel() {
                 <SmallHint>Đơn vị ms. 2000ms = 2 giây.</SmallHint>
               </div>
 
+              <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 sm:col-span-2">
+                <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-200">
+                  <input
+                    type="checkbox"
+                    disabled={isRunning}
+                    checked={config.autoCompleteByTarget}
+                    onChange={(event) => updateConfig('autoCompleteByTarget', event.target.checked)}
+                    className="mt-1 h-4 w-4 accent-emerald-300"
+                  />
+
+                  <span>
+                    <span className="block font-bold text-emerald-200">
+                      Tạo full truyện theo target random
+                    </span>
+                    <span className="mt-1 block text-xs leading-relaxed text-slate-400">
+                      Khi bật, mỗi truyện sẽ random số chương trong khoảng tối thiểu/tối đa.
+                      Ví dụ random 15 thì Factory sẽ tạo đủ 15 chương, chương cuối kết truyện
+                      và lưu completion_status = full.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
               <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                 <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-200">
                   <input
@@ -1597,11 +1764,11 @@ export default function AIFactoryPanel() {
                     checked={config.generateCover}
                     onChange={(event) => updateConfig('generateCover', event.target.checked)}
                     className="h-4 w-4 accent-yellow-300"
-                   />
+                  />
                   Generate cover
                 </label>
                 <span className="ml-2 text-xs text-slate-500">
-                    Mock sẽ skip, OpenAI sẽ tạo ảnh thật + upload public
+                  Mock sẽ skip, OpenAI sẽ tạo ảnh thật + upload public
                 </span>
               </div>
             </div>
@@ -1609,41 +1776,41 @@ export default function AIFactoryPanel() {
 
           <Section title="Genre Pool" desc="Factory sẽ random mỗi truyện một thể loại trong pool.">
             <div className="max-h-44 overflow-auto rounded-xl border border-white/10 bg-black/20 p-2">
-                <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {DEFAULT_FACTORY_GENRES.map((genre) => (
-                    <ToggleChip
+                  <ToggleChip
                     key={genre.key}
                     active={selectedGenres.some((item) => item.key === genre.key)}
                     onClick={() => toggleGenre(genre)}
-                    >
+                  >
                     {genre.label}
-                    </ToggleChip>
+                  </ToggleChip>
                 ))}
-                </div>
+              </div>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-                Đang chọn {selectedGenres.length}/{DEFAULT_FACTORY_GENRES.length} thể loại.
+              Đang chọn {selectedGenres.length}/{DEFAULT_FACTORY_GENRES.length} thể loại.
             </p>
-           </Section>
+          </Section>
 
           <Section title="Heroine Pool" desc="Factory sẽ random kiểu nữ chính để tránh truyện bị trùng vibe.">
             <div className="max-h-36 overflow-auto rounded-xl border border-white/10 bg-black/20 p-2">
-                <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {DEFAULT_HEROINE_OPTIONS.map((heroine) => (
-                    <ToggleChip
+                  <ToggleChip
                     key={heroine.key}
                     active={selectedHeroines.some((item) => item.key === heroine.key)}
                     onClick={() => toggleHeroine(heroine)}
-                    >
+                  >
                     {heroine.label}
-                    </ToggleChip>
+                  </ToggleChip>
                 ))}
-                </div>
+              </div>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-                Đang chọn {selectedHeroines.length}/{DEFAULT_HEROINE_OPTIONS.length} kiểu nữ chính.
+              Đang chọn {selectedHeroines.length}/{DEFAULT_HEROINE_OPTIONS.length} kiểu nữ chính.
             </p>
-           </Section>
+          </Section>
 
           <Section title="Existing Library Scan" desc="Quét truyện gần nhất để build avoid context chống trùng.">
             <div className="grid gap-3 sm:grid-cols-4">
@@ -1676,7 +1843,8 @@ export default function AIFactoryPanel() {
               Quét lại kho truyện
             </button>
           </Section>
-                  <Section title="Continue Existing Stories" desc="Quét truyện chưa đủ target_chapters để viết tiếp chương còn thiếu.">
+
+          <Section title="Continue Existing Stories" desc="Quét truyện chưa đủ target_chapters để viết tiếp chương còn thiếu.">
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
@@ -1710,8 +1878,7 @@ export default function AIFactoryPanel() {
               )}
             </div>
           </Section>
-
-</div>
+        </div>
 
         <div className="space-y-5">
           <Section title="API Cost Guard" desc="Chống bấm nhầm khi dùng OpenAI thật.">
@@ -1719,11 +1886,19 @@ export default function AIFactoryPanel() {
               <div className="space-y-3">
                 <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">
                   <div className="font-bold">SẼ GỌI OPENAI API</div>
-                    <div>Mode: {factoryMode === 'continue-existing' ? 'Viết tiếp truyện dang dở' : 'Tạo truyện mới'}</div>
+                  <div>Mode: {factoryMode === 'continue-existing' ? 'Viết tiếp truyện dang dở' : 'Tạo truyện mới'}</div>
                   <div className="mt-2 grid gap-1 text-red-100/90">
                     <div>Tổng số truyện: {factoryMode === 'create-new' ? config.storyCount : continueStoryLimit}</div>
                     <div>Số truyện mỗi batch: {factoryMode === 'create-new' ? config.batchSize : continueStoryLimit}</div>
                     <div>Tổng batch dự kiến: {totalBatches}</div>
+                    <div>
+                      Mode chương:{' '}
+                      {factoryMode === 'create-new' && config.autoCompleteByTarget
+                        ? `Full random target ${config.minTargetChapters}-${config.maxTargetChapters} chương/truyện`
+                        : factoryMode === 'create-new'
+                          ? `${config.chaptersToGenerateNow} chương tạo ngay/truyện`
+                          : `Viết tiếp tối đa ${continueChaptersPerStory} chương/truyện`}
+                    </div>
                     <div>Số chương thật sự sẽ tạo: {totalTextRequests}</div>
                     <div>Text request: {totalTextRequests}</div>
                     <div>Cover request: {totalCoverRequests}</div>
@@ -1745,6 +1920,11 @@ export default function AIFactoryPanel() {
             ) : (
               <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
                 Mock mode — không gửi OpenAI API. Vẫn insert story/chapter draft vào Supabase để test flow.
+                {factoryMode === 'create-new' && config.autoCompleteByTarget ? (
+                  <div className="mt-2 text-emerald-100/90">
+                    Đang bật full target mode: mock cũng sẽ tạo đủ số chương target và đánh dấu Full để test flow.
+                  </div>
+                ) : null}
               </div>
             )}
           </Section>
@@ -1778,14 +1958,12 @@ export default function AIFactoryPanel() {
                 Clear log
               </button>
 
-
-               <Link
+              <Link
                 to="/admin/ai-factory/results"
                 className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/20"
-                >
+              >
                 Xem kết quả
-                </Link>     
-
+              </Link>
             </div>
 
             <div className="mt-4 rounded-xl border border-white/10 bg-black/50 p-3">
@@ -1827,6 +2005,8 @@ export default function AIFactoryPanel() {
 
                     <div className="mt-2 grid gap-1 text-xs text-slate-400">
                       <div>Chapter: {job.chapterProgress}</div>
+                      {typeof job.targetChapters === 'number' ? <div>Target: {job.targetChapters}</div> : null}
+                      {job.completionStatus ? <div>Completion: {job.completionStatus}</div> : null}
                       <div>Cover: {job.coverStatus}</div>
                       {job.error ? <div className="text-red-300">Lỗi: {job.error}</div> : null}
                     </div>
@@ -1844,35 +2024,35 @@ export default function AIFactoryPanel() {
 
       <Section title="Progress Log">
         <div className="max-h-[420px] space-y-2 overflow-auto rounded-xl bg-black/50 p-3">
-            {logs.length ? (
+          {logs.length ? (
             logs.map((log) => (
-                <div
+              <div
                 key={log.id}
                 className={cx(
-                    'rounded-lg border px-3 py-2 text-sm',
-                    log.type === 'info' && 'border-white/10 bg-white/[0.03] text-slate-300',
-                    log.type === 'success' &&
+                  'rounded-lg border px-3 py-2 text-sm',
+                  log.type === 'info' && 'border-white/10 bg-white/[0.03] text-slate-300',
+                  log.type === 'success' &&
                     'border-emerald-400/20 bg-emerald-500/10 text-emerald-100',
-                    log.type === 'warning' &&
+                  log.type === 'warning' &&
                     'border-yellow-400/20 bg-yellow-500/10 text-yellow-100',
-                    log.type === 'error' && 'border-red-400/20 bg-red-500/10 text-red-100',
+                  log.type === 'error' && 'border-red-400/20 bg-red-500/10 text-red-100',
                 )}
-                >
+              >
                 <span className="mr-2 text-xs opacity-70">[{log.time}]</span>
                 {log.message}
-                </div>
+              </div>
             ))
-            ) : (
+          ) : (
             <div className="text-sm text-slate-500">Log trống.</div>
-            )}
+          )}
         </div>
-        </Section>
+      </Section>
 
-        <button
+      <button
         type="button"
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         className="fixed bottom-5 right-5 z-50 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-black/40 transition hover:border-yellow-300/60 hover:bg-zinc-800"
-        >
+      >
         ↑ Lên đầu
       </button>
     </div>
