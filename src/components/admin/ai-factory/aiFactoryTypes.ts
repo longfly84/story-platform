@@ -89,3 +89,22 @@ export type FactoryRunSnapshot = {
   startedAt?: string
   finishedAt?: string
 }
+
+export type FactoryStorySeed = {
+  title: string
+  genreBlend: string[]
+  corePremise: string
+  openingScene: string
+  incitingIncident: string
+  evidenceObject: string
+  mainConflict: string
+  hiddenTruth: string
+  setting: string
+  villainType: string
+  heroineArc: string
+  emotionalHook: string
+  powerStructure: string
+  publicPressure: string
+  shortFingerprint: string
+  antiRepeatTags: string[]
+}
