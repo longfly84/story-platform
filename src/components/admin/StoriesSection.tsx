@@ -100,13 +100,37 @@ function getLatestChapterNumber(story: any) {
 function getCompletionLabel(story: any) {
   const raw =
     story?.story_status ??
+    story?.storyStatus ??
     story?.completion_status ??
     story?.completionStatus ??
     story?.progress_status ??
     story?.progressStatus ??
+    story?.series_status ??
+    story?.seriesStatus ??
+    story?.novel_status ??
+    story?.novelStatus ??
+    story?.finish_status ??
+    story?.finishStatus ??
+    story?.complete_status ??
+    story?.completeStatus ??
+    story?.completed_status ??
+    story?.completedStatus ??
+    story?.book_status ??
+    story?.bookStatus ??
     story?.is_completed ??
-    story?.completed ??
     story?.isCompleted ??
+    story?.completed ??
+    story?.is_finished ??
+    story?.isFinished ??
+    story?.finished ??
+    story?.is_full ??
+    story?.isFull ??
+    story?.full ??
+    story?.isFullStory ??
+    story?.is_full_story ??
+    story?.type ??
+    story?.kind ??
+    story?.mode ??
     null
 
   if (typeof raw === 'boolean') {
@@ -114,17 +138,21 @@ function getCompletionLabel(story: any) {
   }
 
   const text = String(raw || '').trim()
-
-  if (!text) {
-    return 'Chưa rõ'
-  }
-
   const normalized = text.toLowerCase()
 
   if (
     normalized === 'full' ||
-    normalized.includes('completed') ||
+    normalized === 'completed' ||
+    normalized === 'complete' ||
+    normalized === 'finished' ||
+    normalized === 'done' ||
+    normalized === 'hoàn thành' ||
+    normalized === 'hoan thanh' ||
+    normalized.includes('full') ||
     normalized.includes('complete') ||
+    normalized.includes('completed') ||
+    normalized.includes('finished') ||
+    normalized.includes('done') ||
     normalized.includes('hoàn thành') ||
     normalized.includes('hoan thanh')
   ) {
@@ -132,8 +160,16 @@ function getCompletionLabel(story: any) {
   }
 
   if (
+    normalized === 'ongoing' ||
+    normalized === 'writing' ||
+    normalized === 'in_progress' ||
+    normalized === 'unfinished' ||
+    normalized === 'chưa hoàn thành' ||
+    normalized === 'chua hoan thanh' ||
     normalized.includes('ongoing') ||
     normalized.includes('writing') ||
+    normalized.includes('progress') ||
+    normalized.includes('unfinished') ||
     normalized.includes('chưa') ||
     normalized.includes('chua') ||
     normalized.includes('đang') ||
@@ -142,7 +178,29 @@ function getCompletionLabel(story: any) {
     return 'Chưa hoàn thành'
   }
 
-  return text
+  const currentCount = getCurrentChapterCount(story)
+  const targetCount = getTargetChapterCount(story)
+
+  if (targetCount && currentCount >= targetCount) {
+    return 'Full'
+  }
+
+  if (targetCount && currentCount < targetCount) {
+    return 'Chưa hoàn thành'
+  }
+
+  // Fallback tạm cho truyện cũ:
+  // Nếu truyện đã publish và có từ 1 chương trở lên nhưng chưa có field tiến độ rõ ràng,
+  // vẫn ưu tiên hiện Full để không làm sai dữ liệu cũ từng được set full.
+  if (story?.status === 'published' && currentCount > 0) {
+    return 'Full'
+  }
+
+  if (text) {
+    return text
+  }
+
+  return 'Chưa rõ'
 }
 
 function getStatusLabel(story: any) {
