@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import MainLayout from '@/layouts/MainLayout'
 import ReaderToolbar from '@/components/reader/ReaderToolbar'
@@ -11,6 +11,94 @@ const themeStyles: Record<string, { background: string; color: string }> = {
   dark: { background: '#0b0b0d', color: '#e6eef3' },
   light: { background: '#f8fafb', color: '#0f172a' },
   sepia: { background: '#f4ecd8', color: '#3b2f2f' },
+}
+
+type ReaderContentSplitResult = {
+  parts: string[]
+  shouldInsertAds: boolean
+}
+
+function splitReaderContent(content: string): ReaderContentSplitResult {
+  const paragraphs = String(content || '')
+    .split(/\n\s*\n/g)
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (paragraphs.length <= 4) {
+    return {
+      parts: [paragraphs.join('\n\n')],
+      shouldInsertAds: false,
+    }
+  }
+
+  if (paragraphs.length <= 8) {
+    const cut = Math.ceil(paragraphs.length / 2)
+
+    return {
+      parts: [
+        paragraphs.slice(0, cut).join('\n\n'),
+        paragraphs.slice(cut).join('\n\n'),
+      ].filter(Boolean),
+      shouldInsertAds: true,
+    }
+  }
+
+  const firstCut = Math.ceil(paragraphs.length / 3)
+  const secondCut = Math.ceil((paragraphs.length * 2) / 3)
+
+  return {
+    parts: [
+      paragraphs.slice(0, firstCut).join('\n\n'),
+      paragraphs.slice(firstCut, secondCut).join('\n\n'),
+      paragraphs.slice(secondCut).join('\n\n'),
+    ].filter(Boolean),
+    shouldInsertAds: true,
+  }
+}
+
+function ReaderAdBlock() {
+  return (
+    <section className="mx-auto my-8 max-w-3xl overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/80 shadow-lg shadow-black/20">
+      <div className="border-b border-zinc-800 px-4 py-3 text-sm text-zinc-400">
+        Quảng cáo
+      </div>
+
+      <div className="p-4 sm:p-5">
+        <h3 className="text-2xl font-bold text-zinc-100">Tiny Studio</h3>
+
+        <p className="mt-2 text-base leading-relaxed text-zinc-300">
+          Ảnh viện cho mẹ bầu, bé và gia đình tại Đà Nẵng
+        </p>
+
+        <a
+          href="https://www.facebook.com/"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 block overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition hover:border-amber-300/60"
+        >
+          <img
+            src="/tiny-studio-ad.jpg"
+            alt="Tiny Studio - ảnh viện cho mẹ bầu, bé và gia đình"
+            className="h-auto w-full object-cover"
+            loading="lazy"
+          />
+        </a>
+
+        <p className="mt-4 text-base leading-relaxed text-zinc-300">
+          Chụp ảnh newborn, mẹ bầu, baby và gia đình.
+        </p>
+
+        <a
+          href="https://www.facebook.com/"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex rounded-xl bg-amber-300 px-5 py-3 text-base font-bold text-zinc-950 transition hover:bg-amber-200"
+        >
+          Xem thêm
+        </a>
+      </div>
+    </section>
+  )
 }
 
 export default function ReaderPage() {
@@ -94,8 +182,6 @@ export default function ReaderPage() {
 
         setChapterData(chapterRow)
         setLoading(false)
-    // Non-blocking analytics will be handled in next effect
-        // Move tracking to dedicated effect to avoid duplicate calls during data load
       } catch (err) {
         if (!mounted) return
         if (import.meta.env.DEV) console.log('[reader-load-exception]', err)
@@ -115,15 +201,30 @@ export default function ReaderPage() {
 
   const appliedTheme = themeStyles[theme] ?? themeStyles.dark
 
+  const contentParts = useMemo(() => {
+    return splitReaderContent(chapterData?.content || '')
+  }, [chapterData?.content])
+
   // track reader view once per story+chapter
   useEffect(() => {
     ;(async () => {
       if (!story?.slug || !chapterData?.slug) return
+
       try {
         const mod = await import('@/lib/analytics/trackView')
+
         if (typeof mod.trackPageView === 'function') {
-          if (import.meta.env.DEV) console.log('[track-view-submit]', { path: window.location.pathname, storySlug: story.slug })
-          await mod.trackPageView({ path: window.location.pathname, storySlug: story.slug })
+          if (import.meta.env.DEV) {
+            console.log('[track-view-submit]', {
+              path: window.location.pathname,
+              storySlug: story.slug,
+            })
+          }
+
+          await mod.trackPageView({
+            path: window.location.pathname,
+            storySlug: story.slug,
+          })
         }
       } catch (err) {
         if (import.meta.env.DEV) console.warn('[track-view-error]', err)
@@ -189,21 +290,35 @@ export default function ReaderPage() {
         <ReaderToolbar />
 
         <header className="mt-5">
-          <h1 className="text-3xl font-bold text-zinc-100">{story.title}</h1>
-          <h2 className="mt-2 text-xl font-semibold text-zinc-300">{chapterData.title}</h2>
+          <h1 className="text-3xl font-bold leading-tight text-zinc-100 sm:text-4xl">
+            {story.title}
+          </h1>
+          <h2 className="mt-3 text-xl font-semibold leading-snug text-zinc-300">
+            {chapterData.title}
+          </h2>
         </header>
 
-        <article
-          className="mx-auto mt-6 max-w-3xl whitespace-pre-wrap rounded-xl border border-zinc-800 p-5 sm:p-7"
-          style={{
-            lineHeight: 1.85,
-            fontSize: `${fontSize}px`,
-            background: appliedTheme.background,
-            color: appliedTheme.color,
-          }}
-        >
-          {chapterData.content}
-        </article>
+        <div className="mt-6 space-y-0">
+          {contentParts.parts.map((part, index) => (
+            <div key={`${chapterData.id || chapterData.slug}-${index}`}>
+              <article
+                className="mx-auto max-w-3xl whitespace-pre-wrap rounded-xl border border-zinc-800 p-5 sm:p-7"
+                style={{
+                  lineHeight: 1.85,
+                  fontSize: `${fontSize}px`,
+                  background: appliedTheme.background,
+                  color: appliedTheme.color,
+                }}
+              >
+                {part}
+              </article>
+
+              {contentParts.shouldInsertAds && index < contentParts.parts.length - 1 ? (
+                <ReaderAdBlock />
+              ) : null}
+            </div>
+          ))}
+        </div>
       </main>
     </MainLayout>
   )
