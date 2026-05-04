@@ -1244,7 +1244,7 @@ export const FACTORY_SETTING_CLUSTERS = [
   'căn hộ penthouse nhìn xuống thành phố',
 ]
 
-export const FACTORY_SEED_EVIDENCE_OBJECTS = [
+export const FACTORY_EVIDENCE_OBJECTS = [
   'hồ sơ bệnh án bị sửa',
   'email nội bộ bị chuyển tiếp nhầm',
   'USB chứa file ghi âm',
@@ -1359,7 +1359,7 @@ export function buildMockStorySeed(params: {
     'relationship',
   )
   const setting = pickSeedItem(FACTORY_SETTING_CLUSTERS, params.seed, 'setting')
-  const evidenceObject = pickSeedItem(FACTORY_SEED_EVIDENCE_OBJECTS, params.seed, 'evidence')
+  const evidenceObject = pickSeedItem(FACTORY_EVIDENCE_OBJECTS, params.seed, 'evidence')
   const publicPressure = pickSeedItem(FACTORY_PUBLIC_PRESSURES, params.seed, 'pressure')
   const hiddenTruth = pickSeedItem(FACTORY_HIDDEN_TRUTHS, params.seed, 'truth')
 
@@ -1706,18 +1706,15 @@ export function parseChapterOutput(params: {
     params.chapterNumber,
   );
 
-    const chapterSlug = `${slugifyVietnamese(chapterTitle)}-${params.chapterNumber}`
-
-    return {
-    raw: params.output,
+  return {
     storyTitle,
     storySlug: `${slugifyVietnamese(storyTitle)}-${params.runShortId}`,
     storyDescription,
     chapterTitle,
-    chapterSlug,
+    chapterSlug: `chuong-${params.chapterNumber}-${slugifyVietnamese(chapterTitle)}`,
     readerOnly,
     technicalReport,
-  }
+  };
 }
 
 export function validateChapterOutput(params: {

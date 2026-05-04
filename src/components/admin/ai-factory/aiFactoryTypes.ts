@@ -29,76 +29,17 @@ export type FactoryHeroineOption = {
 export type AIFactoryConfig = {
   provider: FactoryProvider
   modelKey: FactoryModelKey
-
-  /**
-   * Tổng số truyện cần tạo trong một lần chạy Factory.
-   */
   storyCount: number
-
-  /**
-   * Số truyện xử lý trong mỗi batch.
-   */
   batchSize: number
-
-  /**
-   * Số chương tạo thật ngay mỗi truyện khi autoCompleteByTarget = false.
-   */
   chaptersToGenerateNow: number
-
-  /**
-   * Số chương mục tiêu tối thiểu của toàn truyện.
-   */
   minTargetChapters: number
-
-  /**
-   * Số chương mục tiêu tối đa của toàn truyện.
-   */
   maxTargetChapters: number
-
-  /**
-   * Khi true:
-   * - Factory random targetChapters trong khoảng min/max.
-   * - Tạo đủ targetChapters chương cho từng truyện.
-   * - Chương cuối phải kết truyện.
-   * - Sau khi tạo đủ chương, story nên được lưu completion_status = 'full'.
-   *
-   * Khi false:
-   * - Factory chỉ tạo chaptersToGenerateNow chương.
-   * - min/max chỉ là kế hoạch để AI hiểu độ dài series.
-   * - story nên giữ completion_status = 'ongoing'.
-   */
   autoCompleteByTarget: boolean
-
-  /**
-   * Delay giữa các request AI.
-   */
   delayMs: number
-
-  /**
-   * Có tạo cover bằng AI hay không.
-   */
   generateCover: boolean
-
-  /**
-   * Trạng thái publish của story khi insert.
-   * Hiện tại chỉ cho draft để kiểm duyệt trước khi public.
-   */
   storyStatus: 'draft'
-
-  /**
-   * Trạng thái chapter khi insert.
-   * Hiện tại chỉ cho draft để kiểm duyệt trước khi public.
-   */
   chapterStatus: 'draft'
-
-  /**
-   * Nhãn độ dài chương dùng cho prompt.
-   */
   chapterLengthLabel: string
-
-  /**
-   * Nhãn mức cliffhanger dùng cho prompt.
-   */
   cliffhangerLabel: string
 }
 
@@ -142,20 +83,8 @@ export type FactoryJob = {
   storyId?: string
   storySlug?: string
   coverUrl?: string
-
-  /**
-   * Số chương mục tiêu đã random cho truyện này.
-   */
   targetChapters?: number
-
-  /**
-   * Số chương đã tạo thật cho truyện này.
-   */
   createdChapters?: number
-
-  /**
-   * Trạng thái hoàn thành của truyện sau khi Factory chạy.
-   */
   completionStatus?: 'ongoing' | 'full'
 }
 
