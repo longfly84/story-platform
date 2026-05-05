@@ -3,13 +3,13 @@ import { Link } from "react-router-dom"
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react"
 
 import StoryCard from "@/components/home/StoryCard"
-import HomeAds from '@/components/ads/HomeAds'
+import HomeAds from "@/components/ads/HomeAds"
 import MainLayout from "@/layouts/MainLayout"
 import { Button } from "@/components/ui/button"
 import { genres, stories } from "@/data/stories"
 import type { Story } from "@/data/stories"
-import { fetchStoriesFromSupabase, resolveCoverUrl, supabase } from '@/lib/supabase'
-import { getStoryViewCounts } from '@/lib/analytics/viewStats'
+import { fetchStoriesFromSupabase, resolveCoverUrl, supabase } from "@/lib/supabase"
+import { getStoryViewCounts } from "@/lib/analytics/viewStats"
 
 function normalizeText(input: string) {
   return input
@@ -21,9 +21,22 @@ function normalizeText(input: string) {
 }
 
 function getCoverImage(row: any) {
-  const raw = row?.cover_image ?? row?.coverImage ?? row?.cover ?? row?.image_url ?? row?.image ?? ""
+  const raw =
+    row?.cover_image ??
+    row?.coverImage ??
+    row?.cover ??
+    row?.cover_url ??
+    row?.image_url ??
+    row?.image ??
+    ""
+
   const resolved = resolveCoverUrl(raw)
-  return resolved || raw || "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80"
+
+  return (
+    resolved ||
+    raw ||
+    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80"
+  )
 }
 
 function isPublicStory(row: any) {
@@ -34,9 +47,61 @@ function isPublicStory(row: any) {
   if (visibility === "published" || visibility === "public") return true
   if (status === "draft" || status === "unpublished" || status === "private") return false
 
-  // Tạm thời cho hiện các truyện thật nếu không bị đánh dấu draft.
-  // DB hiện đang dùng status lẫn cả "published" và "Đang ra".
   return true
+}
+
+function getCompletionStatus(row: any) {
+  const value = String(
+    row?.completion_status ??
+      row?.completionStatus ??
+      row?.story_status ??
+      row?.storyStatus ??
+      row?.progress_status ??
+      row?.progressStatus ??
+      "",
+  )
+    .trim()
+    .toLowerCase()
+
+  if (
+    value === "full" ||
+    value === "completed" ||
+    value === "complete" ||
+    value === "finished" ||
+    value === "done" ||
+    value === "hoàn thành" ||
+    value === "hoan thanh"
+  ) {
+    return "full"
+  }
+
+  return "ongoing"
+}
+
+function getCompletionLabel(story: Story) {
+  const value = String(
+    (story as any).completion_status ??
+      (story as any).completionStatus ??
+      (story as any).story_status ??
+      (story as any).storyStatus ??
+      "",
+  )
+    .trim()
+    .toLowerCase()
+
+  if (
+    value === "full" ||
+    value === "completed" ||
+    value === "complete" ||
+    value === "finished" ||
+    value === "done" ||
+    value === "hoàn thành" ||
+    value === "hoan thanh"
+  ) {
+    return "Full"
+  }
+
+  return "Đang ra"
 }
 
 function mapRemoteStory(row: any, index: number): Story {
@@ -51,20 +116,23 @@ function mapRemoteStory(row: any, index: number): Story {
   const chapters = rawChapters.map((chapter: any, chapterIndex: number) => {
     const number = Number(chapter?.number ?? chapter?.chapter_number ?? chapterIndex + 1)
     const slug = chapter?.slug ?? `chuong-${number}`
+
     return {
       id: chapter?.id ?? slug,
       number,
       slug,
       title: chapter?.title ?? `Chương ${number}`,
       content: Array.isArray(chapter?.content) ? chapter.content : [chapter?.content ?? ""],
-      publishedAt: chapter?.published_at ?? chapter?.publishedAt ?? chapter?.created_at ?? new Date().toISOString(),
+      publishedAt:
+        chapter?.published_at ??
+        chapter?.publishedAt ??
+        chapter?.created_at ??
+        new Date().toISOString(),
       createdAt: chapter?.created_at ?? chapter?.createdAt,
     }
   })
 
-  const normalizedStatus = String(row?.status ?? "").toLowerCase() === "completed" || String(row?.status ?? "").toLowerCase() === "full"
-    ? "completed"
-    : "ongoing"
+  const completionStatus = getCompletionStatus(row)
 
   return {
     id: row?.id ?? row?.slug ?? `remote-${index}`,
@@ -74,15 +142,21 @@ function mapRemoteStory(row: any, index: number): Story {
     coverImage: getCoverImage(row),
     description: row?.description ?? row?.summary ?? row?.desc ?? "",
     genreSlugs,
-    status: normalizedStatus as Story["status"],
+    status: completionStatus === "full" ? "completed" : "ongoing",
     views: Number(row?.views ?? row?.view_count ?? 0),
     updatedAt: row?.updated_at ?? row?.updatedAt ?? row?.created_at ?? new Date().toISOString(),
     chapters,
     tags: Array.isArray(row?.tags)
       ? row.tags
       : typeof row?.tags === "string"
-        ? row.tags.split(",").map((tag: string) => tag.trim()).filter(Boolean)
+        ? row.tags
+            .split(",")
+            .map((tag: string) => tag.trim())
+            .filter(Boolean)
         : [],
+    completion_status: completionStatus,
+    target_chapters: row?.target_chapters ?? row?.targetChapters ?? null,
+    publish_status: row?.status ?? null,
   } as Story
 }
 
@@ -123,6 +197,7 @@ function SearchBar({
           placeholder="Tìm theo tên truyện hoặc tác giả…"
           className="h-10 w-full rounded-lg border border-zinc-800/80 bg-zinc-950/30 pl-9 pr-9 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition focus:border-amber-300/30 focus:ring-2 focus:ring-amber-300/10"
         />
+
         {query ? (
           <button
             type="button"
@@ -159,6 +234,7 @@ function SearchBar({
                     className="h-10 w-10 rounded-md object-cover"
                     loading="lazy"
                   />
+
                   <div className="min-w-0">
                     <div className="line-clamp-1 text-sm font-semibold text-zinc-100 group-hover:text-amber-200">
                       {story.title}
@@ -167,6 +243,7 @@ function SearchBar({
                       {story.author ?? "Đang cập nhật"}
                     </div>
                   </div>
+
                   <div className="ml-auto text-xs text-zinc-500">{story.chapters.length} ch</div>
                 </Link>
               ))}
@@ -180,24 +257,43 @@ function SearchBar({
   )
 }
 
-function LatestStoryRow({ story, getReadText }: { story: Story; getReadText: (s:any)=>string }) {
+function LatestStoryRow({
+  story,
+  getReadText,
+}: {
+  story: Story
+  getReadText: (s: any) => string
+}) {
   const latestChapter = story.chapters[story.chapters.length - 1]
-  const chapterHref = latestChapter ? `/doc-truyen/${story.slug}/${latestChapter.slug}` : `/truyen/${story.slug}`
+  const chapterHref = latestChapter
+    ? `/doc-truyen/${story.slug}/${latestChapter.slug}`
+    : `/truyen/${story.slug}`
+  const completionLabel = getCompletionLabel(story)
+  const isFull = completionLabel === "Full"
 
   return (
     <div className="grid grid-cols-[1fr_auto] items-start gap-3 px-4 py-3 text-sm transition hover:bg-zinc-900/30 sm:items-center sm:px-6">
       <div className="min-w-0">
-        <Link to={`/truyen/${story.slug}`} className="line-clamp-1 font-medium text-zinc-100 hover:text-amber-200">
+        <Link
+          to={`/truyen/${story.slug}`}
+          className="line-clamp-1 font-medium text-zinc-100 hover:text-amber-200"
+        >
           {story.title}
         </Link>
+
         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-          {story.status === "completed" ? (
-            <span className="rounded bg-emerald-400/15 px-2 py-0.5 font-semibold text-emerald-200">Full</span>
-          ) : (
-            <span className="rounded bg-sky-400/15 px-2 py-0.5 font-semibold text-sky-200">Đang ra</span>
-          )}
+          <span
+            className={
+              isFull
+                ? "rounded bg-emerald-400/15 px-2 py-0.5 font-semibold text-emerald-200"
+                : "rounded bg-sky-400/15 px-2 py-0.5 font-semibold text-sky-200"
+            }
+          >
+            {completionLabel}
+          </span>
+
           <span>{story.chapters.length} chương</span>
-          <span>{/* viewCounts passed via prop when needed */ getReadText(story)}</span>
+          <span>{getReadText(story)}</span>
           <span className="line-clamp-1">{story.author ?? "Đang cập nhật"}</span>
         </div>
       </div>
@@ -235,8 +331,10 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!mobileMenuOpen) return
+
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
+
     return () => {
       document.body.style.overflow = prevOverflow
     }
@@ -248,7 +346,10 @@ export default function HomePage() {
     async function loadRemoteStories() {
       try {
         const data = await fetchStoriesFromSupabase()
-        if (import.meta.env.DEV) console.log("[home-stories-fetch]", { data })
+
+        if (import.meta.env.DEV) {
+          console.log("[home-stories-fetch]", { data })
+        }
 
         const mapped = Array.isArray(data)
           ? data
@@ -257,18 +358,28 @@ export default function HomePage() {
               .filter((story) => story.slug && story.title)
           : []
 
-        if (import.meta.env.DEV) console.log("[home-real-stories]", mapped)
+        if (import.meta.env.DEV) {
+          console.log("[home-real-stories]", mapped)
+        }
+
         if (mounted) setRemoteStories(mapped)
-        // fetch view counts for mapped stories
+
         try {
-          const slugs = mapped.map((s:any) => s.slug).filter(Boolean)
+          const slugs = mapped.map((story: any) => story.slug).filter(Boolean)
+
           if (slugs.length) {
             const counts = await getStoryViewCounts(slugs)
-            if (import.meta.env.DEV) console.log('[view-counts]', counts)
-            if (mounted && counts) setViewCounts(counts as Record<string, number>)
+
+            if (import.meta.env.DEV) {
+              console.log("[view-counts]", counts)
+            }
+
+            if (mounted && counts) {
+              setViewCounts(counts as Record<string, number>)
+            }
           }
-        } catch (e) {
-          console.warn('[home-getViewCounts-error]', e)
+        } catch (error) {
+          console.warn("[home-getViewCounts-error]", error)
         }
       } catch (error) {
         if (import.meta.env.DEV) console.error("[home-stories-fetch-error]", error)
@@ -279,19 +390,25 @@ export default function HomePage() {
     }
 
     loadRemoteStories()
-    // fetch categories from supabase
+
     ;(async () => {
       try {
-        const { data, error } = await supabase.from('categories').select('id,name,slug,description').order('name', { ascending: true })
-        if (import.meta.env.DEV) console.debug('[home-categories-fetch]', { data, error })
+        const { data, error } = await supabase
+          .from("categories")
+          .select("id,name,slug,description")
+          .order("name", { ascending: true })
+
+        if (import.meta.env.DEV) console.debug("[home-categories-fetch]", { data, error })
         if (!mounted) return
+
         if (data && Array.isArray(data) && data.length) setRemoteCategories(data)
         else setRemoteCategories([])
-      } catch (e) {
-        if (import.meta.env.DEV) console.warn('[home-categories-fetch-error]', e)
+      } catch (error) {
+        if (import.meta.env.DEV) console.warn("[home-categories-fetch-error]", error)
         if (mounted) setRemoteCategories([])
       }
     })()
+
     return () => {
       mounted = false
     }
@@ -302,9 +419,11 @@ export default function HomePage() {
 
   const filteredStories = useMemo(() => {
     const q = normalizeText(debouncedQuery)
+
     let list = baseStories.filter((story) => {
       if (selectedGenre && !story.genreSlugs?.includes(selectedGenre)) return false
       if (!q) return true
+
       return normalizeText(story.title).includes(q) || normalizeText(story.author ?? "").includes(q)
     })
 
@@ -340,27 +459,30 @@ export default function HomePage() {
   const suggestions = useMemo(() => {
     const q = normalizeText(debouncedQuery)
     if (!q) return []
+
     return filteredStories.slice(0, 5)
   }, [debouncedQuery, filteredStories])
+
   const categoriesToShow = remoteCategories && remoteCategories.length ? remoteCategories : genres
 
   const activeGenreName = selectedGenre
-    ? (categoriesToShow.find((g: any) => g.slug === selectedGenre)?.name ?? selectedGenre)
+    ? (categoriesToShow.find((genre: any) => genre.slug === selectedGenre)?.name ?? selectedGenre)
     : "Tất cả"
 
   const pageCount = Math.max(1, Math.ceil(filteredStories.length / itemsPerPage))
 
-  function getReadText(s: any) {
-    if (s?.slug) {
-      const reads = viewCounts?.[s.slug] ?? 0
+  function getReadText(story: any) {
+    if (story?.slug) {
+      const reads = viewCounts?.[story.slug] ?? 0
       return `${reads.toLocaleString()} lượt đọc`
     }
-    return s?.views ? `${s.views.toLocaleString()} lượt đọc` : "0 lượt đọc"
+
+    return story?.views ? `${story.views.toLocaleString()} lượt đọc` : "0 lượt đọc"
   }
 
   return (
     <MainLayout
-      headerRight={(
+      headerRight={
         <SearchBar
           className="hidden sm:block"
           query={query}
@@ -372,8 +494,8 @@ export default function HomePage() {
           activeGenreName={activeGenreName}
           filteredStoriesLength={filteredStories.length}
         />
-      )}
-      headerBottom={(
+      }
+      headerBottom={
         <SearchBar
           query={query}
           setQuery={setQuery}
@@ -384,7 +506,7 @@ export default function HomePage() {
           activeGenreName={activeGenreName}
           filteredStoriesLength={filteredStories.length}
         />
-      )}
+      }
     >
       <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:py-10">
         <div className="mb-4 flex items-center gap-2">
@@ -409,6 +531,7 @@ export default function HomePage() {
           >
             Hot
           </button>
+
           <button
             type="button"
             onClick={() => setSortMode(sortMode === "latest" ? "none" : "latest")}
@@ -427,6 +550,7 @@ export default function HomePage() {
           <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/20 p-6 text-center text-sm text-zinc-400">
             <div className="text-lg font-semibold text-zinc-100">Không tìm thấy kết quả</div>
             <p className="mt-2">Không tìm thấy truyện nào khớp với “{debouncedQuery}”.</p>
+
             <button
               type="button"
               onClick={() => {
@@ -452,23 +576,31 @@ export default function HomePage() {
                     className="h-[160px] w-full rounded-xl object-cover sm:h-[220px]"
                     loading="lazy"
                   />
+
                   <div>
                     <p className="text-xs font-medium tracking-wide text-amber-300">
                       {usingRemote ? "Truyện mới đăng" : "Gợi ý hôm nay"}
                     </p>
+
                     <h2 className="mt-1 text-2xl font-semibold leading-tight sm:text-3xl">
                       {featured.title}
                     </h2>
+
                     <p className="mt-3 line-clamp-3 text-sm leading-6 text-zinc-300">
                       {featured.description}
                     </p>
+
                     <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-300">
                       {featured.genreSlugs.slice(0, 3).map((slug) => (
-                        <span key={slug} className="rounded-full border border-zinc-800 bg-zinc-950/40 px-3 py-1">
+                        <span
+                          key={slug}
+                          className="rounded-full border border-zinc-800 bg-zinc-950/40 px-3 py-1"
+                        >
                           {categoriesToShow.find((genre: any) => genre.slug === slug)?.name ?? slug}
                         </span>
                       ))}
                     </div>
+
                     <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
                       <Link
                         to={`/truyen/${featured.slug}`}
@@ -476,6 +608,7 @@ export default function HomePage() {
                       >
                         Xem truyện
                       </Link>
+
                       <Link
                         to={`/doc-truyen/${featured.slug}/${featured.chapters[0]?.slug ?? "chuong-1"}`}
                         className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-4 py-2 text-center text-sm font-semibold text-zinc-100 hover:bg-zinc-900/50"
@@ -491,6 +624,7 @@ export default function HomePage() {
             <section id="hot" className="scroll-mt-24">
               <div className="mb-4 flex items-end justify-between gap-3">
                 <h2 className="text-2xl font-semibold sm:text-3xl">Truyện Hot</h2>
+
                 {!usingRemote && remoteLoaded ? (
                   <span className="text-xs text-zinc-500">(Fake data — chưa có truyện public thật)</span>
                 ) : null}
@@ -507,22 +641,30 @@ export default function HomePage() {
                   Không có truyện nào phù hợp.
                 </div>
               )}
-            {/* mobile ad inserted after Hot on small screens */}
-            <div className="mt-4 sm:hidden">
-              {/* mobile ad from home ads (uses supabase) */}
-              <HomeAds />
-            </div>
+
+              <div className="mt-4 sm:hidden">
+                <HomeAds />
+              </div>
             </section>
 
-            <section id="new-updates" className="scroll-mt-24 rounded-2xl border border-zinc-800 bg-zinc-900/20">
+            <section
+              id="new-updates"
+              className="scroll-mt-24 rounded-2xl border border-zinc-800 bg-zinc-900/20"
+            >
               <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3 sm:px-6 sm:py-4">
                 <h2 className="text-lg font-semibold sm:text-xl">Truyện mới cập nhật</h2>
                 <span className="text-xs text-zinc-500">{filteredStories.length} truyện</span>
               </div>
 
               <div className="divide-y divide-zinc-800">
-                {latest.length ? latest.map((story) => <LatestStoryRow key={story.id} story={story} getReadText={getReadText} />) : (
-                  <div className="p-6 text-center text-sm text-zinc-400">Không có truyện nào khớp bộ lọc hiện tại.</div>
+                {latest.length ? (
+                  latest.map((story) => (
+                    <LatestStoryRow key={story.id} story={story} getReadText={getReadText} />
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-sm text-zinc-400">
+                    Không có truyện nào khớp bộ lọc hiện tại.
+                  </div>
                 )}
               </div>
 
@@ -536,9 +678,11 @@ export default function HomePage() {
                   >
                     Trước
                   </button>
+
                   <div className="text-sm text-zinc-300">
                     Trang <span className="font-semibold text-zinc-100">{currentPage}</span> / {pageCount}
                   </div>
+
                   <button
                     type="button"
                     onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
@@ -551,14 +695,24 @@ export default function HomePage() {
               ) : null}
             </section>
 
-            <section id="latest" className="scroll-mt-24 rounded-2xl border border-zinc-800 bg-zinc-900/20">
+            <section
+              id="latest"
+              className="scroll-mt-24 rounded-2xl border border-zinc-800 bg-zinc-900/20"
+            >
               <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3 sm:px-6 sm:py-4">
                 <h2 className="text-lg font-semibold sm:text-xl">Mới cập nhật</h2>
                 <span className="text-xs text-zinc-500">{filteredStories.length} truyện</span>
               </div>
+
               <div className="divide-y divide-zinc-800">
-                {latest.length ? latest.map((story) => <LatestStoryRow key={`latest-${story.id}`} story={story} getReadText={getReadText} />) : (
-                  <div className="p-6 text-center text-sm text-zinc-400">Không có truyện nào khớp bộ lọc hiện tại.</div>
+                {latest.length ? (
+                  latest.map((story) => (
+                    <LatestStoryRow key={`latest-${story.id}`} story={story} getReadText={getReadText} />
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-sm text-zinc-400">
+                    Không có truyện nào khớp bộ lọc hiện tại.
+                  </div>
                 )}
               </div>
             </section>
@@ -570,15 +724,21 @@ export default function HomePage() {
                 <h3 className="text-lg font-semibold">Bảng xếp hạng</h3>
                 <span className="text-xs text-zinc-500">Top lượt đọc</span>
               </div>
+
               <div className="space-y-2 text-sm text-zinc-200">
                 {ranking.map((story, index) => (
-                  <Link key={story.id} to={`/truyen/${story.slug}`} className="flex items-center gap-3 rounded-lg p-2 hover:bg-zinc-900/40">
+                  <Link
+                    key={story.id}
+                    to={`/truyen/${story.slug}`}
+                    className="flex items-center gap-3 rounded-lg p-2 hover:bg-zinc-900/40"
+                  >
                     <div className="w-6 text-xs font-semibold text-amber-300">#{index + 1}</div>
                     <img src={story.coverImage} alt={story.title} className="h-10 w-10 rounded object-cover" />
+
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">{story.title}</div>
                       <div className="truncate text-xs text-zinc-400">
-          <span>{getReadText(story)}</span>
+                        <span>{getReadText(story)}</span>
                       </div>
                     </div>
                   </Link>
@@ -591,6 +751,7 @@ export default function HomePage() {
                 <h3 className="text-lg font-semibold">Thể loại</h3>
                 <span className="text-xs text-zinc-500">{activeGenreName}</span>
               </div>
+
               <button
                 type="button"
                 onClick={() => setSelectedGenre(null)}
@@ -603,6 +764,7 @@ export default function HomePage() {
               >
                 Tất cả
               </button>
+
               <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-1">
                 {categoriesToShow.map((genre: any) => (
                   <button
@@ -620,12 +782,11 @@ export default function HomePage() {
                   </button>
                 ))}
               </div>
+
               <p className="mt-3 text-xs text-zinc-500">Click để lọc theo thể loại.</p>
             </section>
 
-            {/* 'Mẹo đọc' card removed as requested */}
             <section>
-              {/* Sidebar ad (desktop) */}
               <div className="mt-3">
                 <HomeAds />
               </div>
@@ -642,12 +803,14 @@ export default function HomePage() {
             onClick={() => setMobileMenuOpen(false)}
             aria-label="Đóng menu"
           />
+
           <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-auto rounded-t-2xl border border-zinc-800 bg-zinc-950 p-4 shadow-2xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">Menu / Lọc</h3>
                 <p className="mt-1 text-xs text-zinc-500">Chọn thể loại hoặc cách sắp xếp.</p>
               </div>
+
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
@@ -660,7 +823,10 @@ export default function HomePage() {
 
             <div className="space-y-4">
               <div>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Sắp xếp</div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Sắp xếp
+                </div>
+
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     ["none", "Mặc định"],
@@ -685,7 +851,10 @@ export default function HomePage() {
               </div>
 
               <div>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Thể loại</div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Thể loại
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -699,6 +868,7 @@ export default function HomePage() {
                   >
                     Tất cả
                   </button>
+
                   {categoriesToShow.map((genre: any) => (
                     <button
                       key={genre.slug}

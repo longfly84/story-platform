@@ -1294,7 +1294,11 @@ setCurrentAction(
               setCurrentAction(`Insert story draft: ${parsed.storyTitle}`)
 
               createdStory = await insertStoryDraft({
-                parsed,
+                parsed: {
+                  ...parsed,
+                  storyTitle: storySeed.title || parsed.storyTitle,
+                  storyDescription: storySeed.corePremise || parsed.storyDescription,
+                },
                 genre,
                 heroine,
                 config,
