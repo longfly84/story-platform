@@ -106,21 +106,21 @@ function buildCoverPromptFromBody(body: CoverRequestBody) {
       characterDirection =
         'Main character: one beautiful modern East Asian heroine, polished office or luxury fashion styling, confident gaze, intelligent aura, elegant and powerful female lead.'
       sceneDirection =
-        'Background: luxury office, city lights, upscale penthouse, mansion interior, or hotel lobby, soft bokeh, clean commercial composition.'
+        'Background: modern office boardroom, glass meeting room, law office, city skyline, airport business lounge, or corporate hallway, soft bokeh, clean commercial composition. Do not default to hotel lobby or golden luxury lighting.'
       moodDirection =
         'Mood: upscale modern Asian drama, polished, romantic tension, confident, premium mobile-reading-app cover.'
     } else if (isMarriageDrama) {
       characterDirection =
         'Main character: one beautiful modern East Asian heroine, elegant styling, expressive eyes, emotionally hurt but strong, graceful and memorable webnovel female lead.'
       sceneDirection =
-        'Background: luxury apartment, villa, hotel corridor, balcony at night, bedroom doorway, or elegant domestic setting with soft cinematic bokeh.'
+        'Background: apartment, villa, courthouse hallway, hospital corridor, rainy balcony, family dining room, or hotel corridor only if the plot requires it, with soft cinematic bokeh. Avoid default warm hotel lighting.'
       moodDirection =
         'Mood: romantic drama, betrayal tension, emotional intensity, soft glamorous lighting, Asian webnovel cover aesthetic.'
     } else if (isRevenge) {
       characterDirection =
         'Main character: one beautiful modern East Asian heroine, sharp gaze, calm expression, elegant styling, controlled anger, strong revenge-female-lead aura.'
       sceneDirection =
-        'Background: modern Asian drama setting, luxury interior, city lights, elegant mansion, soft depth of field, visually rich but clean.'
+        'Background: modern Asian drama setting, office boardroom, airport terminal, law office, city lights, rainy street, or mansion only if the plot requires it, soft depth of field, visually rich but clean. Avoid default golden luxury interior.'
       moodDirection =
         'Mood: dramatic, revenge-driven, elegant, polished, highly clickable cover for a trending Asian webnovel.'
     } else {
@@ -146,9 +146,9 @@ function buildCoverPromptFromBody(body: CoverRequestBody) {
 
     'Art style: polished semi-realistic Asian webnovel cover, modern manhua / Korean romance illustration influence, beautiful commercial mobile-reading-app cover.',
     'Composition: one large beautiful East Asian heroine as the clear focal point, upper-body or full-body portrait, elegant pose, expressive eyes, clean silhouette.',
-    'Background: soft cinematic depth of field, blurred luxury interior or city night lights, not too detailed, not cluttered.',
-    'Lighting: soft glamorous lighting, warm highlights, gentle rim light, attractive skin tones, refined romantic-drama atmosphere.',
-    'Color palette: bright, elegant, clean, premium, not muddy, not overly dark, not brown-heavy.',
+    'Background: soft cinematic depth of field based on the story context, not always luxury interior. Use airport terminal, office boardroom, law office, hospital corridor, school gate, rainy street, apartment, city night, or family mansion only when it matches the story. Avoid default hotel lobby, perfume-ad room, ring light, and warm luxury interior.',
+    'Lighting: cinematic lighting selected by story mood, not always warm; allow cold blue, steel gray, rainy neon, office fluorescent, airport night light, legal-office neutral light, or dramatic red/cyan contrast. Avoid default golden/yellow/champagne lighting unless the story specifically needs a luxury banquet or hotel mood.',
+    'Color palette: choose a distinct palette for this story. Prefer cold blue + steel gray, navy + white, cyan office light, rainy airport blue, legal-office gray + black, deep red + black, purple neon + dark city, or clean hospital white/green when appropriate. Do not default to yellow/golden/champagne/brown-heavy palettes.',
     'Face quality: beautiful East Asian female face, symmetrical features, delicate makeup, clear eyes, attractive novel-cover look.',
     'Image quality: high detail, sharp face, polished hair, elegant clothing, clean hands, professional digital illustration.',
     'The image must look like a popular Chinese/Korean/Vietnamese online novel cover.',
