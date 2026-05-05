@@ -4,11 +4,26 @@ const OPENAI_MODERATION_MODEL = process.env.OPENAI_MODERATION_MODEL || 'omni-mod
 type ModerationResult = {
   ok: boolean
   flagged: boolean
+  blocked: boolean
   reason: string | null
   categories: Record<string, boolean>
   categoryScores: Record<string, number>
   raw: any
 }
+
+const SOFT_ALLOWED_CATEGORIES = new Set([
+  'violence',
+])
+
+const HARD_BLOCK_CATEGORIES = new Set([
+  'sexual/minors',
+  'self-harm',
+  'self-harm/intent',
+  'self-harm/instructions',
+  'violence/graphic',
+  'hate/threatening',
+  'harassment/threatening',
+])
 
 function buildFlagReason(categories: Record<string, boolean>) {
   const flaggedKeys = Object.entries(categories)
@@ -20,6 +35,22 @@ function buildFlagReason(categories: Record<string, boolean>) {
   }
 
   return `Flagged categories: ${flaggedKeys.join(', ')}`
+}
+
+function shouldBlockModeration(categories: Record<string, boolean>) {
+  const flaggedKeys = Object.entries(categories)
+    .filter(([, value]) => Boolean(value))
+    .map(([key]) => key)
+
+  if (!flaggedKeys.length) return false
+
+  const hasHardBlock = flaggedKeys.some((key) => HARD_BLOCK_CATEGORIES.has(key))
+  if (hasHardBlock) return true
+
+  const onlySoftAllowed = flaggedKeys.every((key) => SOFT_ALLOWED_CATEGORIES.has(key))
+  if (onlySoftAllowed) return false
+
+  return true
 }
 
 async function requestModeration(input: string) {
@@ -76,6 +107,7 @@ export async function moderateText(input: string): Promise<ModerationResult> {
     return {
       ok: true,
       flagged: false,
+      blocked: false,
       reason: null,
       categories: {},
       categoryScores: {},
@@ -89,10 +121,12 @@ export async function moderateText(input: string): Promise<ModerationResult> {
   const categories = (first?.categories || {}) as Record<string, boolean>
   const categoryScores = (first?.category_scores || {}) as Record<string, number>
   const reason = buildFlagReason(categories)
+  const blocked = shouldBlockModeration(categories)
 
   return {
-    ok: !flagged,
+    ok: !blocked,
     flagged,
+    blocked,
     reason,
     categories,
     categoryScores,
@@ -103,18 +137,28 @@ export async function moderateText(input: string): Promise<ModerationResult> {
 export async function moderateTextOrThrow(input: string, contextLabel = 'text') {
   const result = await moderateText(input)
 
+  if (result.flagged && !result.blocked) {
+    console.warn(
+      `[moderation] ${contextLabel} flagged but allowed. ${result.reason || ''}`,
+    )
+  }
+
   if (!result.ok) {
     const error = new Error(
-      `[moderation] ${contextLabel} blocked. ${result.reason || 'Content flagged by moderation.'}`
+      `[moderation] ${contextLabel} blocked. ${
+        result.reason || 'Content blocked by moderation.'
+      }`,
     ) as Error & {
       detail?: unknown
       flagged?: boolean
+      blocked?: boolean
       categories?: Record<string, boolean>
       categoryScores?: Record<string, number>
     }
 
     error.detail = result.raw
     error.flagged = result.flagged
+    error.blocked = result.blocked
     error.categories = result.categories
     error.categoryScores = result.categoryScores
 
