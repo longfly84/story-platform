@@ -71,6 +71,7 @@ type ContinueExistingStoriesParams = {
   config: AIFactoryConfig
   continueStoryLimit: number
   continueChaptersPerStory: number
+  selectedContinueStoryId?: string
   stopRequestedRef: { current: boolean }
   setStatus: (status: FactoryStatus) => void
   setCurrentAction: (value: string) => void
@@ -326,6 +327,7 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
     config,
     continueStoryLimit,
     continueChaptersPerStory,
+    selectedContinueStoryId = 'auto',
     stopRequestedRef,
     setStatus,
     setCurrentAction,
@@ -344,18 +346,28 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
   setLogs([])
 
   addLog(
-    `Factory sẽ viết tiếp tối đa ${continueStoryLimit} truyện, mỗi truyện thêm tối đa ${continueChaptersPerStory} chương.`,
+    selectedContinueStoryId === 'auto'
+      ? `Factory sẽ viết tiếp tối đa ${continueStoryLimit} truyện, mỗi truyện thêm tối đa ${continueChaptersPerStory} chương.`
+      : `Factory sẽ viết tiếp truyện đã chọn, thêm tối đa ${continueChaptersPerStory} chương.`,
     'info',
   )
 
   try {
     const scannedStories = await scanIncompleteStories()
-    const candidates = scannedStories.slice(0, Math.max(1, continueStoryLimit))
+    const candidates =
+      selectedContinueStoryId === 'auto'
+        ? scannedStories.slice(0, Math.max(1, continueStoryLimit))
+        : scannedStories.filter((story) => String((story as any).id) === selectedContinueStoryId)
 
     if (!candidates.length) {
       setStatus('success')
       setCurrentAction('Không có truyện dang dở cần viết tiếp')
-      addLog('Không có truyện nào thiếu chương theo target.', 'warning')
+      addLog(
+        selectedContinueStoryId === 'auto'
+          ? 'Không có truyện nào thiếu chương theo target.'
+          : 'Truyện đã chọn không còn thiếu chương hoặc không tìm thấy trong danh sách scan.',
+        'warning',
+      )
       setJobs([])
       return
     }

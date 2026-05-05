@@ -30,6 +30,8 @@ type AIFactoryPanelViewProps = {
   setContinueChaptersPerStory: Dispatch<SetStateAction<number>>
   continueStatusFilter: ContinueStatusFilter
   setContinueStatusFilter: Dispatch<SetStateAction<ContinueStatusFilter>>
+  selectedContinueStoryId: string
+  setSelectedContinueStoryId: Dispatch<SetStateAction<string>>
   config: AIFactoryConfig
   updateConfig: <K extends keyof AIFactoryConfig>(key: K, value: AIFactoryConfig[K]) => void
   setOpenaiConfirmed: Dispatch<SetStateAction<boolean>>
@@ -71,6 +73,8 @@ export default function AIFactoryPanelView({
   setContinueChaptersPerStory,
   continueStatusFilter,
   setContinueStatusFilter,
+  selectedContinueStoryId,
+  setSelectedContinueStoryId,
   config,
   updateConfig,
   setOpenaiConfirmed,
@@ -101,6 +105,9 @@ export default function AIFactoryPanelView({
 }: AIFactoryPanelViewProps) {
   const chapterMinChars = Number((config as any).chapterMinChars ?? 3500)
   const chapterMaxChars = Number((config as any).chapterMaxChars ?? 4500)
+  const selectedContinueStory = incompleteStories.find(
+    (story) => String((story as any).id) === selectedContinueStoryId,
+  )
 
   function updateChapterCharRange(nextMin: number, nextMax: number) {
     const safeMin = clampNumber(Number(nextMin), 1000, 12000)
@@ -142,7 +149,12 @@ export default function AIFactoryPanelView({
               <select
                 value={factoryMode}
                 disabled={isRunning}
-                onChange={(event) => setFactoryMode(event.target.value as FactoryMode)}
+                onChange={(event) => {
+                  setFactoryMode(event.target.value as FactoryMode)
+                  if (event.target.value !== 'continue-existing') {
+                    setSelectedContinueStoryId('auto')
+                  }
+                }}
                 className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
               >
                 <option value="create-new">Tạo truyện mới</option>
@@ -154,7 +166,7 @@ export default function AIFactoryPanelView({
             </div>
 
             {factoryMode === 'continue-existing' ? (
-              <div className="mb-4 grid gap-4 sm:grid-cols-3">
+              <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div>
                   <FieldLabel>Số truyện dang dở cần xử lý</FieldLabel>
                   <input
@@ -181,6 +193,29 @@ export default function AIFactoryPanelView({
                     className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                   />
                   <SmallHint>Ví dụ truyện 1/15, nhập 3 sẽ tạo chương 2–4.</SmallHint>
+                </div>
+
+                <div>
+                  <FieldLabel>Chọn truyện viết tiếp</FieldLabel>
+                  <select
+                    value={selectedContinueStoryId}
+                    disabled={isRunning}
+                    onChange={(event) => setSelectedContinueStoryId(event.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                  >
+                    <option value="auto">Tự động — lấy theo danh sách scan</option>
+                    {incompleteStories.map((story) => {
+                      const storyId = String((story as any).id || '')
+                      if (!storyId) return null
+
+                      return (
+                        <option key={storyId} value={storyId}>
+                          {story.title || 'Truyện chưa có tên'} — {story.currentChapters}/{story.targetChapters} chương
+                        </option>
+                      )
+                    })}
+                  </select>
+                  <SmallHint>Muốn viết thêm 2 chương cho 1 truyện cụ thể thì scan trước, chọn truyện, rồi nhập 2.</SmallHint>
                 </div>
 
                 <div>
@@ -513,6 +548,14 @@ export default function AIFactoryPanelView({
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300">
                 Đã tìm thấy: <span className="font-bold text-white">{incompleteStories.length}</span> truyện
               </div>
+
+              <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-2 text-sm text-yellow-100">
+                {selectedContinueStoryId === 'auto'
+                  ? 'Đang chọn: Tự động theo danh sách scan'
+                  : selectedContinueStory
+                    ? `Đang chọn: ${selectedContinueStory.title || 'Truyện chưa có tên'} — ${selectedContinueStory.currentChapters}/${selectedContinueStory.targetChapters} chương`
+                    : 'Đang chọn: truyện chưa có trong danh sách scan'}
+              </div>
             </div>
 
             <div className="mt-4 max-h-64 space-y-2 overflow-auto rounded-xl border border-white/10 bg-black/20 p-2">
@@ -520,7 +563,12 @@ export default function AIFactoryPanelView({
                 incompleteStories.slice(0, 20).map((story) => (
                   <div
                     key={(story as any).id || story.slug || story.title}
-                    className="rounded-lg border border-white/10 bg-white/[0.03] p-3"
+                    className={cx(
+                      'rounded-lg border p-3',
+                      selectedContinueStoryId === String((story as any).id)
+                        ? 'border-yellow-300/60 bg-yellow-300/10'
+                        : 'border-white/10 bg-white/[0.03]',
+                    )}
                   >
                     <div className="text-sm font-bold text-white">{story.title}</div>
                     <div className="mt-1 text-xs text-slate-400">

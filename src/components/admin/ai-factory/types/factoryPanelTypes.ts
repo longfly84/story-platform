@@ -2,6 +2,7 @@ import type { ExistingStory } from '../aiFactoryTypes'
 
 export type FactoryMode = 'create-new' | 'continue-existing'
 export type ContinueStatusFilter = 'draft' | 'published' | 'all'
+export type ContinueStorySelection = 'auto' | string
 
 export type ExistingChapterRow = {
   id?: string
