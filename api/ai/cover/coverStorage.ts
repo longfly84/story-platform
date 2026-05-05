@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 
-import { sanitizeFileName } from './coverText'
+import { sanitizeFileName } from './coverText.js'
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||

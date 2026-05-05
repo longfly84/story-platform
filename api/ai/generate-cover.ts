@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import type { JsonRecord } from './cover/coverTypes'
-import { setCors } from './cover/coverHttp'
-import { safeString } from './cover/coverText'
-import { extractStoryInput } from './cover/storyInput'
-import { buildCoverPrompt } from './cover/coverPrompt'
-import { generateCoverImage } from './cover/openaiImage'
-import { SUPABASE_COVER_BUCKET, uploadCoverToSupabase } from './cover/coverStorage'
+import type { JsonRecord } from './cover/coverTypes.js'
+import { setCors } from './cover/coverHttp.js'
+import { safeString } from './cover/coverText.js'
+import { extractStoryInput } from './cover/storyInput.js'
+import { buildCoverPrompt } from './cover/coverPrompt.js'
+import { generateCoverImage } from './cover/openaiImage.js'
+import { SUPABASE_COVER_BUCKET, uploadCoverToSupabase } from './cover/coverStorage.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res)

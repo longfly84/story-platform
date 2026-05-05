@@ -1,5 +1,5 @@
-import type { JsonRecord, StoryInput } from './coverTypes'
-import { safeArray, safeString } from './coverText'
+import type { JsonRecord, StoryInput } from './coverTypes.js'
+import { safeArray, safeString } from './coverText.js'
 
 export function extractStoryInput(body: JsonRecord): StoryInput {
   const source = body.story || body.storyData || body.payload || body

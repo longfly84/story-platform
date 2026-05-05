@@ -1,7 +1,7 @@
-import type { CoverBuildResult, CoverConcept, JsonRecord, StoryInput } from './coverTypes'
-import { parseMaybeJson, uniqueStrings } from './coverText'
-import { pickSummary } from './storyInput'
-import { buildCoverConcept, pickStoryField } from './coverConcept'
+import type { CoverBuildResult, CoverConcept, JsonRecord, StoryInput } from './coverTypes.js'
+import { parseMaybeJson, uniqueStrings } from './coverText.js'
+import { pickSummary } from './storyInput.js'
+import { buildCoverConcept, pickStoryField } from './coverConcept.js'
 
 function joinLines(lines: Array<string | false | null | undefined>) {
   return lines.filter(Boolean).join('\n')

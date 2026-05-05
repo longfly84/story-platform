@@ -1,6 +1,6 @@
-import type { CoverBlueprint, CoverConcept, JsonRecord, StoryInput, TitleDrivenVisuals } from './coverTypes'
-import { normalizeText, pickVariant, safeString, uniqueStrings, stringifyUseful } from './coverText'
-import { pickSummary } from './storyInput'
+import type { CoverBlueprint, CoverConcept, JsonRecord, StoryInput, TitleDrivenVisuals } from './coverTypes.js'
+import { normalizeText, pickVariant, safeString, uniqueStrings, stringifyUseful } from './coverText.js'
+import { pickSummary } from './storyInput.js'
 
 function flattenStoryKeywords(story: StoryInput, storyDna: JsonRecord | null): string {
   const pieces: string[] = [

@@ -1,4 +1,4 @@
-import type { JsonRecord } from './coverTypes'
+import type { JsonRecord } from './coverTypes.js'
 
 export function safeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
