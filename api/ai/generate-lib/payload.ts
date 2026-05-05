@@ -1,6 +1,6 @@
-import type { GeneratePayload, ModelKey, NormalizedGeneratePayload } from './types'
-import { safeNumber, safeStringArray, safeText } from './textUtils'
-import { normalizeMotifFingerprintArray, normalizeStorySeed } from './storyPlanUtils'
+import type { GeneratePayload, ModelKey, NormalizedGeneratePayload } from './types.js'
+import { safeNumber, safeStringArray, safeText } from './textUtils.js'
+import { normalizeMotifFingerprintArray, normalizeStorySeed } from './storyPlanUtils.js'
 
 export function createNameSeed() {
   const cryptoApi = globalThis.crypto

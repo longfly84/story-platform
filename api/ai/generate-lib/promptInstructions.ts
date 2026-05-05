@@ -1,6 +1,6 @@
-import type { NormalizedGeneratePayload, StoryMotifFingerprint } from './types'
-import { safeText } from './textUtils'
-import { formatMotifFingerprint, formatStoryPlanForPrompt } from './storyPlanUtils'
+import type { NormalizedGeneratePayload, StoryMotifFingerprint } from './types.js'
+import { safeText } from './textUtils.js'
+import { formatMotifFingerprint, formatStoryPlanForPrompt } from './storyPlanUtils.js'
 
 export function getModuleInstruction(moduleId?: string) {
   const normalized = safeText(moduleId).toLowerCase()

@@ -1,5 +1,5 @@
-import type { FactoryStoryPlan, FactoryStoryPlanChapter, FactoryStorySeed, StoryMotifFingerprint } from './types'
-import { safeNumber, safeStringArray, safeText } from './textUtils'
+import type { FactoryStoryPlan, FactoryStoryPlanChapter, FactoryStorySeed, StoryMotifFingerprint } from './types.js'
+import { safeNumber, safeStringArray, safeText } from './textUtils.js'
 
 export function normalizeMotifFingerprint(value: unknown): StoryMotifFingerprint | undefined {
   if (!value || typeof value !== 'object') return undefined

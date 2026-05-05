@@ -1,8 +1,8 @@
-import type { GeneratePayload } from './generate-lib/types'
-import { getLengthRule, getStoryEditorPassEnabled, getTextModel } from './generate-lib/model'
-import { callOpenAIText } from './generate-lib/openaiClient'
-import { normalizePayload } from './generate-lib/payload'
-import { buildPrompt, buildStoryEditorPrompt } from './generate-lib/promptBuilders'
+import type { GeneratePayload } from './generate-lib/types.js'
+import { getLengthRule, getStoryEditorPassEnabled, getTextModel } from './generate-lib/model.js'
+import { callOpenAIText } from './generate-lib/openaiClient.js'
+import { normalizePayload } from './generate-lib/payload.js'
+import { buildPrompt, buildStoryEditorPrompt } from './generate-lib/promptBuilders.js'
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {

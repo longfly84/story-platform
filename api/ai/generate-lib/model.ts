@@ -1,4 +1,4 @@
-import type { NormalizedGeneratePayload } from './types'
+import type { NormalizedGeneratePayload } from './types.js'
 
 export function getLengthRule(chapterLengthLabel: string) {
   const normalized = chapterLengthLabel.toLowerCase()

@@ -1,6 +1,6 @@
-import type { NormalizedGeneratePayload } from './types'
-import { compactText, safeText } from './textUtils'
-import { getLengthRule } from './model'
+import type { NormalizedGeneratePayload } from './types.js'
+import { compactText, safeText } from './textUtils.js'
+import { getLengthRule } from './model.js'
 import {
   buildStoryContext,
   getChapterAdvancementInstruction,
@@ -21,7 +21,7 @@ import {
   getTechnicalReportInstruction,
   getTitleNamingInstruction,
   getVillainPresenceInstruction,
-} from './promptInstructions'
+} from './promptInstructions.js'
 
 export function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const moduleInstruction = getModuleInstruction(payload.moduleId)
