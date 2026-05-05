@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 
@@ -32,6 +31,7 @@ interface StoryInput {
   summary?: string
   description?: string
   genre?: string
+  genreLabel?: string
   genres?: string[]
   tags?: string[]
   slug?: string
@@ -55,12 +55,7 @@ const SUPABASE_SERVICE_ROLE_KEY =
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   ''
-const SUPABASE_COVER_BUCKET =
-  process.env.SUPABASE_COVER_BUCKET || 'story-covers'
-
-const openai = OPENAI_API_KEY
-  ? new OpenAI({ apiKey: OPENAI_API_KEY })
-  : null
+const SUPABASE_COVER_BUCKET = process.env.SUPABASE_COVER_BUCKET || 'story-covers'
 
 const supabase =
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
@@ -81,9 +76,7 @@ function safeString(value: unknown): string {
 
 function safeArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
-  return value
-    .map((item) => safeString(item))
-    .filter(Boolean)
+  return value.map((item) => safeString(item)).filter(Boolean)
 }
 
 function parseMaybeJson<T = JsonRecord>(value: unknown): T | null {
@@ -123,31 +116,58 @@ function uniqueStrings(list: string[], limit = 8): string[] {
 
 function extractStoryInput(body: JsonRecord): StoryInput {
   const source = body.story || body.storyData || body.payload || body
+  const storyDna = source.story_dna ?? source.storyDna ?? body.story_dna ?? body.storyDna ?? null
 
   return {
-    id: safeString(source.id),
-    title: safeString(source.title),
-    summary: safeString(source.summary),
-    description: safeString(source.description || source.desc),
-    genre: safeString(source.genre),
-    genres: safeArray(source.genres),
-    tags: safeArray(source.tags),
-    slug: safeString(source.slug),
-    story_dna: source.story_dna ?? source.storyDna ?? null,
-    storyDna: source.storyDna ?? source.story_dna ?? null,
-    author: safeString(source.author),
-    style: safeString(source.style),
-    visual_style: safeString(source.visual_style),
-    cover_style: safeString(source.cover_style),
+    id: safeString(source.id || body.storyId || body.id),
+    title: safeString(source.title || body.title),
+    summary: safeString(source.summary || body.summary),
+    description: safeString(source.description || source.desc || body.description || body.desc),
+    genre: safeString(source.genre || body.genre),
+    genreLabel: safeString(source.genreLabel || body.genreLabel),
+    genres: safeArray(source.genres || body.genres),
+    tags: safeArray(source.tags || body.tags),
+    slug: safeString(source.slug || body.slug),
+    story_dna: storyDna,
+    storyDna,
+    author: safeString(source.author || body.author),
+    style: safeString(source.style || body.style),
+    visual_style: safeString(source.visual_style || body.visual_style),
+    cover_style: safeString(source.cover_style || body.cover_style),
   }
 }
 
 function pickSummary(story: StoryInput): string {
-  return (
-    safeString(story.summary) ||
-    safeString(story.description) ||
-    ''
-  )
+  return safeString(story.summary) || safeString(story.description) || ''
+}
+
+function stringifyUseful(value: unknown): string {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (Array.isArray(value)) return value.map(stringifyUseful).filter(Boolean).join(' | ')
+  if (typeof value === 'object') {
+    const raw = value as JsonRecord
+    return [
+      raw.title,
+      raw.corePremise,
+      raw.openingScene,
+      raw.incitingIncident,
+      raw.evidenceObject,
+      raw.mainConflict,
+      raw.hiddenTruth,
+      raw.setting,
+      raw.villainType,
+      raw.emotionalHook,
+      raw.powerStructure,
+      raw.publicPressure,
+      raw.shortFingerprint,
+    ]
+      .map(stringifyUseful)
+      .filter(Boolean)
+      .join(' | ')
+  }
+  return ''
 }
 
 function flattenStoryKeywords(story: StoryInput, storyDna: JsonRecord | null): string {
@@ -156,22 +176,26 @@ function flattenStoryKeywords(story: StoryInput, storyDna: JsonRecord | null): s
     story.summary,
     story.description,
     story.genre,
+    story.genreLabel,
     ...(story.genres || []),
     ...(story.tags || []),
-  ]
+  ].filter(Boolean) as string[]
 
   if (storyDna) {
     const maybePieces = [
       storyDna.corePremise,
       storyDna.openingScene,
+      storyDna.incitingIncident,
       storyDna.hiddenTruth,
       storyDna.evidenceObject,
+      storyDna.evidenceType,
       storyDna.emotionalStake,
       storyDna.villainAttack,
       storyDna.heroineCounter,
       storyDna.coverPromptHint,
       storyDna.motifText,
       storyDna.factory_seed,
+      storyDna.storyPlan,
       storyDna.arena,
       storyDna.setting,
       storyDna.hookVisual,
@@ -179,7 +203,8 @@ function flattenStoryKeywords(story: StoryInput, storyDna: JsonRecord | null): s
     ]
 
     for (const item of maybePieces) {
-      if (typeof item === 'string') pieces.push(item)
+      const text = stringifyUseful(item)
+      if (text) pieces.push(text)
     }
 
     if (Array.isArray(storyDna.tags)) {
@@ -188,7 +213,6 @@ function flattenStoryKeywords(story: StoryInput, storyDna: JsonRecord | null): s
 
     if (storyDna.coverConcept && typeof storyDna.coverConcept === 'object') {
       const coverConcept = storyDna.coverConcept as JsonRecord
-
       pieces.push(
         safeString(coverConcept.arena),
         safeString(coverConcept.mood),
@@ -205,16 +229,17 @@ function flattenStoryKeywords(story: StoryInput, storyDna: JsonRecord | null): s
       const fp = storyDna.motifFingerprint as JsonRecord
       const fpCandidates = [
         fp.premiseFamily,
-        fp.premiseConflict,
-        fp.premiseObject,
-        fp.visualHook,
-        fp.arenaType,
-        fp.evidenceType,
-        fp.publicArena,
+        fp.openingArena,
+        fp.mainArena,
         fp.secondaryArena,
-        fp.deadlineStyle,
-        fp.heroineCounterType,
+        fp.publicPressure,
+        fp.powerStructure,
+        fp.evidenceObject,
+        fp.evidenceType,
+        fp.hiddenTruthType,
         fp.villainAttackType,
+        fp.heroineCounterType,
+        fp.endingPromise,
       ]
 
       for (const item of fpCandidates) {
@@ -236,6 +261,7 @@ function inferBlueprint(story: StoryInput, storyDna: JsonRecord | null): CoverBl
     haystack.includes('paparazzi') ||
     haystack.includes('hop bao') ||
     haystack.includes('livestream') ||
+    haystack.includes('weibo') ||
     haystack.includes('giai tri')
   ) {
     return 'showbiz-scandal'
@@ -281,7 +307,8 @@ function inferBlueprint(story: StoryInput, storyDna: JsonRecord | null): CoverBl
     haystack.includes('lop hoc') ||
     haystack.includes('con nho') ||
     haystack.includes('giao vien') ||
-    haystack.includes('quyen nuoi con')
+    haystack.includes('quyen nuoi con') ||
+    haystack.includes('mau giao')
   ) {
     return 'child-school'
   }
@@ -290,6 +317,7 @@ function inferBlueprint(story: StoryInput, storyDna: JsonRecord | null): CoverBl
     haystack.includes('benh vien') ||
     haystack.includes('ho so benh an') ||
     haystack.includes('xet nghiem') ||
+    haystack.includes('adn') ||
     haystack.includes('dna') ||
     haystack.includes('phong cap cuu') ||
     haystack.includes('bac si')
@@ -304,7 +332,8 @@ function inferBlueprint(story: StoryInput, storyDna: JsonRecord | null): CoverBl
     haystack.includes('thuong chien') ||
     haystack.includes('co phan') ||
     haystack.includes('hop dong') ||
-    haystack.includes('doanh nghiep')
+    haystack.includes('doanh nghiep') ||
+    haystack.includes('cong chung')
   ) {
     return 'corporate-war'
   }
@@ -314,36 +343,39 @@ function inferBlueprint(story: StoryInput, storyDna: JsonRecord | null): CoverBl
 
 function pickStoryField(storyDna: JsonRecord | null, keys: string[]): string {
   if (!storyDna) return ''
+
   for (const key of keys) {
     const value = storyDna[key]
-    if (typeof value === 'string' && value.trim()) return value.trim()
+    const text = stringifyUseful(value)
+    if (text.trim()) return text.trim()
   }
+
   return ''
 }
 
 function pickArrayField(storyDna: JsonRecord | null, keys: string[]): string[] {
   if (!storyDna) return []
+
   for (const key of keys) {
     const value = storyDna[key]
     if (Array.isArray(value)) {
-      return value
-        .map((item) => safeString(item))
-        .filter(Boolean)
+      return value.map((item) => safeString(item)).filter(Boolean)
     }
   }
+
   return []
 }
 
 function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): CoverConcept {
   const blueprint = inferBlueprint(story, storyDna)
 
-  const storySummary = pickSummary(story)
   const heroineLook =
     pickStoryField(storyDna, [
       'heroineVisual',
       'heroineLook',
       'heroineArchetype',
       'heroineType',
+      'heroineArc',
     ]) || 'một nữ chính hiện đại, đẹp sắc sảo, ánh mắt mạnh, có khí chất chịu đựng nhưng không yếu'
 
   const dnaCoverConcept =
@@ -352,7 +384,9 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
       : null
 
   const dnaClueProps = uniqueStrings([
-    ...(dnaCoverConcept?.clueProps || []),
+    ...(Array.isArray(dnaCoverConcept?.clueProps)
+      ? dnaCoverConcept.clueProps.map((x: unknown) => safeString(x))
+      : []),
     ...pickArrayField(storyDna, ['clueProps', 'visualClues', 'hookProps']),
     pickStoryField(storyDna, ['evidenceObject', 'evidenceType', 'hookVisual']),
   ])
@@ -362,14 +396,14 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
       ? dnaCoverConcept.secondaryFigures.map((x: unknown) => safeString(x))
       : []),
     safeString(dnaCoverConcept?.secondaryFigure),
-    pickStoryField(storyDna, ['villainFigure', 'secondaryFigure', 'shadowFigure']),
+    pickStoryField(storyDna, ['villainFigure', 'villainType', 'secondaryFigure', 'shadowFigure']),
   ])
 
   const dnaConflictVisuals = uniqueStrings([
     ...(Array.isArray(dnaCoverConcept?.conflictVisuals)
       ? dnaCoverConcept.conflictVisuals.map((x: unknown) => safeString(x))
       : []),
-    pickStoryField(storyDna, ['villainAttack', 'heroineCounter', 'emotionalStake']),
+    pickStoryField(storyDna, ['villainAttack', 'villainAttackType', 'heroineCounter', 'heroineCounterType', 'emotionalStake', 'mainConflict']),
   ])
 
   const fallbackByBlueprint: Record<CoverBlueprint, Omit<CoverConcept, 'blueprint' | 'heroineLook'>> = {
@@ -391,10 +425,9 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
       conflictVisuals:
         dnaConflictVisuals.length > 0
           ? dnaConflictVisuals
-          : ['xuất hiện dòng hot search hoặc scandal trên màn hình', 'không khí công kích truyền thông'],
+          : ['dòng hot search hoặc scandal trên màn hình', 'không khí công kích truyền thông'],
       colorTone: 'đỏ đen vàng, ánh đèn truyền thông kịch tính',
     },
-
     'family-inheritance': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
@@ -416,7 +449,6 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
           : ['ánh nhìn nghi kỵ trong gia tộc', 'không khí tranh giành quyền lực'],
       colorTone: 'xanh đậm, vàng tối, nâu đen, sang trọng nhưng đầy sức ép',
     },
-
     'airport-mystery': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
@@ -438,7 +470,6 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
           : ['cảm giác người quan trọng vừa biến mất', 'manh mối đang bị che giấu'],
       colorTone: 'xanh lạnh, trắng xám, ánh đèn sân bay, cinematic',
     },
-
     'marriage-betrayal': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
@@ -460,7 +491,6 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
           : ['không khí phản bội', 'sự thật tình cảm bị xé toạc'],
       colorTone: 'đỏ đô, đen, vàng tối, cảm giác đau và báo thù',
     },
-
     'child-school': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
@@ -482,7 +512,6 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
           : ['đứa trẻ bị cuốn vào cuộc chiến người lớn', 'nữ chính bảo vệ con trong áp lực xã hội'],
       colorTone: 'xanh xám, vàng ấm nhẹ, buồn nhưng có sức mạnh',
     },
-
     'hospital-truth': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
@@ -504,7 +533,6 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
           : ['sự thật sinh học hoặc bí mật thân phận đang bị che lại', 'cuộc chạy đua tìm sự thật'],
       colorTone: 'trắng xanh lạnh, xám bạc, sắc nét và căng',
     },
-
     'corporate-war': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
@@ -526,7 +554,6 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
           : ['đối đầu ở phòng họp', 'nữ chính chuẩn bị lật thế cờ'],
       colorTone: 'xanh đen, xám bạc, vàng kim nhẹ, hiện đại',
     },
-
     'general-drama': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
@@ -569,43 +596,30 @@ function buildCoverPrompt(story: StoryInput): {
   coverConcept: CoverConcept
 } {
   const storyDna =
-    parseMaybeJson<JsonRecord>(story.story_dna) ||
-    parseMaybeJson<JsonRecord>(story.storyDna)
+    parseMaybeJson<JsonRecord>(story.story_dna) || parseMaybeJson<JsonRecord>(story.storyDna)
 
   const coverConcept = buildCoverConcept(story, storyDna)
   const title = story.title || 'Untitled Story'
   const summary = pickSummary(story)
   const genreList = uniqueStrings([
     story.genre || '',
+    story.genreLabel || '',
     ...(story.genres || []),
     ...(story.tags || []),
   ]).join(', ')
 
   const corePremise =
-    pickStoryField(storyDna, [
-      'corePremise',
-      'premise',
-      'factory_seed',
-      'hookVisual',
-      'openingScene',
-    ]) || summary
-
-  const openingScene =
-    pickStoryField(storyDna, ['openingScene', 'sceneHook', 'visualArena']) || coverConcept.arena
-
-  const emotionalStake =
-    pickStoryField(storyDna, ['emotionalStake', 'humanCost', 'childStake']) || coverConcept.mood
-
-  const villainAttack =
-    pickStoryField(storyDna, ['villainAttack', 'villainAttackType']) || ''
-  const heroineCounter =
-    pickStoryField(storyDna, ['heroineCounter', 'heroineCounterType']) || ''
+    pickStoryField(storyDna, ['corePremise', 'premise', 'factory_seed', 'hookVisual', 'openingScene']) || summary
+  const openingScene = pickStoryField(storyDna, ['openingScene', 'sceneHook', 'visualArena']) || coverConcept.arena
+  const emotionalStake = pickStoryField(storyDna, ['emotionalStake', 'humanCost', 'childStake', 'emotionalHook']) || coverConcept.mood
+  const villainAttack = pickStoryField(storyDna, ['villainAttack', 'villainAttackType']) || ''
+  const heroineCounter = pickStoryField(storyDna, ['heroineCounter', 'heroineCounterType']) || ''
 
   const style =
     story.cover_style ||
     story.visual_style ||
     story.style ||
-    'high-end vertical Asian webnovel cover illustration, semi-realistic, dramatic, cinematic'
+    'premium vertical Asian webnovel cover illustration, semi-realistic, dramatic, cinematic, high detail'
 
   const prompt = `
 Create a premium vertical web novel cover illustration for the story "${title}".
@@ -632,9 +646,10 @@ Visual blueprint:
 - Secondary figures: ${coverConcept.secondaryFigures.join('; ') || 'at least one important secondary figure linked to the conflict'}
 - Clue props that should appear clearly: ${coverConcept.clueProps.join('; ') || 'one to two clue props related to the plot'}
 - Conflict visuals: ${coverConcept.conflictVisuals.join('; ') || 'clear visible signs of conflict'}
+- Color tone: ${coverConcept.colorTone}
 
 Composition requirements:
-- Vertical composition optimized for mobile novel cover.
+- Vertical 2:3 cover composition optimized for mobile webnovel cover.
 - Heroine large in the foreground, around waist-up or three-quarter body.
 - Midground and background must contain visible story clues and conflict context.
 - Strong focal hierarchy: heroine first, conflict clue second, setting third.
@@ -676,40 +691,73 @@ function sanitizeFileName(input: string): string {
     .slice(0, 80)
 }
 
-async function generateCoverImage(prompt: string) {
-  if (!openai) {
+function truncateText(value: string, limit = 800) {
+  if (!value) return ''
+  return value.length > limit ? `${value.slice(0, limit)}...` : value
+}
+
+async function readJsonResponse(response: Response) {
+  const rawText = await response.text()
+
+  try {
+    return rawText ? JSON.parse(rawText) : null
+  } catch {
+    return {
+      __nonJson: true,
+      preview: truncateText(rawText, 1200),
+    }
+  }
+}
+
+async function generateCoverImage(prompt: string, size = '1024x1536') {
+  if (!OPENAI_API_KEY) {
     throw new Error('Missing OPENAI_API_KEY')
   }
 
-  const result = await openai.images.generate({
-    model: OPENAI_IMAGE_MODEL,
-    prompt,
-    size: '1024x1536',
+  const response = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: OPENAI_IMAGE_MODEL,
+      prompt,
+      size,
+      n: 1,
+    }),
   })
 
-  const first = result.data?.[0]
+  const data = await readJsonResponse(response)
 
-  if (!first) {
-    throw new Error('OpenAI did not return image data')
+  if (!response.ok) {
+    const message = data?.error?.message || `OpenAI image API error (${response.status})`
+    const error = new Error(message) as Error & { detail?: unknown; status?: number }
+    error.status = response.status
+    error.detail = data
+    throw error
   }
 
-  const b64 =
-    (first as any).b64_json ||
-    (first as any).image_base64 ||
-    null
+  if (data?.__nonJson) {
+    const error = new Error('OpenAI image API returned non-JSON response') as Error & { detail?: unknown }
+    error.detail = data
+    throw error
+  }
 
-  const revisedPrompt =
-    (first as any).revised_prompt ||
-    (first as any).prompt ||
-    null
+  const first = data?.data?.[0]
+  const b64 = first?.b64_json || first?.image_base64 || null
+  const revisedPrompt = first?.revised_prompt || first?.prompt || null
 
-  if (!b64) {
-    throw new Error('OpenAI image response missing base64 data')
+  if (!b64 || typeof b64 !== 'string') {
+    const error = new Error('OpenAI image response missing base64 image data') as Error & { detail?: unknown }
+    error.detail = data
+    throw error
   }
 
   return {
     b64,
     revisedPrompt,
+    raw: data,
   }
 }
 
@@ -720,14 +768,12 @@ async function uploadCoverToSupabase(args: {
   explicitPath?: string
 }) {
   if (!supabase) {
-    return { publicUrl: null as string | null, storagePath: null as string | null }
+    throw new Error('Supabase is not configured for cover upload')
   }
 
   const folderStoryId = sanitizeFileName(args.storyId || '') || 'unknown-story'
   const safeTitle = sanitizeFileName(args.title) || 'story-cover'
-  const storagePath =
-    args.explicitPath ||
-    `stories/${folderStoryId}/${safeTitle}-${randomUUID()}.png`
+  const storagePath = args.explicitPath || `stories/${folderStoryId}/${safeTitle}-${randomUUID()}.png`
 
   const { error: uploadError } = await supabase.storage
     .from(SUPABASE_COVER_BUCKET)
@@ -737,7 +783,7 @@ async function uploadCoverToSupabase(args: {
     })
 
   if (uploadError) {
-    throw uploadError
+    throw new Error(`Supabase cover upload failed: ${uploadError.message}`)
   }
 
   const {
@@ -758,30 +804,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({
-      ok: false,
-      error: 'Method not allowed',
-    })
+    return res.status(405).json({ ok: false, error: 'Method not allowed' })
   }
 
   try {
     const body =
       typeof req.body === 'string'
-        ? (JSON.parse(req.body) as JsonRecord)
+        ? (JSON.parse(req.body || '{}') as JsonRecord)
         : ((req.body || {}) as JsonRecord)
 
     const story = extractStoryInput(body)
 
     if (!story.title) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Missing story title',
-      })
+      return res.status(400).json({ ok: false, error: 'Missing story title' })
     }
 
     const { prompt, coverConcept } = buildCoverPrompt(story)
-    const imageResult = await generateCoverImage(prompt)
-
+    const size = safeString(body.size) || '1024x1536'
+    const imageResult = await generateCoverImage(prompt, size)
     const imageBuffer = Buffer.from(imageResult.b64, 'base64')
 
     const uploadEnabled = body.uploadToSupabase !== false
@@ -804,11 +844,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ok: true,
       title: story.title,
       prompt,
+      promptUsed: prompt,
       revisedPrompt: imageResult.revisedPrompt,
       coverConcept,
       imageBase64: body.returnBase64 ? imageResult.b64 : undefined,
+      b64_json: body.returnBase64 ? imageResult.b64 : undefined,
+      dataUrl: body.returnBase64 ? `data:image/png;base64,${imageResult.b64}` : undefined,
       publicUrl,
       imageUrl: publicUrl,
+      coverUrl: publicUrl,
       storagePath,
       bucket: uploadEnabled ? SUPABASE_COVER_BUCKET : null,
       message: 'Cover generated successfully',
@@ -816,9 +860,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: any) {
     console.error('[generate-cover] error:', error)
 
-    return res.status(500).json({
+    return res.status(error?.status || 500).json({
       ok: false,
       error: error?.message || 'Failed to generate cover',
+      detail: error?.detail || null,
     })
   }
 }
