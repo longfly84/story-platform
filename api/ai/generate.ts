@@ -2,6 +2,25 @@ type GenerateMode = 'chapter' | 'story-plan'
 type ModelKey = 'economy' | 'premium' | 'auto'
 type LegacyModelTier = 'draft' | 'premium' | 'auto'
 
+type FactoryStorySeed = {
+  title?: string
+  genreBlend?: string[]
+  corePremise?: string
+  openingScene?: string
+  incitingIncident?: string
+  evidenceObject?: string
+  mainConflict?: string
+  hiddenTruth?: string
+  setting?: string
+  villainType?: string
+  heroineArc?: string
+  emotionalHook?: string
+  powerStructure?: string
+  publicPressure?: string
+  shortFingerprint?: string
+  antiRepeatTags?: string[]
+}
+
 type GeneratePayload = {
   mode?: GenerateMode
   modelKey?: ModelKey
@@ -30,6 +49,7 @@ type GeneratePayload = {
   factoryRunId?: string
   storyIndex?: number
   chapterTarget?: number
+  storySeed?: FactoryStorySeed | null
 }
 
 type NormalizedGeneratePayload = {
@@ -60,6 +80,7 @@ type NormalizedGeneratePayload = {
   factoryRunId: string
   storyIndex: number
   chapterTarget: number
+  storySeed: FactoryStorySeed | null
 }
 
 function safeText(value: unknown, fallback = '') {
@@ -84,6 +105,43 @@ function safeStringArray(value: unknown, limit = 30) {
     .map((item) => safeText(item))
     .filter(Boolean)
     .slice(0, limit)
+}
+
+function normalizeStorySeed(value: unknown): FactoryStorySeed | null {
+  if (!value || typeof value !== 'object') return null
+
+  const raw = value as Record<string, unknown>
+
+  const seed: FactoryStorySeed = {
+    title: safeText(raw.title),
+    genreBlend: safeStringArray(raw.genreBlend, 8),
+    corePremise: safeText(raw.corePremise),
+    openingScene: safeText(raw.openingScene),
+    incitingIncident: safeText(raw.incitingIncident),
+    evidenceObject: safeText(raw.evidenceObject),
+    mainConflict: safeText(raw.mainConflict),
+    hiddenTruth: safeText(raw.hiddenTruth),
+    setting: safeText(raw.setting),
+    villainType: safeText(raw.villainType),
+    heroineArc: safeText(raw.heroineArc),
+    emotionalHook: safeText(raw.emotionalHook),
+    powerStructure: safeText(raw.powerStructure),
+    publicPressure: safeText(raw.publicPressure),
+    shortFingerprint: safeText(raw.shortFingerprint),
+    antiRepeatTags: safeStringArray(raw.antiRepeatTags, 20),
+  }
+
+  const hasUsefulSeed =
+    seed.title ||
+    seed.corePremise ||
+    seed.openingScene ||
+    seed.incitingIncident ||
+    seed.evidenceObject ||
+    seed.mainConflict ||
+    seed.hiddenTruth ||
+    seed.shortFingerprint
+
+  return hasUsefulSeed ? seed : null
 }
 
 function createNameSeed() {
@@ -132,6 +190,7 @@ function normalizePayload(body: GeneratePayload): NormalizedGeneratePayload {
     factoryRunId: safeText(body.factoryRunId, ''),
     storyIndex: Math.max(0, Math.floor(safeNumber(body.storyIndex, 0))),
     chapterTarget: Math.max(0, Math.floor(safeNumber(body.chapterTarget, 0))),
+    storySeed: normalizeStorySeed(body.storySeed),
   }
 }
 
@@ -754,6 +813,95 @@ CHARACTER NAME DIVERSITY LOCK:
 `.trim()
 }
 
+function getStorySeedInstruction(payload: NormalizedGeneratePayload) {
+  const seed = payload.storySeed
+
+  if (!seed) {
+    return `
+STORY SEED / STORY DNA:
+- Không có storySeed được truyền vào request này.
+- Vẫn phải tự tạo premise, bối cảnh, vật chứng, nhân vật và nhịp chương khác biệt.
+- Không được dùng một khung truyện cố định rồi chỉ thay vài danh từ.
+`.trim()
+  }
+
+  return `
+STORY SEED / STORY DNA BẮT BUỘC:
+- Đây là xương sống của truyện, không phải gợi ý phụ.
+- OpenAI bắt buộc phải bám các chi tiết này khi viết chương.
+- Không được chỉ thay danh từ vào một template cũ.
+- Nếu storySeed khác, cấu trúc cảnh, vật chứng, áp lực, nhân vật và hook cũng phải khác rõ rệt.
+
+THÔNG TIN STORY SEED:
+- Tên truyện định hướng: ${seed.title || payload.title}
+- Genre blend: ${seed.genreBlend?.join(' | ') || payload.genreLabel}
+- Core premise: ${seed.corePremise || payload.promptIdea || payload.storySummary}
+- Opening scene bắt buộc: ${seed.openingScene || 'Tự chọn theo premise'}
+- Inciting incident bắt buộc: ${seed.incitingIncident || 'Tự chọn theo premise'}
+- Evidence object bắt buộc: ${seed.evidenceObject || 'Tự chọn vật chứng hợp logic'}
+- Main conflict: ${seed.mainConflict || payload.genreLabel}
+- Hidden truth: ${seed.hiddenTruth || 'Giữ một bí mật chưa lộ hết'}
+- Setting: ${seed.setting || 'Đô thị hiện đại Trung Quốc'}
+- Villain type: ${seed.villainType || 'Phản diện có lợi ích cụ thể'}
+- Heroine arc: ${seed.heroineArc || payload.mainCharacterStyleLabel}
+- Emotional hook: ${seed.emotionalHook || 'Bị phản bội nhưng dần tỉnh táo'}
+- Power structure: ${seed.powerStructure || 'Gia đình / công ty / dư luận'}
+- Public pressure: ${seed.publicPressure || 'Áp lực công khai phù hợp bối cảnh'}
+- Short fingerprint: ${seed.shortFingerprint || 'Không có'}
+- Anti-repeat tags: ${seed.antiRepeatTags?.join(' | ') || 'Không có'}
+
+QUY TẮC BÁM STORY SEED:
+- Chương phải dùng đúng opening scene hoặc biến thể rất gần với opening scene.
+- Inciting incident phải là sự kiện kích hoạt chính, không thay bằng scandal generic nếu seed không yêu cầu.
+- Evidence object phải xuất hiện tự nhiên và có vai trò đẩy xung đột.
+- Hidden truth chỉ hé một phần, không xả hết ngay nếu chưa phải chương cuối.
+- Public pressure phải cụ thể: họp báo, livestream, hội đồng, nhóm chat, Weibo, gia tộc, bệnh viện, trường học, luật sư hoặc công ty.
+- Không được biến mọi truyện thành cùng motif ngoại tình/hot search nếu storySeed đang chỉ hướng khác.
+`.trim()
+}
+
+function getOpenAIAntiRepeatInstruction(payload: NormalizedGeneratePayload) {
+  return `
+OPENAI ANTI-REPEAT LOCK:
+- Không được dùng lại văn mẫu hoặc nhịp chương quá giống các truyện khác.
+- Cấm mở chương bằng các khung quá quen:
+  + "Tối đó, tôi..."
+  + "Sáng hôm đó, tôi..."
+  + "Tôi đứng trước..."
+  + "Tôi không đứng trước..."
+  + "Điện thoại reo liên tục..."
+  + "Weibo nổ tung..." nếu storySeed không yêu cầu truyền thông.
+- Cấm dùng lại cấu trúc:
+  phát hiện vật chứng → người đối diện hỏi "Cô lấy thứ đó ở đâu?" → nữ chính hít sâu → tung một câu sắc → cliffhanger.
+- Cấm dùng các câu đệm lặp:
+  + "Tôi hít sâu một hơi"
+  + "Tôi siết chặt tay"
+  + "Căn phòng im bặt"
+  + "Mọi ánh mắt đổ dồn về phía tôi"
+  + "Tôi biết, mọi chuyện chỉ vừa bắt đầu"
+- Không được dùng cùng một kiểu vật chứng cho nhiều truyện liên tiếp nếu avoidMotifs hoặc storySeed đã khác.
+- Không được chỉ thay openingScene/evidenceObject vào cùng một đoạn văn.
+- Mỗi chương cần chọn một cấu trúc cảnh khác nhau.
+
+CHAPTER STRUCTURE DIVERSITY:
+Hãy tự chọn một trong các cấu trúc sau, tùy storySeed, không lặp máy móc:
+1. Bắt đầu bằng đối thoại căng thẳng, sau đó mới lộ vật chứng.
+2. Bắt đầu bằng hành động cụ thể của nữ chính, rồi phát hiện sơ hở.
+3. Bắt đầu bằng cảnh công khai, áp lực dư luận/gia tộc/công ty ép xuống.
+4. Bắt đầu bằng một chi tiết nhỏ bất thường, sau đó mở rộng thành xung đột.
+5. Bắt đầu bằng phản đòn của phản diện, nữ chính tạm thời yếu thế.
+6. Bắt đầu bằng ký ức ngắn có liên quan trực tiếp đến vật chứng hiện tại.
+7. Bắt đầu bằng một người phụ xuất hiện, mang theo thông tin làm lệch thế cờ.
+
+YÊU CẦU RIÊNG CHO REQUEST NÀY:
+- Factory run id: ${payload.factoryRunId || 'không có'}
+- Story index: ${payload.storyIndex}
+- Chapter target: ${payload.chapterTarget || 'không có'}
+- Chương hiện tại: ${payload.nextChapterNumber}
+- Hãy dùng các thông tin này như seed để tự làm khác nhịp văn, không cần in ra trong phần đọc.
+`.trim()
+}
+
 function getLibraryAvoidanceInstruction(payload: NormalizedGeneratePayload) {
   const hasAvoidance =
     payload.avoidStoryTitles.length ||
@@ -1038,6 +1186,8 @@ function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const genreInstruction = getGenreInstruction(payload.genreLabel)
   const premiseInstruction = getPremiseInstruction(payload)
   const nameDiversityInstruction = getNameDiversityInstruction(payload)
+  const storySeedInstruction = getStorySeedInstruction(payload)
+  const antiRepeatInstruction = getOpenAIAntiRepeatInstruction(payload)
   const libraryAvoidanceInstruction = getLibraryAvoidanceInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const cliffhangerRule = getCliffhangerRule(payload)
@@ -1069,9 +1219,13 @@ ${genreInstruction}
 
 ${premiseInstruction}
 
-${nameDiversityInstruction}
-
 ${libraryAvoidanceInstruction}
+
+${storySeedInstruction}
+
+${antiRepeatInstruction}
+
+${nameDiversityInstruction}
 
 ${heroineInstruction}
 
@@ -1156,6 +1310,8 @@ Chương 10:
 
 function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const lengthRule = getLengthRule(payload.chapterLengthLabel)
+  const storySeedInstruction = getStorySeedInstruction(payload)
+  const antiRepeatInstruction = getOpenAIAntiRepeatInstruction(payload)
   const moduleInstruction = getModuleInstruction(payload.moduleId)
   const genreInstruction = getGenreInstruction(payload.genreLabel)
   const premiseInstruction = getPremiseInstruction(payload)
@@ -1200,9 +1356,13 @@ ${genreInstruction}
 
 ${premiseInstruction}
 
-${nameDiversityInstruction}
-
 ${libraryAvoidanceInstruction}
+
+${storySeedInstruction}
+
+${antiRepeatInstruction}
+
+${nameDiversityInstruction}
 
 ${heroineInstruction}
 
