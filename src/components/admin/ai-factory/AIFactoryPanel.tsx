@@ -41,6 +41,7 @@ import {
   getTargetChapters,
   safeJson,
 } from './utils/factoryPanelHelpers'
+import { getFactoryChapterProgress } from './utils/factoryProgress'
 
 const defaultConfig: AIFactoryConfig = {
   provider: 'mock',
@@ -675,6 +676,19 @@ Yêu cầu:
     setCurrentAction(`Đã quét ${incomplete.length} truyện dang dở`)
     addLog(`Tìm thấy ${incomplete.length} truyện chưa hoàn thành.`, incomplete.length ? 'success' : 'warning')
 
+    incomplete.slice(0, 10).forEach((story) => {
+      const progress = getFactoryChapterProgress({
+        currentChapters: story.currentChapters,
+        targetChapters: story.targetChapters,
+        maxCreateNow: continueChaptersPerStory,
+      })
+
+      addLog(
+        `${story.title || 'Truyện chưa có tên'}: ${progress.progressLabel} chương, ${progress.remainingLabel}. ${progress.createRangeLabel}.`,
+        progress.isFull ? 'info' : 'success',
+      )
+    })
+
     return incomplete
   }
 
@@ -738,6 +752,11 @@ Yêu cầu:
           Math.max(1, continueChaptersPerStory),
           story.missingChapters,
         )
+        const continueProgress = getFactoryChapterProgress({
+          currentChapters: story.currentChapters,
+          targetChapters: story.targetChapters,
+          maxCreateNow: chaptersToCreate,
+        })
         let storyMemory =
           typeof (story as any).story_memory === 'string'
             ? (story as any).story_memory
@@ -756,7 +775,7 @@ Yêu cầu:
         })
 
         addLog(
-          `Viết tiếp ${storyTitle}: hiện có ${story.currentChapters}/${story.targetChapters}, tạo thêm ${chaptersToCreate} chương.`,
+          `Viết tiếp ${storyTitle}: ${continueProgress.progressLabel}, ${continueProgress.remainingLabel}. ${continueProgress.createRangeLabel}.`,
           'info',
         )
 
@@ -994,6 +1013,11 @@ Yêu cầu:
         const chaptersToCreate = config.autoCompleteByTarget
           ? targetChapters
           : config.chaptersToGenerateNow
+        const createProgress = getFactoryChapterProgress({
+          currentChapters: 0,
+          targetChapters,
+          maxCreateNow: chaptersToCreate,
+        })
         const runShortId = `${new Date().getMonth() + 1}${new Date().getDate()}${storyIndex}${Math.random()
           .toString(36)
           .slice(2, 5)}`
@@ -1011,14 +1035,14 @@ Yêu cầu:
           genreLabel: genre.label,
           genreSlug: genre.slug,
           heroineLabel: heroine.label,
-          chapterProgress: `0/${chaptersToCreate}`,
+          chapterProgress: `0/${targetChapters}`,
           targetChapters,
           createdChapters: 0,
           completionStatus: 'ongoing',
         })
 
         addLog(
-          `Batch ${currentBatch}/${totalBatchesForRun} — bắt đầu story ${storyIndex}/${config.storyCount}: ${genre.label}. Target: ${targetChapters} chương, tạo thật: ${chaptersToCreate} chương.`,
+          `Batch ${currentBatch}/${totalBatchesForRun} — bắt đầu story ${storyIndex}/${config.storyCount}: ${genre.label}. Target: ${targetChapters} chương. ${createProgress.createRangeLabel}.`,
           'info',
         )
         
@@ -1042,7 +1066,7 @@ setCurrentAction(
             if (stopRequestedRef.current) {
               updateJob(job.id, {
                 status: 'stopped',
-                chapterProgress: `${chapterNumber - 1}/${chaptersToCreate}`,
+                chapterProgress: `${chapterNumber - 1}/${targetChapters}`,
               })
               addLog(`Dừng sau request hiện tại tại story ${storyIndex}.`, 'warning')
               break
@@ -1174,7 +1198,7 @@ setCurrentAction(
             createdChapterCount = chapterNumber
 
             updateJob(job.id, {
-              chapterProgress: `${chapterNumber}/${chaptersToCreate}`,
+              chapterProgress: `${chapterNumber}/${targetChapters}`,
               createdChapters: chapterNumber,
               targetChapters,
               completionStatus:
@@ -1257,7 +1281,7 @@ setCurrentAction(
 
             updateJob(job.id, {
               status: 'success',
-              chapterProgress: `${createdChapterCount}/${chaptersToCreate}`,
+              chapterProgress: `${createdChapterCount}/${targetChapters}`,
               createdChapters: createdChapterCount,
               targetChapters,
               completionStatus: isStoryFull ? 'full' : 'ongoing',

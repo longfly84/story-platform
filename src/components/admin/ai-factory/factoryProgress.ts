@@ -1,9 +1,13 @@
-export function getFactoryChapterProgress(params: {
+export type FactoryChapterProgressInput = {
+  currentChapter?: number | null
   currentChapters?: number | null
   targetChapters?: number | null
   maxCreateNow?: number | null
-}) {
-  const current = Math.max(0, Math.floor(Number(params.currentChapters ?? 0)))
+}
+
+export function getFactoryChapterProgress(params: FactoryChapterProgressInput) {
+  const rawCurrent = params.currentChapters ?? params.currentChapter ?? 0
+  const current = Math.max(0, Math.floor(Number(rawCurrent)))
   const target = Math.max(0, Math.floor(Number(params.targetChapters ?? 0)))
   const maxCreateNow = Math.max(0, Math.floor(Number(params.maxCreateNow ?? 0)))
 
@@ -17,39 +21,47 @@ export function getFactoryChapterProgress(params: {
 
   const createTo = createNow > 0 ? current + createNow : current
 
+  const hasTarget = target > 0
+  const isFull = hasTarget && current >= target
+  const progressPercent = hasTarget
+    ? Math.min(100, Math.round((current / target) * 100))
+    : 0
+
   return {
     current,
     target,
     remaining,
     nextChapter,
-
     createNow,
     createFrom: createNow > 0 ? nextChapter : null,
     createTo: createNow > 0 ? createTo : null,
+    isFull,
+    hasTarget,
 
-    isFull: target > 0 && current >= target,
-    hasTarget: target > 0,
+    currentChapter: current,
+    targetChapters: target,
+    remainingChapters: remaining,
+    progressPercent,
+    isComplete: isFull,
 
-    progressLabel: target > 0 ? `${current}/${target}` : `${current}/?`,
+    progressLabel: hasTarget ? `${current}/${target}` : `${current}/?`,
 
-    remainingLabel:
-      target > 0
-        ? remaining > 0
-          ? `Còn thiếu ${remaining} chương`
-          : `Đã full ${current}/${target}`
-        : 'Chưa có target chương',
+    remainingLabel: hasTarget
+      ? remaining > 0
+        ? `Còn thiếu ${remaining} chương`
+        : `Đã full ${current}/${target}`
+      : 'Chưa có target chương',
 
-    nextChapterLabel:
-      target > 0 && current >= target
-        ? 'Không có chương tiếp theo'
-        : `Chương tiếp theo: ${nextChapter}`,
+    nextChapterLabel: isFull
+      ? 'Không có chương tiếp theo'
+      : `Chương tiếp theo: ${nextChapter}`,
 
     createRangeLabel:
       createNow > 0
         ? createNow === 1
           ? `Lần này sẽ tạo chương ${nextChapter}`
           : `Lần này sẽ tạo chương ${nextChapter} → ${createTo}`
-        : target > 0 && current >= target
+        : isFull
           ? 'Không tạo thêm vì đã full'
           : 'Chưa xác định chương cần tạo',
   }
