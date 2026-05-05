@@ -8,9 +8,20 @@ function safeText(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function normalizeText(value: unknown) {
+  return safeText(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[_\-]+/g, ' ')
+    .replace(/[^a-z0-9\s]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function sameField(a: unknown, b: unknown) {
-  const left = safeText(a)
-  const right = safeText(b)
+  const left = normalizeText(a)
+  const right = normalizeText(b)
 
   return Boolean(left && right && left === right)
 }
@@ -20,6 +31,54 @@ function clampScore(value: number) {
   if (value < 0) return 0
   if (value > 1) return 1
   return value
+}
+
+function normalizeTag(tag: unknown) {
+  return normalizeText(tag)
+}
+
+function isUsefulTag(tag: string) {
+  if (!tag) return false
+  if (tag.length < 3) return false
+
+  // Các tag này quá chung trong tiếng Việt/Trung Quốc hiện đại, nếu tính vào similarity
+  // sẽ làm nhiều truyện khác nhau bị reject nhầm vì cùng vibe/ngôn ngữ.
+  const noisyTags = new Set([
+    'anh',
+    'chi',
+    'co',
+    'toi',
+    'nguoi',
+    'mot',
+    'hai',
+    'ba',
+    'trong',
+    'ngoai',
+    'dung',
+    'hinh',
+    'trung',
+    'luan',
+    'huynh',
+    'chinh',
+    'buoi',
+    'hang',
+    'thoi',
+    'dau',
+    'sau',
+    'truoc',
+    'den',
+    'voi',
+    'cua',
+    'cho',
+    'khi',
+    'neu',
+  ])
+
+  return !noisyTags.has(tag)
+}
+
+function getNormalizedTagSet(tags?: string[]) {
+  return new Set((tags || []).map(normalizeTag).filter(isUsefulTag))
 }
 
 export function cosineSimilarity(a?: number[] | null, b?: number[] | null) {
@@ -54,18 +113,23 @@ export function getMotifFieldSimilarity(
   let max = 0
   const matchedFields: string[] = []
 
+  // Fix quan trọng:
+  // Trước đây các field rất chung như openingArena/mainArena/powerStructure/deadlineStyle
+  // có trọng số khá cao nên seed mới dễ bị reject dù chỉ cùng "khung nữ tần đô thị".
+  // Bản này ưu tiên các field thật sự định danh motif: premise, inciting, evidence,
+  // hidden truth. Các field chung vẫn tính nhưng nhẹ hơn.
   const weightedFields: Array<[keyof StoryMotifFingerprint, number]> = [
     ['premiseFamily', 4],
-    ['openingArena', 3],
-    ['incitingIncident', 3],
-    ['evidenceType', 4],
-    ['villainAttackType', 4],
+    ['incitingIncident', 5],
+    ['evidenceType', 5],
+    ['hiddenTruthType', 5],
+    ['villainAttackType', 3],
     ['heroineCounterType', 3],
-    ['powerStructure', 3],
     ['publicPressure', 2],
-    ['hiddenTruthType', 4],
-    ['mainArena', 2],
-    ['deadlineStyle', 2],
+    ['openingArena', 1.5],
+    ['mainArena', 1.5],
+    ['powerStructure', 1.5],
+    ['deadlineStyle', 1],
   ]
 
   for (const [field, weight] of weightedFields) {
@@ -77,8 +141,8 @@ export function getMotifFieldSimilarity(
     }
   }
 
-  const candidateTags = new Set(candidate.antiRepeatTags || [])
-  const existingTags = new Set(existing.antiRepeatTags || [])
+  const candidateTags = getNormalizedTagSet(candidate.antiRepeatTags)
+  const existingTags = getNormalizedTagSet(existing.antiRepeatTags)
   const matchedTags = [...candidateTags].filter((tag) => existingTags.has(tag))
 
   const tagMax = Math.max(candidateTags.size, existingTags.size, 1)
@@ -87,10 +151,40 @@ export function getMotifFieldSimilarity(
   const fieldScore = max > 0 ? score / max : 0
 
   return {
-    score: clampScore(fieldScore * 0.82 + tagScore * 0.18),
+    score: clampScore(fieldScore * 0.9 + tagScore * 0.1),
     matchedFields,
     matchedTags,
   }
+}
+
+function countMatchedFields(result: StoryMotifSimilarityResult | null, fields: string[]) {
+  if (!result) return 0
+  const matched = new Set(result.matchedFields)
+  return fields.filter((field) => matched.has(field)).length
+}
+
+function hasRealMotifOverlap(result: StoryMotifSimilarityResult | null) {
+  if (!result) return false
+
+  const coreFields = [
+    'premiseFamily',
+    'incitingIncident',
+    'evidenceType',
+    'hiddenTruthType',
+  ]
+
+  const tacticalFields = [
+    'villainAttackType',
+    'heroineCounterType',
+    'publicPressure',
+  ]
+
+  const coreMatches = countMatchedFields(result, coreFields)
+  const tacticalMatches = countMatchedFields(result, tacticalFields)
+
+  // Trùng nhiều field chung như openingArena/mainArena/deadlineStyle chưa đủ để gọi là trùng motif.
+  // Phải có overlap ở lõi sự kiện/vật chứng/bí mật hoặc combo chiến thuật rất giống.
+  return coreMatches >= 2 || (coreMatches >= 1 && tacticalMatches >= 2) || tacticalMatches >= 3
 }
 
 export function getHybridMotifSimilarity(params: {
@@ -99,8 +193,8 @@ export function getHybridMotifSimilarity(params: {
   fieldWeight?: number
   embeddingWeight?: number
 }) {
-  const fieldWeight = params.fieldWeight ?? 0.65
-  const embeddingWeight = params.embeddingWeight ?? 0.35
+  const fieldWeight = params.fieldWeight ?? 0.76
+  const embeddingWeight = params.embeddingWeight ?? 0.24
 
   const fieldResult = getMotifFieldSimilarity(
     params.candidate.fingerprint,
@@ -164,31 +258,40 @@ export function shouldRejectMotif(params: {
   existing: StoryMotifRegistryItem[]
   threshold?: number
 }) {
-  const threshold = params.threshold ?? 0.62
+  const threshold = params.threshold ?? 0.7
   const best = findMostSimilarMotif({
     candidate: params.candidate,
     existing: params.existing,
   })
 
-  const hybridReject = Boolean(best && best.hybridScore >= threshold)
+  const realMotifOverlap = hasRealMotifOverlap(best)
 
-  // Embedding thường bắt được "vibe tổng thể" tốt hơn field.
-  // Case thực tế đã gặp: embeddingScore ~0.887 nhưng hybridScore chỉ ~0.48
-  // vì field khác nhau, khiến seed vẫn pass dù cảm giác truyện khá giống.
-  const strongEmbeddingReject = Boolean(best && best.embeddingScore >= 0.9)
+  // Reject chính: điểm hybrid cao và phải có overlap thật ở lõi motif.
+  const hybridReject = Boolean(best && realMotifOverlap && best.hybridScore >= threshold)
+
+  // Reject phụ: nếu field đã rất giống thì reject dù embedding không quá cao.
+  const strongFieldReject = Boolean(best && best.fieldScore >= 0.68 && realMotifOverlap)
+
+  // Embedding của các truyện cùng thể loại nữ tần rất dễ cao 0.88–0.93.
+  // Vì vậy không reject chỉ vì embedding cao nữa. Phải đi kèm field overlap rõ.
+  const strongEmbeddingReject = Boolean(
+    best && best.embeddingScore >= 0.94 && best.fieldScore >= 0.35 && realMotifOverlap,
+  )
   const softEmbeddingReject = Boolean(
-    best && best.embeddingScore >= 0.86 && best.fieldScore >= 0.25,
+    best && best.embeddingScore >= 0.9 && best.fieldScore >= 0.45 && realMotifOverlap,
   )
 
-  const reject = hybridReject || strongEmbeddingReject || softEmbeddingReject
+  const reject = hybridReject || strongFieldReject || strongEmbeddingReject || softEmbeddingReject
 
   let reason = ''
   if (hybridReject) {
-    reason = `hybridScore >= ${threshold}`
+    reason = `hybridScore >= ${threshold} và có overlap motif lõi`
+  } else if (strongFieldReject) {
+    reason = 'fieldScore >= 0.68 và có overlap motif lõi'
   } else if (strongEmbeddingReject) {
-    reason = 'embeddingScore >= 0.90'
+    reason = 'embeddingScore >= 0.94, fieldScore >= 0.35 và có overlap motif lõi'
   } else if (softEmbeddingReject) {
-    reason = 'embeddingScore >= 0.86 và fieldScore >= 0.25'
+    reason = 'embeddingScore >= 0.90, fieldScore >= 0.45 và có overlap motif lõi'
   }
 
   return {
@@ -209,7 +312,8 @@ export function formatMotifSimilarityForLog(result: StoryMotifSimilarityResult |
   const fields = result.matchedFields.length
     ? result.matchedFields.join(', ')
     : 'không trùng field mạnh'
-  const tags = result.matchedTags.length ? result.matchedTags.join(', ') : 'không trùng tag'
+  const tags = result.matchedTags.length ? result.matchedTags.join(', ') : 'không trùng tag hữu ích'
+  const overlap = hasRealMotifOverlap(result) ? 'có overlap motif lõi' : 'chỉ giống vibe/field chung'
 
-  return `Giống hybrid ${hybridPercent}% với "${title}". Field ${fieldPercent}%, embedding ${embeddingPercent}%. Field trùng: ${fields}. Tag trùng: ${tags}.`
+  return `Giống hybrid ${hybridPercent}% với "${title}". Field ${fieldPercent}%, embedding ${embeddingPercent}%, ${overlap}. Field trùng: ${fields}. Tag trùng: ${tags}.`
 }

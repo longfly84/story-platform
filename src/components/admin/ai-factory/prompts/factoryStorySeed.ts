@@ -763,6 +763,148 @@ function pickDramaLane(seed: string, avoidLibrary?: AvoidLibrary) {
   );
 }
 
+
+function cleanTitleToken(input: string) {
+  return input
+    .replace(/^một\s+/i, "")
+    .replace(/^một chiếc\s+/i, "Chiếc ")
+    .replace(/^một đoạn\s+/i, "Đoạn ")
+    .replace(/^một bản\s+/i, "Bản ")
+    .replace(/^một tấm\s+/i, "Tấm ")
+    .replace(/^một file\s+/i, "File ")
+    .replace(/^hồ sơ\s+/i, "Hồ Sơ ")
+    .replace(/^ảnh\s+/i, "Ảnh ")
+    .replace(/^bảng\s+/i, "Bảng ")
+    .replace(/^vé\s+/i, "Vé ")
+    .replace(/^di chúc\s+/i, "Di Chúc ")
+    .replace(/^email\s+/i, "Email ")
+    .replace(/^usb\s+/i, "USB ")
+    .trim();
+}
+
+function titleCaseFirst(input: string) {
+  const clean = input.trim();
+  if (!clean) return clean;
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+function makeEvidenceTitle(evidenceObject: string, seed: string) {
+  const normalized = normalizeForCompare(evidenceObject);
+
+  if (normalized.includes("tieng chuong")) return "Tiếng Chuông Bị Cắt";
+  if (normalized.includes("ho so nhap hoc")) return "Hồ Sơ Lùi Ngày";
+  if (normalized.includes("anh chup man hinh") || normalized.includes("xoa voi")) return "Ảnh Xóa Vội";
+  if (normalized.includes("chia khoa")) return "Chiếc Chìa Khóa Không Thuộc Về Tôi";
+  if (normalized.includes("the") && normalized.includes("phong")) return "Tấm Thẻ Phòng Bị Bỏ Quên";
+  if (normalized.includes("a-7392") || normalized.includes("ma qr") || normalized.includes("ma")) return "Mã Không Nên Xuất Hiện";
+  if (normalized.includes("bang phan ca")) return "Bảng Phân Ca Lúc Hai Giờ Sáng";
+  if (normalized.includes("di chuc")) return "Bản Di Chúc Bị Thay Trang";
+  if (normalized.includes("hop dong bao hiem")) return "Hợp Đồng Bảo Hiểm Sai Người Thụ Hưởng";
+  if (normalized.includes("hop dong") || normalized.includes("uy quyen")) return "Bản Hợp Đồng Không Thuộc Về Tôi";
+  if (normalized.includes("usb")) return "USB Trong Đêm Đối Chất";
+  if (normalized.includes("camera")) return "Bảy Phút Camera Biến Mất";
+  if (normalized.includes("sao ke")) return "Dòng Sao Kê Bị Che";
+  if (normalized.includes("adn") || normalized.includes("dna") || normalized.includes("xet nghiem")) return "Mã Mẫu Không Trùng Tên";
+  if (normalized.includes("giay khai sinh")) return "Giấy Khai Sinh Bản Cũ";
+  if (normalized.includes("nhat ky")) return "Trang Nhật Ký Không Nên Mở";
+  if (normalized.includes("hoa don")) return "Hóa Đơn Gửi Sai Tên";
+  if (normalized.includes("ve may bay")) return "Tấm Vé Một Chiều";
+  if (normalized.includes("voice") || normalized.includes("ghi am")) return "Đoạn Ghi Âm Còn Tiếng Thở";
+
+  const token = titleCaseFirst(cleanTitleToken(evidenceObject));
+  const patterns = [
+    `${token} Không Nên Xuất Hiện`,
+    `${token} Bị Bỏ Quên`,
+    `Bí Mật Trong ${token}`,
+  ];
+  return pickSeedItem(patterns, seed, "evidence-title-pattern");
+}
+
+function makeSeedAlignedTitle(params: {
+  candidate: ReturnType<typeof buildSeedCandidate>;
+  seed: string;
+  avoidTitles?: string[];
+}) {
+  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
+  const setting = normalizeForCompare(params.candidate.setting);
+  const pressure = normalizeForCompare(params.candidate.publicPressure);
+  const hidden = normalizeForCompare(params.candidate.hiddenTruth);
+
+  const options = uniqueStringsForCover(
+    [
+      evidenceTitle,
+      setting.includes("truong") || pressure.includes("phu huynh")
+        ? "Hồ Sơ Của Đứa Trẻ"
+        : "",
+      setting.includes("benh vien") || hidden.includes("benh")
+        ? "Hồ Sơ Bệnh Án Bị Sửa"
+        : "",
+      setting.includes("ngan hang") || pressure.includes("co dong")
+        ? "Dòng Ký Tên Trước Giờ Bỏ Phiếu"
+        : "",
+      setting.includes("khach san") || setting.includes("resort")
+        ? "Căn Phòng Không Ai Nhận"
+        : "",
+      setting.includes("gia toc") || pressure.includes("gia toc") || hidden.includes("di chuc")
+        ? "Món Đồ Người Chết Để Lại"
+        : "",
+      params.candidate.dopamineHook.includes("màn hình")
+        ? "Màn Hình Đã Phản Bội Họ"
+        : "",
+    ],
+    8,
+  );
+
+  const avoid = new Set((params.avoidTitles || []).map((item) => normalizeForCompare(item)));
+  const cleanOptions = options.filter((item) => !avoid.has(normalizeForCompare(item)));
+  return cleanOptions[0] || evidenceTitle;
+}
+
+function makeChapterTitle(params: {
+  chapterNumber: number;
+  candidate: ReturnType<typeof buildSeedCandidate>;
+  alternateEvidence: string;
+  alternateSetting: string;
+  alternatePressure: string;
+  seed: string;
+}) {
+  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
+  const altEvidenceTitle = makeEvidenceTitle(params.alternateEvidence, `${params.seed}-alt`);
+  const setting = params.alternateSetting.replace(/^một\s+/i, "").trim();
+  const pressure = params.alternatePressure.replace(/^một\s+/i, "").trim();
+
+  switch (params.chapterNumber) {
+    case 1:
+      return evidenceTitle;
+    case 2:
+      if (normalizeForCompare(params.candidate.emotionalStake).includes("con")) return "Thẻ Truy Cập Bị Khóa";
+      if (normalizeForCompare(params.candidate.emotionalStake).includes("nguoi than") || normalizeForCompare(params.candidate.emotionalStake).includes("me")) return "Cuộc Gọi Từ Phòng Bệnh";
+      return "Cú Ép Đầu Tiên";
+    case 3:
+      return titleCaseFirst(setting.length <= 34 ? setting : pressure) || "Địa Điểm Thứ Hai";
+    case 4:
+      return altEvidenceTitle;
+    case 5:
+      return "Cú Vả Mặt Đầu Tiên";
+    case 6:
+      return "Phản Diện Chính Ra Mặt";
+    case 7:
+      return "Bằng Chứng Đảo Nghĩa";
+    case 8:
+      return "Cái Bẫy Được Giăng Lại";
+    case 9:
+      return "Đòn Trả Thù Công Khai";
+    case 10:
+      return "Người Đứng Giữa Đổi Phe";
+    case 11:
+      return "Đối Chất Trước Mọi Người";
+    case 12:
+      return "Sự Thật Được Mở Khóa";
+    default:
+      return `Chương ${params.chapterNumber}`;
+  }
+}
+
 function buildSeedCandidate(params: {
   genreLabel: string;
   heroineLabel: string;
@@ -914,7 +1056,7 @@ function buildFactoryStoryPlan(params: {
   const chapterPlan: FactoryStoryPlanChapter[] = [
     {
       chapterNumber: 1,
-      title: "Mở hook và vật chứng sai thời điểm",
+      title: makeChapterTitle({ chapterNumber: 1, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission: `Mở tại ${candidate.openingScene}, cho ${candidate.evidenceObject} xuất hiện sai thời điểm và làm nữ chính hiểu có người dựng chuyện.`,
       sceneType: "opening hook / public pressure",
       mainScene: candidate.openingScene,
@@ -929,7 +1071,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 2,
-      title: "Cú ép đầu tiên và tổn thương thật",
+      title: makeChapterTitle({ chapterNumber: 2, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
         "Không lặp chỉ một thủ tục pháp lý; phải cho hậu quả chạm vào người thân, công việc hoặc danh dự.",
       sceneType: "emotional cost / villain pressure",
@@ -947,7 +1089,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 3,
-      title: "Đổi sân khấu, không đổi mục tiêu",
+      title: makeChapterTitle({ chapterNumber: 3, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission: `Chuyển trọng tâm sang ${alternatePressure} hoặc đối thoại trực diện, tránh nhịp đến nơi rồi bị chặn bằng giấy tờ.`,
       sceneType: "direct confrontation / social pressure",
       mainScene: alternatePressure,
@@ -964,7 +1106,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 4,
-      title: "Người phản bội hé mặt",
+      title: makeChapterTitle({ chapterNumber: 4, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
         "Đẩy tuyến phản bội/đổi phe, không biến chương này thành chương giám định/log thuần túy.",
       sceneType: "betrayal / witness scene",
@@ -983,7 +1125,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 5,
-      title: "Vả mặt nhỏ công khai",
+      title: makeChapterTitle({ chapterNumber: 5, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission: `Tạo payoff nhỏ trước ${candidate.publicPressure}: nữ chính thắng một ván nhưng chưa lật hết ${candidate.hiddenTruth}.`,
       sceneType: "public face-slap / small payoff",
       mainScene: candidate.publicPressure,
@@ -1001,7 +1143,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 6,
-      title: "Phản diện chính ra mặt",
+      title: makeChapterTitle({ chapterNumber: 6, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
         "Bắt buộc có phản diện chính đối đầu trực diện hoặc gọi/nhắn đe dọa có cá tính riêng.",
       sceneType: "main villain confrontation",
@@ -1020,7 +1162,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 7,
-      title: "Midpoint twist",
+      title: makeChapterTitle({ chapterNumber: 7, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
         "Đảo nghĩa một mảnh chứng cứ: thứ tưởng bất lợi hóa ra là bẫy hoặc chìa khóa.",
       sceneType: "midpoint reveal",
@@ -1037,7 +1179,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 8,
-      title: "Bẫy ngược",
+      title: makeChapterTitle({ chapterNumber: 8, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission: "Nữ chính chủ động dựng sân khấu để phản diện tự nói/làm sai.",
       sceneType: "heroine trap / active counterattack",
       mainScene: candidate.publicPressure,
@@ -1052,7 +1194,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 9,
-      title: "Đòn trả thù của phản diện",
+      title: makeChapterTitle({ chapterNumber: 9, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission: "Cho phản diện thắng đau một ván, nhưng không phá logic đã cài.",
       sceneType: "villain counterstrike",
       mainScene: "một sự kiện có nhiều người chứng kiến",
@@ -1068,7 +1210,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 10,
-      title: "Người đổi phe",
+      title: makeChapterTitle({ chapterNumber: 10, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
         "Một nhân vật từng im lặng/đứng giữa phải chọn phe vì thấy phản diện quá tay.",
       sceneType: "ally switch / witness payoff",
@@ -1084,7 +1226,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 11,
-      title: "Đối chất cuối",
+      title: makeChapterTitle({ chapterNumber: 11, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
         "Dồn phản diện chính vào nơi không thể dùng người phụ gánh tội thay.",
       sceneType: "final confrontation setup",
@@ -1100,7 +1242,7 @@ function buildFactoryStoryPlan(params: {
     },
     {
       chapterNumber: 12,
-      title: "Payoff và kết cục",
+      title: makeChapterTitle({ chapterNumber: 12, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
         "Trả đủ bằng chứng, cảm xúc và quyền lực; không kết bằng tóm tắt vội.",
       sceneType: "payoff / resolution",
@@ -1389,37 +1531,70 @@ export function buildMockStorySeed(params: {
   let bestCandidate: ReturnType<typeof buildSeedCandidate> | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
 
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const attemptSeed = getSeedAttempt(params.seed, attempt);
-    const lane = pickDramaLane(attemptSeed, params.avoidLibrary);
-    const candidate = buildSeedCandidate({
-      genreLabel: params.genreLabel,
-      heroineLabel: params.heroineLabel,
-      seed: attemptSeed,
-      lane,
-    });
-
-    const candidateText = [
-      candidate.shortFingerprint,
-      candidate.corePremise,
-      candidate.mainConflict,
-      candidate.hiddenTruth,
-      candidate.dramaBalance,
+  const laneOrder = FACTORY_DRAMA_LANES.map((lane, index) => {
+    const laneText = [
+      lane.label,
+      ...lane.conflicts,
+      ...lane.settings,
+      ...lane.evidenceObjects,
+      ...lane.publicPressures,
+      ...lane.hiddenTruths,
     ].join(" | ");
 
-    const overlapPenalty = scoreOverlapWithAvoidLibrary(
-      candidateText,
-      params.avoidLibrary,
-    );
-    const proceduralPenalty = countProceduralTerms(candidateText) / 20;
-    const score = overlapPenalty * 2 + proceduralPenalty;
+    return {
+      lane,
+      score:
+        scoreOverlapWithAvoidLibrary(laneText, params.avoidLibrary) * 2 +
+        countProceduralTerms(laneText) / 35 +
+        Number(
+          pickSeedItem(
+            ["0.00", "0.01", "0.02", "0.03", "0.04", "0.05"],
+            params.seed,
+            `lane-order-${lane.key}-${index}`,
+          ),
+        ),
+    };
+  }).sort((a, b) => a.score - b.score);
 
-    if (score < bestScore) {
-      bestScore = score;
-      bestCandidate = candidate;
+  for (const laneItem of laneOrder) {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const attemptSeed = `${getSeedAttempt(params.seed, attempt)}-${laneItem.lane.key}`;
+      const candidate = buildSeedCandidate({
+        genreLabel: params.genreLabel,
+        heroineLabel: params.heroineLabel,
+        seed: attemptSeed,
+        lane: laneItem.lane,
+      });
+
+      const candidateText = [
+        candidate.shortFingerprint,
+        candidate.corePremise,
+        candidate.mainConflict,
+        candidate.hiddenTruth,
+        candidate.dramaBalance,
+        candidate.publicPressure,
+        candidate.villainAttack,
+        candidate.heroineCounter,
+        candidate.emotionalStake,
+      ].join(" | ");
+
+      const overlapPenalty = scoreOverlapWithAvoidLibrary(
+        candidateText,
+        params.avoidLibrary,
+      );
+      const proceduralPenalty = countProceduralTerms(candidateText) / 22;
+      const lanePenalty = laneItem.score;
+      const score = overlapPenalty * 2.4 + proceduralPenalty + lanePenalty;
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestCandidate = candidate;
+      }
+
+      if (overlapPenalty <= 0.16 && proceduralPenalty <= 0.28) break;
     }
 
-    if (overlapPenalty <= 0.22 && proceduralPenalty <= 0.35) break;
+    if (bestScore <= 0.42) break;
   }
 
   const candidate =
@@ -1431,11 +1606,16 @@ export function buildMockStorySeed(params: {
       lane: pickDramaLane(params.seed, params.avoidLibrary),
     });
 
-  const title = buildUniqueFactoryTitle({
-    genreLabel: params.genreLabel,
+  const title = makeSeedAlignedTitle({
+    candidate,
     seed: params.seed,
     avoidTitles: params.avoidLibrary?.titles,
-  });
+  }) ||
+    buildUniqueFactoryTitle({
+      genreLabel: params.genreLabel,
+      seed: params.seed,
+      avoidTitles: params.avoidLibrary?.titles,
+    });
 
   const storyPlan = buildFactoryStoryPlan({
     title,
@@ -1481,9 +1661,9 @@ export function buildMockStorySeed(params: {
     pipeline: {
       planner: true,
       chapterWriter: true,
-      storyEditor: false,
+      storyEditor: true,
       polishRewriter: false,
-      note: "Planner v1 đã tạo outline/evidence/villain/payoff. Editor và polish vẫn là self-check trong generate.ts, chưa phải API pass riêng.",
+      note: "Planner v2 tạo outline/evidence/villain/payoff + visual DNA. Story Editor Pass chạy ở generate.ts; polish rewriter riêng chưa tách API.",
     },
   } as FactoryStorySeed;
 }

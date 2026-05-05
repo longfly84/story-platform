@@ -729,17 +729,7 @@ export function buildAvoidLibrary(stories: ExistingStory[]): AvoidLibrary {
     if (story?.title) titles.add(String(story.title));
     if (story?.description) motifs.add(String(story.description).slice(0, 180));
 
-    let storyDnaObject: any = null;
-
-    if (story?.story_dna && typeof story.story_dna === "object") {
-      storyDnaObject = story.story_dna;
-    } else if (typeof story?.story_dna === "string") {
-      try {
-        storyDnaObject = JSON.parse(story.story_dna);
-      } catch {
-        storyDnaObject = null;
-      }
-    }
+    const storyDnaObject = parseStoryDnaObject(story?.story_dna);
 
     const factorySeed = storyDnaObject?.factory_seed;
 
@@ -759,6 +749,19 @@ export function buildAvoidLibrary(stories: ExistingStory[]): AvoidLibrary {
       ]
         .filter(Boolean)
         .forEach((item) => motifs.add(String(item).slice(0, 220)));
+    }
+
+    if (storyDnaObject) {
+      collectUsefulTextFragments(
+        [
+          storyDnaObject.motifText,
+          storyDnaObject.motifFingerprint,
+          storyDnaObject.coverConcept,
+          storyDnaObject.storyPlan,
+          storyDnaObject.factory_seed,
+        ],
+        80,
+      ).forEach((item) => motifs.add(item.slice(0, 260)));
     }
 
     const memoryText = [
@@ -972,6 +975,179 @@ function pickLineValue(text: string, labels: string[]) {
   return "";
 }
 
+
+function pickExactLineValue(text: string, labels: string[]) {
+  const lines = text.split("\n");
+
+  for (const line of lines) {
+    for (const label of labels) {
+      const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(
+        `^\\s*[-*]?\\s*${escapedLabel}\\s*[:：-]\\s*(.+)$`,
+        "i",
+      );
+      const match = line.match(regex);
+
+      if (match?.[1]) {
+        return match[1].trim().replace(/^[\'\"]|[\'\"]$/g, "");
+      }
+    }
+  }
+
+  return "";
+}
+
+function cleanParsedTitleCandidate(text: string) {
+  return cleanPublicStoryDescription(text)
+    .replace(/^#+\s*/, "")
+    .replace(/^Tên truyện\s*[:：-]\s*/i, "")
+    .replace(/^Title\s*[:：-]\s*/i, "")
+    .replace(/^Story title\s*[:：-]\s*/i, "")
+    .replace(/^Chương\s*\d+\s*[—-]\s*/i, "")
+    .trim();
+}
+
+function isBadStoryTitleCandidate(text: string, chapterNumber: number) {
+  const title = cleanParsedTitleCandidate(text);
+  const normalized = title.toLowerCase();
+
+  if (!title) return true;
+  if (title.length < 4 || title.length > 80) return true;
+  if (/^chương\s*\d+/i.test(title)) return true;
+  if (normalized.includes("không có")) return true;
+  if (normalized.includes("chưa có")) return true;
+  if (normalized.includes("bản đọc")) return true;
+  if (normalized.includes("bản phân tích")) return true;
+  if (normalized.includes("không đăng")) return true;
+  if (normalized.includes("story dna")) return true;
+  if (normalized.includes("motif")) return true;
+  if (normalized.includes("chapter mission")) return true;
+  if (normalized.includes("tên chương")) return true;
+  if (normalized.includes("tiêu đề chương")) return true;
+  if (normalized === `chương ${chapterNumber}`) return true;
+
+  return false;
+}
+
+function getStoryTitleFromOutput(params: {
+  combined: string;
+  fallbackTitle: string;
+  chapterNumber: number;
+}) {
+  const candidates = [
+    pickExactLineValue(params.combined, [
+      "Tên truyện đề xuất",
+      "Tên truyện hiện tại",
+      "Tên truyện",
+      "Story title",
+      "Title",
+      "storyTitle",
+    ]),
+    pickLineValue(params.combined, ["Tên truyện", "Story title", "Title", "storyTitle"]),
+  ]
+    .map(cleanParsedTitleCandidate)
+    .filter(Boolean);
+
+  const picked = candidates.find(
+    (candidate) => !isBadStoryTitleCandidate(candidate, params.chapterNumber),
+  );
+
+  return picked || params.fallbackTitle;
+}
+
+function parseStoryDnaObject(value: unknown) {
+  if (!value) return null;
+  if (typeof value === "object") return value as Record<string, any>;
+  if (typeof value !== "string") return null;
+
+  try {
+    return JSON.parse(value) as Record<string, any>;
+  } catch {
+    return null;
+  }
+}
+
+function collectUsefulTextFragments(value: unknown, limit = 80): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  function push(text: unknown) {
+    if (typeof text !== "string") return;
+    const cleaned = cleanPublicStoryDescription(text).slice(0, 260);
+    const key = cleaned.toLowerCase();
+    if (!cleaned || seen.has(key)) return;
+    seen.add(key);
+    result.push(cleaned);
+  }
+
+  function walk(input: unknown, depth: number) {
+    if (result.length >= limit || depth > 4 || !input) return;
+
+    if (typeof input === "string") {
+      push(input);
+      return;
+    }
+
+    if (Array.isArray(input)) {
+      input.slice(0, 30).forEach((item) => walk(item, depth + 1));
+      return;
+    }
+
+    if (typeof input === "object") {
+      const raw = input as Record<string, unknown>;
+      const priorityKeys = [
+        "title",
+        "corePremise",
+        "openingScene",
+        "incitingIncident",
+        "evidenceObject",
+        "mainConflict",
+        "hiddenTruth",
+        "setting",
+        "villainType",
+        "heroineArc",
+        "emotionalHook",
+        "powerStructure",
+        "publicPressure",
+        "shortFingerprint",
+        "motifText",
+        "visualArena",
+        "heroine",
+        "compositionType",
+        "moodTone",
+        "colorTone",
+        "premiseFamily",
+        "openingArena",
+        "mainArena",
+        "secondaryArena",
+        "evidenceType",
+        "villainAttackType",
+        "heroineCounterType",
+        "hiddenTruthType",
+        "deadlineStyle",
+      ];
+
+      priorityKeys.forEach((key) => walk(raw[key], depth + 1));
+
+      [
+        "genreBlend",
+        "antiRepeatTags",
+        "clueProps",
+        "secondaryFigures",
+        "conflictVisuals",
+        "mustShowElements",
+        "negativePrompt",
+        "evidencePlan",
+        "villainCurve",
+        "payoffPlan",
+      ].forEach((key) => walk(raw[key], depth + 1));
+    }
+  }
+
+  walk(value, 0);
+  return result;
+}
+
 function getFirstHeading(text: string) {
   const lines = text
     .split("\n")
@@ -988,7 +1164,7 @@ function getFirstHeading(text: string) {
 function getChapterTitleFromReader(readerOnly: string, chapterNumber: number) {
   const heading = getFirstHeading(readerOnly);
 
-  if (!heading) return `Cảnh Cửa Thứ ${chapterNumber}`;
+  if (!heading) return `Cánh Cửa Thứ ${chapterNumber}`;
 
   const match = heading.match(/^Chương\s*\d+\s*[—-]\s*(.+)$/i);
 
@@ -996,7 +1172,7 @@ function getChapterTitleFromReader(readerOnly: string, chapterNumber: number) {
 
   return (
     heading.replace(/^Chương\s*\d+\s*/i, "").trim() ||
-    `Cảnh Cửa Thứ ${chapterNumber}`
+    `Cánh Cửa Thứ ${chapterNumber}`
   );
 }
 
@@ -1126,13 +1302,11 @@ export function parseChapterOutput(params: {
     runShortId: params.runShortId,
   });
 
-  const storyTitle =
-    pickLineValue(combined, [
-      "Tên truyện",
-      "Title",
-      "Story title",
-      "storyTitle",
-    ]) || fallbackTitle;
+  const storyTitle = getStoryTitleFromOutput({
+    combined,
+    fallbackTitle,
+    chapterNumber: params.chapterNumber,
+  });
 
   const chapterTitle = getChapterTitleFromReader(
     readerOnly,
