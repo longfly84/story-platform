@@ -11,10 +11,17 @@ type FactoryJob = {
   heroineLabel: string
   status: FactoryJobStatus
   chapterProgress: string
-  coverStatus: 'off' | 'pending' | 'success' | 'failed' | 'skipped'
+  coverStatus: 'off' | 'pending' | 'success' | 'failed' | 'stopped' | 'skipped'
   error?: string
   storyId?: string
   storySlug?: string
+
+  currentChapters?: number
+  targetChapters?: number
+  remainingChapters?: number
+  nextChapterNumber?: number
+  createFromChapter?: number | null
+  createToChapter?: number | null
 }
 
 type FactoryLog = {
@@ -49,6 +56,142 @@ function getLogClass(type: FactoryLog['type']) {
   return 'border-white/10 bg-white/[0.03] text-slate-300'
 }
 
+function safeNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function parseChapterProgress(value: string) {
+  const match = value.match(/^(\d+)\s*\/\s*(\d+)/)
+
+  if (!match) {
+    return {
+      current: 0,
+      target: 0,
+    }
+  }
+
+  return {
+    current: safeNumber(match[1], 0),
+    target: safeNumber(match[2], 0),
+  }
+}
+
+function getJobChapterReport(job: FactoryJob) {
+  const parsed = parseChapterProgress(job.chapterProgress || '')
+
+  const current = Math.max(
+    0,
+    Math.floor(safeNumber(job.currentChapters, parsed.current)),
+  )
+
+  const target = Math.max(
+    0,
+    Math.floor(safeNumber(job.targetChapters, parsed.target)),
+  )
+
+  const remaining =
+    typeof job.remainingChapters === 'number'
+      ? Math.max(0, Math.floor(job.remainingChapters))
+      : target > 0
+        ? Math.max(0, target - current)
+        : 0
+
+  const nextChapter =
+    typeof job.nextChapterNumber === 'number'
+      ? Math.max(1, Math.floor(job.nextChapterNumber))
+      : current + 1
+
+  const createFrom =
+    typeof job.createFromChapter === 'number'
+      ? job.createFromChapter
+      : remaining > 0
+        ? nextChapter
+        : null
+
+  const createTo =
+    typeof job.createToChapter === 'number'
+      ? job.createToChapter
+      : remaining > 0
+        ? current + remaining
+        : null
+
+  const hasTarget = target > 0
+  const isFull = hasTarget && current >= target
+
+  return {
+    current,
+    target,
+    remaining,
+    nextChapter,
+    createFrom,
+    createTo,
+    hasTarget,
+    isFull,
+
+    progressLabel: hasTarget ? `${current}/${target}` : `${current}/?`,
+
+    remainingLabel: hasTarget
+      ? isFull
+        ? `Đã full ${current}/${target}`
+        : `Còn thiếu ${remaining} chương`
+      : 'Chưa có target chương',
+
+    nextChapterLabel: isFull ? 'Không có' : `Chương ${nextChapter}`,
+
+    createRangeLabel:
+      createFrom && createTo
+        ? createFrom === createTo
+          ? `Chương ${createFrom}`
+          : `Chương ${createFrom} → ${createTo}`
+        : isFull
+          ? 'Không tạo thêm'
+          : 'Chưa xác định',
+  }
+}
+
+function ChapterReportGrid({
+  report,
+  mode = 'continue',
+}: {
+  report: ReturnType<typeof getJobChapterReport>
+  mode?: 'continue' | 'retry'
+}) {
+  return (
+    <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-slate-300 sm:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <div className="text-slate-500">Tiến độ truyện</div>
+        <div className="font-semibold text-white">{report.progressLabel} chương</div>
+      </div>
+
+      <div>
+        <div className="text-slate-500">Còn thiếu</div>
+        <div
+          className={
+            report.remaining > 0
+              ? 'font-semibold text-yellow-200'
+              : 'font-semibold text-emerald-300'
+          }
+        >
+          {report.remainingLabel}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-slate-500">Chương tiếp theo</div>
+        <div className="font-semibold text-white">{report.nextChapterLabel}</div>
+      </div>
+
+      <div>
+        <div className="text-slate-500">
+          {mode === 'retry' ? 'Nếu chạy lại' : 'Nếu viết tiếp'}
+        </div>
+        <div className="font-semibold text-cyan-200">{report.createRangeLabel}</div>
+      </div>
+    </div>
+  )
+}
+
 export default function AIFactoryResultsPage() {
   let snapshot: FactoryRunSnapshot | null = null
 
@@ -67,18 +210,16 @@ export default function AIFactoryResultsPage() {
   const stoppedJobs = jobs.filter((job) => job.status === 'stopped')
   const unfinishedJobs = [...failedJobs, ...stoppedJobs]
 
-  function getCreatedChapterCount(chapterProgress: string) {
-  const match = chapterProgress.match(/^(\d+)\s*\/\s*(\d+)/)
-    if (!match) return 0
-    return Number(match[1]) || 0
-    }
+  function getCreatedChapterCount(job: FactoryJob) {
+    return getJobChapterReport(job).current
+  }
 
-    const totalCreatedChapters = successJobs.reduce(
-    (sum, job) => sum + getCreatedChapterCount(job.chapterProgress),
+  const totalCreatedChapters = successJobs.reduce(
+    (sum, job) => sum + getCreatedChapterCount(job),
     0,
-    )
+  )
 
-    const averageChaptersPerStory = successJobs.length
+  const averageChaptersPerStory = successJobs.length
     ? Math.round((totalCreatedChapters / successJobs.length) * 10) / 10
     : 0
 
@@ -110,7 +251,8 @@ export default function AIFactoryResultsPage() {
               Kết quả lần chạy Factory
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400">
-              Trang này hiển thị riêng các truyện Factory vừa tạo, kèm trạng thái và lỗi nếu có.
+              Trang này hiển thị riêng các truyện Factory vừa tạo, kèm trạng thái,
+              tiến độ chương và lỗi nếu có.
             </p>
           </div>
 
@@ -141,30 +283,34 @@ export default function AIFactoryResultsPage() {
         ) : (
           <>
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
-                    <div className="text-2xl font-black text-white">{jobs.length}</div>
-                    <div className="text-sm text-slate-400">Tổng job</div>
-                </div>
+              <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
+                <div className="text-2xl font-black text-white">{jobs.length}</div>
+                <div className="text-sm text-slate-400">Tổng job</div>
+              </div>
 
-                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
-                    <div className="text-2xl font-black text-emerald-100">{successJobs.length}</div>
-                    <div className="text-sm text-emerald-200/80">Truyện thành công</div>
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+                <div className="text-2xl font-black text-emerald-100">
+                  {successJobs.length}
                 </div>
+                <div className="text-sm text-emerald-200/80">Truyện thành công</div>
+              </div>
 
-                <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4">
-                    <div className="text-2xl font-black text-cyan-100">{totalCreatedChapters}</div>
-                    <div className="text-sm text-cyan-200/80">Chương đã tạo</div>
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4">
+                <div className="text-2xl font-black text-cyan-100">
+                  {totalCreatedChapters}
                 </div>
+                <div className="text-sm text-cyan-200/80">Chương đã có trong truyện</div>
+              </div>
 
-                <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
-                    <div className="text-2xl font-black text-red-100">{failedJobs.length}</div>
-                    <div className="text-sm text-red-200/80">Lỗi</div>
-                </div>
+              <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
+                <div className="text-2xl font-black text-red-100">{failedJobs.length}</div>
+                <div className="text-sm text-red-200/80">Lỗi</div>
+              </div>
 
-                <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4">
-                    <div className="text-2xl font-black text-orange-100">{stoppedJobs.length}</div>
-                    <div className="text-sm text-orange-200/80">Đã dừng</div>
-                </div>
+              <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4">
+                <div className="text-2xl font-black text-orange-100">{stoppedJobs.length}</div>
+                <div className="text-sm text-orange-200/80">Đã dừng</div>
+              </div>
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 sm:p-5">
@@ -173,7 +319,8 @@ export default function AIFactoryResultsPage() {
                   <h2 className="text-lg font-bold text-white">Truyện đã tạo thành công</h2>
                   <p className="mt-1 text-sm text-slate-400">
                     Chỉ hiển thị các job có trạng thái success trong lần chạy gần nhất.
-                    Tổng {totalCreatedChapters} chương, trung bình {averageChaptersPerStory} chương/truyện.
+                    Tổng {totalCreatedChapters} chương, trung bình {averageChaptersPerStory}{' '}
+                    chương/truyện.
                   </p>
                 </div>
 
@@ -184,57 +331,65 @@ export default function AIFactoryResultsPage() {
 
               <div className="mt-4 space-y-3">
                 {successJobs.length ? (
-                  successJobs.map((job) => (
-                    <div
-                      key={job.id}
-                      className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <div className="text-base font-bold text-white">
-                            #{job.index} — {job.title || 'Chưa có title'}
+                  successJobs.map((job) => {
+                    const report = getJobChapterReport(job)
+
+                    return (
+                      <div
+                        key={job.id}
+                        className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-base font-bold text-white">
+                              #{job.index} — {job.title || 'Chưa có title'}
+                            </div>
+
+                            <div className="mt-1 text-sm text-slate-300">
+                              {job.genreLabel || 'Chưa có thể loại'} •{' '}
+                              {job.heroineLabel || 'Chưa có kiểu nữ chính'}
+                            </div>
+
+                            <ChapterReportGrid report={report} />
+
+                            <div className="mt-2 text-xs text-slate-400">
+                              Cover: {job.coverStatus}
+                            </div>
+
+                            {job.storySlug ? (
+                              <div className="mt-1 break-all text-xs text-slate-500">
+                                /{job.storySlug}
+                              </div>
+                            ) : null}
                           </div>
 
-                          <div className="mt-1 text-sm text-slate-300">
-                            {job.genreLabel || 'Chưa có thể loại'} •{' '}
-                            {job.heroineLabel || 'Chưa có kiểu nữ chính'}
+                          <div className="flex flex-wrap gap-2">
+                            {job.storyId ? (
+                              <Link
+                                to={`/admin/stories/${job.storyId}/edit`}
+                                className="rounded-lg bg-blue-500 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-400"
+                              >
+                                Edit
+                              </Link>
+                            ) : null}
+
+                            {job.storySlug ? (
+                              <Link
+                                to={`/truyen/${job.storySlug}`}
+                                className="rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black text-black transition hover:bg-yellow-200"
+                              >
+                                View
+                              </Link>
+                            ) : null}
+
+                            <span className="rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-bold text-emerald-200">
+                              success
+                            </span>
                           </div>
-
-                          <div className="mt-2 text-xs text-slate-400">
-                            Chapter: {job.chapterProgress} • Cover: {job.coverStatus}
-                          </div>
-
-                          {job.storySlug ? (
-                            <div className="mt-1 text-xs text-slate-500">/{job.storySlug}</div>
-                          ) : null}
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          {job.storyId ? (
-                            <Link
-                              to={`/admin/stories/${job.storyId}/edit`}
-                              className="rounded-lg bg-blue-500 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-400"
-                            >
-                              Edit
-                            </Link>
-                          ) : null}
-
-                          {job.storySlug ? (
-                            <Link
-                              to={`/truyen/${job.storySlug}`}
-                              className="rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black text-black transition hover:bg-yellow-200"
-                            >
-                              View
-                            </Link>
-                          ) : null}
-
-                          <span className="rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-bold text-emerald-200">
-                            success
-                          </span>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 ) : (
                   <div className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-500">
                     Không có truyện nào tạo thành công trong lần chạy này.
@@ -259,43 +414,49 @@ export default function AIFactoryResultsPage() {
 
               <div className="mt-4 space-y-3">
                 {unfinishedJobs.length ? (
-                  unfinishedJobs.map((job) => (
-                    <div
-                      key={job.id}
-                      className="rounded-xl border border-red-400/20 bg-red-500/10 p-4"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <div className="text-base font-bold text-white">
-                            #{job.index} — {job.title || 'Chưa tạo được title'}
-                          </div>
+                  unfinishedJobs.map((job) => {
+                    const report = getJobChapterReport(job)
 
-                          <div className="mt-1 text-sm text-slate-300">
-                            {job.genreLabel || 'Chưa có thể loại'} •{' '}
-                            {job.heroineLabel || 'Chưa có kiểu nữ chính'}
-                          </div>
-
-                          <div className="mt-2 text-xs text-slate-400">
-                            Chapter: {job.chapterProgress} • Cover: {job.coverStatus}
-                          </div>
-
-                          {job.error ? (
-                            <div className="mt-3 rounded-lg border border-red-400/20 bg-black/30 p-3 text-sm text-red-100">
-                              {job.error}
+                    return (
+                      <div
+                        key={job.id}
+                        className="rounded-xl border border-red-400/20 bg-red-500/10 p-4"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-base font-bold text-white">
+                              #{job.index} — {job.title || 'Chưa tạo được title'}
                             </div>
-                          ) : null}
-                        </div>
 
-                        <span
-                          className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
-                            job.status,
-                          )}`}
-                        >
-                          {job.status}
-                        </span>
+                            <div className="mt-1 text-sm text-slate-300">
+                              {job.genreLabel || 'Chưa có thể loại'} •{' '}
+                              {job.heroineLabel || 'Chưa có kiểu nữ chính'}
+                            </div>
+
+                            <ChapterReportGrid report={report} mode="retry" />
+
+                            <div className="mt-2 text-xs text-slate-400">
+                              Cover: {job.coverStatus}
+                            </div>
+
+                            {job.error ? (
+                              <div className="mt-3 rounded-lg border border-red-400/20 bg-black/30 p-3 text-sm text-red-100">
+                                {job.error}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <span
+                            className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
+                              job.status,
+                            )}`}
+                          >
+                            {job.status}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 ) : (
                   <div className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-500">
                     Không có lỗi trong lần chạy này.
