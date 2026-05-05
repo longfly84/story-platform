@@ -2,6 +2,34 @@ import type { GeneratePayload, ModelKey, NormalizedGeneratePayload } from './typ
 import { safeNumber, safeStringArray, safeText } from './textUtils.js'
 import { normalizeMotifFingerprintArray, normalizeStorySeed } from './storyPlanUtils.js'
 
+const DEFAULT_CHAPTER_MIN_CHARS = 3500
+const DEFAULT_CHAPTER_MAX_CHARS = 4500
+
+function clampNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min
+  return Math.max(min, Math.min(max, Math.round(value)))
+}
+
+function normalizeChapterMinChars(body: GeneratePayload) {
+  const raw = safeNumber(body.chapterMinChars, DEFAULT_CHAPTER_MIN_CHARS)
+  return clampNumber(raw, 1000, 12000)
+}
+
+function normalizeChapterMaxChars(body: GeneratePayload, minChars: number) {
+  const raw = safeNumber(body.chapterMaxChars, DEFAULT_CHAPTER_MAX_CHARS)
+  return clampNumber(raw, minChars, 15000)
+}
+
+function buildChapterLengthLabel(body: GeneratePayload, minChars: number, maxChars: number) {
+  const explicitLabel = safeText(body.chapterLengthLabel, '')
+
+  if (body.chapterMinChars || body.chapterMaxChars) {
+    return `Tùy chỉnh — khoảng ${minChars}–${maxChars} ký tự`
+  }
+
+  return explicitLabel || `Tùy chỉnh — khoảng ${minChars}–${maxChars} ký tự`
+}
+
 export function createNameSeed() {
   const cryptoApi = globalThis.crypto
 
@@ -24,6 +52,9 @@ export function normalizeModelKey(body: GeneratePayload): ModelKey {
 }
 
 export function normalizePayload(body: GeneratePayload): NormalizedGeneratePayload {
+  const chapterMinChars = normalizeChapterMinChars(body)
+  const chapterMaxChars = normalizeChapterMaxChars(body, chapterMinChars)
+
   return {
     mode: body.mode === 'story-plan' ? 'story-plan' : 'chapter',
     modelKey: normalizeModelKey(body),
@@ -34,7 +65,9 @@ export function normalizePayload(body: GeneratePayload): NormalizedGeneratePaylo
     promptIdea: safeText(body.promptIdea, ''),
     genreLabel: safeText(body.genreLabel, 'Hôn nhân phản bội / ngoại tình'),
     mainCharacterStyleLabel: safeText(body.mainCharacterStyleLabel, 'Nhẫn nhịn rồi phản công'),
-    chapterLengthLabel: safeText(body.chapterLengthLabel, 'Vừa 2.500–3.500 ký tự'),
+    chapterLengthLabel: buildChapterLengthLabel(body, chapterMinChars, chapterMaxChars),
+    chapterMinChars,
+    chapterMaxChars,
     cliffhangerLabel: safeText(body.cliffhangerLabel, 'auto'),
     humiliationLevel: safeNumber(body.humiliationLevel, 3),
     revengeIntensity: safeNumber(body.revengeIntensity, 3),

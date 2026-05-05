@@ -3,6 +3,7 @@ import { getLengthRule, getStoryEditorPassEnabled, getTextModel } from './genera
 import { callOpenAIText } from './generate-lib/openaiClient.js'
 import { normalizePayload } from './generate-lib/payload.js'
 import { buildPrompt, buildStoryEditorPrompt } from './generate-lib/promptBuilders.js'
+import { moderateTextOrThrow } from './generate-lib/moderation.js'
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -22,6 +23,21 @@ export default async function handler(req: any, res: any) {
 
   try {
     const payload = normalizePayload((req.body || {}) as GeneratePayload)
+
+    const moderationInput = [
+      payload.storyTitle,
+      payload.promptIdea,
+      payload.genre,
+      payload.writingStyle,
+      payload.chapterTitle,
+      payload.previousChapterSummary,
+      payload.userInstruction,
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+
+    await moderateTextOrThrow(moderationInput, 'story generation input')
+
     const prompt = buildPrompt(payload)
     const lengthRule = getLengthRule(payload.chapterLengthLabel)
     const model = getTextModel(payload)
@@ -65,6 +81,9 @@ export default async function handler(req: any, res: any) {
     if (getStoryEditorPassEnabled(payload)) {
       try {
         const editorPrompt = buildStoryEditorPrompt(payload, draftText)
+
+        await moderateTextOrThrow(editorPrompt, 'story editor input')
+
         const editorPass = await callOpenAIText({
           apiKey,
           model,
@@ -89,6 +108,8 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    await moderateTextOrThrow(finalText, 'story generation output')
+
     return res.status(200).json({
       text: finalText,
       draftText: editorPassUsed ? draftText : undefined,
@@ -97,12 +118,21 @@ export default async function handler(req: any, res: any) {
       editorPassUsed,
       editorPassFailed,
       editorError: editorPassFailed ? editorError : undefined,
+      moderation: {
+        inputChecked: true,
+        outputChecked: true,
+        editorInputChecked: getStoryEditorPassEnabled(payload),
+        model: process.env.OPENAI_MODERATION_MODEL || 'omni-moderation-latest',
+      },
       usage: firstPass.data?.usage || null,
       editorUsage,
     })
   } catch (error: any) {
     return res.status(500).json({
       error: error?.message || 'Unknown generate error',
+      detail: error?.detail || null,
+      categories: error?.categories || null,
+      categoryScores: error?.categoryScores || null,
     })
   }
 }

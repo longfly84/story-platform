@@ -83,6 +83,8 @@ export type GeneratePayload = {
   genreLabel?: string
   mainCharacterStyleLabel?: string
   chapterLengthLabel?: string
+  chapterMinChars?: number
+  chapterMaxChars?: number
   cliffhangerLabel?: string
   humiliationLevel?: number
   revengeIntensity?: number
@@ -117,6 +119,8 @@ export type NormalizedGeneratePayload = {
   genreLabel: string
   mainCharacterStyleLabel: string
   chapterLengthLabel: string
+  chapterMinChars: number
+  chapterMaxChars: number
   cliffhangerLabel: string
   humiliationLevel: number
   revengeIntensity: number

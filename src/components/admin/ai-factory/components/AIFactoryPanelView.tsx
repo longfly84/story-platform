@@ -54,6 +54,9 @@ type AIFactoryPanelViewProps = {
   currentAction: string
   jobs: FactoryJob[]
   logs: FactoryLog[]
+  expensiveModelRequiresConfirmation: boolean
+  expensiveModelConfirmed: boolean
+  setExpensiveModelConfirmed: Dispatch<SetStateAction<boolean>>
 }
 
 export default function AIFactoryPanelView({
@@ -81,6 +84,9 @@ export default function AIFactoryPanelView({
   incompleteStories,
   scanIncompleteStories,
   openaiConfirmed,
+  expensiveModelRequiresConfirmation,
+  expensiveModelConfirmed,
+  setExpensiveModelConfirmed,
   totalBatches,
   totalTextRequests,
   totalCoverRequests,
@@ -93,6 +99,21 @@ export default function AIFactoryPanelView({
   jobs,
   logs,
 }: AIFactoryPanelViewProps) {
+  const chapterMinChars = Number((config as any).chapterMinChars ?? 3500)
+  const chapterMaxChars = Number((config as any).chapterMaxChars ?? 4500)
+
+  function updateChapterCharRange(nextMin: number, nextMax: number) {
+    const safeMin = clampNumber(Number(nextMin), 1000, 12000)
+    const safeMax = clampNumber(Number(nextMax), safeMin, 15000)
+
+    updateConfig('chapterMinChars' as keyof AIFactoryConfig, safeMin as any)
+    updateConfig('chapterMaxChars' as keyof AIFactoryConfig, safeMax as any)
+    updateConfig(
+      'chapterLengthLabel',
+      `Tùy chỉnh — khoảng ${safeMin}–${safeMax} ký tự` as AIFactoryConfig['chapterLengthLabel'],
+    )
+  }
+
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-6 text-slate-100 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
@@ -201,9 +222,10 @@ export default function AIFactoryPanelView({
                 <select
                   value={config.modelKey}
                   disabled={isRunning}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     updateConfig('modelKey', event.target.value as AIFactoryConfig['modelKey'])
-                  }
+                    setExpensiveModelConfirmed(false)
+                  }}
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 >
                   <option value="economy">Tiết kiệm — economy</option>
@@ -270,6 +292,42 @@ export default function AIFactoryPanelView({
                   {config.autoCompleteByTarget
                     ? 'Đang bật mode full target random: ô này sẽ bị bỏ qua. Số chương thật sẽ lấy theo target random của từng truyện.'
                     : 'Đây là số chương tạo thật ngay mỗi truyện. Hai ô mục tiêu bên dưới chỉ là kế hoạch cho AI, không tự tạo thêm chương.'}
+                </SmallHint>
+              </div>
+
+              <div>
+                <FieldLabel>Số ký tự tối thiểu mỗi chương</FieldLabel>
+                <input
+                  type="number"
+                  min={1000}
+                  max={12000}
+                  step={100}
+                  disabled={isRunning}
+                  value={chapterMinChars}
+                  onChange={(event) =>
+                    updateChapterCharRange(Number(event.target.value), chapterMaxChars)
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                />
+                <SmallHint>Mặc định khuyên dùng 3500 ký tự để chương đủ dày.</SmallHint>
+              </div>
+
+              <div>
+                <FieldLabel>Số ký tự tối đa mỗi chương</FieldLabel>
+                <input
+                  type="number"
+                  min={1000}
+                  max={15000}
+                  step={100}
+                  disabled={isRunning}
+                  value={chapterMaxChars}
+                  onChange={(event) =>
+                    updateChapterCharRange(chapterMinChars, Number(event.target.value))
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                />
+                <SmallHint>
+                  Đang ép AI viết khoảng {chapterMinChars}–{chapterMaxChars} ký tự/chương.
                 </SmallHint>
               </div>
 
@@ -513,6 +571,27 @@ export default function AIFactoryPanelView({
                   />
                   <span>Tao xác nhận Factory sẽ gọi OpenAI API và có thể tốn phí.</span>
                 </label>
+
+                {expensiveModelRequiresConfirmation ? (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm text-red-100">
+                    <input
+                      type="checkbox"
+                      checked={expensiveModelConfirmed}
+                      disabled={isRunning}
+                      onChange={(event) => setExpensiveModelConfirmed(event.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-red-300"
+                    />
+                    <span>
+                      <span className="block font-bold">
+                        Tao xác nhận đang dùng model {config.modelKey === 'premium' ? 'Cao cấp' : 'Tự động'}.
+                      </span>
+                      <span className="mt-1 block text-xs leading-relaxed text-red-100/80">
+                        Premium dùng OPENAI_MODEL_PREMIUM. Auto có thể tự đẩy chương quan trọng sang premium,
+                        nên chi phí có thể cao hơn economy.
+                      </span>
+                    </span>
+                  </label>
+                ) : null}
               </div>
             ) : (
               <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">

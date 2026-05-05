@@ -41,6 +41,8 @@ export type AIFactoryConfig = {
   chapterStatus: 'draft'
   chapterLengthLabel: string
   cliffhangerLabel: string
+  chapterMinChars?: number
+  chapterMaxChars?: number
 }
 
 export type StoryMotifFingerprint = {

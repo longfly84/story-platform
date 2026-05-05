@@ -48,6 +48,10 @@ import {
   insertFactoryStoryDraft,
 } from './utils/factoryStoryRunner'
 
+const DEFAULT_CHAPTER_MIN_CHARS = 3500
+const DEFAULT_CHAPTER_MAX_CHARS = 4500
+
+
 const defaultConfig: AIFactoryConfig = {
   provider: 'mock',
   modelKey: 'economy',
@@ -61,7 +65,9 @@ const defaultConfig: AIFactoryConfig = {
   autoCompleteByTarget: false,
   storyStatus: 'draft',
   chapterStatus: 'draft',
-  chapterLengthLabel: 'Vừa — khoảng 1.800–2.300 ký tự',
+  chapterLengthLabel: 'Tùy chỉnh — khoảng 3500–4500 ký tự',
+  chapterMinChars: DEFAULT_CHAPTER_MIN_CHARS,
+  chapterMaxChars: DEFAULT_CHAPTER_MAX_CHARS,
   cliffhangerLabel: 'Mặc định — AI tự chọn theo mạch truyện',
 }
 
@@ -89,6 +95,7 @@ export default function AIFactoryPanel() {
   const [status, setStatus] = useState<FactoryStatus>('idle')
   const [currentAction, setCurrentAction] = useState('Chưa chạy')
   const [openaiConfirmed, setOpenaiConfirmed] = useState(false)
+  const [expensiveModelConfirmed, setExpensiveModelConfirmed] = useState(false)
   const [factoryMode, setFactoryMode] = useState<FactoryMode>('create-new')
   const [continueStoryLimit, setContinueStoryLimit] = useState(5)
   const [continueChaptersPerStory, setContinueChaptersPerStory] = useState(3)
@@ -111,13 +118,16 @@ export default function AIFactoryPanel() {
   const totalCoverRequests = factoryMode === 'create-new' && config.generateCover ? config.storyCount : 0
   const totalRequests = totalTextRequests + totalCoverRequests
   const totalBatches = Math.ceil(config.storyCount / safeBatchSize)
+  const expensiveModelRequiresConfirmation =
+  config.provider === 'openai' && (config.modelKey === 'premium' || config.modelKey === 'auto')
 
   const canStart =
-    !isRunning &&
-    (factoryMode === 'create-new'
-      ? selectedGenres.length > 0 && selectedHeroines.length > 0
-      : true) &&
-    (config.provider === 'mock' || openaiConfirmed)
+  !isRunning &&
+  (factoryMode === 'create-new'
+    ? selectedGenres.length > 0 && selectedHeroines.length > 0
+    : true) &&
+  (config.provider === 'mock' || openaiConfirmed) &&
+  (!expensiveModelRequiresConfirmation || expensiveModelConfirmed)
 
   const progressText = useMemo(() => {
     if (!jobs.length) return '0%'
@@ -175,6 +185,10 @@ export default function AIFactoryPanel() {
   }
 
   function updateConfig<K extends keyof AIFactoryConfig>(key: K, value: AIFactoryConfig[K]) {
+    if (key === 'modelKey' || key === 'provider') {
+      setExpensiveModelConfirmed(false)
+    }
+
     setConfig((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -818,6 +832,9 @@ export default function AIFactoryPanel() {
       incompleteStories={incompleteStories}
       scanIncompleteStories={scanIncompleteStories}
       openaiConfirmed={openaiConfirmed}
+      expensiveModelRequiresConfirmation={expensiveModelRequiresConfirmation}
+      expensiveModelConfirmed={expensiveModelConfirmed}
+      setExpensiveModelConfirmed={setExpensiveModelConfirmed}
       totalBatches={totalBatches}
       totalTextRequests={totalTextRequests}
       totalCoverRequests={totalCoverRequests}
