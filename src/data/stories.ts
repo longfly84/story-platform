@@ -303,12 +303,21 @@ export function getChapterBySlug(story: Story, chapterSlug: string) {
   return story.chapters.find((c) => c.slug === chapterSlug || c.id === chapterSlug || String(c.number) === chapterSlug)
 }
 
+function getSortedChapters(story: Story) {
+  return [...(story.chapters ?? [])].sort((a, b) => {
+    const aNumber = Number((a as any).number ?? (a as any).chapter_number ?? 0)
+    const bNumber = Number((b as any).number ?? (b as any).chapter_number ?? 0)
+
+    return aNumber - bNumber
+  })
+}
+
 export function getFirstChapter(story: Story) {
-  return story.chapters[0]
+  return getSortedChapters(story)[0]
 }
 
 export function getLatestChapter(story: Story) {
-  return story.chapters.at(-1)
+  return getSortedChapters(story).at(-1)
 }
 
 export function getChapterByRouteParam(story: Story, chapterParam: string) {

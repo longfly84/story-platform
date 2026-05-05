@@ -119,7 +119,14 @@ export default function StoryDetailPage() {
   }, [])
 
   const chapters = useMemo(() => {
-    return Array.isArray(story?.chapters) ? story.chapters : []
+    const rawChapters = Array.isArray(story?.chapters) ? story.chapters : []
+
+    return [...rawChapters].sort((a: any, b: any) => {
+      const aNumber = Number(a?.number ?? a?.chapter_number ?? 0)
+      const bNumber = Number(b?.number ?? b?.chapter_number ?? 0)
+
+      return aNumber - bNumber
+    })
   }, [story?.chapters])
 
   const readingEntryLocal = story

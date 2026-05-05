@@ -264,7 +264,16 @@ function LatestStoryRow({
   story: Story
   getReadText: (s: any) => string
 }) {
-  const latestChapter = story.chapters[story.chapters.length - 1]
+
+  const sortedChapters = [...(story.chapters ?? [])].sort((a: any, b: any) => {
+    const aNumber = Number((a as any).number ?? (a as any).chapter_number ?? 0)
+    const bNumber = Number((b as any).number ?? (b as any).chapter_number ?? 0)
+
+    return aNumber - bNumber
+  })
+
+  const latestChapter = sortedChapters[sortedChapters.length - 1]
+
   const chapterHref = latestChapter
     ? `/doc-truyen/${story.slug}/${latestChapter.slug}`
     : `/truyen/${story.slug}`
