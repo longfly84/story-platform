@@ -1,595 +1,824 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
+import { randomUUID } from 'node:crypto'
 
-type CoverRequestBody = {
-  prompt?: string
-  coverPrompt?: string
-  title?: string
-  storySummary?: string
-  genreLabel?: string
-  heroineLabel?: string
-  styleLabel?: string
-  aspectRatio?: string
-  size?: string
-  modelKey?: string
+type JsonRecord = Record<string, any>
+
+type CoverBlueprint =
+  | 'showbiz-scandal'
+  | 'family-inheritance'
+  | 'airport-mystery'
+  | 'marriage-betrayal'
+  | 'child-school'
+  | 'hospital-truth'
+  | 'corporate-war'
+  | 'general-drama'
+
+interface CoverConcept {
+  blueprint: CoverBlueprint
+  arena: string
+  mood: string
+  heroineLook: string
+  secondaryFigures: string[]
+  clueProps: string[]
+  conflictVisuals: string[]
+  colorTone: string
 }
 
-function normalizeText(value: unknown) {
+interface StoryInput {
+  id?: string
+  title: string
+  summary?: string
+  description?: string
+  genre?: string
+  genres?: string[]
+  tags?: string[]
+  slug?: string
+  story_dna?: JsonRecord | string | null
+  storyDna?: JsonRecord | string | null
+  author?: string
+  style?: string
+  visual_style?: string
+  cover_style?: string
+}
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
+const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1'
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  ''
+const SUPABASE_SERVICE_ROLE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  ''
+const SUPABASE_COVER_BUCKET =
+  process.env.SUPABASE_COVER_BUCKET || 'story-covers'
+
+const openai = OPENAI_API_KEY
+  ? new OpenAI({ apiKey: OPENAI_API_KEY })
+  : null
+
+const supabase =
+  SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    : null
+
+function setCors(res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+}
+
+function safeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-function truncateText(value: string, maxLength = 500) {
-  const text = normalizeText(value)
-  if (text.length <= maxLength) return text
-  return `${text.slice(0, maxLength)}...`
+function safeArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => safeString(item))
+    .filter(Boolean)
 }
 
-function tryParseJson(text: string) {
+function parseMaybeJson<T = JsonRecord>(value: unknown): T | null {
+  if (!value) return null
+  if (typeof value === 'object') return value as T
+  if (typeof value !== 'string') return null
+
   try {
-    return text ? JSON.parse(text) : null
+    return JSON.parse(value) as T
   } catch {
     return null
   }
 }
 
-function buildCoverSafetyRules() {
-  return [
-    'Mandatory cover rules:',
-    'No text on the image.',
-    'No title text, no random letters, no watermark, no logo, no UI overlay.',
-    'The main character must clearly look East Asian / Asian, not Western or European.',
-    'Avoid Western oil painting style.',
-    'Avoid European-looking characters.',
-    'Avoid medieval European costumes unless the story is explicitly ancient Chinese historical.',
-    'Avoid dark gothic fantasy poster vibe.',
-    'Avoid horror movie poster style.',
-    'Avoid Hollywood movie-poster composition.',
-    'Avoid ugly hands, extra fingers, distorted anatomy, broken eyes, old face, or malformed face.',
-    'Avoid cluttered background and ugly typography.',
-    'Portrait orientation, cover art suitable for a mobile reading app.',
-  ].join(' ')
+function normalizeText(value: string): string {
+  return safeString(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
 }
 
-function buildColorDiversityRules() {
-  return [
-    'Color and scene diversity rules:',
-    'Do not default to yellow, golden, champagne, brown-heavy, hotel-lobby, perfume-ad, ring-light, or warm luxury room palettes.',
-    'Choose a palette based on the actual story context.',
-    'Prefer cold blue + steel gray, navy + white, cyan office light, rainy airport blue, legal-office gray + black, deep red + black, purple neon + dark city, or clean hospital white/green when appropriate.',
-    'Use golden/warm luxury lighting only if the story specifically requires a banquet, wedding, hotel, or luxury romance scene.',
-    'Background must follow the story context: airport terminal, office boardroom, law office, hospital corridor, school gate, rainy street, apartment, city night, family mansion, wedding hall, or hotel only when the plot requires it.',
-  ].join(' ')
+function uniqueStrings(list: string[], limit = 8): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const item of list) {
+    const clean = safeString(item)
+    const key = clean.toLowerCase()
+    if (!clean || seen.has(key)) continue
+    seen.add(key)
+    result.push(clean)
+    if (result.length >= limit) break
+  }
+
+  return result
 }
 
-function buildCompositionRules() {
-  return [
-    'Cover composition rules:',
-    'The cover must not be a generic portrait only.',
-    'The image should communicate the central hook at a glance.',
-    'Composition should include: 1 main heroine in foreground, 1 or 2 story clue objects, a story-specific background, and optional secondary silhouette for conflict.',
-    'The heroine should remain the visual focal point, but plot clues must be visible enough to hint at the story.',
-    'Plot clue objects can be in hand, on a desk, near the body, or placed prominently in the scene.',
-    'If the story has a strong conflict figure, show that figure as a blurred silhouette, reflection, shadow, or secondary background figure.',
-  ].join(' ')
+function extractStoryInput(body: JsonRecord): StoryInput {
+  const source = body.story || body.storyData || body.payload || body
+
+  return {
+    id: safeString(source.id),
+    title: safeString(source.title),
+    summary: safeString(source.summary),
+    description: safeString(source.description || source.desc),
+    genre: safeString(source.genre),
+    genres: safeArray(source.genres),
+    tags: safeArray(source.tags),
+    slug: safeString(source.slug),
+    story_dna: source.story_dna ?? source.storyDna ?? null,
+    storyDna: source.storyDna ?? source.story_dna ?? null,
+    author: safeString(source.author),
+    style: safeString(source.style),
+    visual_style: safeString(source.visual_style),
+    cover_style: safeString(source.cover_style),
+  }
 }
 
-function buildAntiGenericRules() {
-  return [
-    'Anti-generic cover rules:',
-    'Avoid covers that show only a beautiful woman with no plot clue.',
-    'Avoid a plain office-girl portrait with a random blurred background.',
-    'Avoid generic luxury background if the plot hook is legal, family, hospital, airport, livestream, or identity drama.',
-    'If the story involves child custody, switched child, adoption file, legal identity, betrayal, livestream scandal, airport escape, inheritance, or corporate takeover, these elements must appear visually through clues, props, or background.',
-  ].join(' ')
+function pickSummary(story: StoryInput): string {
+  return (
+    safeString(story.summary) ||
+    safeString(story.description) ||
+    ''
+  )
 }
 
-function buildContextSceneHint(contextText: string) {
-  const hints: string[] = []
+function flattenStoryKeywords(story: StoryInput, storyDna: JsonRecord | null): string {
+  const pieces: string[] = [
+    story.title,
+    story.summary,
+    story.description,
+    story.genre,
+    ...(story.genres || []),
+    ...(story.tags || []),
+  ]
 
-  if (
-    contextText.includes('sân bay') ||
-    contextText.includes('airport') ||
-    contextText.includes('vé máy bay') ||
-    contextText.includes('pvg') ||
-    contextText.includes('pek') ||
-    contextText.includes('chuyến bay')
-  ) {
-    hints.push(
-      'Story-specific visual hint: airport terminal at night, cold blue / steel gray palette, blurred departure board, rain on glass, boarding gate atmosphere, tense modern conspiracy mood.',
-    )
+  if (storyDna) {
+    const maybePieces = [
+      storyDna.corePremise,
+      storyDna.openingScene,
+      storyDna.hiddenTruth,
+      storyDna.evidenceObject,
+      storyDna.emotionalStake,
+      storyDna.villainAttack,
+      storyDna.heroineCounter,
+      storyDna.coverPromptHint,
+      storyDna.motifText,
+      storyDna.factory_seed,
+      storyDna.arena,
+      storyDna.setting,
+      storyDna.hookVisual,
+      storyDna.visualArena,
+    ]
+
+    for (const item of maybePieces) {
+      if (typeof item === 'string') pieces.push(item)
+    }
+
+    if (Array.isArray(storyDna.tags)) {
+      pieces.push(...storyDna.tags.map((x: unknown) => safeString(x)))
+    }
+
+    if (storyDna.coverConcept && typeof storyDna.coverConcept === 'object') {
+      const coverConcept = storyDna.coverConcept as JsonRecord
+
+      pieces.push(
+        safeString(coverConcept.arena),
+        safeString(coverConcept.mood),
+        safeString(coverConcept.secondaryFigure),
+        safeString(coverConcept.compositionType),
+      )
+
+      if (Array.isArray(coverConcept.clueProps)) {
+        pieces.push(...coverConcept.clueProps.map((x: unknown) => safeString(x)))
+      }
+    }
+
+    if (storyDna.motifFingerprint && typeof storyDna.motifFingerprint === 'object') {
+      const fp = storyDna.motifFingerprint as JsonRecord
+      const fpCandidates = [
+        fp.premiseFamily,
+        fp.premiseConflict,
+        fp.premiseObject,
+        fp.visualHook,
+        fp.arenaType,
+        fp.evidenceType,
+        fp.publicArena,
+        fp.secondaryArena,
+        fp.deadlineStyle,
+        fp.heroineCounterType,
+        fp.villainAttackType,
+      ]
+
+      for (const item of fpCandidates) {
+        if (typeof item === 'string') pieces.push(item)
+      }
+    }
   }
 
-  if (
-    contextText.includes('di chúc') ||
-    contextText.includes('công chứng') ||
-    contextText.includes('hồ sơ') ||
-    contextText.includes('hợp đồng') ||
-    contextText.includes('pháp lý') ||
-    contextText.includes('luật sư')
-  ) {
-    hints.push(
-      'Story-specific visual hint: sealed notarized document, red stamp, legal folder, contract, law office or corporate boardroom, neutral gray/navy lighting.',
-    )
-  }
-
-  if (
-    contextText.includes('hội đồng') ||
-    contextText.includes('quản trị') ||
-    contextText.includes('tập đoàn') ||
-    contextText.includes('cổ phần') ||
-    contextText.includes('quyền điều hành')
-  ) {
-    hints.push(
-      'Story-specific visual hint: corporate boardroom, glass meeting room, city skyline, documents on table, cold office light, high-stakes business drama.',
-    )
-  }
-
-  if (
-    contextText.includes('bệnh viện') ||
-    contextText.includes('xét nghiệm') ||
-    contextText.includes('adn') ||
-    contextText.includes('hồ sơ bệnh viện')
-  ) {
-    hints.push(
-      'Story-specific visual hint: hospital corridor, clean white/green tint, medical file, DNA report, tense family secret atmosphere.',
-    )
-  }
-
-  if (
-    contextText.includes('trường học') ||
-    contextText.includes('phụ huynh') ||
-    contextText.includes('con tôi') ||
-    contextText.includes('quyền nuôi con')
-  ) {
-    hints.push(
-      'Story-specific visual hint: school gate, child silhouette, custody file, protective mother atmosphere, clean realistic urban palette.',
-    )
-  }
-
-  if (
-    contextText.includes('weibo') ||
-    contextText.includes('hot search') ||
-    contextText.includes('livestream') ||
-    contextText.includes('bóc phốt') ||
-    contextText.includes('dư luận')
-  ) {
-    hints.push(
-      'Story-specific visual hint: livestream room, phone screen glow, social media pressure, neon/cyan lighting, modern PR crisis mood.',
-    )
-  }
-
-  if (
-    contextText.includes('ly hôn') ||
-    contextText.includes('ngoại tình') ||
-    contextText.includes('tiểu tam') ||
-    contextText.includes('hủy hôn') ||
-    contextText.includes('chồng')
-  ) {
-    hints.push(
-      'Story-specific visual hint: wedding ring, divorce paper, blurred couple in background, betrayal tension, elegant but painful relationship drama.',
-    )
-  }
-
-  if (
-    contextText.includes('giấy khai sinh') ||
-    contextText.includes('hộ khẩu') ||
-    contextText.includes('nhận nuôi') ||
-    contextText.includes('con bị tráo') ||
-    contextText.includes('thân thế')
-  ) {
-    hints.push(
-      'Story-specific visual hint: birth certificate, household registration book, adoption file, child silhouette, identity-secret family drama.',
-    )
-  }
-
-  return hints.join(' ')
+  return normalizeText(pieces.filter(Boolean).join(' | '))
 }
 
-function extractStoryClues(contextText: string) {
-  const clues: string[] = []
+function inferBlueprint(story: StoryInput, storyDna: JsonRecord | null): CoverBlueprint {
+  const haystack = flattenStoryKeywords(story, storyDna)
 
-  const add = (value: string) => {
-    if (!clues.includes(value)) clues.push(value)
+  if (
+    haystack.includes('showbiz') ||
+    haystack.includes('hot search') ||
+    haystack.includes('pr scandal') ||
+    haystack.includes('paparazzi') ||
+    haystack.includes('hop bao') ||
+    haystack.includes('livestream') ||
+    haystack.includes('giai tri')
+  ) {
+    return 'showbiz-scandal'
   }
 
-  if (contextText.includes('giấy khai sinh')) add('birth certificate')
-  if (contextText.includes('hộ khẩu')) add('household registration book')
-  if (contextText.includes('nhận nuôi')) add('adoption file')
-  if (contextText.includes('con bị tráo')) add('identity-switched child clue')
-  if (contextText.includes('adn') || contextText.includes('xét nghiệm')) add('DNA report')
-  if (contextText.includes('bệnh viện')) add('hospital file')
-  if (contextText.includes('di chúc')) add('will document')
-  if (contextText.includes('công chứng')) add('notarized document with red seal')
-  if (contextText.includes('hồ sơ')) add('important legal file')
-  if (contextText.includes('hợp đồng')) add('contract papers')
-  if (contextText.includes('thẻ nhớ')) add('memory card')
-  if (contextText.includes('camera')) add('surveillance image clue')
-  if (contextText.includes('vé máy bay') || contextText.includes('chuyến bay')) add('boarding pass')
-  if (contextText.includes('livestream')) add('livestream screen glow')
-  if (contextText.includes('hot search') || contextText.includes('weibo')) add('phone screen showing social-media crisis')
-  if (contextText.includes('ly hôn')) add('divorce paper')
-  if (contextText.includes('ngoại tình') || contextText.includes('tiểu tam')) add('wedding ring or betrayal clue')
-  if (contextText.includes('quyền nuôi con')) add('custody document')
-  if (contextText.includes('cổ phần') || contextText.includes('quyền điều hành')) add('shareholding or boardroom document')
-  if (contextText.includes('phong thư')) add('suspicious envelope')
-  if (contextText.includes('nhẫn')) add('wedding ring')
-  if (contextText.includes('đám cưới')) add('wedding invitation or wedding hall detail')
-
-  return clues.slice(0, 4)
-}
-
-function buildStoryClueRule(contextText: string) {
-  const clues = extractStoryClues(contextText)
-
-  if (!clues.length) {
-    return [
-      'Story clue rule:',
-      'The cover must include at least 1 visual clue object tied to the plot, not just a generic portrait.',
-      'Possible clue objects: legal paper, phone screen, envelope, memory card, document folder, red seal, ring, file, or silhouette of a child.',
-    ].join(' ')
+  if (
+    haystack.includes('gia toc') ||
+    haystack.includes('thua ke') ||
+    haystack.includes('di chuc') ||
+    haystack.includes('tu duong') ||
+    haystack.includes('me chong') ||
+    haystack.includes('nha chong') ||
+    haystack.includes('co dong')
+  ) {
+    return 'family-inheritance'
   }
 
-  return [
-    'Story clue rule:',
-    'The cover must include 1 or 2 visible story clue objects tied to the plot.',
-    `Suggested clue objects for this story: ${clues.join(', ')}.`,
-    'Do not hide all clues completely in the background. At least one clue should be readable as an object at a glance.',
-  ].join(' ')
+  if (
+    haystack.includes('san bay') ||
+    haystack.includes('boarding pass') ||
+    haystack.includes('ve may bay') ||
+    haystack.includes('mat tich') ||
+    haystack.includes('departure') ||
+    haystack.includes('hanh ly')
+  ) {
+    return 'airport-mystery'
+  }
+
+  if (
+    haystack.includes('ngoai tinh') ||
+    haystack.includes('hon nhan') ||
+    haystack.includes('chong') ||
+    haystack.includes('ly hon') ||
+    haystack.includes('ban than phan boi') ||
+    haystack.includes('nguoi thu ba')
+  ) {
+    return 'marriage-betrayal'
+  }
+
+  if (
+    haystack.includes('truong hoc') ||
+    haystack.includes('phu huynh') ||
+    haystack.includes('lop hoc') ||
+    haystack.includes('con nho') ||
+    haystack.includes('giao vien') ||
+    haystack.includes('quyen nuoi con')
+  ) {
+    return 'child-school'
+  }
+
+  if (
+    haystack.includes('benh vien') ||
+    haystack.includes('ho so benh an') ||
+    haystack.includes('xet nghiem') ||
+    haystack.includes('dna') ||
+    haystack.includes('phong cap cuu') ||
+    haystack.includes('bac si')
+  ) {
+    return 'hospital-truth'
+  }
+
+  if (
+    haystack.includes('tap doan') ||
+    haystack.includes('hoi dong') ||
+    haystack.includes('van phong') ||
+    haystack.includes('thuong chien') ||
+    haystack.includes('co phan') ||
+    haystack.includes('hop dong') ||
+    haystack.includes('doanh nghiep')
+  ) {
+    return 'corporate-war'
+  }
+
+  return 'general-drama'
 }
 
-function buildCharacterAndScenePreset(contextText: string) {
-  const isAncient =
-    contextText.includes('cổ trang') ||
-    contextText.includes('xuyên không') ||
-    contextText.includes('trọng sinh cổ') ||
-    contextText.includes('vương gia') ||
-    contextText.includes('thái tử') ||
-    contextText.includes('hoàng cung') ||
-    contextText.includes('phi tần') ||
-    contextText.includes('quận chúa') ||
-    contextText.includes('thừa tướng') ||
-    contextText.includes('hầu phủ') ||
-    contextText.includes('giang hồ')
+function pickStoryField(storyDna: JsonRecord | null, keys: string[]): string {
+  if (!storyDna) return ''
+  for (const key of keys) {
+    const value = storyDna[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return ''
+}
 
-  const isFamily =
-    contextText.includes('mẹ con') ||
-    contextText.includes('gia đình') ||
-    contextText.includes('bảo vệ con') ||
-    contextText.includes('con tôi') ||
-    contextText.includes('quyền nuôi con') ||
-    contextText.includes('giấy khai sinh') ||
-    contextText.includes('hộ khẩu') ||
-    contextText.includes('nhận nuôi') ||
-    contextText.includes('con bị tráo') ||
-    contextText.includes('thân thế')
+function pickArrayField(storyDna: JsonRecord | null, keys: string[]): string[] {
+  if (!storyDna) return []
+  for (const key of keys) {
+    const value = storyDna[key]
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => safeString(item))
+        .filter(Boolean)
+    }
+  }
+  return []
+}
 
-  const isRevenge =
-    contextText.includes('trả thù') ||
-    contextText.includes('lạnh lùng') ||
-    contextText.includes('vả mặt') ||
-    contextText.includes('hối hận') ||
-    contextText.includes('phản công')
+function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): CoverConcept {
+  const blueprint = inferBlueprint(story, storyDna)
 
-  const isOffice =
-    contextText.includes('công sở') ||
-    contextText.includes('tập đoàn') ||
-    contextText.includes('tổng tài') ||
-    contextText.includes('luật sư') ||
-    contextText.includes('pháp lý') ||
-    contextText.includes('hào môn') ||
-    contextText.includes('hội đồng') ||
-    contextText.includes('quản trị') ||
-    contextText.includes('cổ phần') ||
-    contextText.includes('quyền điều hành')
+  const storySummary = pickSummary(story)
+  const heroineLook =
+    pickStoryField(storyDna, [
+      'heroineVisual',
+      'heroineLook',
+      'heroineArchetype',
+      'heroineType',
+    ]) || 'một nữ chính hiện đại, đẹp sắc sảo, ánh mắt mạnh, có khí chất chịu đựng nhưng không yếu'
 
-  const isMarriageDrama =
-    contextText.includes('ngoại tình') ||
-    contextText.includes('hôn nhân') ||
-    contextText.includes('ly hôn') ||
-    contextText.includes('tiểu tam') ||
-    contextText.includes('hủy hôn') ||
-    contextText.includes('chồng cũ') ||
-    contextText.includes('bạn thân ngủ với chồng')
+  const dnaCoverConcept =
+    storyDna && typeof storyDna.coverConcept === 'object'
+      ? (storyDna.coverConcept as JsonRecord)
+      : null
 
-  const isAirportLegal =
-    contextText.includes('sân bay') ||
-    contextText.includes('vé máy bay') ||
-    contextText.includes('di chúc') ||
-    contextText.includes('công chứng')
+  const dnaClueProps = uniqueStrings([
+    ...(dnaCoverConcept?.clueProps || []),
+    ...pickArrayField(storyDna, ['clueProps', 'visualClues', 'hookProps']),
+    pickStoryField(storyDna, ['evidenceObject', 'evidenceType', 'hookVisual']),
+  ])
 
-  const isLivestreamDrama =
-    contextText.includes('livestream') ||
-    contextText.includes('weibo') ||
-    contextText.includes('hot search') ||
-    contextText.includes('bóc phốt') ||
-    contextText.includes('dư luận')
+  const dnaSecondary = uniqueStrings([
+    ...(Array.isArray(dnaCoverConcept?.secondaryFigures)
+      ? dnaCoverConcept.secondaryFigures.map((x: unknown) => safeString(x))
+      : []),
+    safeString(dnaCoverConcept?.secondaryFigure),
+    pickStoryField(storyDna, ['villainFigure', 'secondaryFigure', 'shadowFigure']),
+  ])
 
-  let characterDirection = ''
-  let sceneDirection = ''
-  let moodDirection = ''
+  const dnaConflictVisuals = uniqueStrings([
+    ...(Array.isArray(dnaCoverConcept?.conflictVisuals)
+      ? dnaCoverConcept.conflictVisuals.map((x: unknown) => safeString(x))
+      : []),
+    pickStoryField(storyDna, ['villainAttack', 'heroineCounter', 'emotionalStake']),
+  ])
 
-  if (isAncient) {
-    characterDirection =
-      'Main character: one beautiful East Asian heroine in elegant ancient Chinese-inspired clothing, graceful posture, expressive eyes, refined Asian facial features, premium historical romance manhua heroine.'
+  const fallbackByBlueprint: Record<CoverBlueprint, Omit<CoverConcept, 'blueprint' | 'heroineLook'>> = {
+    'showbiz-scandal': {
+      arena:
+        safeString(dnaCoverConcept?.arena) ||
+        'một buổi họp báo hoặc sân khấu truyền thông với màn hình LED, flash paparazzi và cảm giác scandal công khai',
+      mood:
+        safeString(dnaCoverConcept?.mood) ||
+        'công khai, áp lực truyền thông, thắng thua, scandal, đối đầu trước công chúng',
+      secondaryFigures:
+        dnaSecondary.length > 0
+          ? dnaSecondary
+          : ['một người đàn ông lạnh lùng ở phía sau', 'một người phụ nữ mỉm cười đầy khiêu khích'],
+      clueProps:
+        dnaClueProps.length > 0
+          ? dnaClueProps
+          : ['điện thoại hiện hot search', 'micro họp báo', 'ánh flash paparazzi'],
+      conflictVisuals:
+        dnaConflictVisuals.length > 0
+          ? dnaConflictVisuals
+          : ['xuất hiện dòng hot search hoặc scandal trên màn hình', 'không khí công kích truyền thông'],
+      colorTone: 'đỏ đen vàng, ánh đèn truyền thông kịch tính',
+    },
 
-    sceneDirection =
-      'Scene: traditional East Asian architecture, elegant courtyard or palace interior, layered silk curtains or lantern atmosphere, and one meaningful plot clue object related to the story.'
+    'family-inheritance': {
+      arena:
+        safeString(dnaCoverConcept?.arena) ||
+        'một không gian gia tộc quyền lực như biệt thự, phòng họp gia tộc, từ đường hoặc phòng hội đồng',
+      mood:
+        safeString(dnaCoverConcept?.mood) ||
+        'quyền lực, đấu đá gia tộc, thừa kế, căng thẳng lạnh lùng',
+      secondaryFigures:
+        dnaSecondary.length > 0
+          ? dnaSecondary
+          : ['một trưởng bối nghiêm khắc', 'một người đàn ông quyền lực đứng trong bóng tối'],
+      clueProps:
+        dnaClueProps.length > 0
+          ? dnaClueProps
+          : ['di chúc hoặc hồ sơ thừa kế', 'chiếc nhẫn hoặc con dấu gia tộc'],
+      conflictVisuals:
+        dnaConflictVisuals.length > 0
+          ? dnaConflictVisuals
+          : ['ánh nhìn nghi kỵ trong gia tộc', 'không khí tranh giành quyền lực'],
+      colorTone: 'xanh đậm, vàng tối, nâu đen, sang trọng nhưng đầy sức ép',
+    },
 
-    moodDirection =
-      'Mood: premium Asian historical romance webnovel cover, elegant, emotional, dramatic, polished, not dark western fantasy.'
-  } else if (isAirportLegal) {
-    characterDirection =
-      'Main character: one beautiful modern East Asian heroine, elegant but realistic styling, tense calm expression, intelligent eyes, strong female lead aura.'
+    'airport-mystery': {
+      arena:
+        safeString(dnaCoverConcept?.arena) ||
+        'một sảnh sân bay về đêm, bảng chuyến bay điện tử, cửa lên máy bay hoặc hành lang chờ',
+      mood:
+        safeString(dnaCoverConcept?.mood) ||
+        'bí ẩn, truy đuổi, mất tích, khẩn cấp, lạnh và căng',
+      secondaryFigures:
+        dnaSecondary.length > 0
+          ? dnaSecondary
+          : ['một bóng người đang rời đi', 'một người đàn ông quay lưng chuẩn bị biến mất'],
+      clueProps:
+        dnaClueProps.length > 0
+          ? dnaClueProps
+          : ['vé máy bay hoặc boarding pass', 'điện thoại có hình camera an ninh', 'vali hoặc hành lý'],
+      conflictVisuals:
+        dnaConflictVisuals.length > 0
+          ? dnaConflictVisuals
+          : ['cảm giác người quan trọng vừa biến mất', 'manh mối đang bị che giấu'],
+      colorTone: 'xanh lạnh, trắng xám, ánh đèn sân bay, cinematic',
+    },
 
-    sceneDirection =
-      'Scene: airport terminal, law office, or corporate boardroom. Include a strong legal/travel clue such as a sealed document, notarized paper, boarding pass, file folder, red stamp, or suspicious envelope. Avoid hotel lobby, perfume bottle, ring light, and generic luxury room.'
+    'marriage-betrayal': {
+      arena:
+        safeString(dnaCoverConcept?.arena) ||
+        'một không gian hôn nhân đổ vỡ như phòng khách sang trọng, khách sạn hoặc cảnh đối đầu riêng tư',
+      mood:
+        safeString(dnaCoverConcept?.mood) ||
+        'phản bội, đau đớn, lạnh lòng, chuẩn bị trả thù',
+      secondaryFigures:
+        dnaSecondary.length > 0
+          ? dnaSecondary
+          : ['một người chồng hoặc bạn trai trong nền', 'một người phụ nữ thứ ba lấp ló sau lưng'],
+      clueProps:
+        dnaClueProps.length > 0
+          ? dnaClueProps
+          : ['nhẫn cưới', 'tin nhắn trong điện thoại', 'ly rượu hoặc chìa khóa phòng khách sạn'],
+      conflictVisuals:
+        dnaConflictVisuals.length > 0
+          ? dnaConflictVisuals
+          : ['không khí phản bội', 'sự thật tình cảm bị xé toạc'],
+      colorTone: 'đỏ đô, đen, vàng tối, cảm giác đau và báo thù',
+    },
 
-    moodDirection =
-      'Mood: modern Chinese urban conspiracy drama, cold tense cinematic atmosphere, legal pressure, corporate conflict, polished mobile webnovel cover.'
-  } else if (isFamily) {
-    characterDirection =
-      'Main character: one beautiful modern East Asian woman, emotionally strong, protective mother energy, expressive eyes, clean realistic styling, soft but determined female lead aura.'
+    'child-school': {
+      arena:
+        safeString(dnaCoverConcept?.arena) ||
+        'trường học, hành lang lớp, cổng trường hoặc buổi họp phụ huynh đầy căng thẳng',
+      mood:
+        safeString(dnaCoverConcept?.mood) ||
+        'bảo vệ con, áp lực xã hội, tổn thương nhưng kiên cường',
+      secondaryFigures:
+        dnaSecondary.length > 0
+          ? dnaSecondary
+          : ['một đứa trẻ đứng cạnh hoặc phía sau nữ chính', 'phụ huynh hoặc giáo viên trong nền'],
+      clueProps:
+        dnaClueProps.length > 0
+          ? dnaClueProps
+          : ['cặp sách hoặc đồng phục học sinh', 'điện thoại hoặc tin nhắn phụ huynh', 'giấy tờ liên quan đến đứa trẻ'],
+      conflictVisuals:
+        dnaConflictVisuals.length > 0
+          ? dnaConflictVisuals
+          : ['đứa trẻ bị cuốn vào cuộc chiến người lớn', 'nữ chính bảo vệ con trong áp lực xã hội'],
+      colorTone: 'xanh xám, vàng ấm nhẹ, buồn nhưng có sức mạnh',
+    },
 
-    sceneDirection =
-      'Scene: school gate, hospital corridor, civil registry office, apartment, or legal office depending on the story. Include strong family-identity clues such as birth certificate, household registration book, adoption file, DNA report, child silhouette, or custody document.'
+    'hospital-truth': {
+      arena:
+        safeString(dnaCoverConcept?.arena) ||
+        'bệnh viện, hành lang cấp cứu, phòng bệnh hoặc nơi cất giấu bí mật y khoa',
+      mood:
+        safeString(dnaCoverConcept?.mood) ||
+        'bí mật y khoa, sự thật bị giấu kín, căng thẳng, đau và lạnh',
+      secondaryFigures:
+        dnaSecondary.length > 0
+          ? dnaSecondary
+          : ['một bác sĩ hoặc y tá trong nền', 'một người thân yếu ớt phía sau'],
+      clueProps:
+        dnaClueProps.length > 0
+          ? dnaClueProps
+          : ['hồ sơ bệnh án', 'kết quả xét nghiệm', 'vòng tay bệnh viện'],
+      conflictVisuals:
+        dnaConflictVisuals.length > 0
+          ? dnaConflictVisuals
+          : ['sự thật sinh học hoặc bí mật thân phận đang bị che lại', 'cuộc chạy đua tìm sự thật'],
+      colorTone: 'trắng xanh lạnh, xám bạc, sắc nét và căng',
+    },
 
-    moodDirection =
-      'Mood: emotional, protective, tense, identity-secret family drama, polished and highly readable as a women-oriented webnovel cover.'
-  } else if (isLivestreamDrama) {
-    characterDirection =
-      'Main character: one beautiful modern East Asian heroine, stylish urban appearance, expressive but controlled emotion, strong public-pressure drama aura.'
+    'corporate-war': {
+      arena:
+        safeString(dnaCoverConcept?.arena) ||
+        'tòa nhà tập đoàn, phòng họp kính, hội đồng quản trị hoặc văn phòng cao cấp',
+      mood:
+        safeString(dnaCoverConcept?.mood) ||
+        'thương chiến, quyền lực, đấu trí, đè ép nhưng phản công',
+      secondaryFigures:
+        dnaSecondary.length > 0
+          ? dnaSecondary
+          : ['một người đàn ông quyền lực trong bộ vest', 'các bóng người hội đồng mờ ở nền'],
+      clueProps:
+        dnaClueProps.length > 0
+          ? dnaClueProps
+          : ['hồ sơ hợp đồng', 'thẻ ra vào', 'điện thoại chứa bằng chứng', 'màn hình dữ liệu'],
+      conflictVisuals:
+        dnaConflictVisuals.length > 0
+          ? dnaConflictVisuals
+          : ['đối đầu ở phòng họp', 'nữ chính chuẩn bị lật thế cờ'],
+      colorTone: 'xanh đen, xám bạc, vàng kim nhẹ, hiện đại',
+    },
 
-    sceneDirection =
-      'Scene: livestream room, studio setup, PR office, or city-night background. Include plot clues such as phone screen glow, social-media pressure, scrolling comment feel, blurred crowd attention, or scandal-related evidence.'
+    'general-drama': {
+      arena:
+        safeString(dnaCoverConcept?.arena) ||
+        'một không gian hiện đại có chiều sâu, đủ để kể câu chuyện chứ không phải nền trống',
+      mood:
+        safeString(dnaCoverConcept?.mood) ||
+        'drama, bí mật, phản công, căng thẳng cảm xúc',
+      secondaryFigures:
+        dnaSecondary.length > 0
+          ? dnaSecondary
+          : ['một nhân vật phụ mờ trong nền, có cảm giác liên quan đến bí mật của truyện'],
+      clueProps:
+        dnaClueProps.length > 0
+          ? dnaClueProps
+          : ['một đạo cụ manh mối liên quan trực tiếp đến truyện', 'điện thoại hoặc tài liệu gợi bí mật'],
+      conflictVisuals:
+        dnaConflictVisuals.length > 0
+          ? dnaConflictVisuals
+          : ['căng thẳng đối đầu', 'bí mật chuẩn bị bị lật mở'],
+      colorTone: 'cinematic, đậm chiều sâu, không tối bệt, rõ focal point',
+    },
+  }
 
-    moodDirection =
-      'Mood: modern social-media scandal drama, neon/cyan highlights, public pressure, high-click webnovel cover.'
-  } else if (isOffice) {
-    characterDirection =
-      'Main character: one beautiful modern East Asian heroine, polished office or elegant urban styling, confident gaze, intelligent aura, powerful female lead.'
+  const picked = fallbackByBlueprint[blueprint]
 
-    sceneDirection =
-      'Scene: modern office boardroom, glass meeting room, law office, or corporate hallway. Include documents, contract papers, red-seal file, or boardroom clue objects. Do not default to hotel lobby or generic portrait-only composition.'
+  return {
+    blueprint,
+    heroineLook,
+    arena: picked.arena,
+    mood: picked.mood,
+    secondaryFigures: uniqueStrings(picked.secondaryFigures, 4),
+    clueProps: uniqueStrings(picked.clueProps, 5),
+    conflictVisuals: uniqueStrings(picked.conflictVisuals, 4),
+    colorTone: picked.colorTone,
+  }
+}
 
-    moodDirection =
-      'Mood: upscale modern Asian drama, corporate pressure, polished, confident, premium mobile-reading-app cover.'
-  } else if (isMarriageDrama) {
-    characterDirection =
-      'Main character: one beautiful modern East Asian heroine, elegant styling, expressive eyes, emotionally hurt but strong, memorable webnovel female lead.'
+function buildCoverPrompt(story: StoryInput): {
+  prompt: string
+  coverConcept: CoverConcept
+} {
+  const storyDna =
+    parseMaybeJson<JsonRecord>(story.story_dna) ||
+    parseMaybeJson<JsonRecord>(story.storyDna)
 
-    sceneDirection =
-      'Scene: apartment, courthouse hallway, wedding venue, rainy balcony, or hotel corridor only if the plot requires it. Include betrayal clues such as wedding ring, divorce paper, blurred couple silhouette, or emotional confrontation background.'
+  const coverConcept = buildCoverConcept(story, storyDna)
+  const title = story.title || 'Untitled Story'
+  const summary = pickSummary(story)
+  const genreList = uniqueStrings([
+    story.genre || '',
+    ...(story.genres || []),
+    ...(story.tags || []),
+  ]).join(', ')
 
-    moodDirection =
-      'Mood: romantic betrayal drama, emotional intensity, elegant but painful atmosphere, polished Asian webnovel cover aesthetic.'
-  } else if (isRevenge) {
-    characterDirection =
-      'Main character: one beautiful modern East Asian heroine, sharp gaze, calm expression, elegant styling, controlled anger, strong revenge-female-lead aura.'
+  const corePremise =
+    pickStoryField(storyDna, [
+      'corePremise',
+      'premise',
+      'factory_seed',
+      'hookVisual',
+      'openingScene',
+    ]) || summary
 
-    sceneDirection =
-      'Scene: modern urban drama setting with one clear revenge clue object and a conflict silhouette in the background. The clue object must relate to the plot, such as a legal file, envelope, memory card, or incriminating paper.'
+  const openingScene =
+    pickStoryField(storyDna, ['openingScene', 'sceneHook', 'visualArena']) || coverConcept.arena
 
-    moodDirection =
-      'Mood: dramatic, revenge-driven, elegant, polished, highly clickable cover for a trending Asian webnovel.'
-  } else {
-    characterDirection =
-      'Main character: one beautiful modern East Asian heroine, expressive eyes, elegant styling, clear Asian facial features, attractive and memorable webnovel protagonist.'
+  const emotionalStake =
+    pickStoryField(storyDna, ['emotionalStake', 'humanCost', 'childStake']) || coverConcept.mood
 
-    sceneDirection =
-      'Scene: modern Asian drama atmosphere chosen from the story context, including at least one visible plot clue object and a matching setting. Avoid default generic portrait-only cover.'
+  const villainAttack =
+    pickStoryField(storyDna, ['villainAttack', 'villainAttackType']) || ''
+  const heroineCounter =
+    pickStoryField(storyDna, ['heroineCounter', 'heroineCounterType']) || ''
 
-    moodDirection =
-      'Mood: cinematic, emotionally engaging, polished, clean, attractive for Asian webnovel readers.'
+  const style =
+    story.cover_style ||
+    story.visual_style ||
+    story.style ||
+    'high-end vertical Asian webnovel cover illustration, semi-realistic, dramatic, cinematic'
+
+  const prompt = `
+Create a premium vertical web novel cover illustration for the story "${title}".
+
+IMPORTANT GOAL:
+This cover must clearly communicate the story conflict and hook at thumbnail size.
+Do NOT create a generic pretty portrait.
+The image must feel like a story poster, not just a woman standing against an empty background.
+
+Story information:
+- Title meaning / vibe: ${title}
+- Genre or tags: ${genreList || 'female-drama, revenge, modern emotional drama'}
+- Core premise: ${corePremise || 'a woman faces betrayal, pressure, and hidden truth, then fights back'}
+- Opening scene / visual hook: ${openingScene}
+- Emotional stake: ${emotionalStake}
+${villainAttack ? `- Villain attack: ${villainAttack}` : ''}
+${heroineCounter ? `- Heroine counter move: ${heroineCounter}` : ''}
+${summary ? `- Summary: ${summary}` : ''}
+
+Visual blueprint:
+- Main heroine: ${coverConcept.heroineLook}
+- Story arena / background: ${coverConcept.arena}
+- Mood: ${coverConcept.mood}
+- Secondary figures: ${coverConcept.secondaryFigures.join('; ') || 'at least one important secondary figure linked to the conflict'}
+- Clue props that should appear clearly: ${coverConcept.clueProps.join('; ') || 'one to two clue props related to the plot'}
+- Conflict visuals: ${coverConcept.conflictVisuals.join('; ') || 'clear visible signs of conflict'}
+
+Composition requirements:
+- Vertical composition optimized for mobile novel cover.
+- Heroine large in the foreground, around waist-up or three-quarter body.
+- Midground and background must contain visible story clues and conflict context.
+- Strong focal hierarchy: heroine first, conflict clue second, setting third.
+- Cinematic lighting, rich depth, dramatic storytelling.
+- Cover must still read clearly as a small thumbnail.
+- Keep the image visually rich and specific to this story.
+
+Stylistic direction:
+- ${style}
+- polished, elegant, premium, emotionally intense
+- sharp face, expressive eyes, controlled drama
+- visually appealing but story-driven
+- modern web novel illustration aesthetic
+
+Absolutely avoid:
+- generic office portrait
+- plain standing woman with empty or blurry background
+- random pretty girl holding a paper with no story meaning
+- minimal no-story poster
+- bland background that does not show the plot arena
+- over-dark muddy image
+- too many tiny unreadable details
+- text, title, logo, watermark, typography
+
+Output:
+A visually striking, story-specific cover that instantly tells viewers what kind of conflict this novel contains.
+`.trim()
+
+  return { prompt, coverConcept }
+}
+
+function sanitizeFileName(input: string): string {
+  return safeString(input)
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase()
+    .slice(0, 80)
+}
+
+async function generateCoverImage(prompt: string) {
+  if (!openai) {
+    throw new Error('Missing OPENAI_API_KEY')
+  }
+
+  const result = await openai.images.generate({
+    model: OPENAI_IMAGE_MODEL,
+    prompt,
+    size: '1024x1536',
+  })
+
+  const first = result.data?.[0]
+
+  if (!first) {
+    throw new Error('OpenAI did not return image data')
+  }
+
+  const b64 =
+    (first as any).b64_json ||
+    (first as any).image_base64 ||
+    null
+
+  const revisedPrompt =
+    (first as any).revised_prompt ||
+    (first as any).prompt ||
+    null
+
+  if (!b64) {
+    throw new Error('OpenAI image response missing base64 data')
   }
 
   return {
-    characterDirection,
-    sceneDirection,
-    moodDirection,
+    b64,
+    revisedPrompt,
   }
 }
 
-function buildPromptFromStructuredData(body: CoverRequestBody) {
-  const title = normalizeText(body.title)
-  const storySummary = normalizeText(body.storySummary)
-  const genreLabel = normalizeText(body.genreLabel)
-  const heroineLabel = normalizeText(body.heroineLabel)
-  const styleLabel =
-    normalizeText(body.styleLabel) ||
-    'semi-realistic asian webnovel cover illustration, polished manhua style, no text'
-
-  const contextText = `${title} ${storySummary} ${genreLabel} ${heroineLabel}`.toLowerCase()
-  const safetyRules = buildCoverSafetyRules()
-  const colorRules = buildColorDiversityRules()
-  const compositionRules = buildCompositionRules()
-  const antiGenericRules = buildAntiGenericRules()
-  const storySpecificHint = buildContextSceneHint(contextText)
-  const storyClueRule = buildStoryClueRule(contextText)
-  const { characterDirection, sceneDirection, moodDirection } =
-    buildCharacterAndScenePreset(contextText)
-
-  return [
-    `Create a high-quality vertical cover illustration in ${styleLabel} style.`,
-    `Story title for internal context only: "${title}". Do not write the title on the image.`,
-    storySummary ? `Story summary for visual context: ${storySummary}.` : '',
-    genreLabel ? `Genre: ${genreLabel}.` : '',
-    heroineLabel ? `Female lead archetype: ${heroineLabel}.` : '',
-
-    characterDirection,
-    sceneDirection,
-    moodDirection,
-
-    storySpecificHint,
-    storyClueRule,
-    compositionRules,
-    antiGenericRules,
-    colorRules,
-
-    'Art style: polished semi-realistic Asian webnovel cover, modern manhua / Korean romance illustration influence, beautiful commercial mobile-reading-app cover.',
-    'Composition: one main beautiful East Asian heroine as the clear focal point, upper-body or full-body portrait, elegant pose, expressive eyes, clean silhouette.',
-    'Background: must be story-specific and not random. It should support the plot clue and genre clearly.',
-    'Plot clue visibility: at least one key clue object must be clearly noticeable at a glance.',
-    'Secondary conflict presence: if suitable, add one blurred male figure, family silhouette, child silhouette, rival woman silhouette, or boardroom silhouette in the background to suggest tension.',
-    'Face quality: beautiful East Asian female face, symmetrical features, delicate makeup, clear eyes, attractive novel-cover look.',
-    'Image quality: high detail, sharp face, polished hair, elegant clothing, clean hands, professional digital illustration.',
-    'The image must look like a popular Chinese/Korean/Vietnamese online novel cover.',
-    safetyRules,
-  ]
-    .filter(Boolean)
-    .join(' ')
-}
-
-function buildCoverPromptFromBody(body: CoverRequestBody) {
-  const directPrompt = normalizeText(body.prompt) || normalizeText(body.coverPrompt)
-  const title = normalizeText(body.title)
-  const storySummary = normalizeText(body.storySummary)
-  const genreLabel = normalizeText(body.genreLabel)
-  const heroineLabel = normalizeText(body.heroineLabel)
-
-  const contextText =
-    `${title} ${storySummary} ${genreLabel} ${heroineLabel} ${directPrompt}`.toLowerCase()
-
-  const safetyRules = buildCoverSafetyRules()
-  const colorRules = buildColorDiversityRules()
-  const compositionRules = buildCompositionRules()
-  const antiGenericRules = buildAntiGenericRules()
-  const storySpecificHint = buildContextSceneHint(contextText)
-  const storyClueRule = buildStoryClueRule(contextText)
-
-  if (directPrompt) {
-    return [
-      directPrompt,
-      storySpecificHint,
-      storyClueRule,
-      compositionRules,
-      antiGenericRules,
-      colorRules,
-      safetyRules,
-    ]
-      .filter(Boolean)
-      .join(' ')
+async function uploadCoverToSupabase(args: {
+  imageBuffer: Buffer
+  title: string
+  storyId?: string
+  explicitPath?: string
+}) {
+  if (!supabase) {
+    return { publicUrl: null as string | null, storagePath: null as string | null }
   }
 
-  if (!title) {
-    return ''
+  const folderStoryId = sanitizeFileName(args.storyId || '') || 'unknown-story'
+  const safeTitle = sanitizeFileName(args.title) || 'story-cover'
+  const storagePath =
+    args.explicitPath ||
+    `stories/${folderStoryId}/${safeTitle}-${randomUUID()}.png`
+
+  const { error: uploadError } = await supabase.storage
+    .from(SUPABASE_COVER_BUCKET)
+    .upload(storagePath, args.imageBuffer, {
+      contentType: 'image/png',
+      upsert: true,
+    })
+
+  if (uploadError) {
+    throw uploadError
   }
 
-  return buildPromptFromStructuredData(body)
-}
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(SUPABASE_COVER_BUCKET).getPublicUrl(storagePath)
 
-function resolveImageSize(body: CoverRequestBody) {
-  const explicitSize = normalizeText(body.size)
-  if (explicitSize) return explicitSize
-
-  const aspectRatio = normalizeText(body.aspectRatio)
-
-  switch (aspectRatio) {
-    case '1:1':
-      return '1024x1024'
-    case '3:2':
-    case '4:3':
-    case '16:9':
-      return '1536x1024'
-    case '2:3':
-    case '3:4':
-    case '9:16':
-    default:
-      return '1024x1536'
+  return {
+    publicUrl,
+    storagePath,
   }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({
-      error: 'Method not allowed',
-      detail: 'Use POST for /api/ai/generate-cover.',
-    })
+  setCors(res)
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).json({ ok: true })
   }
 
-  const apiKey = process.env.OPENAI_API_KEY
-
-  if (!apiKey) {
-    return res.status(500).json({ error: 'Missing OPENAI_API_KEY' })
+  if (req.method !== 'POST') {
+    return res.status(405).json({
+      ok: false,
+      error: 'Method not allowed',
+    })
   }
 
   try {
-    const body = (req.body ?? {}) as CoverRequestBody
+    const body =
+      typeof req.body === 'string'
+        ? (JSON.parse(req.body) as JsonRecord)
+        : ((req.body || {}) as JsonRecord)
 
-    const prompt = buildCoverPromptFromBody(body)
-    const size = resolveImageSize(body)
+    const story = extractStoryInput(body)
 
-    if (!prompt) {
+    if (!story.title) {
       return res.status(400).json({
-        error: 'Missing cover prompt',
-        detail:
-          'Need one of: prompt / coverPrompt, or at least title so server can build cover prompt.',
+        ok: false,
+        error: 'Missing story title',
       })
     }
 
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1',
-        prompt,
-        size,
-      }),
-    })
+    const { prompt, coverConcept } = buildCoverPrompt(story)
+    const imageResult = await generateCoverImage(prompt)
 
-    const rawText = await response.text()
-    const data = tryParseJson(rawText)
+    const imageBuffer = Buffer.from(imageResult.b64, 'base64')
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data?.error?.message || 'OpenAI image generation failed',
-        detail:
-          data || {
-            nonJsonResponse: true,
-            status: response.status,
-            statusText: response.statusText,
-            preview: truncateText(rawText, 800),
-          },
-        promptUsed: prompt,
-        size,
+    const uploadEnabled = body.uploadToSupabase !== false
+    let publicUrl: string | null = null
+    let storagePath: string | null = null
+
+    if (uploadEnabled) {
+      const uploadResult = await uploadCoverToSupabase({
+        imageBuffer,
+        title: story.title,
+        storyId: story.id || story.slug,
+        explicitPath: safeString(body.storagePath),
       })
-    }
 
-    if (!data) {
-      return res.status(502).json({
-        error: 'OpenAI image API returned non-JSON response',
-        detail: {
-          status: response.status,
-          statusText: response.statusText,
-          preview: truncateText(rawText, 800),
-        },
-        promptUsed: prompt,
-        size,
-      })
-    }
-
-    const b64Json = data?.data?.[0]?.b64_json
-
-    if (!b64Json || typeof b64Json !== 'string') {
-      return res.status(500).json({
-        error: 'No image returned from OpenAI',
-        detail: data,
-        promptUsed: prompt,
-        size,
-      })
+      publicUrl = uploadResult.publicUrl
+      storagePath = uploadResult.storagePath
     }
 
     return res.status(200).json({
-      b64_json: b64Json,
-      dataUrl: `data:image/png;base64,${b64Json}`,
-      mimeType: 'image/png',
-      promptUsed: prompt,
-      size,
+      ok: true,
+      title: story.title,
+      prompt,
+      revisedPrompt: imageResult.revisedPrompt,
+      coverConcept,
+      imageBase64: body.returnBase64 ? imageResult.b64 : undefined,
+      publicUrl,
+      imageUrl: publicUrl,
+      storagePath,
+      bucket: uploadEnabled ? SUPABASE_COVER_BUCKET : null,
+      message: 'Cover generated successfully',
     })
   } catch (error: any) {
+    console.error('[generate-cover] error:', error)
+
     return res.status(500).json({
-      error: error?.message || 'Unknown image generation error',
+      ok: false,
+      error: error?.message || 'Failed to generate cover',
     })
   }
 }
