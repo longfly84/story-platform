@@ -12,6 +12,7 @@ import type {
   FactoryStatus,
   FactoryStorySeed,
   ParsedChapterOutput,
+  StoryMotifRegistryItem,
 } from './aiFactoryTypes'
 import {
   AI_FACTORY_STORAGE_KEY,
@@ -42,6 +43,14 @@ import {
   safeJson,
 } from './utils/factoryPanelHelpers'
 import { getFactoryChapterProgress } from './utils/factoryProgress'
+import {
+  attachMotifToSeed,
+  extractMotifRegistryItemsFromStories,
+} from './utils/motifFingerprint'
+import {
+  formatMotifSimilarityForLog,
+  shouldRejectMotif,
+} from './utils/motifSimilarity'
 
 const defaultConfig: AIFactoryConfig = {
   provider: 'mock',
@@ -74,6 +83,8 @@ export default function AIFactoryPanel() {
     motifs: [],
     characterNames: [],
     companyNames: [],
+    motifFingerprints: [],
+    motifTexts: [],
   })
 
   const [jobs, setJobs] = useState<FactoryJob[]>([])
@@ -235,6 +246,151 @@ export default function AIFactoryPanel() {
     )
   }
 
+
+  async function embedMotifTexts(texts: string[]) {
+    const cleanTexts = texts.map((text) => text.trim()).filter(Boolean)
+
+    if (!cleanTexts.length) return []
+
+    const response = await fetch('/api/ai/embed-motif', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: cleanTexts }),
+    })
+
+    const rawText = await response.text()
+    let data: any = null
+
+    try {
+      data = rawText ? JSON.parse(rawText) : null
+    } catch {
+      throw new Error(
+        `Embed motif trả về không phải JSON. Status: ${response.status}. Preview: ${rawText.slice(0, 180)}`,
+      )
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error || `Embed motif lỗi HTTP ${response.status}`)
+    }
+
+    const embeddings = Array.isArray(data?.embeddings) ? data.embeddings : []
+
+    return embeddings.filter(Array.isArray) as number[][]
+  }
+
+  async function evaluateStorySeedMotif(params: {
+    seed: FactoryStorySeed
+    existingMotifs: StoryMotifRegistryItem[]
+    provider: AIFactoryConfig['provider']
+  }) {
+    const enrichedSeed = attachMotifToSeed(params.seed)
+
+    const candidate: StoryMotifRegistryItem = {
+      title: enrichedSeed.title,
+      fingerprint: enrichedSeed.motifFingerprint!,
+      motifText: enrichedSeed.motifText || enrichedSeed.shortFingerprint,
+      source: 'generated',
+    }
+
+    const comparisonPool = params.existingMotifs.slice(0, 40)
+
+    if (params.provider === 'openai' && comparisonPool.length > 0) {
+      try {
+        const textsToEmbed = [
+          candidate.motifText,
+          ...comparisonPool.map((item) => item.motifText).filter(Boolean),
+        ]
+
+        const embeddings = await embedMotifTexts(textsToEmbed)
+
+        candidate.embedding = embeddings[0]
+
+        comparisonPool.forEach((item, index) => {
+          if (!item.embedding && embeddings[index + 1]) {
+            item.embedding = embeddings[index + 1]
+          }
+        })
+
+        enrichedSeed.motifEmbedding = candidate.embedding
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        addLog(`Embedding motif lỗi, fallback sang field similarity: ${message}`, 'warning')
+      }
+    }
+
+    const rejectResult = shouldRejectMotif({
+      candidate,
+      existing: comparisonPool,
+      threshold: 0.62,
+    })
+
+    enrichedSeed.motifSimilarity = rejectResult.best
+
+    return {
+      seed: enrichedSeed,
+      candidate,
+      rejectResult,
+    }
+  }
+
+  async function buildUniqueStorySeed(params: {
+    genreLabel: string
+    heroineLabel: string
+    avoidLibrary: AvoidLibrary
+    factoryRunId: string
+    storyIndex: number
+    premiseSeed: string
+    provider: AIFactoryConfig['provider']
+  }) {
+    const existingMotifs = params.avoidLibrary.motifFingerprints || []
+    let lastRejected: Awaited<ReturnType<typeof evaluateStorySeedMotif>> | null = null
+
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      const rawSeed = buildMockStorySeed({
+        genreLabel: params.genreLabel,
+        heroineLabel: params.heroineLabel,
+        avoidLibrary: params.avoidLibrary,
+        seed: `${params.factoryRunId}-${params.storyIndex}-${params.premiseSeed}-motif-${attempt}`,
+      })
+
+      const evaluated = await evaluateStorySeedMotif({
+        seed: rawSeed,
+        existingMotifs,
+        provider: params.provider,
+      })
+
+      if (!evaluated.rejectResult.reject) {
+        if (evaluated.rejectResult.best) {
+          addLog(
+            `Motif check pass attempt ${attempt}: ${formatMotifSimilarityForLog(evaluated.rejectResult.best)}`,
+            'success',
+          )
+        } else {
+          addLog(`Motif check pass attempt ${attempt}: chưa có motif cũ đủ dữ liệu để so.`, 'success')
+        }
+
+        return evaluated.seed
+      }
+
+      lastRejected = evaluated
+
+      addLog(
+        `Reject story seed attempt ${attempt}/5 vì motif quá giống: ${formatMotifSimilarityForLog(
+          evaluated.rejectResult.best,
+        )}`,
+        'warning',
+      )
+    }
+
+    throw new Error(
+      `Không tạo được story seed đủ khác motif sau 5 lần. ${
+        lastRejected?.rejectResult.best
+          ? formatMotifSimilarityForLog(lastRejected.rejectResult.best)
+          : ''
+      }`,
+    )
+  }
+
   async function scanExistingStories() {
     setCurrentAction('Đang quét kho truyện...')
     addLog('Quét kho truyện gần nhất từ Supabase...')
@@ -276,18 +432,25 @@ export default function AIFactoryPanel() {
           motifs: [],
           characterNames: [],
           companyNames: [],
+          motifFingerprints: [],
+          motifTexts: [],
         } satisfies AvoidLibrary,
       }
     }
 
     const stories = (result.data ?? []) as ExistingStory[]
-    const avoid = buildAvoidLibrary(stories)
+    const motifItems = extractMotifRegistryItemsFromStories(stories)
+    const avoid = {
+      ...buildAvoidLibrary(stories),
+      motifFingerprints: motifItems,
+      motifTexts: motifItems.map((item) => item.motifText).filter(Boolean),
+    }
 
     setExistingStories(stories)
     setAvoidLibrary(avoid)
 
     addLog(
-      `Đã quét ${stories.length} truyện. Gom ${avoid.titles.length} title, ${avoid.motifs.length} motif.`,
+      `Đã quét ${stories.length} truyện. Gom ${avoid.titles.length} title, ${avoid.motifs.length} motif, ${motifItems.length} motif DNA.`,
       'success',
     )
 
@@ -432,6 +595,10 @@ Yêu cầu:
       module_id: 'female-urban-viral',
       target_chapters: params.targetChapters,
       factory_seed: params.storySeed ?? null,
+      motifFingerprint: params.storySeed?.motifFingerprint ?? null,
+      motifText: params.storySeed?.motifText ?? null,
+      motifEmbedding: params.storySeed?.motifEmbedding ?? null,
+      motifSimilarity: params.storySeed?.motifSimilarity ?? null,
       generated_chapters_now: generatedChaptersNow,
       auto_complete_by_target: params.config.autoCompleteByTarget,
       chapter_length_label: params.config.chapterLengthLabel,
@@ -445,6 +612,8 @@ Yêu cầu:
         motifs_count: avoidLibrary.motifs.length,
         character_names_count: avoidLibrary.characterNames.length,
         company_names_count: avoidLibrary.companyNames.length,
+        motif_fingerprints_count: avoidLibrary.motifFingerprints?.length ?? 0,
+        motif_texts_count: avoidLibrary.motifTexts?.length ?? 0,
       },
       character_names: [],
       company_names: [],
@@ -1023,11 +1192,14 @@ Yêu cầu:
           .slice(2, 5)}`
         const premiseSeed = makeId('premise')
         const nameSeed = makeId('name')
-        const storySeed = buildMockStorySeed({
+        const storySeed = await buildUniqueStorySeed({
           genreLabel: genre.label,
           heroineLabel: heroine.label,
           avoidLibrary: activeAvoidLibrary,
-          seed: `${factoryRunId}-${storyIndex}-${premiseSeed}`,
+          factoryRunId,
+          storyIndex,
+          premiseSeed,
+          provider: config.provider,
         })
 
         updateJob(job.id, {
@@ -1047,6 +1219,9 @@ Yêu cầu:
         )
         
         addLog(`Story seed fingerprint: ${storySeed.shortFingerprint}`, 'info')
+        if (storySeed.motifFingerprint?.fingerprint) {
+          addLog(`Motif fingerprint: ${storySeed.motifFingerprint.fingerprint}`, 'info')
+        }
 setCurrentAction(
           `Batch ${currentBatch}/${totalBatchesForRun} — đang tạo story ${storyIndex}/${config.storyCount}`,
         )
@@ -1289,17 +1464,33 @@ setCurrentAction(
             addLog(`Xong story ${storyIndex}/${config.storyCount}`, 'success')
           }
 
-          activeAvoidLibrary = buildAvoidLibrary([
-            {
-              id: createdStory?.id || makeId('story'),
-              title: createdStory?.title || '',
-              description: recentChapters[0]?.content?.slice(0, 260) || '',
-              genres: [genre.slug],
-              story_memory: storyMemory,
-              created_at: new Date().toISOString(),
-            },
-            ...scanResult.stories,
-          ])
+          {
+            const updatedStoriesForAvoid = [
+              {
+                id: createdStory?.id || makeId('story'),
+                title: createdStory?.title || '',
+                description: recentChapters[0]?.content?.slice(0, 260) || '',
+                genres: [genre.slug],
+                story_dna: {
+                  factory_seed: storySeed,
+                  motifFingerprint: storySeed.motifFingerprint ?? null,
+                  motifText: storySeed.motifText ?? null,
+                  motifEmbedding: storySeed.motifEmbedding ?? null,
+                },
+                story_memory: storyMemory,
+                created_at: new Date().toISOString(),
+              },
+              ...scanResult.stories,
+            ] as ExistingStory[]
+
+            const motifItems = extractMotifRegistryItemsFromStories(updatedStoriesForAvoid)
+
+            activeAvoidLibrary = {
+              ...buildAvoidLibrary(updatedStoriesForAvoid),
+              motifFingerprints: motifItems,
+              motifTexts: motifItems.map((item) => item.motifText).filter(Boolean),
+            }
+          }
 
           if (storyIndex < config.storyCount && config.delayMs > 0) {
             const isEndOfBatch = storyIndex % Math.max(1, config.batchSize) === 0

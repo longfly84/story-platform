@@ -43,6 +43,46 @@ export type AIFactoryConfig = {
   cliffhangerLabel: string
 }
 
+export type StoryMotifFingerprint = {
+  premiseFamily?: string
+  openingArena?: string
+  incitingIncident?: string
+  evidenceType?: string
+  evidenceObject?: string
+  villainAttackType?: string
+  heroineCounterType?: string
+  powerStructure?: string
+  publicPressure?: string
+  emotionalWound?: string
+  hiddenTruthType?: string
+  mainArena?: string
+  secondaryArena?: string
+  relationshipCore?: string
+  twistEngine?: string
+  deadlineStyle?: string
+  endingPromise?: string
+  antiRepeatTags?: string[]
+  fingerprint?: string
+}
+
+export type StoryMotifRegistryItem = {
+  storyId?: string
+  title?: string
+  motifText: string
+  fingerprint: StoryMotifFingerprint
+  embedding?: number[]
+  source?: 'story_dna' | 'registry' | 'generated' | 'manual'
+}
+
+export type StoryMotifSimilarityResult = {
+  item: StoryMotifRegistryItem
+  fieldScore: number
+  embeddingScore: number
+  hybridScore: number
+  matchedFields: string[]
+  matchedTags: string[]
+}
+
 export type ExistingStory = {
   id: string
   title: string | null
@@ -60,6 +100,8 @@ export type AvoidLibrary = {
   motifs: string[]
   characterNames: string[]
   companyNames: string[]
+  motifFingerprints?: StoryMotifRegistryItem[]
+  motifTexts?: string[]
 }
 
 export type FactoryLog = {
@@ -125,4 +167,9 @@ export type FactoryStorySeed = {
   publicPressure: string
   shortFingerprint: string
   antiRepeatTags: string[]
+
+  motifFingerprint?: StoryMotifFingerprint
+  motifText?: string
+  motifEmbedding?: number[]
+  motifSimilarity?: StoryMotifSimilarityResult | null
 }
