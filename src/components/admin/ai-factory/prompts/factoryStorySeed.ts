@@ -15,7 +15,6 @@ type StoryDramaLane = {
   dopamineHooks: string[];
 };
 
-
 type FactoryStoryPlanChapter = {
   chapterNumber: number;
   title: string;
@@ -38,6 +37,19 @@ type FactoryStoryPlan = {
   villainCurve: string[];
   payoffPlan: string[];
   chapterPlan: FactoryStoryPlanChapter[];
+};
+
+type FactoryCoverConcept = {
+  visualArena: string;
+  heroine: string;
+  secondaryFigures: string[];
+  clueProps: string[];
+  conflictVisuals: string[];
+  mustShowElements: string[];
+  compositionType: string;
+  moodTone: string;
+  colorTone: string;
+  negativePrompt: string[];
 };
 
 export const FACTORY_RELATIONSHIP_CONFLICTS = [
@@ -683,7 +695,10 @@ function countProceduralTerms(input: string) {
   }, 0);
 }
 
-function scoreOverlapWithAvoidLibrary(candidateText: string, avoidLibrary?: AvoidLibrary) {
+function scoreOverlapWithAvoidLibrary(
+  candidateText: string,
+  avoidLibrary?: AvoidLibrary,
+) {
   const avoidTexts = [
     ...(avoidLibrary?.motifTexts ?? []),
     ...(avoidLibrary?.titles ?? []),
@@ -759,7 +774,11 @@ function buildSeedCandidate(params: {
     params.seed,
     `relationship-${params.lane.key}`,
   );
-  const setting = pickSeedItem(params.lane.settings, params.seed, `setting-${params.lane.key}`);
+  const setting = pickSeedItem(
+    params.lane.settings,
+    params.seed,
+    `setting-${params.lane.key}`,
+  );
   const evidenceObject = pickSeedItem(
     params.lane.evidenceObjects,
     params.seed,
@@ -770,7 +789,11 @@ function buildSeedCandidate(params: {
     params.seed,
     `pressure-${params.lane.key}`,
   );
-  const hiddenTruth = pickSeedItem(params.lane.hiddenTruths, params.seed, `truth-${params.lane.key}`);
+  const hiddenTruth = pickSeedItem(
+    params.lane.hiddenTruths,
+    params.seed,
+    `truth-${params.lane.key}`,
+  );
   const villainAttack = pickSeedItem(
     params.lane.villainAttacks,
     params.seed,
@@ -817,6 +840,10 @@ function buildSeedCandidate(params: {
     evidenceObject,
     publicPressure,
     hiddenTruth,
+    villainAttack,
+    heroineCounter,
+    emotionalStake,
+    dopamineHook,
     genreBlend,
     corePremise,
     openingScene,
@@ -831,28 +858,34 @@ function buildSeedCandidate(params: {
   };
 }
 
-
 function buildFactoryStoryPlan(params: {
   title: string;
   seed: string;
   candidate: ReturnType<typeof buildSeedCandidate>;
 }) {
   const { candidate } = params;
-  const alternatePressure = pickSeedItem(
-    FACTORY_PUBLIC_PRESSURES.filter((item) => item !== candidate.publicPressure),
-    params.seed,
-    "planner-alt-pressure",
-  ) || candidate.publicPressure;
-  const alternateEvidence = pickSeedItem(
-    FACTORY_SEED_EVIDENCE_OBJECTS.filter((item) => item !== candidate.evidenceObject),
-    params.seed,
-    "planner-alt-evidence",
-  ) || candidate.evidenceObject;
-  const alternateSetting = pickSeedItem(
-    FACTORY_SETTING_CLUSTERS.filter((item) => item !== candidate.setting),
-    params.seed,
-    "planner-alt-setting",
-  ) || candidate.setting;
+  const alternatePressure =
+    pickSeedItem(
+      FACTORY_PUBLIC_PRESSURES.filter(
+        (item) => item !== candidate.publicPressure,
+      ),
+      params.seed,
+      "planner-alt-pressure",
+    ) || candidate.publicPressure;
+  const alternateEvidence =
+    pickSeedItem(
+      FACTORY_SEED_EVIDENCE_OBJECTS.filter(
+        (item) => item !== candidate.evidenceObject,
+      ),
+      params.seed,
+      "planner-alt-evidence",
+    ) || candidate.evidenceObject;
+  const alternateSetting =
+    pickSeedItem(
+      FACTORY_SETTING_CLUSTERS.filter((item) => item !== candidate.setting),
+      params.seed,
+      "planner-alt-setting",
+    ) || candidate.setting;
 
   const evidencePlan = [
     `Chương 1 cài vật chứng chính: ${candidate.evidenceObject}, chỉ hé điểm sai đầu tiên.`,
@@ -887,22 +920,29 @@ function buildFactoryStoryPlan(params: {
       mainScene: candidate.openingScene,
       evidenceBeat: `Cài ${candidate.evidenceObject}, chỉ cho thấy 1 điểm lệch logic.`,
       villainBeat: `Phản diện tung cú đánh đầu tiên qua ${candidate.publicPressure}, có dấu tay cá nhân rõ.`,
-      heroineMove: "Nữ chính không khóc lóc, bình tĩnh giữ lại bản sao/chứng cứ nhỏ.",
+      heroineMove:
+        "Nữ chính không khóc lóc, bình tĩnh giữ lại bản sao/chứng cứ nhỏ.",
       emotionalBeat: candidate.emotionalHook,
-      powerShift: "Nữ chính bị đẩy vào thế yếu công khai, nhưng có được manh mối đầu tiên.",
+      powerShift:
+        "Nữ chính bị đẩy vào thế yếu công khai, nhưng có được manh mối đầu tiên.",
       endingHook: "Một người/thứ tưởng ngoài lề bị kéo vào làm áp lực thật.",
     },
     {
       chapterNumber: 2,
       title: "Cú ép đầu tiên và tổn thương thật",
-      mission: "Không lặp chỉ một thủ tục pháp lý; phải cho hậu quả chạm vào người thân, công việc hoặc danh dự.",
+      mission:
+        "Không lặp chỉ một thủ tục pháp lý; phải cho hậu quả chạm vào người thân, công việc hoặc danh dự.",
       sceneType: "emotional cost / villain pressure",
       mainScene: alternateSetting,
       evidenceBeat: `Vật chứng chính bị phản diện bẻ nghĩa; chưa giải thích hết ${candidate.evidenceObject}.`,
-      villainBeat: "Phản diện chính gửi lời đe dọa hoặc xuất hiện ngắn, thể hiện mục tiêu cá nhân.",
-      heroineMove: "Nữ chính chọn một hành động cụ thể để bảo vệ người yếu thế trước khi phản công.",
-      emotionalBeat: "Một câu hỏi/ánh nhìn/tin nhắn khiến nữ chính đau nhưng không gục.",
-      powerShift: "Phản diện thắng một bước thật: cô mất quyền, mất niềm tin của đám đông hoặc bị cô lập.",
+      villainBeat:
+        "Phản diện chính gửi lời đe dọa hoặc xuất hiện ngắn, thể hiện mục tiêu cá nhân.",
+      heroineMove:
+        "Nữ chính chọn một hành động cụ thể để bảo vệ người yếu thế trước khi phản công.",
+      emotionalBeat:
+        "Một câu hỏi/ánh nhìn/tin nhắn khiến nữ chính đau nhưng không gục.",
+      powerShift:
+        "Phản diện thắng một bước thật: cô mất quyền, mất niềm tin của đám đông hoặc bị cô lập.",
       endingHook: `Một dấu vết phụ trỏ sang ${alternateEvidence}.`,
     },
     {
@@ -912,24 +952,34 @@ function buildFactoryStoryPlan(params: {
       sceneType: "direct confrontation / social pressure",
       mainScene: alternatePressure,
       evidenceBeat: `Hé ${alternateEvidence} như vật chứng phụ, không thay thế vật chứng chính.`,
-      villainBeat: "Phản diện sỉ nhục nữ chính trước ít nhất một người có quyền lực hoặc một nhóm người chứng kiến.",
-      heroineMove: "Nữ chính đặt một câu hỏi khiến đối phương lộ mâu thuẫn nhỏ.",
-      emotionalBeat: "Có một chi tiết đời thường làm người đọc thấy cái giá nữ chính đang chịu.",
-      powerShift: "Nữ chính chưa thắng nhưng làm một người trung lập bắt đầu nghi ngờ phản diện.",
+      villainBeat:
+        "Phản diện sỉ nhục nữ chính trước ít nhất một người có quyền lực hoặc một nhóm người chứng kiến.",
+      heroineMove:
+        "Nữ chính đặt một câu hỏi khiến đối phương lộ mâu thuẫn nhỏ.",
+      emotionalBeat:
+        "Có một chi tiết đời thường làm người đọc thấy cái giá nữ chính đang chịu.",
+      powerShift:
+        "Nữ chính chưa thắng nhưng làm một người trung lập bắt đầu nghi ngờ phản diện.",
       endingHook: "Một người từng thân thiết nhắn/đến gặp với thái độ mập mờ.",
     },
     {
       chapterNumber: 4,
       title: "Người phản bội hé mặt",
-      mission: "Đẩy tuyến phản bội/đổi phe, không biến chương này thành chương giám định/log thuần túy.",
+      mission:
+        "Đẩy tuyến phản bội/đổi phe, không biến chương này thành chương giám định/log thuần túy.",
       sceneType: "betrayal / witness scene",
       mainScene: "một không gian kín có đối thoại căng",
-      evidenceBeat: "Một nhân chứng hoặc dữ liệu phụ xác nhận có người bên trong động tay.",
-      villainBeat: "Phản diện phụ cố che, nhưng phản diện chính phải có dấu tay/lời nhắn/áp lực riêng.",
-      heroineMove: "Nữ chính không vạch mặt ngay, giữ lại mồi để gài bẫy chương sau.",
-      emotionalBeat: "Người nữ chính từng tin làm cô đau hoặc buộc cô nghi ngờ lòng tin của mình.",
+      evidenceBeat:
+        "Một nhân chứng hoặc dữ liệu phụ xác nhận có người bên trong động tay.",
+      villainBeat:
+        "Phản diện phụ cố che, nhưng phản diện chính phải có dấu tay/lời nhắn/áp lực riêng.",
+      heroineMove:
+        "Nữ chính không vạch mặt ngay, giữ lại mồi để gài bẫy chương sau.",
+      emotionalBeat:
+        "Người nữ chính từng tin làm cô đau hoặc buộc cô nghi ngờ lòng tin của mình.",
       powerShift: "Nữ chính từ bị động chuyển sang có kế hoạch phản công.",
-      endingHook: "Lộ một thông tin khiến bằng chứng ban đầu có nghĩa ngược lại.",
+      endingHook:
+        "Lộ một thông tin khiến bằng chứng ban đầu có nghĩa ngược lại.",
     },
     {
       chapterNumber: 5,
@@ -938,36 +988,51 @@ function buildFactoryStoryPlan(params: {
       sceneType: "public face-slap / small payoff",
       mainScene: candidate.publicPressure,
       evidenceBeat: `Dùng ${candidate.evidenceObject} hoặc ${alternateEvidence} để chứng minh một lời nói dối nhỏ.`,
-      villainBeat: "Phản diện bị khựng lại trước đám đông nhưng lập tức chuẩn bị đòn nặng hơn.",
-      heroineMove: "Nữ chính nói ít, dùng chứng cứ hoặc câu hỏi sắc để đảo chiều dư luận nhỏ.",
-      emotionalBeat: "Người yếu thế được trả lại một phần công bằng hoặc nữ chính giữ được một điều quan trọng.",
-      powerShift: "Nữ chính giành thắng lợi nhỏ thật; đám đông chuyển từ kết tội sang nghi ngờ.",
-      endingHook: "Phản diện chính quyết định ra mặt mạnh hơn vì không thể để cô tiếp tục.",
+      villainBeat:
+        "Phản diện bị khựng lại trước đám đông nhưng lập tức chuẩn bị đòn nặng hơn.",
+      heroineMove:
+        "Nữ chính nói ít, dùng chứng cứ hoặc câu hỏi sắc để đảo chiều dư luận nhỏ.",
+      emotionalBeat:
+        "Người yếu thế được trả lại một phần công bằng hoặc nữ chính giữ được một điều quan trọng.",
+      powerShift:
+        "Nữ chính giành thắng lợi nhỏ thật; đám đông chuyển từ kết tội sang nghi ngờ.",
+      endingHook:
+        "Phản diện chính quyết định ra mặt mạnh hơn vì không thể để cô tiếp tục.",
     },
     {
       chapterNumber: 6,
       title: "Phản diện chính ra mặt",
-      mission: "Bắt buộc có phản diện chính đối đầu trực diện hoặc gọi/nhắn đe dọa có cá tính riêng.",
+      mission:
+        "Bắt buộc có phản diện chính đối đầu trực diện hoặc gọi/nhắn đe dọa có cá tính riêng.",
       sceneType: "main villain confrontation",
       mainScene: "không gian riêng nhưng có hậu quả công khai",
-      evidenceBeat: "Không thêm vật chứng mới quá nhiều; tập trung vào ý nghĩa mới của chứng cứ cũ.",
-      villainBeat: "Phản diện chính đưa điều kiện: im lặng, ký giấy, rời khỏi vị trí hoặc hy sinh một quan hệ.",
-      heroineMove: "Nữ chính giả vờ nhượng một phần để lấy câu nói/sơ hở của phản diện.",
-      emotionalBeat: "Nữ chính phải nuốt một câu nhục nhưng biến nó thành mồi bẫy.",
-      powerShift: "Phản diện tưởng thắng, nhưng nữ chính lấy được bằng chứng về động cơ thật.",
+      evidenceBeat:
+        "Không thêm vật chứng mới quá nhiều; tập trung vào ý nghĩa mới của chứng cứ cũ.",
+      villainBeat:
+        "Phản diện chính đưa điều kiện: im lặng, ký giấy, rời khỏi vị trí hoặc hy sinh một quan hệ.",
+      heroineMove:
+        "Nữ chính giả vờ nhượng một phần để lấy câu nói/sơ hở của phản diện.",
+      emotionalBeat:
+        "Nữ chính phải nuốt một câu nhục nhưng biến nó thành mồi bẫy.",
+      powerShift:
+        "Phản diện tưởng thắng, nhưng nữ chính lấy được bằng chứng về động cơ thật.",
       endingHook: `Một phần của hidden truth hé ra: ${candidate.hiddenTruth}.`,
     },
     {
       chapterNumber: 7,
       title: "Midpoint twist",
-      mission: "Đảo nghĩa một mảnh chứng cứ: thứ tưởng bất lợi hóa ra là bẫy hoặc chìa khóa.",
+      mission:
+        "Đảo nghĩa một mảnh chứng cứ: thứ tưởng bất lợi hóa ra là bẫy hoặc chìa khóa.",
       sceneType: "midpoint reveal",
       mainScene: alternateSetting,
       evidenceBeat: `Kết nối ${candidate.evidenceObject} với ${alternateEvidence}.`,
       villainBeat: "Phản diện đổi chiến thuật vì kế hoạch cũ bắt đầu rạn.",
-      heroineMove: "Nữ chính chủ động hẹn gặp/đặt bẫy một người trong phe phản diện.",
-      emotionalBeat: "Một đồng minh/người thân không còn tin cô tuyệt đối, tạo áp lực cảm xúc mới.",
-      powerShift: "Thế trận cân bằng hơn: nữ chính có vũ khí thật nhưng chưa thể công khai.",
+      heroineMove:
+        "Nữ chính chủ động hẹn gặp/đặt bẫy một người trong phe phản diện.",
+      emotionalBeat:
+        "Một đồng minh/người thân không còn tin cô tuyệt đối, tạo áp lực cảm xúc mới.",
+      powerShift:
+        "Thế trận cân bằng hơn: nữ chính có vũ khí thật nhưng chưa thể công khai.",
       endingHook: "Người phản bội thật sự không phải người bị nghi đầu tiên.",
     },
     {
@@ -979,8 +1044,10 @@ function buildFactoryStoryPlan(params: {
       evidenceBeat: "Chứng cứ được dùng như mồi, không chỉ như lời giải thích.",
       villainBeat: "Phản diện phụ cắn câu, làm lộ kết nối với phản diện chính.",
       heroineMove: "Nữ chính kiểm soát thời điểm tung một phần sự thật.",
-      emotionalBeat: "Nữ chính bảo vệ người yếu thế bằng hành động, không chỉ lời hứa.",
-      powerShift: "Một người trung lập hoặc đồng minh cũ chuyển sang giúp nữ chính.",
+      emotionalBeat:
+        "Nữ chính bảo vệ người yếu thế bằng hành động, không chỉ lời hứa.",
+      powerShift:
+        "Một người trung lập hoặc đồng minh cũ chuyển sang giúp nữ chính.",
       endingHook: "Phản diện chính chuẩn bị đòn trả thù lớn nhất.",
     },
     {
@@ -990,48 +1057,61 @@ function buildFactoryStoryPlan(params: {
       sceneType: "villain counterstrike",
       mainScene: "một sự kiện có nhiều người chứng kiến",
       evidenceBeat: "Chứng cứ bị cắt ghép/bẻ nghĩa lần cuối, tạo hiểu lầm lớn.",
-      villainBeat: "Phản diện chính sỉ nhục hoặc ép nữ chính chọn giữa danh dự và người thân.",
-      heroineMove: "Nữ chính chấp nhận mất mặt tạm thời để giữ bằng chứng cuối.",
+      villainBeat:
+        "Phản diện chính sỉ nhục hoặc ép nữ chính chọn giữa danh dự và người thân.",
+      heroineMove:
+        "Nữ chính chấp nhận mất mặt tạm thời để giữ bằng chứng cuối.",
       emotionalBeat: "Đây là đáy cảm xúc của nữ chính trong truyện.",
-      powerShift: "Phản diện giành lại quyền lực tạm thời, đẩy nữ chính sát mép thua.",
+      powerShift:
+        "Phản diện giành lại quyền lực tạm thời, đẩy nữ chính sát mép thua.",
       endingHook: "Một chi tiết nhỏ chứng minh phản diện đã quá tay.",
     },
     {
       chapterNumber: 10,
       title: "Người đổi phe",
-      mission: "Một nhân vật từng im lặng/đứng giữa phải chọn phe vì thấy phản diện quá tay.",
+      mission:
+        "Một nhân vật từng im lặng/đứng giữa phải chọn phe vì thấy phản diện quá tay.",
       sceneType: "ally switch / witness payoff",
       mainScene: alternateSetting,
       evidenceBeat: "Nhân chứng hoặc vật chứng phụ xác nhận chuỗi thao túng.",
       villainBeat: "Phe phản diện bắt đầu tự nghi ngờ và đổ lỗi lẫn nhau.",
-      heroineMove: "Nữ chính ghép đủ các mảnh nhưng chỉ công khai phần cần thiết.",
-      emotionalBeat: "Một lời xin lỗi muộn hoặc một sự thật khiến nữ chính phải lạnh lòng.",
+      heroineMove:
+        "Nữ chính ghép đủ các mảnh nhưng chỉ công khai phần cần thiết.",
+      emotionalBeat:
+        "Một lời xin lỗi muộn hoặc một sự thật khiến nữ chính phải lạnh lòng.",
       powerShift: "Nữ chính lấy lại thế chủ động thật sự.",
       endingHook: "Hẹn sân khấu đối chất cuối cùng.",
     },
     {
       chapterNumber: 11,
       title: "Đối chất cuối",
-      mission: "Dồn phản diện chính vào nơi không thể dùng người phụ gánh tội thay.",
+      mission:
+        "Dồn phản diện chính vào nơi không thể dùng người phụ gánh tội thay.",
       sceneType: "final confrontation setup",
       mainScene: candidate.publicPressure,
       evidenceBeat: `Chuẩn bị payoff cho ${candidate.evidenceObject}, ${alternateEvidence}, và hidden truth.`,
       villainBeat: "Phản diện chính tự tin vì nghĩ đã khóa hết đường lui.",
       heroineMove: "Nữ chính cho đối phương nói đủ nhiều rồi mới lật chứng cứ.",
-      emotionalBeat: "Nữ chính đối diện người từng làm cô đau nhất bằng sự bình tĩnh.",
-      powerShift: "Cán cân nghiêng hẳn về nữ chính nhưng chưa tuyên án/kết luận hết.",
+      emotionalBeat:
+        "Nữ chính đối diện người từng làm cô đau nhất bằng sự bình tĩnh.",
+      powerShift:
+        "Cán cân nghiêng hẳn về nữ chính nhưng chưa tuyên án/kết luận hết.",
       endingHook: "Một câu nói hoặc file cuối cùng mở khóa toàn bộ sự thật.",
     },
     {
       chapterNumber: 12,
       title: "Payoff và kết cục",
-      mission: "Trả đủ bằng chứng, cảm xúc và quyền lực; không kết bằng tóm tắt vội.",
+      mission:
+        "Trả đủ bằng chứng, cảm xúc và quyền lực; không kết bằng tóm tắt vội.",
       sceneType: "payoff / resolution",
       mainScene: "sân khấu từng khiến nữ chính bị sỉ nhục, nay đảo chiều",
       evidenceBeat: `Payoff ${candidate.evidenceObject}: chứng minh ai dựng chuyện, dựng bằng cách nào, và vì sao.`,
-      villainBeat: "Phản diện chính mất quyền thao túng hoặc bị buộc chịu hậu quả công khai.",
-      heroineMove: "Nữ chính chọn cách kết thúc có khí chất: không cầu xin, không dây dưa, không tự hạ mình.",
-      emotionalBeat: "Người thân/con/đồng minh thấy nữ chính giành lại sự an toàn và danh dự.",
+      villainBeat:
+        "Phản diện chính mất quyền thao túng hoặc bị buộc chịu hậu quả công khai.",
+      heroineMove:
+        "Nữ chính chọn cách kết thúc có khí chất: không cầu xin, không dây dưa, không tự hạ mình.",
+      emotionalBeat:
+        "Người thân/con/đồng minh thấy nữ chính giành lại sự an toàn và danh dự.",
       powerShift: "Nữ chính kiểm soát lại đời mình và mở ra trạng thái mới.",
       endingHook: "Kết chắc, có dư vị thắng nhưng không lê thê.",
     },
@@ -1046,6 +1126,254 @@ function buildFactoryStoryPlan(params: {
     payoffPlan,
     chapterPlan,
   };
+}
+
+function inferCoverArena(candidate: ReturnType<typeof buildSeedCandidate>) {
+  const text =
+    `${candidate.setting} | ${candidate.publicPressure} | ${candidate.relationshipConflict}`.toLowerCase();
+
+  if (
+    text.includes("trường") ||
+    text.includes("phụ huynh") ||
+    text.includes("mẫu giáo") ||
+    text.includes("con")
+  ) {
+    return "trường học hoặc buổi họp phụ huynh, có bảng thông báo/điện thoại nhóm phụ huynh và đứa trẻ bị kéo vào áp lực người lớn";
+  }
+
+  if (
+    text.includes("bệnh viện") ||
+    text.includes("adn") ||
+    text.includes("xét nghiệm") ||
+    text.includes("bệnh án")
+  ) {
+    return "hành lang bệnh viện hoặc phòng xét nghiệm, có hồ sơ y khoa, ánh đèn lạnh và một người thân yếu thế phía sau";
+  }
+
+  if (
+    text.includes("hội đồng") ||
+    text.includes("cổ đông") ||
+    text.includes("tập đoàn") ||
+    text.includes("công ty") ||
+    text.includes("ngân hàng")
+  ) {
+    return "phòng họp kính của tập đoàn/ngân hàng, có màn hình dữ liệu, bàn họp và bóng người quyền lực đang gây sức ép";
+  }
+
+  if (
+    text.includes("livestream") ||
+    text.includes("họp báo") ||
+    text.includes("showbiz") ||
+    text.includes("truyền thông") ||
+    text.includes("weibo")
+  ) {
+    return "sân khấu truyền thông hoặc họp báo, có đèn flash, màn hình lớn và đám đông máy quay";
+  }
+
+  if (
+    text.includes("khách sạn") ||
+    text.includes("resort") ||
+    text.includes("du lịch") ||
+    text.includes("sảnh")
+  ) {
+    return "sảnh khách sạn/resort sang trọng, có bóng người phản bội, camera hành lang và đạo cụ manh mối nổi bật";
+  }
+
+  if (
+    text.includes("gia tộc") ||
+    text.includes("mẹ chồng") ||
+    text.includes("di chúc") ||
+    text.includes("thừa kế")
+  ) {
+    return "phòng khách hào môn hoặc phòng họp gia tộc, có trưởng bối/đối thủ trong bóng tối và vật chứng thừa kế trên bàn";
+  }
+
+  return `${candidate.setting}, nhưng phải thể hiện rõ bối cảnh xung đột, không dùng nền tối trống hoặc chân dung đơn lẻ`;
+}
+
+function inferCoverSecondaryFigures(
+  candidate: ReturnType<typeof buildSeedCandidate>,
+) {
+  const text =
+    `${candidate.setting} | ${candidate.relationshipConflict} | ${candidate.publicPressure}`.toLowerCase();
+
+  if (
+    text.includes("con") ||
+    text.includes("phụ huynh") ||
+    text.includes("trường")
+  ) {
+    return [
+      "một đứa trẻ đứng sát nữ chính hoặc phía sau nữ chính",
+      "một phụ huynh/giáo viên/đại diện trường đang tạo áp lực trong nền",
+    ];
+  }
+
+  if (
+    text.includes("mẹ chồng") ||
+    text.includes("gia tộc") ||
+    text.includes("thừa kế")
+  ) {
+    return [
+      "một trưởng bối hoặc mẹ chồng sắc lạnh trong nền",
+      "một người đàn ông quyền lực hoặc luật sư gia tộc đứng sau bàn",
+    ];
+  }
+
+  if (
+    text.includes("hội đồng") ||
+    text.includes("cổ đông") ||
+    text.includes("tập đoàn") ||
+    text.includes("ngân hàng")
+  ) {
+    return [
+      "một người đàn ông quyền lực mặc vest đứng sau bàn họp",
+      "vài bóng người hội đồng/cổ đông đang nhìn về nữ chính",
+    ];
+  }
+
+  if (
+    text.includes("showbiz") ||
+    text.includes("livestream") ||
+    text.includes("họp báo") ||
+    text.includes("truyền thông")
+  ) {
+    return [
+      "một đối thủ nữ hoặc quản lý truyền thông đứng dưới ánh flash",
+      "phóng viên/paparazzi hoặc nhân viên PR trong nền",
+    ];
+  }
+
+  if (
+    text.includes("bệnh viện") ||
+    text.includes("xét nghiệm") ||
+    text.includes("bệnh án")
+  ) {
+    return [
+      "một bác sĩ hoặc y tá giữ hồ sơ ở phía sau",
+      "người thân yếu thế nằm/đứng mờ trong nền bệnh viện",
+    ];
+  }
+
+  return [
+    "một phản diện hoặc bóng người quyền lực đứng phía sau nữ chính",
+    "một nhân vật phụ/nhân chứng đang do dự ở midground",
+  ];
+}
+
+function buildFactoryCoverConcept(params: {
+  title: string;
+  seed: string;
+  candidate: ReturnType<typeof buildSeedCandidate>;
+  storyPlan: FactoryStoryPlan;
+}): FactoryCoverConcept {
+  const candidate = params.candidate;
+  const alternateProp = pickSeedItem(
+    FACTORY_SEED_EVIDENCE_OBJECTS.filter(
+      (item) => item !== candidate.evidenceObject,
+    ),
+    params.seed,
+    "cover-alt-prop",
+  );
+  const firstPlan = params.storyPlan.chapterPlan[0];
+  const midpointPlan =
+    params.storyPlan.chapterPlan[6] ||
+    params.storyPlan.chapterPlan[4] ||
+    firstPlan;
+  const visualArena = inferCoverArena(candidate);
+  const secondaryFigures = inferCoverSecondaryFigures(candidate);
+  const clueProps = uniqueStringsForCover(
+    [
+      candidate.evidenceObject,
+      alternateProp,
+      firstPlan?.evidenceBeat || "",
+      midpointPlan?.evidenceBeat || "",
+    ],
+    4,
+  );
+  const conflictVisuals = uniqueStringsForCover(
+    [
+      candidate.villainAttack,
+      candidate.publicPressure,
+      candidate.emotionalStake,
+      candidate.dopamineHook,
+      firstPlan?.powerShift || "",
+    ],
+    5,
+  );
+
+  return {
+    visualArena,
+    heroine:
+      "nữ chính hiện đại đứng ở tiền cảnh, ánh mắt tỉnh táo và kiên cường, không yếu đuối, không tạo dáng thời trang đơn thuần",
+    secondaryFigures,
+    clueProps,
+    conflictVisuals,
+    mustShowElements: uniqueStringsForCover(
+      [
+        "nữ chính",
+        ...secondaryFigures.slice(0, 1),
+        ...clueProps.slice(0, 2),
+        visualArena,
+        "một dấu hiệu xung đột công khai hoặc quyền lực đang đè ép nữ chính",
+      ],
+      6,
+    ),
+    compositionType:
+      "cinematic story poster, bố cục nhiều lớp: nữ chính foreground + vật chứng lớn midground + phản diện/nhân chứng và bối cảnh rõ ở background; tuyệt đối không phải solo portrait",
+    moodTone: `drama căng, ${candidate.emotionalStake}, nữ chính bị ép nhưng đang chuẩn bị phản công`,
+    colorTone:
+      "cinematic high contrast, rõ vật chứng, không tối bệt, không nền trống",
+    negativePrompt: [
+      "solo woman portrait",
+      "một nữ chính đứng một mình trên nền tối",
+      "single woman holding one paper",
+      "empty dark background",
+      "generic pretty girl cover",
+      "không có phản diện/nhân vật phụ",
+      "không có bối cảnh truyện",
+      "không có vật chứng rõ",
+    ],
+  };
+}
+
+function uniqueStringsForCover(list: string[], limit = 8) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const item of list) {
+    const clean = typeof item === "string" ? item.trim() : "";
+    const key = clean.toLowerCase();
+    if (!clean || seen.has(key)) continue;
+    seen.add(key);
+    result.push(clean);
+    if (result.length >= limit) break;
+  }
+
+  return result;
+}
+
+function formatCoverConceptForPrompt(coverConcept?: FactoryCoverConcept) {
+  if (!coverConcept) return "";
+
+  return `
+
+COVER CONCEPT / VISUAL DNA BẮT BUỘC:
+- Visual arena: ${coverConcept.visualArena}
+- Heroine: ${coverConcept.heroine}
+- Secondary figures: ${coverConcept.secondaryFigures.join(" | ")}
+- Clue props: ${coverConcept.clueProps.join(" | ")}
+- Conflict visuals: ${coverConcept.conflictVisuals.join(" | ")}
+- Must-show elements: ${coverConcept.mustShowElements.join(" | ")}
+- Composition type: ${coverConcept.compositionType}
+- Mood tone: ${coverConcept.moodTone}
+- Color tone: ${coverConcept.colorTone}
+- Negative prompt: ${coverConcept.negativePrompt.join(" | ")}
+
+QUY TẮC COVER:
+- Ảnh bìa phải là poster kể chuyện, không phải chân dung một nữ chính.
+- Bắt buộc có nữ chính + ít nhất một nhân vật phụ/phản diện/bóng người + ít nhất hai vật chứng lớn + bối cảnh truyện rõ.
+- Nếu chỉ vẽ một cô gái đứng/ngồi trên nền tối hoặc chỉ cầm một tờ giấy, cover bị xem là lỗi.
+`.trim();
 }
 
 function getSeedAttempt(seed: string, attempt: number) {
@@ -1079,7 +1407,10 @@ export function buildMockStorySeed(params: {
       candidate.dramaBalance,
     ].join(" | ");
 
-    const overlapPenalty = scoreOverlapWithAvoidLibrary(candidateText, params.avoidLibrary);
+    const overlapPenalty = scoreOverlapWithAvoidLibrary(
+      candidateText,
+      params.avoidLibrary,
+    );
     const proceduralPenalty = countProceduralTerms(candidateText) / 20;
     const score = overlapPenalty * 2 + proceduralPenalty;
 
@@ -1091,12 +1422,14 @@ export function buildMockStorySeed(params: {
     if (overlapPenalty <= 0.22 && proceduralPenalty <= 0.35) break;
   }
 
-  const candidate = bestCandidate ?? buildSeedCandidate({
-    genreLabel: params.genreLabel,
-    heroineLabel: params.heroineLabel,
-    seed: params.seed,
-    lane: pickDramaLane(params.seed, params.avoidLibrary),
-  });
+  const candidate =
+    bestCandidate ??
+    buildSeedCandidate({
+      genreLabel: params.genreLabel,
+      heroineLabel: params.heroineLabel,
+      seed: params.seed,
+      lane: pickDramaLane(params.seed, params.avoidLibrary),
+    });
 
   const title = buildUniqueFactoryTitle({
     genreLabel: params.genreLabel,
@@ -1108,6 +1441,13 @@ export function buildMockStorySeed(params: {
     title,
     seed: params.seed,
     candidate,
+  });
+
+  const coverConcept = buildFactoryCoverConcept({
+    title,
+    seed: params.seed,
+    candidate,
+    storyPlan,
   });
 
   return {
@@ -1136,6 +1476,7 @@ export function buildMockStorySeed(params: {
         ...compactTags(candidate.dramaBalance),
       ]),
     ).slice(0, 12),
+    coverConcept,
     storyPlan,
     pipeline: {
       planner: true,
@@ -1150,8 +1491,12 @@ export function buildMockStorySeed(params: {
 function formatStoryPlanForPrompt(storyPlan?: FactoryStoryPlan) {
   if (!storyPlan?.chapterPlan?.length) return "";
 
-  const evidencePlan = storyPlan.evidencePlan.map((item) => `- ${item}`).join("\n");
-  const villainCurve = storyPlan.villainCurve.map((item) => `- ${item}`).join("\n");
+  const evidencePlan = storyPlan.evidencePlan
+    .map((item) => `- ${item}`)
+    .join("\n");
+  const villainCurve = storyPlan.villainCurve
+    .map((item) => `- ${item}`)
+    .join("\n");
   const payoffPlan = storyPlan.payoffPlan.map((item) => `- ${item}`).join("\n");
   const chapterPlan = storyPlan.chapterPlan
     .map((chapter) => {
@@ -1194,11 +1539,20 @@ QUY TẮC THEO STORY PLANNER:
 `.trim();
 }
 
-export function buildStorySeedPromptContext(storySeed?: FactoryStorySeed | null) {
+export function buildStorySeedPromptContext(
+  storySeed?: FactoryStorySeed | null,
+) {
   if (!storySeed) return "";
 
-  const storyPlan = (storySeed as FactoryStorySeed & { storyPlan?: FactoryStoryPlan }).storyPlan;
+  const storySeedWithVisual = storySeed as FactoryStorySeed & {
+    storyPlan?: FactoryStoryPlan;
+    coverConcept?: FactoryCoverConcept;
+  };
+  const storyPlan = storySeedWithVisual.storyPlan;
   const storyPlanBlock = formatStoryPlanForPrompt(storyPlan);
+  const coverConceptBlock = formatCoverConceptForPrompt(
+    storySeedWithVisual.coverConcept,
+  );
 
   return `
 STORY SEED / STORY DNA BẮT BUỘC:
@@ -1219,6 +1573,8 @@ STORY SEED / STORY DNA BẮT BUỘC:
 - Short fingerprint: ${storySeed.shortFingerprint}
 
 ${storyPlanBlock}
+
+${coverConceptBlock}
 
 QUY TẮC BẮT BUỘC THEO STORY SEED:
 - Chương 1 phải mở theo opening scene trên.

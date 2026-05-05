@@ -22,6 +22,7 @@ interface CoverConcept {
   secondaryFigures: string[]
   clueProps: string[]
   conflictVisuals: string[]
+  mustShowElements: string[]
   colorTone: string
 }
 
@@ -43,18 +44,28 @@ interface StoryInput {
   cover_style?: string
 }
 
+interface CoverBuildResult {
+  prompt: string
+  fallbackPrompt: string
+  coverConcept: CoverConcept
+}
+
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1'
+const OPENAI_IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE || '1024x1536'
+
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   ''
+
 const SUPABASE_SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   ''
+
 const SUPABASE_COVER_BUCKET = process.env.SUPABASE_COVER_BUCKET || 'story-covers'
 
 const supabase =
@@ -146,6 +157,7 @@ function stringifyUseful(value: unknown): string {
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
   if (Array.isArray(value)) return value.map(stringifyUseful).filter(Boolean).join(' | ')
+
   if (typeof value === 'object') {
     const raw = value as JsonRecord
     return [
@@ -167,6 +179,7 @@ function stringifyUseful(value: unknown): string {
       .filter(Boolean)
       .join(' | ')
   }
+
   return ''
 }
 
@@ -274,7 +287,8 @@ function inferBlueprint(story: StoryInput, storyDna: JsonRecord | null): CoverBl
     haystack.includes('tu duong') ||
     haystack.includes('me chong') ||
     haystack.includes('nha chong') ||
-    haystack.includes('co dong')
+    haystack.includes('co dong') ||
+    haystack.includes('di san')
   ) {
     return 'family-inheritance'
   }
@@ -285,7 +299,9 @@ function inferBlueprint(story: StoryInput, storyDna: JsonRecord | null): CoverBl
     haystack.includes('ve may bay') ||
     haystack.includes('mat tich') ||
     haystack.includes('departure') ||
-    haystack.includes('hanh ly')
+    haystack.includes('hanh ly') ||
+    haystack.includes('resort') ||
+    haystack.includes('du lich')
   ) {
     return 'airport-mystery'
   }
@@ -333,7 +349,9 @@ function inferBlueprint(story: StoryInput, storyDna: JsonRecord | null): CoverBl
     haystack.includes('co phan') ||
     haystack.includes('hop dong') ||
     haystack.includes('doanh nghiep') ||
-    haystack.includes('cong chung')
+    haystack.includes('cong chung') ||
+    haystack.includes('mau thiet ke') ||
+    haystack.includes('show dien')
   ) {
     return 'corporate-war'
   }
@@ -376,7 +394,7 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
       'heroineArchetype',
       'heroineType',
       'heroineArc',
-    ]) || 'một nữ chính hiện đại, đẹp sắc sảo, ánh mắt mạnh, có khí chất chịu đựng nhưng không yếu'
+    ]) || 'một nữ chính hiện đại, sắc sảo, mạnh mẽ, ánh mắt có chiều sâu, chịu tổn thương nhưng không yếu'
 
   const dnaCoverConcept =
     storyDna && typeof storyDna.coverConcept === 'object'
@@ -403,59 +421,70 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
     ...(Array.isArray(dnaCoverConcept?.conflictVisuals)
       ? dnaCoverConcept.conflictVisuals.map((x: unknown) => safeString(x))
       : []),
-    pickStoryField(storyDna, ['villainAttack', 'villainAttackType', 'heroineCounter', 'heroineCounterType', 'emotionalStake', 'mainConflict']),
+    pickStoryField(storyDna, [
+      'villainAttack',
+      'villainAttackType',
+      'heroineCounter',
+      'heroineCounterType',
+      'emotionalStake',
+      'mainConflict',
+    ]),
   ])
 
-  const fallbackByBlueprint: Record<CoverBlueprint, Omit<CoverConcept, 'blueprint' | 'heroineLook'>> = {
+  const presets: Record<CoverBlueprint, Omit<CoverConcept, 'blueprint' | 'heroineLook'>> = {
     'showbiz-scandal': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
-        'một buổi họp báo hoặc sân khấu truyền thông với màn hình LED, flash paparazzi và cảm giác scandal công khai',
+        'một buổi họp báo, sân khấu hoặc khu truyền thông với màn hình LED, flash paparazzi và không khí scandal công khai',
       mood:
         safeString(dnaCoverConcept?.mood) ||
-        'công khai, áp lực truyền thông, thắng thua, scandal, đối đầu trước công chúng',
+        'truyền thông bùng nổ, công khai, scandal, thắng thua, bị dồn ép trước công chúng',
       secondaryFigures:
         dnaSecondary.length > 0
           ? dnaSecondary
-          : ['một người đàn ông lạnh lùng ở phía sau', 'một người phụ nữ mỉm cười đầy khiêu khích'],
+          : ['một người đàn ông lạnh lùng phía sau', 'một người phụ nữ đối thủ với nụ cười khiêu khích'],
       clueProps:
         dnaClueProps.length > 0
           ? dnaClueProps
-          : ['điện thoại hiện hot search', 'micro họp báo', 'ánh flash paparazzi'],
+          : ['điện thoại hiện hot search', 'micro họp báo', 'màn hình scandal', 'ánh flash paparazzi'],
       conflictVisuals:
         dnaConflictVisuals.length > 0
           ? dnaConflictVisuals
-          : ['dòng hot search hoặc scandal trên màn hình', 'không khí công kích truyền thông'],
-      colorTone: 'đỏ đen vàng, ánh đèn truyền thông kịch tính',
+          : ['xuất hiện scandal hoặc hot search công khai', 'không khí bị công kích trước truyền thông'],
+      mustShowElements: ['nữ chính', 'ít nhất một đối thủ/phản diện phụ', 'màn hình/hot search', 'một vật chứng rõ'],
+      colorTone: 'đỏ đen vàng, ánh sáng truyền thông mạnh, high contrast',
     },
+
     'family-inheritance': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
-        'một không gian gia tộc quyền lực như biệt thự, phòng họp gia tộc, từ đường hoặc phòng hội đồng',
+        'biệt thự, từ đường, phòng họp gia tộc hoặc không gian thừa kế quyền lực',
       mood:
         safeString(dnaCoverConcept?.mood) ||
-        'quyền lực, đấu đá gia tộc, thừa kế, căng thẳng lạnh lùng',
+        'đấu đá gia tộc, bí mật di sản, quyền lực lạnh lùng, nghi kỵ',
       secondaryFigures:
         dnaSecondary.length > 0
           ? dnaSecondary
-          : ['một trưởng bối nghiêm khắc', 'một người đàn ông quyền lực đứng trong bóng tối'],
+          : ['một trưởng bối nghiêm khắc', 'một người đàn ông quyền lực hoặc mẹ chồng sắc lạnh'],
       clueProps:
         dnaClueProps.length > 0
           ? dnaClueProps
-          : ['di chúc hoặc hồ sơ thừa kế', 'chiếc nhẫn hoặc con dấu gia tộc'],
+          : ['chìa khóa đồng', 'di chúc hoặc hồ sơ thừa kế', 'nhẫn hoặc con dấu gia tộc'],
       conflictVisuals:
         dnaConflictVisuals.length > 0
           ? dnaConflictVisuals
-          : ['ánh nhìn nghi kỵ trong gia tộc', 'không khí tranh giành quyền lực'],
-      colorTone: 'xanh đậm, vàng tối, nâu đen, sang trọng nhưng đầy sức ép',
+          : ['không khí tranh giành di sản', 'đối đầu lạnh giữa các thành viên gia tộc'],
+      mustShowElements: ['nữ chính', 'ít nhất một trưởng bối hoặc phản diện', 'chìa khóa/hồ sơ', 'bối cảnh gia tộc'],
+      colorTone: 'xanh đậm, vàng tối, nâu đen sang trọng',
     },
+
     'airport-mystery': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
-        'một sảnh sân bay về đêm, bảng chuyến bay điện tử, cửa lên máy bay hoặc hành lang chờ',
+        'sân bay, resort, hành lang chờ, bảng chuyến bay hoặc không gian di chuyển gợi mất tích và truy đuổi',
       mood:
         safeString(dnaCoverConcept?.mood) ||
-        'bí ẩn, truy đuổi, mất tích, khẩn cấp, lạnh và căng',
+        'bí ẩn, khẩn cấp, mất tích, truy vết, lạnh và căng',
       secondaryFigures:
         dnaSecondary.length > 0
           ? dnaSecondary
@@ -463,24 +492,26 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
       clueProps:
         dnaClueProps.length > 0
           ? dnaClueProps
-          : ['vé máy bay hoặc boarding pass', 'điện thoại có hình camera an ninh', 'vali hoặc hành lý'],
+          : ['vé máy bay hoặc boarding pass', 'điện thoại/camera an ninh', 'vali hoặc hành lý'],
       conflictVisuals:
         dnaConflictVisuals.length > 0
           ? dnaConflictVisuals
-          : ['cảm giác người quan trọng vừa biến mất', 'manh mối đang bị che giấu'],
-      colorTone: 'xanh lạnh, trắng xám, ánh đèn sân bay, cinematic',
+          : ['manh mối bị che giấu khi ai đó rời đi', 'không khí truy vết gấp gáp'],
+      mustShowElements: ['nữ chính', 'bóng người rời đi', 'vé hoặc điện thoại/camera', 'sân bay/resort'],
+      colorTone: 'xanh lạnh, trắng xám, cinematic night lighting',
     },
+
     'marriage-betrayal': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
-        'một không gian hôn nhân đổ vỡ như phòng khách sang trọng, khách sạn hoặc cảnh đối đầu riêng tư',
+        'phòng khách sang trọng, khách sạn, bàn ăn, phòng ngủ hoặc nơi đối đầu tình cảm',
       mood:
         safeString(dnaCoverConcept?.mood) ||
         'phản bội, đau đớn, lạnh lòng, chuẩn bị trả thù',
       secondaryFigures:
         dnaSecondary.length > 0
           ? dnaSecondary
-          : ['một người chồng hoặc bạn trai trong nền', 'một người phụ nữ thứ ba lấp ló sau lưng'],
+          : ['một người chồng hoặc bạn trai trong nền', 'một người phụ nữ thứ ba mờ phía sau'],
       clueProps:
         dnaClueProps.length > 0
           ? dnaClueProps
@@ -488,13 +519,15 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
       conflictVisuals:
         dnaConflictVisuals.length > 0
           ? dnaConflictVisuals
-          : ['không khí phản bội', 'sự thật tình cảm bị xé toạc'],
-      colorTone: 'đỏ đô, đen, vàng tối, cảm giác đau và báo thù',
+          : ['không khí phản bội tình cảm', 'một sự thật bị bóc trần'],
+      mustShowElements: ['nữ chính', 'ít nhất một người phản bội', 'vật chứng tình cảm', 'không gian quan hệ đổ vỡ'],
+      colorTone: 'đỏ đô, đen, vàng tối',
     },
+
     'child-school': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
-        'trường học, hành lang lớp, cổng trường hoặc buổi họp phụ huynh đầy căng thẳng',
+        'trường học, buổi họp phụ huynh, hành lang lớp học, cổng trường hoặc nhóm phụ huynh bị công khai',
       mood:
         safeString(dnaCoverConcept?.mood) ||
         'bảo vệ con, áp lực xã hội, tổn thương nhưng kiên cường',
@@ -505,79 +538,86 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
       clueProps:
         dnaClueProps.length > 0
           ? dnaClueProps
-          : ['cặp sách hoặc đồng phục học sinh', 'điện thoại hoặc tin nhắn phụ huynh', 'giấy tờ liên quan đến đứa trẻ'],
+          : ['hồ sơ nhập học', 'điện thoại hiện nhóm phụ huynh', 'thẻ truy cập', 'cặp sách hoặc đồng phục học sinh'],
       conflictVisuals:
         dnaConflictVisuals.length > 0
           ? dnaConflictVisuals
-          : ['đứa trẻ bị cuốn vào cuộc chiến người lớn', 'nữ chính bảo vệ con trong áp lực xã hội'],
-      colorTone: 'xanh xám, vàng ấm nhẹ, buồn nhưng có sức mạnh',
+          : ['đứa trẻ bị kéo vào cuộc chiến người lớn', 'nữ chính bảo vệ con dưới áp lực công khai'],
+      mustShowElements: ['nữ chính', 'đứa trẻ', 'vật chứng/hồ sơ hoặc điện thoại', 'bối cảnh trường học'],
+      colorTone: 'xanh xám, vàng ấm nhẹ, buồn nhưng có lực',
     },
+
     'hospital-truth': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
         'bệnh viện, hành lang cấp cứu, phòng bệnh hoặc nơi cất giấu bí mật y khoa',
       mood:
         safeString(dnaCoverConcept?.mood) ||
-        'bí mật y khoa, sự thật bị giấu kín, căng thẳng, đau và lạnh',
+        'sự thật y khoa bị che giấu, lạnh, căng, đau và khẩn trương',
       secondaryFigures:
         dnaSecondary.length > 0
           ? dnaSecondary
-          : ['một bác sĩ hoặc y tá trong nền', 'một người thân yếu ớt phía sau'],
+          : ['một bác sĩ hoặc y tá trong nền', 'một người thân yếu thế phía sau'],
       clueProps:
         dnaClueProps.length > 0
           ? dnaClueProps
-          : ['hồ sơ bệnh án', 'kết quả xét nghiệm', 'vòng tay bệnh viện'],
+          : ['hồ sơ bệnh án', 'kết quả xét nghiệm', 'vòng tay bệnh viện', 'ống thuốc'],
       conflictVisuals:
         dnaConflictVisuals.length > 0
           ? dnaConflictVisuals
-          : ['sự thật sinh học hoặc bí mật thân phận đang bị che lại', 'cuộc chạy đua tìm sự thật'],
-      colorTone: 'trắng xanh lạnh, xám bạc, sắc nét và căng',
+          : ['bí mật thân phận hoặc bệnh án bị che lại', 'cuộc chạy đua tìm sự thật'],
+      mustShowElements: ['nữ chính', 'người thân/bác sĩ', 'hồ sơ/xét nghiệm', 'bối cảnh bệnh viện'],
+      colorTone: 'trắng xanh lạnh, xám bạc',
     },
+
     'corporate-war': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
-        'tòa nhà tập đoàn, phòng họp kính, hội đồng quản trị hoặc văn phòng cao cấp',
+        'phòng họp kính, sàn diễn, văn phòng cao cấp, tòa nhà tập đoàn hoặc không gian thương chiến hiện đại',
       mood:
         safeString(dnaCoverConcept?.mood) ||
-        'thương chiến, quyền lực, đấu trí, đè ép nhưng phản công',
+        'đấu trí, quyền lực, cướp đoạt, phản công, sức ép nghề nghiệp công khai',
       secondaryFigures:
         dnaSecondary.length > 0
           ? dnaSecondary
-          : ['một người đàn ông quyền lực trong bộ vest', 'các bóng người hội đồng mờ ở nền'],
+          : ['một người đàn ông quyền lực trong bộ vest', 'một đối thủ nữ hoặc nhóm hội đồng ở nền'],
       clueProps:
         dnaClueProps.length > 0
           ? dnaClueProps
-          : ['hồ sơ hợp đồng', 'thẻ ra vào', 'điện thoại chứa bằng chứng', 'màn hình dữ liệu'],
+          : ['mẫu thiết kế hoặc hồ sơ hợp đồng', 'thẻ ra vào', 'điện thoại chứa bằng chứng', 'màn hình dữ liệu'],
       conflictVisuals:
         dnaConflictVisuals.length > 0
           ? dnaConflictVisuals
-          : ['đối đầu ở phòng họp', 'nữ chính chuẩn bị lật thế cờ'],
-      colorTone: 'xanh đen, xám bạc, vàng kim nhẹ, hiện đại',
+          : ['đối đầu công việc hoặc cướp quyền', 'nữ chính chuẩn bị lật thế cờ'],
+      mustShowElements: ['nữ chính', 'ít nhất một đối thủ', 'mẫu thiết kế/hồ sơ', 'bối cảnh công ty hoặc show diễn'],
+      colorTone: 'xanh đen, xám bạc, vàng kim nhẹ',
     },
+
     'general-drama': {
       arena:
         safeString(dnaCoverConcept?.arena) ||
-        'một không gian hiện đại có chiều sâu, đủ để kể câu chuyện chứ không phải nền trống',
+        'một bối cảnh hiện đại có chiều sâu, đủ kể câu chuyện chứ không phải nền trống',
       mood:
         safeString(dnaCoverConcept?.mood) ||
         'drama, bí mật, phản công, căng thẳng cảm xúc',
       secondaryFigures:
         dnaSecondary.length > 0
           ? dnaSecondary
-          : ['một nhân vật phụ mờ trong nền, có cảm giác liên quan đến bí mật của truyện'],
+          : ['ít nhất một nhân vật phụ hoặc bóng người liên quan trực tiếp đến bí mật'],
       clueProps:
         dnaClueProps.length > 0
           ? dnaClueProps
-          : ['một đạo cụ manh mối liên quan trực tiếp đến truyện', 'điện thoại hoặc tài liệu gợi bí mật'],
+          : ['một đến hai đạo cụ manh mối', 'điện thoại hoặc tài liệu gợi bí mật'],
       conflictVisuals:
         dnaConflictVisuals.length > 0
           ? dnaConflictVisuals
-          : ['căng thẳng đối đầu', 'bí mật chuẩn bị bị lật mở'],
-      colorTone: 'cinematic, đậm chiều sâu, không tối bệt, rõ focal point',
+          : ['căng thẳng đối đầu', 'bí mật chuẩn bị bị bóc trần'],
+      mustShowElements: ['nữ chính', 'nhân vật phụ hoặc bóng người', 'vật chứng rõ', 'bối cảnh có câu chuyện'],
+      colorTone: 'cinematic, rõ chiều sâu, không tối bệt',
     },
   }
 
-  const picked = fallbackByBlueprint[blueprint]
+  const picked = presets[blueprint]
 
   return {
     blueprint,
@@ -587,18 +627,12 @@ function buildCoverConcept(story: StoryInput, storyDna: JsonRecord | null): Cove
     secondaryFigures: uniqueStrings(picked.secondaryFigures, 4),
     clueProps: uniqueStrings(picked.clueProps, 5),
     conflictVisuals: uniqueStrings(picked.conflictVisuals, 4),
+    mustShowElements: uniqueStrings(picked.mustShowElements, 6),
     colorTone: picked.colorTone,
   }
 }
 
-function buildCoverPrompt(story: StoryInput): {
-  prompt: string
-  coverConcept: CoverConcept
-} {
-  const storyDna =
-    parseMaybeJson<JsonRecord>(story.story_dna) || parseMaybeJson<JsonRecord>(story.storyDna)
-
-  const coverConcept = buildCoverConcept(story, storyDna)
+function buildMainPrompt(story: StoryInput, storyDna: JsonRecord | null, coverConcept: CoverConcept): string {
   const title = story.title || 'Untitled Story'
   const summary = pickSummary(story)
   const genreList = uniqueStrings([
@@ -609,76 +643,145 @@ function buildCoverPrompt(story: StoryInput): {
   ]).join(', ')
 
   const corePremise =
-    pickStoryField(storyDna, ['corePremise', 'premise', 'factory_seed', 'hookVisual', 'openingScene']) || summary
-  const openingScene = pickStoryField(storyDna, ['openingScene', 'sceneHook', 'visualArena']) || coverConcept.arena
-  const emotionalStake = pickStoryField(storyDna, ['emotionalStake', 'humanCost', 'childStake', 'emotionalHook']) || coverConcept.mood
-  const villainAttack = pickStoryField(storyDna, ['villainAttack', 'villainAttackType']) || ''
-  const heroineCounter = pickStoryField(storyDna, ['heroineCounter', 'heroineCounterType']) || ''
+    pickStoryField(storyDna, [
+      'corePremise',
+      'premise',
+      'factory_seed',
+      'hookVisual',
+      'openingScene',
+      'mainConflict',
+    ]) || summary
+
+  const openingScene =
+    pickStoryField(storyDna, ['openingScene', 'sceneHook', 'visualArena']) || coverConcept.arena
+
+  const emotionalStake =
+    pickStoryField(storyDna, ['emotionalStake', 'humanCost', 'childStake']) || coverConcept.mood
+
+  const villainAttack =
+    pickStoryField(storyDna, ['villainAttack', 'villainAttackType']) || ''
+  const heroineCounter =
+    pickStoryField(storyDna, ['heroineCounter', 'heroineCounterType']) || ''
 
   const style =
     story.cover_style ||
     story.visual_style ||
     story.style ||
-    'premium vertical Asian webnovel cover illustration, semi-realistic, dramatic, cinematic, high detail'
+    'premium Asian webnovel illustration, semi-realistic, dramatic, cinematic, elegant'
 
-  const prompt = `
+  return `
 Create a premium vertical web novel cover illustration for the story "${title}".
 
-IMPORTANT GOAL:
-This cover must clearly communicate the story conflict and hook at thumbnail size.
-Do NOT create a generic pretty portrait.
-The image must feel like a story poster, not just a woman standing against an empty background.
+PRIMARY GOAL:
+This image must read like a cinematic STORY POSTER, not a solo character portrait.
+At thumbnail size, viewers must immediately understand there is a conflict, a clue, and a story setting.
 
-Story information:
-- Title meaning / vibe: ${title}
-- Genre or tags: ${genreList || 'female-drama, revenge, modern emotional drama'}
+STORY INFORMATION:
+- Title: ${title}
+- Genre / tags: ${genreList || 'female-drama, revenge, modern emotional mystery'}
 - Core premise: ${corePremise || 'a woman faces betrayal, pressure, and hidden truth, then fights back'}
-- Opening scene / visual hook: ${openingScene}
+- Opening scene / hook: ${openingScene}
 - Emotional stake: ${emotionalStake}
 ${villainAttack ? `- Villain attack: ${villainAttack}` : ''}
 ${heroineCounter ? `- Heroine counter move: ${heroineCounter}` : ''}
 ${summary ? `- Summary: ${summary}` : ''}
 
-Visual blueprint:
+VISUAL BLUEPRINT:
 - Main heroine: ${coverConcept.heroineLook}
-- Story arena / background: ${coverConcept.arena}
+- Main arena: ${coverConcept.arena}
 - Mood: ${coverConcept.mood}
-- Secondary figures: ${coverConcept.secondaryFigures.join('; ') || 'at least one important secondary figure linked to the conflict'}
-- Clue props that should appear clearly: ${coverConcept.clueProps.join('; ') || 'one to two clue props related to the plot'}
-- Conflict visuals: ${coverConcept.conflictVisuals.join('; ') || 'clear visible signs of conflict'}
+- Secondary figures that should appear or be strongly implied: ${coverConcept.secondaryFigures.join('; ')}
+- Clue props that should appear clearly and noticeably: ${coverConcept.clueProps.join('; ')}
+- Conflict visuals: ${coverConcept.conflictVisuals.join('; ')}
+- Must-show elements: ${coverConcept.mustShowElements.join('; ')}
 - Color tone: ${coverConcept.colorTone}
 
-Composition requirements:
-- Vertical 2:3 cover composition optimized for mobile webnovel cover.
-- Heroine large in the foreground, around waist-up or three-quarter body.
-- Midground and background must contain visible story clues and conflict context.
-- Strong focal hierarchy: heroine first, conflict clue second, setting third.
-- Cinematic lighting, rich depth, dramatic storytelling.
-- Cover must still read clearly as a small thumbnail.
-- Keep the image visually rich and specific to this story.
+STRICT COMPOSITION RULES:
+- Vertical cover, optimized for mobile reading apps.
+- This must be a MULTI-ELEMENT COMPOSITION, not a solo portrait.
+- The heroine can be foreground, but she must SHARE the image with story conflict elements.
+- Show at least:
+  1) the heroine,
+  2) at least one secondary figure or clear silhouette,
+  3) at least two plot-specific clue props,
+  4) a visible story arena/background.
+- Use a clear 3-layer composition: foreground heroine, midground clue/conflict, background arena.
+- Make the clue props large enough to be noticeable.
+- Show obvious narrative tension, not just beauty.
+- The cover must feel specific to THIS story, not generic.
 
-Stylistic direction:
+STYLE:
 - ${style}
-- polished, elegant, premium, emotionally intense
-- sharp face, expressive eyes, controlled drama
-- visually appealing but story-driven
-- modern web novel illustration aesthetic
+- premium, emotionally intense, polished
+- cinematic lighting
+- crisp focal points
+- readable as a small thumbnail
+- no muddy darkness
+- strong storytelling composition
 
-Absolutely avoid:
-- generic office portrait
-- plain standing woman with empty or blurry background
-- random pretty girl holding a paper with no story meaning
-- minimal no-story poster
-- bland background that does not show the plot arena
-- over-dark muddy image
-- too many tiny unreadable details
+ABSOLUTELY AVOID:
+- solo woman portrait
+- a single woman holding one paper in an empty dark background
+- generic office lady portrait
+- plain standing woman with blurry background
+- no-story poster
+- no secondary figure
+- no visible clue props
+- minimal composition
 - text, title, logo, watermark, typography
+- crowded tiny unreadable details
 
-Output:
-A visually striking, story-specific cover that instantly tells viewers what kind of conflict this novel contains.
+FINAL CHECK:
+The final image must clearly show:
+- who the heroine is,
+- what kind of conflict she is in,
+- what clue/object matters,
+- where the story is happening.
 `.trim()
+}
 
-  return { prompt, coverConcept }
+function buildFallbackPrompt(story: StoryInput, coverConcept: CoverConcept): string {
+  const title = story.title || 'Untitled Story'
+
+  return `
+Create a vertical dramatic web novel cover for "${title}".
+
+This must be a STORY POSTER, not a solo portrait.
+
+Required visible elements:
+- one determined modern heroine in the foreground
+- one secondary figure or silhouette connected to the conflict
+- two large clue props: ${coverConcept.clueProps.slice(0, 2).join(' and ') || 'one document and one key object'}
+- one clear background arena: ${coverConcept.arena}
+- one visible sign of conflict: ${coverConcept.conflictVisuals.slice(0, 1).join('') || coverConcept.mood}
+
+Mood: ${coverConcept.mood}
+Tone: ${coverConcept.colorTone}
+
+Composition:
+- vertical mobile novel cover
+- cinematic poster composition
+- foreground heroine + midground conflict + background setting
+- clear, readable, visually rich
+- no text
+- no watermark
+- no generic solo portrait
+- no empty background
+`.trim()
+}
+
+function buildCoverPrompt(story: StoryInput): CoverBuildResult {
+  const storyDna =
+    parseMaybeJson<JsonRecord>(story.story_dna) ||
+    parseMaybeJson<JsonRecord>(story.storyDna)
+
+  const coverConcept = buildCoverConcept(story, storyDna)
+
+  return {
+    prompt: buildMainPrompt(story, storyDna, coverConcept),
+    fallbackPrompt: buildFallbackPrompt(story, coverConcept),
+    coverConcept,
+  }
 }
 
 function sanitizeFileName(input: string): string {
@@ -691,25 +794,7 @@ function sanitizeFileName(input: string): string {
     .slice(0, 80)
 }
 
-function truncateText(value: string, limit = 800) {
-  if (!value) return ''
-  return value.length > limit ? `${value.slice(0, limit)}...` : value
-}
-
-async function readJsonResponse(response: Response) {
-  const rawText = await response.text()
-
-  try {
-    return rawText ? JSON.parse(rawText) : null
-  } catch {
-    return {
-      __nonJson: true,
-      preview: truncateText(rawText, 1200),
-    }
-  }
-}
-
-async function generateCoverImage(prompt: string, size = '1024x1536') {
+async function requestOpenAIImage(prompt: string) {
   if (!OPENAI_API_KEY) {
     throw new Error('Missing OPENAI_API_KEY')
   }
@@ -723,24 +808,34 @@ async function generateCoverImage(prompt: string, size = '1024x1536') {
     body: JSON.stringify({
       model: OPENAI_IMAGE_MODEL,
       prompt,
-      size,
-      n: 1,
+      size: OPENAI_IMAGE_SIZE,
     }),
   })
 
-  const data = await readJsonResponse(response)
+  const contentType = response.headers.get('content-type') || ''
+  let data: any = null
 
-  if (!response.ok) {
-    const message = data?.error?.message || `OpenAI image API error (${response.status})`
-    const error = new Error(message) as Error & { detail?: unknown; status?: number }
+  if (contentType.includes('application/json')) {
+    data = await response.json()
+  } else {
+    const text = await response.text()
+    const error = new Error('OpenAI image API returned non-JSON response') as Error & {
+      detail?: unknown
+      status?: number
+    }
+    error.detail = text
     error.status = response.status
-    error.detail = data
     throw error
   }
 
-  if (data?.__nonJson) {
-    const error = new Error('OpenAI image API returned non-JSON response') as Error & { detail?: unknown }
+  if (!response.ok) {
+    const message = data?.error?.message || `OpenAI image API error (${response.status})`
+    const error = new Error(message) as Error & {
+      detail?: unknown
+      status?: number
+    }
     error.detail = data
+    error.status = response.status
     throw error
   }
 
@@ -748,8 +843,10 @@ async function generateCoverImage(prompt: string, size = '1024x1536') {
   const b64 = first?.b64_json || first?.image_base64 || null
   const revisedPrompt = first?.revised_prompt || first?.prompt || null
 
-  if (!b64 || typeof b64 !== 'string') {
-    const error = new Error('OpenAI image response missing base64 image data') as Error & { detail?: unknown }
+  if (!b64) {
+    const error = new Error('OpenAI image response missing base64 image data') as Error & {
+      detail?: unknown
+    }
     error.detail = data
     throw error
   }
@@ -761,6 +858,27 @@ async function generateCoverImage(prompt: string, size = '1024x1536') {
   }
 }
 
+async function generateCoverImage(primaryPrompt: string, fallbackPrompt: string) {
+  try {
+    const result = await requestOpenAIImage(primaryPrompt)
+    return {
+      ...result,
+      promptUsed: primaryPrompt,
+      fallbackUsed: false,
+    }
+  } catch (primaryError: any) {
+    console.error('[generate-cover] primary prompt failed:', primaryError?.message, primaryError?.detail || '')
+
+    const result = await requestOpenAIImage(fallbackPrompt)
+    return {
+      ...result,
+      promptUsed: fallbackPrompt,
+      fallbackUsed: true,
+      primaryError: primaryError?.message || 'Primary prompt failed',
+    }
+  }
+}
+
 async function uploadCoverToSupabase(args: {
   imageBuffer: Buffer
   title: string
@@ -768,12 +886,14 @@ async function uploadCoverToSupabase(args: {
   explicitPath?: string
 }) {
   if (!supabase) {
-    throw new Error('Supabase is not configured for cover upload')
+    return { publicUrl: null as string | null, storagePath: null as string | null }
   }
 
   const folderStoryId = sanitizeFileName(args.storyId || '') || 'unknown-story'
   const safeTitle = sanitizeFileName(args.title) || 'story-cover'
-  const storagePath = args.explicitPath || `stories/${folderStoryId}/${safeTitle}-${randomUUID()}.png`
+  const storagePath =
+    args.explicitPath ||
+    `stories/${folderStoryId}/${safeTitle}-${randomUUID()}.png`
 
   const { error: uploadError } = await supabase.storage
     .from(SUPABASE_COVER_BUCKET)
@@ -783,7 +903,11 @@ async function uploadCoverToSupabase(args: {
     })
 
   if (uploadError) {
-    throw new Error(`Supabase cover upload failed: ${uploadError.message}`)
+    const error = new Error(`Supabase upload failed: ${uploadError.message}`) as Error & {
+      detail?: unknown
+    }
+    error.detail = uploadError
+    throw error
   }
 
   const {
@@ -804,24 +928,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ ok: false, error: 'Method not allowed' })
+    return res.status(405).json({
+      ok: false,
+      error: 'Method not allowed',
+    })
   }
 
   try {
     const body =
       typeof req.body === 'string'
-        ? (JSON.parse(req.body || '{}') as JsonRecord)
+        ? (JSON.parse(req.body) as JsonRecord)
         : ((req.body || {}) as JsonRecord)
 
     const story = extractStoryInput(body)
 
     if (!story.title) {
-      return res.status(400).json({ ok: false, error: 'Missing story title' })
+      return res.status(400).json({
+        ok: false,
+        error: 'Missing story title',
+      })
     }
 
-    const { prompt, coverConcept } = buildCoverPrompt(story)
-    const size = safeString(body.size) || '1024x1536'
-    const imageResult = await generateCoverImage(prompt, size)
+    const { prompt, fallbackPrompt, coverConcept } = buildCoverPrompt(story)
+    const imageResult = await generateCoverImage(prompt, fallbackPrompt)
+
     const imageBuffer = Buffer.from(imageResult.b64, 'base64')
 
     const uploadEnabled = body.uploadToSupabase !== false
@@ -844,12 +974,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ok: true,
       title: story.title,
       prompt,
-      promptUsed: prompt,
+      fallbackPrompt,
+      promptUsed: imageResult.promptUsed,
       revisedPrompt: imageResult.revisedPrompt,
+      fallbackUsed: imageResult.fallbackUsed,
+      primaryError: imageResult.primaryError || null,
       coverConcept,
       imageBase64: body.returnBase64 ? imageResult.b64 : undefined,
-      b64_json: body.returnBase64 ? imageResult.b64 : undefined,
-      dataUrl: body.returnBase64 ? `data:image/png;base64,${imageResult.b64}` : undefined,
       publicUrl,
       imageUrl: publicUrl,
       coverUrl: publicUrl,
@@ -858,9 +989,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: 'Cover generated successfully',
     })
   } catch (error: any) {
-    console.error('[generate-cover] error:', error)
+    console.error('[generate-cover] error:', error?.message || error, error?.detail || '')
 
-    return res.status(error?.status || 500).json({
+    return res.status(500).json({
       ok: false,
       error: error?.message || 'Failed to generate cover',
       detail: error?.detail || null,

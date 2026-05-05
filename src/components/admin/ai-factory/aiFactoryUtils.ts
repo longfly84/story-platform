@@ -1003,9 +1003,112 @@ function getChapterTitleFromReader(readerOnly: string, chapterNumber: number) {
 function normalizeStoryDescription(readerOnly: string) {
   return readerOnly
     .replace(/^#.*$/gm, "")
+    .replace(/^Chương\s*\d+\s*[—-]?\s*.*$/gim, "")
+    .replace(/\bChương\s*\d+\s*[—-]\s*/gi, "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 260);
+}
+
+function cleanPublicStoryDescription(text: string) {
+  return text
+    .replace(/^[-*\s]+/, "")
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isLeakedFactoryDescription(text: string) {
+  const normalized = text.toLowerCase();
+
+  const leakedPatterns = [
+    "nữ chính thuộc kiểu",
+    "truyện phải ưu tiên",
+    "drama lane",
+    "module",
+    "factory",
+    "prompt",
+    "heroine",
+    "genrelabel",
+    "story seed",
+    "premise seed",
+    "kiểu nữ chính",
+    "thể loại:",
+    "số chương mục tiêu",
+    "yêu cầu output",
+    "yêu cầu đa dạng hóa",
+    "quy tắc chống lặp",
+    "không đăng",
+    "bản phân tích kỹ thuật",
+    "thông tin truyện đề xuất",
+    "kiểm tra tiến độ truyện",
+    "bộ nhớ truyện",
+  ];
+
+  return leakedPatterns.some((pattern) => normalized.includes(pattern));
+}
+
+function isUsablePublicStoryDescription(text: string) {
+  const cleaned = cleanPublicStoryDescription(text);
+
+  if (cleaned.length < 45) return false;
+  if (isLeakedFactoryDescription(cleaned)) return false;
+
+  return true;
+}
+
+function buildFallbackPublicStoryDescription(params: {
+  storyTitle: string;
+  genreLabel: string;
+  chapterTitle: string;
+  readerOnly: string;
+}) {
+  const firstScene = normalizeStoryDescription(params.readerOnly);
+  const chapterHook = params.chapterTitle
+    ? `Mở đầu từ biến cố "${params.chapterTitle}", câu chuyện kéo nhân vật chính vào vòng xoáy của bí mật, phản bội và những lựa chọn không thể quay đầu.`
+    : `Một biến cố bất ngờ kéo nhân vật chính vào vòng xoáy của bí mật, phản bội và những lựa chọn không thể quay đầu.`;
+
+  const base = firstScene && !isLeakedFactoryDescription(firstScene)
+    ? `${firstScene} Từ dấu vết đầu tiên ấy, cô buộc phải tỉnh táo lần theo sự thật và giành lại quyền kiểm soát cuộc đời mình.`
+    : `${chapterHook} Khi mọi thứ tưởng như đã được sắp đặt, cô bắt đầu lần theo từng dấu vết để nhìn rõ ai là người đứng sau tất cả.`;
+
+  return cleanPublicStoryDescription(base).slice(0, 360);
+}
+
+function getPublicStoryDescription(params: {
+  output: string;
+  readerOnly: string;
+  storyTitle: string;
+  genreLabel: string;
+  chapterTitle: string;
+}) {
+  const candidateFromReader = pickLineValue(params.readerOnly, [
+    "Mô tả",
+    "Description",
+    "Story description",
+    "Tóm tắt",
+  ]);
+
+  const candidateFromOutput = pickLineValue(params.output, [
+    "Mô tả public",
+    "Mô tả độc giả",
+    "Public description",
+    "Reader description",
+  ]);
+
+  const candidates = [
+    candidateFromReader,
+    candidateFromOutput,
+    normalizeStoryDescription(params.readerOnly),
+  ]
+    .map(cleanPublicStoryDescription)
+    .filter(Boolean);
+
+  const picked = candidates.find(isUsablePublicStoryDescription);
+
+  if (picked) return picked.slice(0, 360);
+
+  return buildFallbackPublicStoryDescription(params);
 }
 
 export function parseChapterOutput(params: {
@@ -1031,24 +1134,22 @@ export function parseChapterOutput(params: {
       "storyTitle",
     ]) || fallbackTitle;
 
-  const storyDescription =
-    pickLineValue(combined, [
-      "Mô tả",
-      "Description",
-      "Story description",
-      "Tóm tắt",
-    ]) ||
-    normalizeStoryDescription(readerOnly) ||
-    `${params.genreLabel} với biến cố riêng và nữ chính phản công.`;
-
   const chapterTitle = getChapterTitleFromReader(
     readerOnly,
     params.chapterNumber,
   );
 
-    const chapterSlug = `${slugifyVietnamese(chapterTitle)}-${params.chapterNumber}`
+  const storyDescription = getPublicStoryDescription({
+    output: params.output,
+    readerOnly,
+    storyTitle,
+    genreLabel: params.genreLabel,
+    chapterTitle,
+  });
 
-    return {
+  const chapterSlug = `${slugifyVietnamese(chapterTitle)}-${params.chapterNumber}`;
+
+  return {
     raw: params.output,
     storyTitle,
     storySlug: `${slugifyVietnamese(storyTitle)}-${params.runShortId}`,
@@ -1057,7 +1158,7 @@ export function parseChapterOutput(params: {
     chapterSlug,
     readerOnly,
     technicalReport,
-  }
+  };
 }
 
 export function validateChapterOutput(params: {
