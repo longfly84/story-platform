@@ -24,6 +24,30 @@ type StoryMotifFingerprint = {
   fingerprint?: string
 }
 
+type FactoryStoryPlanChapter = {
+  chapterNumber: number
+  title: string
+  mission: string
+  sceneType: string
+  mainScene: string
+  evidenceBeat: string
+  villainBeat: string
+  heroineMove: string
+  emotionalBeat: string
+  powerShift: string
+  endingHook: string
+}
+
+type FactoryStoryPlan = {
+  plannerVersion?: string
+  totalPlannedChapters?: number
+  plannerGoal?: string
+  evidencePlan?: string[]
+  villainCurve?: string[]
+  payoffPlan?: string[]
+  chapterPlan?: FactoryStoryPlanChapter[]
+}
+
 type FactoryStorySeed = {
   title?: string
   genreBlend?: string[]
@@ -45,6 +69,7 @@ type FactoryStorySeed = {
   motifText?: string
   motifEmbedding?: number[]
   motifSimilarity?: unknown
+  storyPlan?: FactoryStoryPlan
 }
 
 type GeneratePayload = {
@@ -175,6 +200,123 @@ function normalizeMotifFingerprintArray(value: unknown) {
     .slice(0, 80)
 }
 
+function normalizeStoryPlan(value: unknown): FactoryStoryPlan | undefined {
+  if (!value || typeof value !== 'object') return undefined
+
+  const raw = value as Record<string, unknown>
+  const rawChapters = Array.isArray(raw.chapterPlan) ? raw.chapterPlan : []
+
+  const chapterPlan = rawChapters
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const chapter = item as Record<string, unknown>
+      const chapterNumber = safeNumber(chapter.chapterNumber, 0)
+      if (!chapterNumber) return null
+
+      return {
+        chapterNumber,
+        title: safeText(chapter.title),
+        mission: safeText(chapter.mission),
+        sceneType: safeText(chapter.sceneType),
+        mainScene: safeText(chapter.mainScene),
+        evidenceBeat: safeText(chapter.evidenceBeat),
+        villainBeat: safeText(chapter.villainBeat),
+        heroineMove: safeText(chapter.heroineMove),
+        emotionalBeat: safeText(chapter.emotionalBeat),
+        powerShift: safeText(chapter.powerShift),
+        endingHook: safeText(chapter.endingHook),
+      }
+    })
+    .filter((item): item is FactoryStoryPlanChapter => Boolean(item))
+    .slice(0, 24)
+
+  const plan: FactoryStoryPlan = {
+    plannerVersion: safeText(raw.plannerVersion),
+    totalPlannedChapters: safeNumber(raw.totalPlannedChapters, chapterPlan.length || 0),
+    plannerGoal: safeText(raw.plannerGoal),
+    evidencePlan: safeStringArray(raw.evidencePlan, 20),
+    villainCurve: safeStringArray(raw.villainCurve, 20),
+    payoffPlan: safeStringArray(raw.payoffPlan, 20),
+    chapterPlan,
+  }
+
+  return plan.chapterPlan?.length || plan.evidencePlan?.length || plan.villainCurve?.length
+    ? plan
+    : undefined
+}
+
+function formatStoryPlanForPrompt(plan?: FactoryStoryPlan, currentChapter?: number, targetChapters?: number) {
+  if (!plan?.chapterPlan?.length) return ''
+
+  const chapterNumber = Math.max(1, currentChapter || 1)
+  const target = Math.max(1, targetChapters || plan.totalPlannedChapters || plan.chapterPlan.length)
+  const currentPlan =
+    plan.chapterPlan.find((chapter) => chapter.chapterNumber === chapterNumber) ||
+    plan.chapterPlan[Math.min(chapterNumber - 1, plan.chapterPlan.length - 1)]
+  const previousPlan = plan.chapterPlan.find((chapter) => chapter.chapterNumber === chapterNumber - 1)
+  const nextPlan = plan.chapterPlan.find((chapter) => chapter.chapterNumber === chapterNumber + 1)
+
+  const compactPlan = plan.chapterPlan
+    .filter((chapter) => {
+      if (chapter.chapterNumber <= 2) return true
+      if (chapter.chapterNumber === chapterNumber) return true
+      if (chapter.chapterNumber === chapterNumber - 1) return true
+      if (chapter.chapterNumber === chapterNumber + 1) return true
+      if (chapter.chapterNumber === target) return true
+      if (chapter.chapterNumber >= Math.max(1, target - 1) && chapter.chapterNumber <= target) return true
+      return false
+    })
+    .map((chapter) => {
+      const marker = chapter.chapterNumber === chapterNumber ? ' <= CHƯƠNG ĐANG VIẾT' : ''
+      return `Chương ${chapter.chapterNumber}${marker}: ${chapter.title} | Mission: ${chapter.mission} | Power shift: ${chapter.powerShift}`
+    })
+    .join('\n')
+
+  const evidencePlan = plan.evidencePlan?.map((item) => `- ${item}`).join('\n') || '- Không có'
+  const villainCurve = plan.villainCurve?.map((item) => `- ${item}`).join('\n') || '- Không có'
+  const payoffPlan = plan.payoffPlan?.map((item) => `- ${item}`).join('\n') || '- Không có'
+
+  return `
+STORY PLANNER V1 — BẮT BUỘC BÁM OUTLINE:
+- Planner version: ${plan.plannerVersion || 'story-planner-v1'}
+- Target chương hiện tại: ${chapterNumber}/${target}
+- Planner goal: ${plan.plannerGoal || 'Giữ outline, evidence plan, villain curve và payoff.'}
+
+CHAPTER MISSION LOCK THEO PLANNER:
+- Title: ${currentPlan?.title || 'Không có'}
+- Mission: ${currentPlan?.mission || 'Không có'}
+- Scene type: ${currentPlan?.sceneType || 'Không có'}
+- Main scene: ${currentPlan?.mainScene || 'Không có'}
+- Evidence beat: ${currentPlan?.evidenceBeat || 'Không có'}
+- Villain beat: ${currentPlan?.villainBeat || 'Không có'}
+- Heroine move: ${currentPlan?.heroineMove || 'Không có'}
+- Emotional beat: ${currentPlan?.emotionalBeat || 'Không có'}
+- Power shift: ${currentPlan?.powerShift || 'Không có'}
+- Ending hook: ${currentPlan?.endingHook || 'Không có'}
+
+PREVIOUS / NEXT CONTINUITY:
+- Previous chapter plan: ${previousPlan ? `${previousPlan.title} — ${previousPlan.powerShift}` : 'Không có'}
+- Next chapter setup: ${nextPlan ? `${nextPlan.title} — ${nextPlan.mission}` : 'Không có'}
+
+EVIDENCE PLAN:
+${evidencePlan}
+
+VILLAIN CURVE:
+${villainCurve}
+
+PAYOFF PLAN:
+${payoffPlan}
+
+COMPACT CHAPTER PLAN:
+${compactPlan}
+
+RULE:
+- Nếu mode là viết chương, chương này phải hoàn thành đúng mission của chapterNumber hiện tại.
+- Nếu đang ở chương cuối theo targetChapters, phải nén payoff cuối vào chương này thay vì treo tiếp.
+- Không được bỏ qua power shift. Nếu không có power shift thật, chương bị xem là lỗi.
+`.trim()
+}
+
 function normalizeStorySeed(value: unknown): FactoryStorySeed | null {
   if (!value || typeof value !== 'object') return null
 
@@ -201,6 +343,7 @@ function normalizeStorySeed(value: unknown): FactoryStorySeed | null {
     motifText: safeText(raw.motifText),
     motifEmbedding: Array.isArray(raw.motifEmbedding) ? (raw.motifEmbedding as number[]) : undefined,
     motifSimilarity: raw.motifSimilarity,
+    storyPlan: normalizeStoryPlan(raw.storyPlan),
   }
 
   const hasUsefulSeed =
@@ -212,7 +355,8 @@ function normalizeStorySeed(value: unknown): FactoryStorySeed | null {
     seed.mainConflict ||
     seed.hiddenTruth ||
     seed.shortFingerprint ||
-    seed.motifFingerprint?.fingerprint
+    seed.motifFingerprint?.fingerprint ||
+    seed.storyPlan?.chapterPlan?.length
 
   return hasUsefulSeed ? seed : null
 }
@@ -670,6 +814,12 @@ ${seed.motifText || 'Không có motifText.'}
 `.trim()
     : ''
 
+  const storyPlanBlock = formatStoryPlanForPrompt(
+    seed.storyPlan,
+    payload.nextChapterNumber,
+    payload.chapterTarget,
+  )
+
   return `
 STORY SEED / STORY DNA BẮT BUỘC:
 - Đây là xương sống của truyện, không phải gợi ý phụ.
@@ -696,6 +846,8 @@ THÔNG TIN STORY SEED:
 - Anti-repeat tags: ${seed.antiRepeatTags?.join(' | ') || 'Không có'}
 
 ${motifBlock}
+
+${storyPlanBlock}
 
 QUY TẮC BÁM STORY SEED:
 - Chương phải dùng đúng opening scene hoặc biến thể rất gần với opening scene.

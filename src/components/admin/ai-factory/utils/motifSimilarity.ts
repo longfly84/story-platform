@@ -15,6 +15,13 @@ function sameField(a: unknown, b: unknown) {
   return Boolean(left && right && left === right)
 }
 
+function clampScore(value: number) {
+  if (!Number.isFinite(value)) return 0
+  if (value < 0) return 0
+  if (value > 1) return 1
+  return value
+}
+
 export function cosineSimilarity(a?: number[] | null, b?: number[] | null) {
   if (!Array.isArray(a) || !Array.isArray(b)) return 0
   if (!a.length || !b.length || a.length !== b.length) return 0
@@ -80,7 +87,7 @@ export function getMotifFieldSimilarity(
   const fieldScore = max > 0 ? score / max : 0
 
   return {
-    score: fieldScore * 0.82 + tagScore * 0.18,
+    score: clampScore(fieldScore * 0.82 + tagScore * 0.18),
     matchedFields,
     matchedTags,
   }
@@ -102,8 +109,9 @@ export function getHybridMotifSimilarity(params: {
 
   const rawEmbeddingScore = cosineSimilarity(params.candidate.embedding, params.existing.embedding)
 
-  const embeddingScore =
-    rawEmbeddingScore > 0 && Number.isFinite(rawEmbeddingScore) ? rawEmbeddingScore : 0
+  const embeddingScore = clampScore(
+    rawEmbeddingScore > 0 && Number.isFinite(rawEmbeddingScore) ? rawEmbeddingScore : 0,
+  )
 
   const hasEmbedding =
     Array.isArray(params.candidate.embedding) &&
@@ -112,7 +120,7 @@ export function getHybridMotifSimilarity(params: {
     params.candidate.embedding.length === params.existing.embedding.length
 
   const hybridScore = hasEmbedding
-    ? fieldResult.score * fieldWeight + embeddingScore * embeddingWeight
+    ? clampScore(fieldResult.score * fieldWeight + embeddingScore * embeddingWeight)
     : fieldResult.score
 
   const result: StoryMotifSimilarityResult = {
@@ -162,22 +170,46 @@ export function shouldRejectMotif(params: {
     existing: params.existing,
   })
 
+  const hybridReject = Boolean(best && best.hybridScore >= threshold)
+
+  // Embedding thường bắt được "vibe tổng thể" tốt hơn field.
+  // Case thực tế đã gặp: embeddingScore ~0.887 nhưng hybridScore chỉ ~0.48
+  // vì field khác nhau, khiến seed vẫn pass dù cảm giác truyện khá giống.
+  const strongEmbeddingReject = Boolean(best && best.embeddingScore >= 0.9)
+  const softEmbeddingReject = Boolean(
+    best && best.embeddingScore >= 0.86 && best.fieldScore >= 0.25,
+  )
+
+  const reject = hybridReject || strongEmbeddingReject || softEmbeddingReject
+
+  let reason = ''
+  if (hybridReject) {
+    reason = `hybridScore >= ${threshold}`
+  } else if (strongEmbeddingReject) {
+    reason = 'embeddingScore >= 0.90'
+  } else if (softEmbeddingReject) {
+    reason = 'embeddingScore >= 0.86 và fieldScore >= 0.25'
+  }
+
   return {
-    reject: Boolean(best && best.hybridScore >= threshold),
+    reject,
     threshold,
     best,
+    reason,
   }
 }
 
 export function formatMotifSimilarityForLog(result: StoryMotifSimilarityResult | null) {
   if (!result) return 'Không có motif cũ để so sánh.'
 
-  const percent = Math.round(result.hybridScore * 100)
+  const hybridPercent = Math.round(result.hybridScore * 100)
+  const fieldPercent = Math.round(result.fieldScore * 100)
+  const embeddingPercent = Math.round(result.embeddingScore * 100)
   const title = result.item.title || 'Truyện cũ chưa có tên'
   const fields = result.matchedFields.length
     ? result.matchedFields.join(', ')
     : 'không trùng field mạnh'
   const tags = result.matchedTags.length ? result.matchedTags.join(', ') : 'không trùng tag'
 
-  return `Giống ${percent}% với "${title}". Field trùng: ${fields}. Tag trùng: ${tags}.`
+  return `Giống hybrid ${hybridPercent}% với "${title}". Field ${fieldPercent}%, embedding ${embeddingPercent}%. Field trùng: ${fields}. Tag trùng: ${tags}.`
 }
