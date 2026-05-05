@@ -285,21 +285,21 @@ const FACTORY_TITLE_BANK: Record<string, string[]> = {
     "Lần Này Họ Không Thắng",
   ],
   default: [
-    "Tờ Giấy Không Nên Xuất Hiện",
-    "Cánh Cửa Thứ Hai",
-    "Người Đứng Sau Tấm Rèm",
-    "Đêm Mưa Không Có Lời Xin Lỗi",
-    "Bí Mật Trong Chiếc Hộp Cũ",
-    "Khi Họ Gọi Tôi Là Người Thừa",
-    "Một Cuộc Gọi Trước Bình Minh",
-    "Tên Tôi Trong Hồ Sơ Mật",
-    "Nụ Cười Của Người Chiến Thắng",
-    "Tôi Không Còn Đứng Sau Lưng Ai",
+    "Dòng Mã Trong Hồ Sơ Cũ",
+    "Cánh Cửa Quẹt Thẻ Lúc Nửa Đêm",
+    "Bản Ghi Âm Trước Bình Minh",
+    "Tấm Ảnh Sau Cánh Kính",
+    "Hồ Sơ Mật Có Tên Tôi",
+    "Tin Nhắn Gửi Nhầm Vào Nhóm Gia Đình",
     "Tấm Thẻ Phòng Bị Bỏ Quên",
-    "Một Người Lạ Biết Tên Tôi",
-    "Cơn Mưa Trước Ngày Rời Đi",
-    "Chiếc Chìa Khóa Không Thuộc Về Tôi",
-    "Người Cuối Cùng Nhìn Thấy Sự Thật",
+    "Cuộc Gọi Từ Số Máy Lạ",
+    "Trang Phụ Lục Bị Thay",
+    "Chiếc USB Sau Lớp Niêm Phong",
+    "Phiếu Gửi Đồ Trong Khách Sạn",
+    "Khung Hình Bị Cắt Khỏi Camera",
+    "Hóa Đơn Hoa Gửi Sai Tên",
+    "Dấu Đỏ Trên Bản Hợp Đồng",
+    "Tấm Vé Một Chiều Trong Ngăn Kéo",
   ],
 };
 
@@ -374,6 +374,70 @@ function getTitleBucketKey(genreLabel: string) {
   return "default";
 }
 
+function normalizeTitleForCompare(input: string) {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function compactTitleTags(input: string) {
+  return normalizeTitleForCompare(input)
+    .split(/\s+/)
+    .filter((item) => item.length >= 4)
+    .slice(0, 5);
+}
+
+function getFactoryTitleSignature(title: string) {
+  const normalized = normalizeTitleForCompare(title);
+
+  if (normalized.includes("nguoi") && normalized.includes("su that")) return "nguoi_su_that";
+  if (normalized.includes("bi mat")) return "bi_mat_abstract";
+  if (normalized.includes("su that")) return "su_that_abstract";
+  if (normalized.includes("chien thang")) return "chien_thang_abstract";
+  if (normalized.includes("khong nen xuat hien")) return "khong_nen_xuat_hien";
+  if (normalized.includes("khong thuoc ve toi")) return "khong_thuoc_ve_toi";
+  if (normalized.startsWith("toi ")) return "toi_ke_chuyen_abstract";
+  if (normalized.startsWith("nguoi ")) return "nguoi_abstract";
+
+  return compactTitleTags(title).join("_");
+}
+
+function isGenericFactoryTitle(title: string) {
+  const normalized = normalizeTitleForCompare(title);
+
+  return (
+    normalized.includes("nguoi cuoi cung") ||
+    normalized.includes("nhin thay su that") ||
+    normalized.includes("su that") ||
+    normalized.includes("bi mat") ||
+    normalized.includes("chien thang") ||
+    normalized.includes("khong nen xuat hien") ||
+    normalized.includes("khong thuoc ve toi") ||
+    normalized.includes("sau tam rem") ||
+    normalized.includes("mot nguoi la") ||
+    normalized.startsWith("toi ") ||
+    normalized.startsWith("nguoi ")
+  );
+}
+
+function isBankTitleAllowed(title: string, avoidTitles?: string[]) {
+  if (isGenericFactoryTitle(title)) return false;
+
+  const normalized = normalizeTitleForCompare(title);
+  const signature = getFactoryTitleSignature(title);
+
+  return !(avoidTitles || []).some((item) => {
+    const avoidNormalized = normalizeTitleForCompare(item);
+    if (!avoidNormalized) return false;
+    return avoidNormalized === normalized || getFactoryTitleSignature(item) === signature;
+  });
+}
+
 function pickTitleFromBank(params: {
   genreLabel: string;
   seed: string;
@@ -382,20 +446,17 @@ function pickTitleFromBank(params: {
   const key = getTitleBucketKey(params.genreLabel);
   const primaryPool = FACTORY_TITLE_BANK[key] || FACTORY_TITLE_BANK.default;
   const mixedPool = [...primaryPool, ...FACTORY_TITLE_BANK.default];
-  const avoid = new Set(
-    (params.avoidTitles || []).map((title) => title.trim().toLowerCase()),
-  );
   const offset = hashText(`${params.seed}-${params.genreLabel}`);
 
   for (let i = 0; i < mixedPool.length; i += 1) {
     const title = mixedPool[(offset + i) % mixedPool.length];
 
-    if (!avoid.has(title.trim().toLowerCase())) {
+    if (isBankTitleAllowed(title, params.avoidTitles)) {
       return title;
     }
   }
 
-  return `${primaryPool[offset % primaryPool.length]} ${params.seed.slice(-4)}`;
+  return `Bản Ghi Trong Đêm ${params.seed.slice(-4)}`;
 }
 
 export function buildUniqueFactoryTitle(params: {

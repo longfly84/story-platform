@@ -686,6 +686,108 @@ function normalizeForCompare(input: string) {
     .trim();
 }
 
+const ABSTRACT_TITLE_PATTERNS = [
+  "nguoi cuoi cung",
+  "nhin thay su that",
+  "su that",
+  "bi mat",
+  "chien thang",
+  "khong nen xuat hien",
+  "khong thuoc ve toi",
+  "sau tam rem",
+  "mot nguoi la",
+  "toi khong con",
+  "khi ho goi toi",
+];
+
+const CONCRETE_TITLE_ANCHORS = [
+  "ho so",
+  "file",
+  "camera",
+  "usb",
+  "sao ke",
+  "hop dong",
+  "di chuc",
+  "ghi am",
+  "tieng chuong",
+  "do choi",
+  "the nho",
+  "email",
+  "tin nhan",
+  "giay khai sinh",
+  "adn",
+  "dna",
+  "hoa don",
+  "ve may bay",
+  "ma qr",
+  "ban ghi",
+  "anh",
+  "video",
+  "the phong",
+  "vong tay",
+  "nhan",
+  "ma so",
+  "don to cao",
+  "bang phan ca",
+  "polaroid",
+  "phieu gui do",
+  "chu ky",
+  "phu luc",
+];
+
+function hasConcreteTitleAnchor(title: string) {
+  const normalized = normalizeForCompare(title);
+  return CONCRETE_TITLE_ANCHORS.some((anchor) => normalized.includes(anchor));
+}
+
+function getTitleStructureSignature(title: string) {
+  const normalized = normalizeForCompare(title);
+
+  if (normalized.includes("nguoi") && normalized.includes("su that")) return "nguoi_su_that";
+  if (normalized.includes("bi mat")) return "bi_mat_abstract";
+  if (normalized.includes("su that")) return "su_that_abstract";
+  if (normalized.includes("chien thang")) return "chien_thang_abstract";
+  if (normalized.includes("khong nen xuat hien")) return "khong_nen_xuat_hien";
+  if (normalized.includes("khong thuoc ve toi")) return "khong_thuoc_ve_toi";
+  if (normalized.startsWith("toi ")) return "toi_ke_chuyen_abstract";
+  if (normalized.startsWith("nguoi ")) return "nguoi_abstract";
+
+  return compactTags(normalized).slice(0, 4).join("_");
+}
+
+function isGenericAbstractTitle(title: string) {
+  const normalized = normalizeForCompare(title);
+  const hasAbstractPattern = ABSTRACT_TITLE_PATTERNS.some((pattern) => normalized.includes(pattern));
+
+  if (!hasAbstractPattern) return false;
+
+  if (
+    normalized.includes("khong nen xuat hien") ||
+    normalized.includes("khong thuoc ve toi") ||
+    normalized.includes("nguoi cuoi cung") ||
+    normalized.includes("nhin thay su that") ||
+    normalized.includes("chien thang")
+  ) {
+    return true;
+  }
+
+  return !hasConcreteTitleAnchor(title);
+}
+
+function isTitleAllowedByMemory(title: string, avoidTitles?: string[]) {
+  if (isGenericAbstractTitle(title)) return false;
+
+  const normalized = normalizeForCompare(title);
+  const signature = getTitleStructureSignature(title);
+  const avoid = avoidTitles || [];
+
+  return !avoid.some((item) => {
+    const avoidNormalized = normalizeForCompare(item);
+    if (!avoidNormalized) return false;
+    return avoidNormalized === normalized || getTitleStructureSignature(item) === signature;
+  });
+}
+
 function countProceduralTerms(input: string) {
   const normalized = normalizeForCompare(input);
 
@@ -788,36 +890,72 @@ function titleCaseFirst(input: string) {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-function makeEvidenceTitle(evidenceObject: string, seed: string) {
+function makeEvidenceTitleVariants(evidenceObject: string) {
   const normalized = normalizeForCompare(evidenceObject);
-
-  if (normalized.includes("tieng chuong")) return "Tiếng Chuông Bị Cắt";
-  if (normalized.includes("ho so nhap hoc")) return "Hồ Sơ Lùi Ngày";
-  if (normalized.includes("anh chup man hinh") || normalized.includes("xoa voi")) return "Ảnh Xóa Vội";
-  if (normalized.includes("chia khoa")) return "Chiếc Chìa Khóa Không Thuộc Về Tôi";
-  if (normalized.includes("the") && normalized.includes("phong")) return "Tấm Thẻ Phòng Bị Bỏ Quên";
-  if (normalized.includes("a-7392") || normalized.includes("ma qr") || normalized.includes("ma")) return "Mã Không Nên Xuất Hiện";
-  if (normalized.includes("bang phan ca")) return "Bảng Phân Ca Lúc Hai Giờ Sáng";
-  if (normalized.includes("di chuc")) return "Bản Di Chúc Bị Thay Trang";
-  if (normalized.includes("hop dong bao hiem")) return "Hợp Đồng Bảo Hiểm Sai Người Thụ Hưởng";
-  if (normalized.includes("hop dong") || normalized.includes("uy quyen")) return "Bản Hợp Đồng Không Thuộc Về Tôi";
-  if (normalized.includes("usb")) return "USB Trong Đêm Đối Chất";
-  if (normalized.includes("camera")) return "Bảy Phút Camera Biến Mất";
-  if (normalized.includes("sao ke")) return "Dòng Sao Kê Bị Che";
-  if (normalized.includes("adn") || normalized.includes("dna") || normalized.includes("xet nghiem")) return "Mã Mẫu Không Trùng Tên";
-  if (normalized.includes("giay khai sinh")) return "Giấy Khai Sinh Bản Cũ";
-  if (normalized.includes("nhat ky")) return "Trang Nhật Ký Không Nên Mở";
-  if (normalized.includes("hoa don")) return "Hóa Đơn Gửi Sai Tên";
-  if (normalized.includes("ve may bay")) return "Tấm Vé Một Chiều";
-  if (normalized.includes("voice") || normalized.includes("ghi am")) return "Đoạn Ghi Âm Còn Tiếng Thở";
-
   const token = titleCaseFirst(cleanTitleToken(evidenceObject));
-  const patterns = [
-    `${token} Không Nên Xuất Hiện`,
-    `${token} Bị Bỏ Quên`,
-    `Bí Mật Trong ${token}`,
-  ];
-  return pickSeedItem(patterns, seed, "evidence-title-pattern");
+
+  const variants: string[] = [];
+
+  if (normalized.includes("tieng chuong")) {
+    variants.push(
+      "Tiếng Chuông Bị Cắt",
+      "Âm Thanh Sau Tiếng Chuông",
+      "Bản Ghi Còn Lại Tiếng Chuông",
+    );
+  }
+
+  if (normalized.includes("ho so nhap hoc")) {
+    variants.push("Hồ Sơ Lùi Ngày", "Mã Hồ Sơ Của Đứa Trẻ", "Dấu Đỏ Trong Hồ Sơ Nhập Học");
+  }
+
+  if (normalized.includes("anh chup man hinh") || normalized.includes("xoa voi")) {
+    variants.push("Ảnh Xóa Vội", "Bức Ảnh Còn Trong Thùng Rác", "Ảnh Chụp Trước Khi Bị Xóa");
+  }
+
+  if (normalized.includes("chia khoa")) {
+    variants.push("Chiếc Chìa Khóa Trong Két Sắt", "Chìa Khóa Mở Sai Căn Phòng", "Dấu Khắc Trên Chìa Khóa");
+  }
+
+  if (normalized.includes("the") && normalized.includes("phong")) {
+    variants.push("Tấm Thẻ Phòng Bị Bỏ Quên", "Thẻ Phòng Quẹt Lúc Nửa Đêm", "Dấu Quẹt Trên Thẻ Phòng");
+  }
+
+  if (normalized.includes("a-7392") || normalized.includes("ma qr") || normalized.includes("ma")) {
+    variants.push("Mã QR Dẫn Tới Thư Mục Ẩn", "Dòng Mã Trên Vé Sự Kiện", "Mã Số Trong Hồ Sơ Cũ");
+  }
+
+  if (normalized.includes("bang phan ca")) variants.push("Bảng Phân Ca Lúc Hai Giờ Sáng", "Dòng Mực Khác Trên Bảng Phân Ca");
+  if (normalized.includes("di chuc")) variants.push("Bản Di Chúc Bị Thay Trang", "Trang Cuối Của Bản Di Chúc");
+  if (normalized.includes("hop dong bao hiem")) variants.push("Hợp Đồng Bảo Hiểm Sai Người Thụ Hưởng", "Tên Người Thụ Hưởng Bị Đổi");
+  if (normalized.includes("hop dong") || normalized.includes("uy quyen")) variants.push("Chữ Ký Thứ Hai Trong Hợp Đồng", "Trang Phụ Lục Bị Thay");
+  if (normalized.includes("usb")) variants.push("USB Trong Đêm Đối Chất", "Chiếc USB Sau Lớp Niêm Phong");
+  if (normalized.includes("camera")) variants.push("Bảy Phút Camera Biến Mất", "Khung Hình Bị Cắt Khỏi Camera");
+  if (normalized.includes("sao ke")) variants.push("Dòng Sao Kê Bị Che", "Khoản Chuyển Lúc Không Giờ");
+  if (normalized.includes("adn") || normalized.includes("dna") || normalized.includes("xet nghiem")) variants.push("Mã Mẫu Không Trùng Tên", "Phiếu Xét Nghiệm Lệch Mã");
+  if (normalized.includes("giay khai sinh")) variants.push("Giấy Khai Sinh Bản Cũ", "Tên Người Cha Trong Bản Cũ");
+  if (normalized.includes("nhat ky")) variants.push("Trang Nhật Ký Bị Gấp Mép", "Dòng Chữ Trong Nhật Ký Cũ");
+  if (normalized.includes("hoa don")) variants.push("Hóa Đơn Gửi Sai Tên", "Dòng Địa Chỉ Trên Hóa Đơn Hoa");
+  if (normalized.includes("ve may bay")) variants.push("Tấm Vé Một Chiều", "Vé Máy Bay Mang Tên Người Đã Mất");
+  if (normalized.includes("voice") || normalized.includes("ghi am")) variants.push("Đoạn Ghi Âm Còn Tiếng Thở", "Bản Ghi Âm Thiếu Một Đoạn");
+  if (normalized.includes("do choi")) variants.push("Món Đồ Chơi Trong Phòng Họp", "Con Gấu Bông Ở Nơi Con Chưa Từng Đến");
+  if (normalized.includes("polaroid")) variants.push("Tấm Polaroid Lệch Ngày", "Ngày Tháng Sau Tấm Ảnh Cũ");
+  if (normalized.includes("phieu gui do")) variants.push("Phiếu Gửi Đồ Trong Khách Sạn", "Tên Người Gửi Trên Phiếu Cũ");
+
+  variants.push(
+    `${token} Sai Thời Điểm`,
+    `${token} Bị Đánh Dấu`,
+    `Dấu Vết Từ ${token}`,
+  );
+
+  return uniqueStringsForCover(variants, 10);
+}
+
+function makeEvidenceTitle(evidenceObject: string, seed: string) {
+  return pickSeedItem(
+    makeEvidenceTitleVariants(evidenceObject),
+    seed,
+    "evidence-title-pattern",
+  );
 }
 
 function makeSeedAlignedTitle(params: {
@@ -825,6 +963,7 @@ function makeSeedAlignedTitle(params: {
   seed: string;
   avoidTitles?: string[];
 }) {
+  const evidenceTitles = makeEvidenceTitleVariants(params.candidate.evidenceObject)
   const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
   const setting = normalizeForCompare(params.candidate.setting);
   const pressure = normalizeForCompare(params.candidate.publicPressure);
@@ -833,31 +972,31 @@ function makeSeedAlignedTitle(params: {
   const options = uniqueStringsForCover(
     [
       evidenceTitle,
+      ...evidenceTitles,
       setting.includes("truong") || pressure.includes("phu huynh")
-        ? "Hồ Sơ Của Đứa Trẻ"
+        ? "Dòng Camera Trong Phòng Họp Phụ Huynh"
         : "",
       setting.includes("benh vien") || hidden.includes("benh")
-        ? "Hồ Sơ Bệnh Án Bị Sửa"
+        ? "Mã Hồ Sơ Trong Phòng Bệnh"
         : "",
       setting.includes("ngan hang") || pressure.includes("co dong")
         ? "Dòng Ký Tên Trước Giờ Bỏ Phiếu"
         : "",
       setting.includes("khach san") || setting.includes("resort")
-        ? "Căn Phòng Không Ai Nhận"
+        ? "Phiếu Phòng Trong Khách Sạn"
         : "",
       setting.includes("gia toc") || pressure.includes("gia toc") || hidden.includes("di chuc")
-        ? "Món Đồ Người Chết Để Lại"
+        ? "Trang Di Chúc Trong Từ Đường"
         : "",
       params.candidate.dopamineHook.includes("màn hình")
-        ? "Màn Hình Đã Phản Bội Họ"
+        ? "Màn Hình Đã Phát Sai File"
         : "",
     ],
-    8,
+    12,
   );
 
-  const avoid = new Set((params.avoidTitles || []).map((item) => normalizeForCompare(item)));
-  const cleanOptions = options.filter((item) => !avoid.has(normalizeForCompare(item)));
-  return cleanOptions[0] || evidenceTitle;
+  const cleanOptions = options.filter((item) => isTitleAllowedByMemory(item, params.avoidTitles));
+  return cleanOptions[0] || evidenceTitles.find((item) => !isGenericAbstractTitle(item)) || evidenceTitle;
 }
 
 function makeChapterTitle(params: {
@@ -1757,6 +1896,9 @@ ${storyPlanBlock}
 ${coverConceptBlock}
 
 QUY TẮC BẮT BUỘC THEO STORY SEED:
+- Tên truyện khi xuất ra phải giữ tinh thần của tên định hướng và bám vật chứng chính / bối cảnh cụ thể.
+- Không tự đổi tên truyện sang kiểu trừu tượng chung chung như “Người Cuối Cùng Nhìn Thấy Sự Thật”, “Sự Thật...”, “Bí Mật...”, “...Không Nên Xuất Hiện”, “...Không Thuộc Về Tôi” nếu tên đó không chứa vật chứng cụ thể của seed.
+- Công thức tên truyện ưu tiên: vật chứng chính + trạng thái bất thường / thời điểm sai / dấu vết bị cắt / nơi xuất hiện sai.
 - Chương 1 phải mở theo opening scene trên.
 - Biến cố chính phải dùng inciting incident trên.
 - Vật chứng quan trọng phải là evidence object trên.
