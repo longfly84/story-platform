@@ -17,7 +17,7 @@ import AdminCommentsPage from '@/pages/admin/AdminCommentsPage'
 import AdminCategoriesPage from '@/pages/admin/AdminCategoriesPage'
 import AIFactoryPage from '@/pages/admin/AIFactoryPage'
 import AIFactoryResultsPage from '@/pages/admin/AIFactoryResultsPage'
-
+import AdminFacebookPostsPage from '@/pages/admin/AdminFacebookPostsPage'
 import AdminEditStoryPage from '@/pages/AdminEditStoryPage'
 import LoginPage from '@/pages/LoginPage'
 import RequireAdminAuth from '@/components/admin/RequireAdminAuth'
@@ -44,6 +44,7 @@ export default function App() {
           <Route path="/admin/ads" element={<AdminAdsPage />} />
           <Route path="/admin/ai-writer" element={<AdminAIPage />} />
           <Route path="/admin/ai-factory" element={<AIFactoryPage />} />
+          <Route path="/admin/facebook-posts" element={<AdminFacebookPostsPage />} />          
           <Route path="/admin/ai-factory/results" element={<AIFactoryResultsPage />} />
           <Route path="/admin/stories/:id/edit" element={<AdminEditStoryPage />} />
         </Route>

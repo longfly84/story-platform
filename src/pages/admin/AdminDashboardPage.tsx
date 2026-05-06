@@ -12,6 +12,11 @@ export default function AdminDashboardPage() {
       desc: 'Tạo truyện/chương hàng loạt bằng AI',
       to: '/admin/ai-factory',
     },
+    {
+      title: 'Group Post Factory',
+      desc: 'Tạo bài đăng Facebook group từ truyện',
+      to: '/admin/facebook-posts',
+    },
   ]
 
   return (
