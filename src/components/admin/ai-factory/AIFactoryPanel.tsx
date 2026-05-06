@@ -53,6 +53,12 @@ import {
 } from './utils/motifSimilarity'
 import { buildFactoryPublicStoryDescription } from './utils/factoryPublicDescription'
 
+function safeString(value: unknown): string {
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim()
+  return ''
+}
+
 const defaultConfig: AIFactoryConfig = {
   provider: 'mock',
   modelKey: 'economy',
@@ -165,6 +171,30 @@ function buildCleanFactoryStoryDescription(params: {
   return compactPublicDescription(
     `Một biến cố tại ${openingScene} khiến ${evidenceObject} xuất hiện sai thời điểm, kéo nữ chính vào cuộc đối đầu với những người đang cố che giấu sự thật. Từ một điểm bất thường nhỏ, cô phải bình tĩnh gom chứng cứ, bảo vệ điều quan trọng nhất và từng bước lật lại ${hiddenTruth}.`,
   )
+}
+
+
+function buildFactoryStorySlug(title: string, suffix: string) {
+  const base =
+    safeString(title)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 70) || 'truyen-ai'
+
+  const cleanSuffix =
+    safeString(suffix)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 18) || makeId().slice(0, 6)
+
+  return `${base}-${cleanSuffix}`
 }
 
 function normalizeCategoryText(input: string) {
@@ -978,10 +1008,15 @@ Yêu cầu:
       genreLabel: params.genre.label,
       storySeed: params.storySeed,
     })
+    const finalStoryTitle = safeString(params.parsed.storyTitle) || params.storySeed?.title || 'Truyện AI'
+    const finalStorySlug = buildFactoryStorySlug(
+      finalStoryTitle,
+      `${params.factoryRunId}-${params.storyIndex}`,
+    )
 
     const fullPayload = {
-      title: params.parsed.storyTitle,
-      slug: params.parsed.storySlug,
+      title: finalStoryTitle,
+      slug: finalStorySlug,
       description: params.parsed.storyDescription,
       author: 'Sưu Tầm',
       status: params.config.storyStatus,
@@ -1002,8 +1037,8 @@ Yêu cầu:
       result = await supabase
         .from('stories')
         .insert({
-          title: params.parsed.storyTitle,
-          slug: params.parsed.storySlug,
+          title: finalStoryTitle,
+          slug: finalStorySlug,
           description: params.parsed.storyDescription,
           author: 'Sưu Tầm',
           status: params.config.storyStatus,

@@ -15,6 +15,10 @@ type ReaderChapterNavItem = {
   slug?: string | null
   number?: number | null
   content?: string | null
+  story_id?: string | null
+  story_slug?: string | null
+  chapter_slug?: string | null
+  chapter_number?: number | string | null
 }
 
 const themeStyles: Record<string, { background: string; color: string }> = {
@@ -66,10 +70,151 @@ function splitReaderContent(content: string): ReaderContentSplitResult {
   }
 }
 
+function normalizeChapterKey(value: unknown) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^chuong-/, '')
+    .replace(/^chapter-/, '')
+    .replace(/^ch-/, '')
+}
+
+function getNumberValue(value: unknown) {
+  const parsed = Number(value || 0)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function getChapterNumber(chapter: ReaderChapterNavItem) {
+  return getNumberValue(chapter.number ?? chapter.chapter_number)
+}
+
 function getChapterReadPath(storySlug: string, chapterItem: ReaderChapterNavItem) {
-  const chapterSlug = chapterItem.slug || chapterItem.number
+  const chapterSlug =
+    chapterItem.slug ||
+    chapterItem.chapter_slug ||
+    chapterItem.number ||
+    chapterItem.chapter_number ||
+    1
 
   return `/doc-truyen/${storySlug}/${chapterSlug}`
+}
+
+function resolveReaderRoute(
+  params: Record<string, string | undefined>,
+  pathname: string,
+) {
+  const pathParts = pathname
+    .split('/')
+    .map((item) => decodeURIComponent(item.trim()))
+    .filter(Boolean)
+
+  let pathSlug = ''
+  let pathChapter = '1'
+
+  const docIndex = pathParts.findIndex((item) => {
+    return item === 'doc-truyen' || item === 'doc' || item === 'read'
+  })
+
+  if (docIndex >= 0) {
+    pathSlug = pathParts[docIndex + 1] || ''
+    pathChapter = pathParts[docIndex + 2] || '1'
+  } else if (pathParts.length >= 2) {
+    pathSlug = pathParts[pathParts.length - 2] || ''
+    pathChapter = pathParts[pathParts.length - 1] || '1'
+  }
+
+  return {
+    slug: params.slug || params.storySlug || params.story_slug || pathSlug || '',
+    chapter:
+      params.chapter ||
+      params.chapterSlug ||
+      params.chapterNumber ||
+      params.number ||
+      params.chapterId ||
+      pathChapter ||
+      '1',
+  }
+}
+
+function findCurrentChapter(
+  allChapters: ReaderChapterNavItem[],
+  routeChapter: string,
+) {
+  const normalizedRoute = normalizeChapterKey(routeChapter || '1')
+
+  const matched = allChapters.find((item) => {
+    const itemSlug = String(item.slug || '').trim()
+    const itemNumber = String(item.number || '').trim()
+    const itemChapterSlug = String(item.chapter_slug || '').trim()
+    const itemChapterNumber = String(item.chapter_number || '').trim()
+
+    const candidates = [
+      itemSlug,
+      itemNumber,
+      itemChapterSlug,
+      itemChapterNumber,
+      `chuong-${itemNumber}`,
+      `chapter-${itemNumber}`,
+      `ch-${itemNumber}`,
+    ]
+      .map(normalizeChapterKey)
+      .filter(Boolean)
+
+    return candidates.includes(normalizedRoute)
+  })
+
+  if (matched) return matched
+
+  return (
+    allChapters.find((item) => String(item.number || item.chapter_number || '') === '1') ||
+    allChapters[0] ||
+    null
+  )
+}
+
+async function loadChaptersForStory(storyRow: any) {
+  const allResults: ReaderChapterNavItem[] = []
+
+  const byStoryId = await supabase
+    .from('chapters')
+    .select('*')
+    .eq('story_id', storyRow.id)
+    .order('number', { ascending: true })
+
+  if (Array.isArray(byStoryId.data)) {
+    allResults.push(...(byStoryId.data as ReaderChapterNavItem[]))
+  }
+
+  if (allResults.length === 0 && storyRow.slug) {
+    const byStorySlug = await supabase
+      .from('chapters')
+      .select('*')
+      .eq('story_slug', storyRow.slug)
+      .order('number', { ascending: true })
+
+    if (!byStorySlug.error && Array.isArray(byStorySlug.data)) {
+      allResults.push(...(byStorySlug.data as ReaderChapterNavItem[]))
+    }
+  }
+
+  const uniqueMap = new Map<string, ReaderChapterNavItem>()
+
+  for (const chapter of allResults) {
+    const key =
+      String(chapter.id || '') ||
+      `${chapter.slug || chapter.chapter_slug || ''}-${chapter.number || chapter.chapter_number || ''}`
+
+    if (key) uniqueMap.set(key, chapter)
+  }
+
+  const uniqueChapters = Array.from(uniqueMap.values()).sort((a, b) => {
+    return getChapterNumber(a) - getChapterNumber(b)
+  })
+
+  return {
+    chapters: uniqueChapters,
+    error: byStoryId.error,
+  }
 }
 
 function ReaderChapterHeadbar({
@@ -182,26 +327,9 @@ function ReaderAdBlock() {
 export default function ReaderPage() {
   const params = useParams<Record<string, string | undefined>>()
   const location = useLocation()
-
-  const pathParts = location.pathname
-    .split('/')
-    .map((item) => decodeURIComponent(item.trim()))
-    .filter(Boolean)
-
-  const slug =
-    params.slug ||
-    params.storySlug ||
-    pathParts[pathParts.length - 2] ||
-    ''
-
-  const chapter =
-    params.chapter ||
-    params.chapterSlug ||
-    params.chapterNumber ||
-    params.number ||
-    params.chapterId ||
-    pathParts[pathParts.length - 1] ||
-    '1'
+  const { slug, chapter } = useMemo(() => {
+    return resolveReaderRoute(params, location.pathname)
+  }, [params, location.pathname])
 
   const { fontSize, theme } = useReaderSettings()
   const [loading, setLoading] = useState(true)
@@ -220,18 +348,12 @@ export default function ReaderPage() {
       setChapterData(null)
       setChapters([])
 
-      if (import.meta.env.DEV) {
-        console.log('[reader-params]', { slug, chapter })
-      }
-
       if (!slug) {
         if (!mounted) return
         setErrorType('story')
         setLoading(false)
         return
       }
-
-      
 
       try {
         const { data: storyRow, error: storyError } = await supabase
@@ -242,10 +364,6 @@ export default function ReaderPage() {
 
         if (!mounted) return
 
-        if (import.meta.env.DEV) {
-          console.log('[reader-story]', { story: storyRow, storyError })
-        }
-
         if (storyError || !storyRow) {
           setErrorType('story')
           setStory(null)
@@ -255,27 +373,32 @@ export default function ReaderPage() {
           return
         }
 
-        setStory(storyRow)
-
-        const { data: chaptersRows, error: chaptersError } = await supabase
-          .from('chapters')
-          .select('*')
-          .eq('story_id', storyRow.id)
-          .order('number', { ascending: true })
+        const { chapters: allChapters, error: chaptersError } =
+          await loadChaptersForStory(storyRow)
 
         if (!mounted) return
 
         if (import.meta.env.DEV) {
-          console.log('[reader-all-chapters]', {
-            routeChapter: chapter,
-            chaptersRows,
+          console.log('[reader-debug]', {
+            pathname: location.pathname,
+            slug,
+            chapter,
+            storyId: storyRow.id,
             chaptersError,
+            chaptersCount: allChapters.length,
+            chapters: allChapters.map((item) => ({
+              id: item.id,
+              number: item.number,
+              chapter_number: item.chapter_number,
+              slug: item.slug,
+              chapter_slug: item.chapter_slug,
+              title: item.title,
+            })),
           })
         }
 
-        const allChapters = Array.isArray(chaptersRows) ? chaptersRows : []
-
-        if (chaptersError || allChapters.length === 0) {
+        if (allChapters.length === 0) {
+          setStory(storyRow)
           setErrorType('chapter')
           setChapterData(null)
           setChapters([])
@@ -283,53 +406,12 @@ export default function ReaderPage() {
           return
         }
 
-        const routeChapterValue = String(chapter || '1').trim()
+        const currentChapter = findCurrentChapter(allChapters, chapter)
 
-        function normalizeChapterKey(value: unknown) {
-          return String(value || '')
-            .trim()
-            .toLowerCase()
-            .replace(/^chuong-/, '')
-            .replace(/^chapter-/, '')
-            .replace(/^ch-/, '')
-        }
-
-        const normalizedRouteChapter = normalizeChapterKey(routeChapterValue)
-
-        const currentChapter =
-          allChapters.find((item) => {
-            const itemSlug = String(item.slug || '').trim()
-            const itemNumber = String(item.number || '').trim()
-            const itemChapterSlug = String((item as any).chapter_slug || '').trim()
-            const itemChapterNumber = String((item as any).chapter_number || '').trim()
-
-            const candidates = [
-              itemSlug,
-              itemNumber,
-              itemChapterSlug,
-              itemChapterNumber,
-              `chuong-${itemNumber}`,
-              `chapter-${itemNumber}`,
-              `ch-${itemNumber}`,
-            ]
-              .map(normalizeChapterKey)
-              .filter(Boolean)
-
-            return candidates.includes(normalizedRouteChapter)
-          }) ||
-          allChapters.find((item) => String(item.number || '') === '1') ||
-          allChapters[0]
-
-        if (!currentChapter) {
-          setErrorType('chapter')
-          setChapterData(null)
-          setChapters(allChapters)
-          setLoading(false)
-          return
-        }
-
+        setStory(storyRow)
         setChapterData(currentChapter)
         setChapters(allChapters)
+        setErrorType(null)
         setLoading(false)
       } catch (err) {
         if (!mounted) return
@@ -351,7 +433,7 @@ export default function ReaderPage() {
     return () => {
       mounted = false
     }
-  }, [slug, chapter])
+  }, [slug, chapter, location.pathname])
 
   const appliedTheme = themeStyles[theme] ?? themeStyles.dark
 
@@ -359,55 +441,35 @@ export default function ReaderPage() {
     return splitReaderContent(chapterData?.content || '')
   }, [chapterData?.content])
 
-  const sortedChapters = useMemo(() => {
-    return [...chapters].sort((a, b) => {
-      const aNumber = Number(a.number || 0)
-      const bNumber = Number(b.number || 0)
-
-      return aNumber - bNumber
-    })
-  }, [chapters])
-
   const currentChapterIndex = useMemo(() => {
-    if (!chapterData || sortedChapters.length === 0) return -1
+    if (!chapterData || chapters.length === 0) return -1
 
-    const currentId = String(chapterData.id || '')
-    const currentSlug = String(chapterData.slug || '')
-    const currentNumber = String(chapterData.number || '')
-    const routeChapter = String(chapter || '1')
-
-    return sortedChapters.findIndex((item) => {
-      const itemId = String(item.id || '')
-      const itemSlug = String(item.slug || '')
-      const itemNumber = String(item.number || '')
-
+    return chapters.findIndex((item) => {
       return (
-        (!!currentId && itemId === currentId) ||
-        (!!currentSlug && itemSlug === currentSlug) ||
-        (!!currentNumber && itemNumber === currentNumber) ||
-        (!!routeChapter && itemSlug === routeChapter) ||
-        (!!routeChapter && itemNumber === routeChapter)
+        String(item.id || '') === String(chapterData.id || '') ||
+        normalizeChapterKey(item.slug || item.chapter_slug) ===
+          normalizeChapterKey(chapterData.slug || chapterData.chapter_slug) ||
+        String(item.number || item.chapter_number || '') ===
+          String(chapterData.number || chapterData.chapter_number || '')
       )
     })
-  }, [chapter, chapterData, sortedChapters])
+  }, [chapterData, chapters])
 
   const prevChapter = useMemo(() => {
     if (currentChapterIndex <= 0) return null
-
-    return sortedChapters[currentChapterIndex - 1] || null
-  }, [currentChapterIndex, sortedChapters])
+    return chapters[currentChapterIndex - 1] || null
+  }, [chapters, currentChapterIndex])
 
   const nextChapter = useMemo(() => {
     if (currentChapterIndex < 0) return null
-
-    return sortedChapters[currentChapterIndex + 1] || null
-  }, [currentChapterIndex, sortedChapters])
+    return chapters[currentChapterIndex + 1] || null
+  }, [chapters, currentChapterIndex])
 
   const { trackNextChapterClick } = useChapterAnalytics({
     storyId: story?.id,
     storySlug: story?.slug,
     chapterId: chapterData?.id,
-    chapterNumber: chapterData?.number,
+    chapterNumber: chapterData?.number || chapterData?.chapter_number,
   })
 
   useEffect(() => {
@@ -418,13 +480,6 @@ export default function ReaderPage() {
         const mod = await import('@/lib/analytics/trackView')
 
         if (typeof mod.trackPageView === 'function') {
-          if (import.meta.env.DEV) {
-            console.log('[track-view-submit]', {
-              path: window.location.pathname,
-              storySlug: story.slug,
-            })
-          }
-
           await mod.trackPageView({
             path: window.location.pathname,
             storySlug: story.slug,
@@ -471,7 +526,7 @@ export default function ReaderPage() {
     return (
       <MainLayout>
         <main className="mx-auto max-w-4xl px-4 py-10 text-center text-zinc-400">
-          Chương không tồn tại
+          Chương không tồn tại hoặc truyện này chưa có chương nào trong Supabase.
 
           <div className="mt-4">
             <Link
@@ -498,7 +553,7 @@ export default function ReaderPage() {
 
             trackNextChapterClick({
               toChapterId: nextChapter.id,
-              toChapterNumber: nextChapter.number,
+              toChapterNumber: getChapterNumber(nextChapter),
             })
           }}
         />
@@ -523,7 +578,7 @@ export default function ReaderPage() {
 
         <div className="mt-6 space-y-0">
           {contentParts.parts.map((part, index) => (
-            <div key={`${chapterData.id || chapterData.slug}-${index}`}>
+            <div key={`${chapterData.id || chapterData.slug || chapterData.chapter_slug}-${index}`}>
               <article
                 className="mx-auto max-w-3xl whitespace-pre-wrap rounded-xl border border-zinc-800 p-5 sm:p-7"
                 style={{
