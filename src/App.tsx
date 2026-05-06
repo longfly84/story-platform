@@ -18,6 +18,7 @@ import AdminCategoriesPage from '@/pages/admin/AdminCategoriesPage'
 import AIFactoryPage from '@/pages/admin/AIFactoryPage'
 import AIFactoryResultsPage from '@/pages/admin/AIFactoryResultsPage'
 import AdminFacebookPostsPage from '@/pages/admin/AdminFacebookPostsPage'
+
 import AdminEditStoryPage from '@/pages/AdminEditStoryPage'
 import LoginPage from '@/pages/LoginPage'
 import RequireAdminAuth from '@/components/admin/RequireAdminAuth'
@@ -27,6 +28,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AnalyticsRouteTracker />
+
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<HomePage />} />
@@ -39,16 +41,21 @@ export default function App() {
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/content" element={<AdminContentPage />} />
           <Route path="/admin/content/new" element={<AdminCreateStoryPage />} />
+          <Route path="/admin/content/:id/edit" element={<AdminEditStoryPage />} />
+
+          {/* Giữ route cũ để không gãy link cũ nếu trước đây có dùng */}
+          <Route path="/admin/stories/:id/edit" element={<AdminEditStoryPage />} />
+          <Route path="/admin/content/chapters/new" element={<AdminCreateChapterPage />} />
           <Route path="/admin/content/chapters/new" element={<AdminCreateChapterPage />} />
           <Route path="/admin/content/categories" element={<AdminCategoriesPage />} />
           <Route path="/admin/content/comments" element={<AdminCommentsPage />} />
+
           <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
           <Route path="/admin/ads" element={<AdminAdsPage />} />
           <Route path="/admin/ai-writer" element={<AdminAIPage />} />
           <Route path="/admin/ai-factory" element={<AIFactoryPage />} />
-          <Route path="/admin/facebook-posts" element={<AdminFacebookPostsPage />} />          
           <Route path="/admin/ai-factory/results" element={<AIFactoryResultsPage />} />
-          <Route path="/admin/stories/:id/edit" element={<AdminEditStoryPage />} />
+          <Route path="/admin/facebook-posts" element={<AdminFacebookPostsPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
