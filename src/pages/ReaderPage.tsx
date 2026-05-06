@@ -5,7 +5,7 @@ import MainLayout from '@/layouts/MainLayout'
 import ReaderToolbar from '@/components/reader/ReaderToolbar'
 import { useReaderSettings } from '@/hooks/useReaderSettings'
 import { useChapterAnalytics } from '@/hooks/useChapterAnalytics'
-import { supabase } from '@/lib/supabase'
+import { resolveCoverUrl, supabase } from '@/lib/supabase'
 
 type ReaderErrorType = 'story' | 'chapter' | null
 
@@ -23,6 +23,81 @@ type ReaderChapterNavItem = {
   content?: string | null
 }
 
+type ReaderAdItem = {
+  id?: string | number | null
+  title?: string | null
+  subtitle?: string | null
+  description?: string | null
+  image_url?: string | null
+  target_url?: string | null
+  placement?: string | null
+  priority?: number | string | null
+  is_active?: boolean | null
+}
+
+const CHAPTER_AD_PLACEMENTS = [
+  'chapter_inline_1',
+  'chapter_inline_2',
+  'chapter_inline_3',
+  'chapter_inline',
+  'reader_inline',
+  'chapter_content',
+  'inline',
+]
+
+
+const INLINE_AD_COUNT_KEY = 'reader_inline_ad_count'
+
+function parseInlineAdCount(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, Math.min(3, Math.floor(value)))
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(3, Math.floor(parsed))) : 0
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    return parseInlineAdCount(record.count ?? record.value ?? record.inlineAdCount)
+  }
+
+  return 0
+}
+
+async function loadReaderInlineAdCount() {
+  const { data, error } = await supabase
+    .from('ad_settings')
+    .select('value')
+    .eq('key', INLINE_AD_COUNT_KEY)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('[reader-ad-settings-load-error]', error)
+    return 0
+  }
+
+  return parseInlineAdCount(data?.value)
+}
+
+function getAdPlacementSlot(ad: ReaderAdItem) {
+  const placement = String(ad.placement || '')
+  const matched = placement.match(/(?:chapter_inline_|reader_inline_|inline_)(\d+)/)
+
+  if (matched) {
+    const slot = Number(matched[1])
+    return Number.isFinite(slot) ? slot : 99
+  }
+
+  if (placement === 'chapter_inline') return 50
+  if (placement === 'reader_inline') return 60
+  if (placement === 'chapter_content') return 70
+  if (placement === 'inline') return 80
+
+  return 99
+}
+
 const themeStyles: Record<string, { background: string; color: string }> = {
   dark: { background: '#0b0b0d', color: '#e6eef3' },
   light: { background: '#f8fafb', color: '#0f172a' },
@@ -34,41 +109,41 @@ type ReaderContentSplitResult = {
   shouldInsertAds: boolean
 }
 
-function splitReaderContent(content: string): ReaderContentSplitResult {
+function splitReaderContent(content: string, adCount = 0): ReaderContentSplitResult {
   const paragraphs = String(content || '')
     .split(/\n\s*\n/g)
     .map((item) => item.trim())
     .filter(Boolean)
 
-  if (paragraphs.length <= 4) {
+  if (paragraphs.length === 0) {
+    return {
+      parts: [''],
+      shouldInsertAds: false,
+    }
+  }
+
+  if (adCount <= 0 || paragraphs.length <= 4) {
     return {
       parts: [paragraphs.join('\n\n')],
       shouldInsertAds: false,
     }
   }
 
-  if (paragraphs.length <= 8) {
-    const cut = Math.ceil(paragraphs.length / 2)
+  const safeAdCount = Math.max(0, Math.min(3, adCount))
+  const partCount = Math.min(safeAdCount + 1, paragraphs.length)
+  const parts: string[] = []
 
-    return {
-      parts: [
-        paragraphs.slice(0, cut).join('\n\n'),
-        paragraphs.slice(cut).join('\n\n'),
-      ].filter(Boolean),
-      shouldInsertAds: true,
-    }
+  for (let index = 0; index < partCount; index += 1) {
+    const start = Math.floor((paragraphs.length * index) / partCount)
+    const end = Math.floor((paragraphs.length * (index + 1)) / partCount)
+    const part = paragraphs.slice(start, end).join('\n\n')
+
+    if (part.trim()) parts.push(part)
   }
 
-  const firstCut = Math.ceil(paragraphs.length / 3)
-  const secondCut = Math.ceil((paragraphs.length * 2) / 3)
-
   return {
-    parts: [
-      paragraphs.slice(0, firstCut).join('\n\n'),
-      paragraphs.slice(firstCut, secondCut).join('\n\n'),
-      paragraphs.slice(secondCut).join('\n\n'),
-    ].filter(Boolean),
-    shouldInsertAds: true,
+    parts: parts.length ? parts : [paragraphs.join('\n\n')],
+    shouldInsertAds: parts.length > 1 && safeAdCount > 0,
   }
 }
 
@@ -254,6 +329,41 @@ async function loadChaptersForStory(storyRow: any) {
   }
 }
 
+function sortAds(ads: ReaderAdItem[]) {
+  return [...ads].sort((a, b) => {
+    const aSlot = getAdPlacementSlot(a)
+    const bSlot = getAdPlacementSlot(b)
+
+    if (aSlot !== bSlot) return aSlot - bSlot
+
+    const aPriority = getNumberValue(a.priority)
+    const bPriority = getNumberValue(b.priority)
+
+    if (aPriority !== bPriority) return aPriority - bPriority
+
+    return String(a.title || '').localeCompare(String(b.title || ''))
+  })
+}
+
+async function loadChapterAds(inlineAdCount: number) {
+  const safeCount = Math.max(0, Math.min(3, Math.floor(Number(inlineAdCount || 0))))
+
+  if (safeCount <= 0) return []
+
+  const { data, error } = await supabase
+    .from('ads')
+    .select('*')
+    .eq('is_active', true)
+    .in('placement', CHAPTER_AD_PLACEMENTS)
+
+  if (error) {
+    console.warn('[reader-ads-load-error]', error)
+    return []
+  }
+
+  return sortAds(Array.isArray(data) ? (data as ReaderAdItem[]) : []).slice(0, safeCount)
+}
+
 function ReaderChapterHeadbar({
   storySlug,
   prevChapter,
@@ -316,7 +426,10 @@ function ReaderChapterHeadbar({
   )
 }
 
-function ReaderAdBlock() {
+function ReaderAdBlock({ ad }: { ad: ReaderAdItem }) {
+  const imageUrl = ad.image_url ? resolveCoverUrl(ad.image_url) ?? ad.image_url : ''
+  const targetUrl = ad.target_url || '#'
+
   return (
     <section className="mx-auto my-8 max-w-3xl overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/80 shadow-lg shadow-black/20">
       <div className="border-b border-zinc-800 px-4 py-3 text-sm text-zinc-400">
@@ -324,38 +437,42 @@ function ReaderAdBlock() {
       </div>
 
       <div className="p-4 sm:p-5">
-        <h3 className="text-2xl font-bold text-zinc-100">Tiny Studio</h3>
+        {ad.title ? <h3 className="text-2xl font-bold text-zinc-100">{ad.title}</h3> : null}
 
-        <p className="mt-2 text-base leading-relaxed text-zinc-300">
-          Ảnh viện cho mẹ bầu, bé và gia đình tại Đà Nẵng
-        </p>
+        {ad.subtitle ? (
+          <p className="mt-2 text-base leading-relaxed text-zinc-300">{ad.subtitle}</p>
+        ) : null}
 
-        <a
-          href="https://www.facebook.com/"
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 block overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition hover:border-amber-300/60"
-        >
-          <img
-            src="/tiny-studio-ad.jpg"
-            alt="Tiny Studio - ảnh viện cho mẹ bầu, bé và gia đình"
-            className="h-auto w-full object-cover"
-            loading="lazy"
-          />
-        </a>
+        {imageUrl ? (
+          <a
+            href={targetUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 block overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition hover:border-amber-300/60"
+          >
+            <img
+              src={imageUrl}
+              alt={ad.title || 'Quảng cáo'}
+              className="h-auto w-full object-cover"
+              loading="lazy"
+            />
+          </a>
+        ) : null}
 
-        <p className="mt-4 text-base leading-relaxed text-zinc-300">
-          Chụp ảnh newborn, mẹ bầu, baby và gia đình.
-        </p>
+        {ad.description ? (
+          <p className="mt-4 text-base leading-relaxed text-zinc-300">{ad.description}</p>
+        ) : null}
 
-        <a
-          href="https://www.facebook.com/"
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 inline-flex rounded-xl bg-amber-300 px-5 py-3 text-base font-bold text-zinc-950 transition hover:bg-amber-200"
-        >
-          Xem thêm
-        </a>
+        {ad.target_url ? (
+          <a
+            href={ad.target_url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex rounded-xl bg-amber-300 px-5 py-3 text-base font-bold text-zinc-950 transition hover:bg-amber-200"
+          >
+            Xem thêm
+          </a>
+        ) : null}
       </div>
     </section>
   )
@@ -374,6 +491,7 @@ export default function ReaderPage() {
   const [story, setStory] = useState<any | null>(null)
   const [chapterData, setChapterData] = useState<ReaderChapterNavItem | null>(null)
   const [chapters, setChapters] = useState<ReaderChapterNavItem[]>([])
+  const [chapterAds, setChapterAds] = useState<ReaderAdItem[]>([])
   const [errorType, setErrorType] = useState<ReaderErrorType>(null)
 
   useEffect(() => {
@@ -411,8 +529,9 @@ export default function ReaderPage() {
           return
         }
 
-        const { chapters: allChapters, error: chaptersError } =
-          await loadChaptersForStory(storyRow)
+        const [{ chapters: allChapters, error: chaptersError }, inlineAdCount] =
+          await Promise.all([loadChaptersForStory(storyRow), loadReaderInlineAdCount()])
+        const loadedAds = await loadChapterAds(inlineAdCount)
 
         if (!mounted) return
 
@@ -424,6 +543,14 @@ export default function ReaderPage() {
             storyId: storyRow.id,
             chaptersError,
             chaptersCount: allChapters.length,
+            inlineAdCount,
+            adsCount: loadedAds.length,
+            ads: loadedAds.map((item) => ({
+              id: item.id,
+              placement: item.placement,
+              title: item.title,
+              priority: item.priority,
+            })),
             chapters: allChapters.map((item) => ({
               id: item.id,
               number: item.number,
@@ -442,6 +569,7 @@ export default function ReaderPage() {
           setErrorType('chapter')
           setChapterData(null)
           setChapters([])
+          setChapterAds(loadedAds)
           setLoading(false)
           return
         }
@@ -451,6 +579,7 @@ export default function ReaderPage() {
         setStory(storyRow)
         setChapterData(currentChapter)
         setChapters(allChapters)
+        setChapterAds(loadedAds)
         setErrorType(null)
         setLoading(false)
       } catch (err) {
@@ -464,6 +593,7 @@ export default function ReaderPage() {
         setStory(null)
         setChapterData(null)
         setChapters([])
+        setChapterAds([])
         setLoading(false)
       }
     }
@@ -478,8 +608,8 @@ export default function ReaderPage() {
   const appliedTheme = themeStyles[theme] ?? themeStyles.dark
 
   const contentParts = useMemo(() => {
-    return splitReaderContent(chapterData?.content || '')
-  }, [chapterData?.content])
+    return splitReaderContent(chapterData?.content || '', chapterAds.length)
+  }, [chapterData?.content, chapterAds.length])
 
   const currentChapterIndex = useMemo(() => {
     if (!chapterData || chapters.length === 0) return -1
@@ -617,25 +747,29 @@ export default function ReaderPage() {
         </header>
 
         <div className="mt-6 space-y-0">
-          {contentParts.parts.map((part, index) => (
-            <div key={`${chapterData.id || chapterData.slug || chapterData.chapter_slug}-${index}`}>
-              <article
-                className="mx-auto max-w-3xl whitespace-pre-wrap rounded-xl border border-zinc-800 p-5 sm:p-7"
-                style={{
-                  lineHeight: 1.85,
-                  fontSize: `${fontSize}px`,
-                  background: appliedTheme.background,
-                  color: appliedTheme.color,
-                }}
-              >
-                {part}
-              </article>
+          {contentParts.parts.map((part, index) => {
+            const ad = chapterAds[index]
 
-              {contentParts.shouldInsertAds && index < contentParts.parts.length - 1 ? (
-                <ReaderAdBlock />
-              ) : null}
-            </div>
-          ))}
+            return (
+              <div key={`${chapterData.id || chapterData.slug || chapterData.chapter_slug}-${index}`}>
+                <article
+                  className="mx-auto max-w-3xl whitespace-pre-wrap rounded-xl border border-zinc-800 p-5 sm:p-7"
+                  style={{
+                    lineHeight: 1.85,
+                    fontSize: `${fontSize}px`,
+                    background: appliedTheme.background,
+                    color: appliedTheme.color,
+                  }}
+                >
+                  {part}
+                </article>
+
+                {contentParts.shouldInsertAds && ad && index < contentParts.parts.length - 1 ? (
+                  <ReaderAdBlock ad={ad} />
+                ) : null}
+              </div>
+            )
+          })}
         </div>
       </main>
     </MainLayout>
