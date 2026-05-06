@@ -23,6 +23,363 @@ import {
   getVillainPresenceInstruction,
 } from './promptInstructions.js'
 
+
+type ApiGenreModule =
+  | 'female-urban-revenge'
+  | 'medical-legal-suspense'
+  | 'mystery-investigation'
+  | 'mother-child-custody'
+  | 'school-parent-conflict'
+  | 'marriage-betrayal'
+  | 'public-exposure'
+  | 'sweet-romance'
+  | 'angst-romance'
+  | 'horror-suspense'
+  | 'corporate-war'
+  | 'general-drama'
+
+function normalizeForPromptRule(value: unknown) {
+  return safeText(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+}
+
+function getApiGenreSource(payload: NormalizedGeneratePayload) {
+  const storySeed = payload.storySeed as any
+  const motif = storySeed?.motifFingerprint || {}
+  const storyPlan = storySeed?.storyPlan || {}
+
+  return [
+    payload.genreLabel,
+    payload.moduleId,
+    payload.promptIdea,
+    payload.storySummary,
+    payload.title,
+    payload.mainCharacterStyleLabel,
+    storySeed?.title,
+    storySeed?.corePremise,
+    storySeed?.openingScene,
+    storySeed?.incitingIncident,
+    storySeed?.evidenceObject,
+    storySeed?.mainConflict,
+    storySeed?.hiddenTruth,
+    storySeed?.setting,
+    storySeed?.villainType,
+    storySeed?.emotionalHook,
+    motif?.premiseFamily,
+    motif?.openingArena,
+    motif?.evidenceObject,
+    motif?.evidenceType,
+    motif?.mainArena,
+    motif?.relationshipCore,
+    motif?.twistEngine,
+    ...(Array.isArray(storyPlan?.evidencePlan) ? storyPlan.evidencePlan : []),
+    ...(Array.isArray(storyPlan?.payoffPlan) ? storyPlan.payoffPlan : []),
+  ]
+    .map((item) => normalizeForPromptRule(item))
+    .filter(Boolean)
+    .join('\n')
+}
+
+function inferApiGenreModule(payload: NormalizedGeneratePayload): ApiGenreModule {
+  const source = getApiGenreSource(payload)
+  const hasAny = (keywords: string[]) => keywords.some((keyword) => source.includes(normalizeForPromptRule(keyword)))
+
+  if (
+    hasAny([
+      'toa thuoc',
+      'benh vien',
+      'phong benh',
+      'ho so dieu tri',
+      'so kham thai',
+      'khoa san',
+      'xet nghiem',
+      'bac si',
+      'bao hiem',
+      'y te',
+      'medical',
+    ])
+  ) {
+    return 'medical-legal-suspense'
+  }
+
+  if (
+    hasAny([
+      'anh chup',
+      'da xoa',
+      'camera',
+      'cctv',
+      'file goc',
+      'ghi am',
+      'usb',
+      'o cung',
+      'log',
+      'nhat ky',
+      'hung thu',
+      'nghi pham',
+      'dieu tra',
+      'manh moi',
+      'red herring',
+    ])
+  ) {
+    return 'mystery-investigation'
+  }
+
+  if (
+    hasAny([
+      'quyen nuoi con',
+      'me don than',
+      'nhan con nuoi',
+      'con nuoi',
+      'adn',
+      'dna',
+      'giay khai sinh',
+      'gau bong',
+      'dua tre',
+      'con ruot',
+      'than the',
+    ])
+  ) {
+    return 'mother-child-custody'
+  }
+
+  if (hasAny(['truong hoc', 'phu huynh', 'hoc sinh', 'bat nat', 'nhap hoc', 'hieu truong'])) {
+    return 'school-parent-conflict'
+  }
+
+  if (
+    hasAny([
+      'ngoai tinh',
+      'tieu tam',
+      'khach san',
+      'the phong',
+      'ly hon',
+      'huy hon',
+      'chong cu',
+      'hon nhan phan boi',
+      'vo chong',
+    ])
+  ) {
+    return 'marriage-betrayal'
+  }
+
+  if (
+    hasAny([
+      'hop bao',
+      'livestream',
+      'hot search',
+      'showbiz',
+      'dam cuoi',
+      'hon le',
+      'dinh hon',
+      'cong khai',
+      'vach mat',
+    ])
+  ) {
+    return 'public-exposure'
+  }
+
+  if (hasAny(['sung ngot', 'ngot sung', 'healing', 'chua lanh', 'am ap', 'comfort'])) {
+    return 'sweet-romance'
+  }
+
+  if (hasAny(['nguoc tam', 'hieu lam sau', 'hoi han', 'be', 'ton thuong keo dai'])) {
+    return 'angst-romance'
+  }
+
+  if (hasAny(['kinh di', 'ma', 'am anh', 'bong toi', 'hien tuong la', 'horror'])) {
+    return 'horror-suspense'
+  }
+
+  if (hasAny(['co phan', 'hoi dong quan tri', 'tap doan', 'startup', 'hop dong', 'sa thai', 'ceo'])) {
+    return 'corporate-war'
+  }
+
+  if (
+    hasAny([
+      'nu tan',
+      'hao mon',
+      'tong tai',
+      'me chong',
+      'gia dau',
+      'lien hon',
+      'tra thu do thi',
+      'va mat',
+    ])
+  ) {
+    return 'female-urban-revenge'
+  }
+
+  return 'general-drama'
+}
+
+function getGenreDominanceInstruction(payload: NormalizedGeneratePayload) {
+  const module = inferApiGenreModule(payload)
+
+  const shared = `
+GENRE DOMINANCE RULE — ƯU TIÊN THỂ LOẠI CHÍNH:
+- Master Engine chỉ giữ khung kể chuyện: mục tiêu nhân vật, conflict leo thang, scene thật, setup/payoff, no-repeat, continuity, open-loop và final payoff.
+- Không ép mọi truyện thành nữ tần đô thị viral/vả mặt/hot search/livestream/cổ phần/luật sư.
+- Chỉ dùng hot search, livestream, cổ phần, luật sư, camera, ghi âm, hợp đồng khi chúng thật sự hợp với thể loại, story seed và chapter mission.
+- Mỗi chương phải phục vụ logic của genre chính trước, rồi mới thêm dopamine nếu phù hợp.
+- Nếu moduleInstruction cũ có vibe nữ tần viral nhưng genre chính không phải nữ tần đô thị/hào môn/vả mặt, hãy xem đó là gợi ý phụ, không phải luật bắt buộc.
+`.trim()
+
+  const rules: Record<ApiGenreModule, string> = {
+    'medical-legal-suspense': `
+MODULE CHÍNH: Medical Legal Suspense / Điều tra pháp lý bệnh viện.
+Ưu tiên:
+- bệnh viện, hồ sơ điều trị, toa thuốc, bảo hiểm, lệnh tạm giữ, tài khoản, phòng bệnh, người nhà bệnh nhân, nhân chứng y tế.
+- manh mối phải nối bằng timeline: ai ký, ai gọi, ai giữ tiền, ai sửa hồ sơ, ai hưởng lợi.
+- áp lực cảm xúc phải gắn với mạng sống/người thân/người yếu thế, không chỉ danh tiếng.
+Cấm lệch:
+- Không biến mọi chương thành hot search/vả mặt công khai nếu không cần.
+- Không để luật sư/nam chính giải quyết thay nữ chính.
+`.trim(),
+
+    'mystery-investigation': `
+MODULE CHÍNH: Mystery Investigation / Điều tra manh mối.
+Ưu tiên:
+- manh mối, nghi phạm, timeline, red herring, nhân chứng, file gốc, log, bản sao, camera, ghi âm.
+- mỗi chương chỉ mở thêm một tầng manh mối, không xả toàn bộ đáp án.
+- phản diện bí danh phải để lại dấu vết có thể truy nguồn, không chỉ nhắn dọa chung chung.
+Cấm lệch:
+- Không để chương nào cũng chỉ nhận cuộc gọi đe dọa.
+- Không reveal hung thủ quá sớm, nhưng phải reveal danh tính thật trước final chapter ít nhất 1 chương nếu dùng bí danh.
+`.trim(),
+
+    'mother-child-custody': `
+MODULE CHÍNH: Mother-child / Custody / Adoption Mystery.
+Ưu tiên:
+- mẹ-con, quyền nuôi con, hồ sơ nhận nuôi, ADN, giấy khai sinh, vật chứng của đứa trẻ, cảm giác bảo vệ con.
+- emotional reward phải đến từ việc nữ chính bảo vệ được con/người yếu thế, không chỉ vả mặt người lớn.
+Cấm lệch:
+- Không biến truyện mẹ con thành boardroom/cổ phần nếu seed không yêu cầu.
+`.trim(),
+
+    'school-parent-conflict': `
+MODULE CHÍNH: School / Parent Conflict.
+Ưu tiên:
+- trường học, phòng hiệu trưởng, họp phụ huynh, hồ sơ nhập học, camera hành lang, lời khai học sinh/phụ huynh.
+- conflict phải chạm đến sự an toàn/danh dự của đứa trẻ.
+Cấm lệch:
+- Không kéo vô hot search/hào môn/cổ phần nếu câu chuyện chỉ cần school pressure.
+`.trim(),
+
+    'marriage-betrayal': `
+MODULE CHÍNH: Marriage Betrayal.
+Ưu tiên:
+- quan hệ vợ chồng, tiểu tam, bằng chứng riêng tư, khách sạn, thẻ phòng, ảnh, tin nhắn, lựa chọn ly hôn/đối chất.
+- cảm xúc phản bội phải rõ trước khi trả đũa.
+Cấm lệch:
+- Không biến thành điều tra doanh nghiệp lạnh nếu trọng tâm là hôn nhân.
+`.trim(),
+
+    'public-exposure': `
+MODULE CHÍNH: Public Exposure / Công khai vạch mặt.
+Ưu tiên:
+- sân khấu công khai, đám cưới, họp báo, livestream, đám đông, phản ứng người chứng kiến.
+- dopamine payoff có thể mạnh hơn, nhưng vẫn phải có bằng chứng và hậu quả thật.
+`.trim(),
+
+    'sweet-romance': `
+MODULE CHÍNH: Sweet Romance / Sủng ngọt.
+Ưu tiên:
+- chemistry, chăm sóc, hiểu lầm nhẹ, comfort, hành động nhỏ có ý nghĩa.
+Cấm lệch:
+- Không ép vả mặt liên tục, không cần hot search/cổ phần nếu không phục vụ tình cảm.
+`.trim(),
+
+    'angst-romance': `
+MODULE CHÍNH: Angst Romance / Ngược tâm.
+Ưu tiên:
+- hiểu lầm sâu, lựa chọn sai, tổn thương kéo dài, hối hận, trả giá cảm xúc.
+Cấm lệch:
+- Không giải quyết quá nhanh bằng một bằng chứng duy nhất.
+`.trim(),
+
+    'horror-suspense': `
+MODULE CHÍNH: Horror Suspense.
+Ưu tiên:
+- không khí, bất an tăng dần, hiện tượng lạ, nghi ngờ cảm giác của chính mình, reveal có sức nặng.
+Cấm lệch:
+- Không biến thành nữ tần vả mặt/hot search.
+`.trim(),
+
+    'corporate-war': `
+MODULE CHÍNH: Corporate War / Thương chiến.
+Ưu tiên:
+- hội đồng quản trị, hợp đồng, cổ phần, log tài chính, phản bội công sở, quyền điều hành.
+- mỗi bằng chứng phải đổi quyền lực thật.
+`.trim(),
+
+    'female-urban-revenge': `
+MODULE CHÍNH: Female Urban Revenge / Nữ tần đô thị trả thù.
+Ưu tiên:
+- bằng chứng, vả mặt, phản công, gaslight, hào môn, pháp lý/truyền thông nếu hợp seed.
+- dopamine payoff được phép mạnh, nhưng không được lặp cùng cảnh/cùng vật chứng.
+`.trim(),
+
+    'general-drama': `
+MODULE CHÍNH: General Drama.
+Ưu tiên:
+- chọn logic theo genreLabel/storySeed cụ thể.
+- không mặc định hot search, livestream, luật sư, cổ phần, camera, ghi âm.
+`.trim(),
+  }
+
+  return `${shared}\n\n${rules[module]}`
+}
+
+function getAliasRevealAndFinalPacingInstruction(payload: NormalizedGeneratePayload) {
+  const chapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
+  const target = Math.max(0, Math.floor(Number(payload.chapterTarget || 0)))
+  const isFinal = target > 0 && chapterNumber >= target
+  const isPreFinal = target > 0 && chapterNumber === target - 1
+  const isLate = target > 0 && chapterNumber >= Math.max(1, target - 2)
+  const genreModule = inferApiGenreModule(payload)
+
+  return `
+ALIAS / BIG BAD CLARITY RULE:
+- Nếu truyện dùng bí danh, chữ viết tắt hoặc tổ chức mơ hồ như H.K., Lục H., VTE-8349, tài khoản ẩn, nick ẩn danh, thì không được để final payoff mơ hồ.
+- Danh tính thật, vai trò thật và quan hệ giữa bí danh với phản diện phải được khóa rõ trước chương cuối ít nhất 1 chương.
+- Nếu chưa thể reveal toàn bộ, phải reveal ít nhất một tầng cụ thể: tên thật, chức vụ, công ty vỏ bọc, người ký lệnh, người ra lệnh, hoặc động cơ.
+- Chương cuối không được chỉ nói “H.K. bị bắt” nếu trước đó chưa làm rõ H.K. là ai.
+
+FINAL PACING RULE:
+- ${
+    isFinal
+      ? `Đây là chương cuối (${chapterNumber}/${target || 'chưa rõ'}): không được nhồi tất cả payoff vào vài đoạn tóm tắt. Phải biến payoff thành scene trực tiếp: đối chất, bằng chứng được xác nhận, phản diện lộ danh tính thật, người yếu thế được cứu, hậu quả pháp lý/công khai rõ.`
+      : isPreFinal
+        ? `Đây là chương áp cuối (${chapterNumber}/${target}): phải chuẩn bị final payoff. Ít nhất một bí danh/phản diện/đường dây phải lộ rõ danh tính hoặc cơ chế vận hành, để chương cuối không bị vội.`
+        : isLate
+          ? `Đây là giai đoạn cuối (${chapterNumber}/${target}): phải bắt đầu khóa danh tính phản diện, tuyến bằng chứng và tuyến cảm xúc. Không mở thêm quá nhiều bí mật mới.`
+          : `Đây chưa phải giai đoạn cuối: được giữ bí mật, nhưng mỗi bí danh phải có dấu vết truy nguồn để payoff sau này hợp lý.`
+  }
+- Nếu chương cuối cần xử lý quá nhiều thứ, hãy ưu tiên 3 payoff chính: 1) phản diện chính/danh tính thật, 2) người yếu thế/mẹ/con được an toàn, 3) quyền lực/danh tiếng của nữ chính được khôi phục một phần.
+- Không kết bằng đoạn “ngày sau...” tóm tắt quá nhiều thành tựu. Hãy viết thành cảnh có người, hành động, đối thoại, cảm xúc.
+- Nếu module chính là ${genreModule}, final payoff phải giải quyết theo logic module này, không ép thành công thức nữ tần viral chung.
+`.trim()
+}
+
+function getHumanStakesAntiLoopInstruction(payload: NormalizedGeneratePayload) {
+  const source = getApiGenreSource(payload)
+  const hasMotherHospital = ['me', 'mẹ', 'benh vien', 'phong mo', 'ca mo', 'cap cuu'].some((keyword) =>
+    source.includes(normalizeForPromptRule(keyword)),
+  )
+
+  return `
+HUMAN STAKES ANTI-LOOP RULE:
+- Nếu truyện có người thân/con/mẹ/bệnh nhân/người yếu thế làm stakes, không được chỉ lặp câu “đang trên bàn mổ”, “đang nguy hiểm”, “đang chờ”.
+- Mỗi lần nhắc human stakes phải có tiến triển cụ thể: khoản tiền được/không được duyệt, bác sĩ đổi lịch, giấy cam kết, phòng mổ mở/đóng, chỉ số chuyển xấu, người bảo lãnh ký, người thân tỉnh lại, hoặc bị chuyển viện.
+- Human stakes phải tạo lựa chọn khó cho nữ chính, không chỉ làm nền melodrama.
+- ${hasMotherHospital ? 'Với tuyến mẹ/bệnh viện: mỗi chương chỉ nhắc mẹ khi có tiến triển y tế/tài chính cụ thể, tránh lặp cùng một nỗi lo.' : 'Nếu không có tuyến người thân rõ, vẫn phải có cái giá con người cụ thể cho conflict.'}
+`.trim()
+}
+
+
 export function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const moduleInstruction = getModuleInstruction(payload.moduleId)
   const genreInstruction = getGenreInstruction(payload.genreLabel)
@@ -35,9 +392,12 @@ export function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const titleNamingInstruction = getTitleNamingInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const cliffhangerRule = getCliffhangerRule(payload)
+  const genreDominanceInstruction = getGenreDominanceInstruction(payload)
+  const aliasRevealInstruction = getAliasRevealAndFinalPacingInstruction(payload)
+  const humanStakesAntiLoopInstruction = getHumanStakesAntiLoopInstruction(payload)
 
   return `
-Bạn là Master Story Engine v3.0 chuyên thiết kế truyện nữ tần đô thị viral cho độc giả Việt.
+Bạn là Master Story Engine Core v3.1 cho web novel tiếng Việt nhiều thể loại.
 
 NHIỆM VỤ:
 Tạo dàn ý truyện có thể dùng để viết thành web novel nhiều chương.
@@ -77,6 +437,12 @@ ${titleNamingInstruction}
 
 ${heroineInstruction}
 
+${genreDominanceInstruction}
+
+${aliasRevealInstruction}
+
+${humanStakesAntiLoopInstruction}
+
 ${cliffhangerRule}
 
 YÊU CẦU:
@@ -84,7 +450,9 @@ YÊU CẦU:
 - Mỗi chương trong outline phải có nhiệm vụ riêng, địa điểm/cảnh chính riêng, state change riêng.
 - Không viết 3 chương liên tiếp quanh cùng 1 vật chứng/cùng 1 địa điểm.
 - Không để outline thành vòng lặp: phát hiện file → gọi luật sư → bị đe dọa → thu thập tiếp.
-- Phải bám đúng GENRE LOCK, PREMISE DIVERSITY LOCK, STORY SEED, MOTIF UNIQUENESS LOCK và HEROINE LOCK.
+- Phải bám đúng GENRE DOMINANCE RULE, GENRE LOCK, PREMISE DIVERSITY LOCK, STORY SEED, MOTIF UNIQUENESS LOCK và HEROINE LOCK.
+- Không mặc định mọi truyện thành hot search/vả mặt/cổ phần/luật sư nếu thể loại chính không cần.
+- Nếu có phản diện bí danh/chữ viết tắt/tổ chức vỏ bọc, outline phải chỉ rõ chương nào reveal danh tính thật trước final chapter.
 
 OUTPUT BẮT BUỘC:
 # STORY PLAN
@@ -141,11 +509,11 @@ OUTPUT BẮT BUỘC:
 ## Mâu thuẫn cốt lõi
 [Nêu mâu thuẫn chính]
 
-## Vũ khí trả thù
-[Nêu vũ khí trả thù: bằng chứng, hợp đồng, pháp vụ, cổ phần, truyền thông]
+## Vũ khí giải quyết conflict theo đúng thể loại
+[Nêu công cụ chính theo genre: manh mối, nhân chứng, bằng chứng, cảm xúc, quan hệ, pháp lý, truyền thông, cổ phần, hoặc lựa chọn tình cảm. Không ép cổ phần/pháp vụ/truyền thông nếu genre không cần.]
 
-## Nhịp hé bằng chứng
-[Chia tầng bằng chứng]
+## Nhịp hé bằng chứng / bí mật / cảm xúc
+[Chia tầng theo đúng genre. Nếu có bí danh như H.K./Lục H., phải nêu chương reveal danh tính thật.]
 
 ## Hành trình nữ chính
 [Nêu hành trình nữ chính qua nhiều chương]
@@ -194,11 +562,14 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const sceneFunctionInstruction = getSceneFunctionInstruction()
   const villainPresenceInstruction = getVillainPresenceInstruction()
   const humanCostInstruction = getHumanCostInstruction()
+  const genreDominanceInstruction = getGenreDominanceInstruction(payload)
+  const aliasRevealInstruction = getAliasRevealAndFinalPacingInstruction(payload)
+  const humanStakesAntiLoopInstruction = getHumanStakesAntiLoopInstruction(payload)
   const nextChapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
   const isContinuation = nextChapterNumber > 1
 
   return `
-Bạn là Master Story Engine v3.0 chuyên viết truyện nữ tần đô thị viral cho độc giả Việt.
+Bạn là Master Story Engine Core v3.1 viết web novel tiếng Việt nhiều thể loại.
 
 Nhiệm vụ của bạn:
 - Viết bằng tiếng Việt tự nhiên, dễ đọc, giàu drama.
@@ -242,6 +613,12 @@ ${nameDiversityInstruction}
 ${titleNamingInstruction}
 
 ${heroineInstruction}
+
+${genreDominanceInstruction}
+
+${aliasRevealInstruction}
+
+${humanStakesAntiLoopInstruction}
 
 ${storyContext}
 
@@ -403,6 +780,13 @@ CHAPTER QUALITY TARGET:
 - Nữ chính có cảm xúc nhưng không yếu đuối kéo dài, chưa toàn thắng quá sớm.
 - Cuối chương phải có hook mạnh để đọc tiếp.
 
+
+GENRE DOMINANCE SELF-CHECK:
+- Trước khi trả output, tự kiểm tra chương có đang bị kéo về công thức nữ tần viral chung không. Nếu genre chính không cần hot search/livestream/cổ phần/luật sư thì phải bỏ hoặc giảm chúng.
+- Nếu có bí danh/chữ viết tắt như H.K./Lục H./tài khoản ẩn, chương giai đoạn cuối phải làm rõ danh tính hoặc cơ chế vận hành, không để phản diện chính mơ hồ đến tận kết.
+- Nếu là chương cuối, không được nhồi kết bằng tóm tắt. Phải có scene payoff trực tiếp.
+- Nếu dùng người thân/mẹ/con/bệnh nhân làm stakes, mỗi lần nhắc phải có tiến triển cụ thể, không lặp cùng một câu lo lắng.
+
 NHIỆM VỤ:
 Viết một chương truyện hoàn chỉnh để đăng cho độc giả.
 
@@ -456,6 +840,9 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
   const nextPlan = storySeed?.storyPlan?.chapterPlan?.find(
     (chapter) => chapter.chapterNumber === chapterNumber + 1,
   )
+  const genreDominanceInstruction = getGenreDominanceInstruction(payload)
+  const aliasRevealInstruction = getAliasRevealAndFinalPacingInstruction(payload)
+  const humanStakesAntiLoopInstruction = getHumanStakesAntiLoopInstruction(payload)
 
   const recentContext = payload.recentChapters
     .slice(0, 3)
@@ -468,7 +855,7 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
     .join('\n')
 
   return `
-Bạn là STORY EDITOR PASS cho web novel nữ tần đô thị viral.
+Bạn là STORY EDITOR PASS cho web novel tiếng Việt nhiều thể loại.
 
 NHIỆM VỤ:
 Đọc bản nháp chương bên dưới và rewrite thành bản final đăng được.
@@ -489,6 +876,12 @@ THÔNG TIN TRUYỆN:
 - Hidden truth: ${storySeed?.hiddenTruth || 'Không có'}
 - Villain type: ${storySeed?.villainType || 'Không có'}
 - Emotional hook: ${storySeed?.emotionalHook || 'Không có'}
+
+${genreDominanceInstruction}
+
+${aliasRevealInstruction}
+
+${humanStakesAntiLoopInstruction}
 
 CHAPTER PLAN HIỆN TẠI:
 - Mission: ${currentPlan?.mission || 'Không có'}
@@ -544,6 +937,13 @@ EDITOR CHECKLIST BẮT BUỘC:
 11. Tên chương phải được kiểm tra lại. Nếu tên chương không thể hiện đúng nội dung chương, hãy đổi lại ngay trong dòng “# Chương ${chapterNumber} — ...”.
 12. BẢN PHÂN TÍCH KỸ THUẬT vẫn giữ để admin debug, nhưng phải cập nhật đúng sau khi rewrite, đặc biệt phần kiểm tra tên truyện/tên chương.
 13. Chương final phải có state change mới rõ ràng so với chương trước; nếu vẫn chỉ tranh luận lại bằng chứng cũ hoặc lặp phòng họp, hãy rewrite sang cảnh/hành động mới.
+
+
+EDITOR GENRE / FINAL PAYOFF CHECK:
+- Nếu draft đang biến mọi thứ thành nữ tần viral chung nhưng genre chính là điều tra/bệnh viện/mẹ con/trường học/ngôn tình/kinh dị, hãy rewrite để trả về đúng logic genre.
+- Nếu draft có H.K./Lục H./bí danh/tài khoản ẩn mà đến giai đoạn cuối vẫn chưa rõ danh tính, hãy thêm scene reveal hoặc xác thực cụ thể.
+- Nếu draft final chapter đang nhồi bắt giữ, mẹ khỏi bệnh, hội đồng xin lỗi, nữ chính lên quyền chỉ bằng tóm tắt, hãy chuyển thành scene trực tiếp và giữ 3 payoff quan trọng nhất.
+- Nếu draft lặp “mẹ trên bàn mổ” hoặc người thân nguy hiểm nhưng không có tiến triển y tế/tài chính mới, hãy sửa thành một bước tiến cụ thể.
 
 CẤM:
 - Không đổi tên nữ chính, phản diện, mẹ/con/người thân đã có.
