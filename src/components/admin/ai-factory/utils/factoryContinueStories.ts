@@ -88,7 +88,6 @@ function safeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-
 function compactText(value: string, maxLength = 4000) {
   const clean = safeString(value).replace(/\s+/g, ' ')
   if (clean.length <= maxLength) return clean
@@ -132,36 +131,134 @@ function getMaxChapterNumber(chapters: ExistingChapterRow[]) {
   }, 0)
 }
 
-function buildContinueRecentChapters(chapters: ExistingChapterRow[], nextChapterNumber: number) {
-  const normalized = normalizeChapters(chapters)
+function uniqueChapters(chapters: ExistingChapterRow[]) {
   const selected = new Map<number, ExistingChapterRow>()
 
-  normalized.slice(0, 3).forEach((chapter) => {
-    selected.set(getChapterNumber(chapter, selected.size + 1), chapter)
+  chapters.forEach((chapter, index) => {
+    selected.set(getChapterNumber(chapter, index + 1), chapter)
   })
 
-  normalized.slice(-6).forEach((chapter) => {
-    selected.set(getChapterNumber(chapter, selected.size + 1), chapter)
-  })
+  return Array.from(selected.values()).sort(
+    (a, b) => Number(a.chapter_number ?? 0) - Number(b.chapter_number ?? 0),
+  )
+}
 
-  return Array.from(selected.values())
-    .sort((a, b) => Number(a.chapter_number ?? 0) - Number(b.chapter_number ?? 0))
-    .map((chapter, index) => ({
-      chapter_number: getChapterNumber(chapter, Math.max(1, nextChapterNumber - 6 + index)),
-      title: chapter.title || `Chương ${chapter.chapter_number ?? index + 1}`,
-      content: compactText(chapter.content || '', 6000),
-      summary: chapter.summary || buildPublicChapterSummary(chapter.content || ''),
-    }))
+function selectContextChapters(chapters: ExistingChapterRow[]) {
+  const normalized = normalizeChapters(chapters)
+
+  return uniqueChapters([
+    ...normalized.slice(0, 3),
+    ...normalized.slice(-6),
+  ])
+}
+
+function buildContinueRecentChapters(chapters: ExistingChapterRow[]) {
+  return selectContextChapters(chapters).map((chapter, index) => ({
+    chapter_number: getChapterNumber(chapter, index + 1),
+    title: chapter.title || `Chương ${chapter.chapter_number ?? index + 1}`,
+    content: compactText(chapter.content || '', 6500),
+    summary: chapter.summary || buildPublicChapterSummary(chapter.content || ''),
+  }))
 }
 
 function buildStoryDnaContext(story: ExistingStory) {
   const storyDna = (story as any).story_dna
   if (!storyDna) return ''
 
-  const serialized = serializeUsefulJson(storyDna, 6000)
+  const serialized = serializeUsefulJson(storyDna, 7000)
   if (!serialized || serialized === '{}' || serialized === 'null') return ''
 
   return `STORY_DNA / OUTLINE ĐANG CÓ:\n${serialized}`
+}
+
+function buildRecentChapterContext(chapters: ExistingChapterRow[]) {
+  return normalizeChapters(chapters)
+    .map((chapter, index) => {
+      const chapterNumber = getChapterNumber(chapter, index + 1)
+      const summary = chapter.summary || buildPublicChapterSummary(chapter.content || '')
+      return `Chương ${chapterNumber} — ${chapter.title || `Chương ${chapterNumber}`}\nTóm tắt: ${compactText(summary, 1000)}`
+    })
+    .join('\n\n')
+}
+
+function buildCurrentStateContext(chapters: ExistingChapterRow[], nextChapterNumber: number) {
+  const normalized = normalizeChapters(chapters)
+  const latest = normalized.at(-1)
+  const latestNumber = latest ? getChapterNumber(latest, normalized.length) : nextChapterNumber - 1
+  const latestSummary = latest?.summary || buildPublicChapterSummary(latest?.content || '')
+
+  return `
+CURRENT STORY STATE — KHÓA MẠCH HIỆN TẠI:
+- Chương gần nhất đã có: Chương ${latestNumber} — ${latest?.title || 'Không rõ'}.
+- Tóm tắt chương gần nhất: ${compactText(latestSummary, 1400) || 'Không có dữ liệu.'}
+- Chương mới phải bắt đầu SAU hậu quả của chương gần nhất, không được viết lại sự kiện cũ như mới xảy ra.
+- Nếu chương gần nhất đã công khai một bằng chứng, chương mới phải cho thấy hậu quả/phản ứng/phản công từ bằng chứng đó.
+- Nếu chương gần nhất đã có cảnh họp/đối chất/niêm phong/tạm ngưng, chương mới ưu tiên đổi sang cảnh hành động, cảnh mẹ con, cảnh lấy chứng cứ, cảnh nhân chứng, cảnh theo dõi hoặc cảnh phản công.
+`.trim()
+}
+
+function buildContinueModeInstruction(params: {
+  storyTitle: string
+  nextChapterNumber: number
+  targetChapters: number
+  recentChapterTitles: string[]
+}) {
+  const recentTitles = params.recentChapterTitles.filter(Boolean).join(' / ')
+
+  return `
+CONTINUE EXISTING STORY MODE — LUẬT BẮT BUỘC:
+
+Đây là truyện đang viết dở: "${params.storyTitle}".
+Đang viết tiếp chương ${params.nextChapterNumber}/${params.targetChapters}.
+
+KHÓA LIÊN TỤC:
+- Không được mở một truyện mới.
+- Không được đổi tên truyện.
+- Không được đổi tên nữ chính, con, phản diện, trường học, vật chứng trung tâm.
+- Không được viết lại tình huống đã xảy ra ở các chương trước.
+- Không được reset về trạng thái "bắt đầu bị vu oan" nếu truyện đã có bằng chứng mới.
+
+CÁC CHƯƠNG GẦN ĐÂY ĐÃ CÓ:
+${recentTitles || 'Không có tiêu đề chương gần đây.'}
+
+LUẬT TIẾN TRIỂN MỖI CHƯƠNG:
+- Mỗi chương mới phải tạo ra ít nhất 1 STATE CHANGE thật:
+  1. Có bằng chứng mới được lấy ra; hoặc
+  2. Một nhân chứng đổi phe; hoặc
+  3. Phản diện phản công bằng đòn mới; hoặc
+  4. Nữ chính dùng bằng chứng cũ để mở khóa bằng chứng mới; hoặc
+  5. Quyền lực của phản diện bị mất một phần; hoặc
+  6. Đứa trẻ / quyền giám hộ / dư luận thay đổi trạng thái rõ ràng.
+
+CẤM LÙI MẠCH:
+- Nếu chương trước đã có HR-03 / admin_hanhchinh / thẻ SD / clip 07:12 / Order: Ôn / bằng chứng tương đương, chương sau phải dùng nó để tiến tới hậu quả mới.
+- Không được chỉ đem cùng bằng chứng đó ra tranh luận lại.
+- Không được lặp lại cảnh "phòng họp phụ huynh" quá nhiều lần.
+- Không được dùng lại cùng một dạng cảnh: họp, niêm phong, tạm ngưng, điều tra nội bộ nếu chương trước vừa dùng.
+
+ĐA DẠNG CẢNH:
+Ưu tiên luân phiên:
+- cảnh mẹ con riêng tư,
+- cảnh lấy chứng cứ,
+- cảnh nhân chứng bị ép,
+- cảnh phản diện phản công,
+- cảnh công khai dư luận,
+- cảnh pháp lý / hội đồng,
+- cảnh payoff.
+
+CẢM XÚC MẸ CON:
+Mỗi 1–2 chương phải có một khoảnh khắc cụ thể cho thấy đứa trẻ/người yếu thế bị ảnh hưởng:
+- con hỏi mình có sai không,
+- con bị bạn xa lánh,
+- con không dám ôm vật chứng/đồ chơi,
+- con sợ mẹ biến mất,
+- nữ chính phải trấn an con bằng hành động cụ thể.
+
+NẾU LÀ CHƯƠNG CUỐI HOẶC GẦN CUỐI:
+- Phải payoff các vật chứng đã cài.
+- Phải để phản diện mất quyền lực rõ ràng.
+- Không được kết bằng cliffhanger giả.
+`.trim()
 }
 
 function buildContinueMemoryContext(args: {
@@ -172,40 +269,26 @@ function buildContinueMemoryContext(args: {
   targetChapters: number
 }) {
   const { baseMemory, story, chapters, nextChapterNumber, targetChapters } = args
-  const normalized = normalizeChapters(chapters)
-  const firstChapters = normalized.slice(0, 3)
-  const lastChapters = normalized.slice(-5)
-  const selected = new Map<number, ExistingChapterRow>()
-
-  firstChapters.forEach((chapter, index) => {
-    selected.set(getChapterNumber(chapter, index + 1), chapter)
-  })
-
-  lastChapters.forEach((chapter, index) => {
-    selected.set(getChapterNumber(chapter, Math.max(1, nextChapterNumber - 5 + index)), chapter)
-  })
-
-  const chapterContext = Array.from(selected.values())
-    .sort((a, b) => Number(a.chapter_number ?? 0) - Number(b.chapter_number ?? 0))
-    .map((chapter, index) => {
-      const chapterNumber = getChapterNumber(chapter, index + 1)
-      const summary = chapter.summary || buildPublicChapterSummary(chapter.content || '')
-      return `Chương ${chapterNumber} — ${chapter.title || `Chương ${chapterNumber}`}\nTóm tắt: ${compactText(summary, 900)}`
-    })
-    .join('\n\n')
-
+  const contextChapters = selectContextChapters(chapters)
   const storyDnaContext = buildStoryDnaContext(story)
   const title = safeString((story as any).title) || 'Truyện chưa có tên'
-  const description = compactText(safeString((story as any).description), 1600)
+  const description = compactText(safeString((story as any).description), 1800)
+  const chapterContext = buildRecentChapterContext(contextChapters)
+  const currentStateContext = buildCurrentStateContext(chapters, nextChapterNumber)
+  const continueInstruction = buildContinueModeInstruction({
+    storyTitle: title,
+    nextChapterNumber,
+    targetChapters,
+    recentChapterTitles: contextChapters.map((chapter) => chapter.title || ''),
+  })
 
   return [
-    `CHẾ ĐỘ VIẾT TIẾP TRUYỆN — KHÔNG ĐỔI TRUYỆN, KHÔNG RESET MẠCH.`,
+    continueInstruction,
+    currentStateContext,
     `Tên truyện gốc: ${title}`,
     description ? `Mô tả public gốc: ${description}` : '',
-    `Đang chuẩn bị viết chương ${nextChapterNumber}/${targetChapters}.`,
-    `Yêu cầu bắt buộc: chương mới phải nối trực tiếp các sự kiện đã có, giữ nguyên nhân vật/chủ tuyến/vật chứng, không tự đổi tên truyện, không tự tạo premise mới.`,
     storyDnaContext,
-    baseMemory ? `STORY_MEMORY ĐANG CÓ:\n${compactText(baseMemory, 6500)}` : '',
+    baseMemory ? `STORY_MEMORY ĐANG CÓ:\n${compactText(baseMemory, 7000)}` : '',
     chapterContext ? `CÁC CHƯƠNG MỐC ĐỂ GIỮ MẠCH:\n${chapterContext}` : '',
   ]
     .filter(Boolean)
@@ -217,13 +300,16 @@ function makeContinuePromptIdea(args: {
   nextChapterNumber: number
   targetChapters: number
   isFinalChapter: boolean
+  recentChapterTitles: string[]
 }) {
-  const { storyTitle, nextChapterNumber, targetChapters, isFinalChapter } = args
+  const { storyTitle, nextChapterNumber, targetChapters, isFinalChapter, recentChapterTitles } = args
 
   return [
     `Viết tiếp truyện "${storyTitle}" ở chương ${nextChapterNumber}/${targetChapters}.`,
+    `Các chương mốc đã có: ${recentChapterTitles.filter(Boolean).join(' / ') || 'không rõ'}.`,
     `Không mở truyện mới, không đổi tên truyện, không đổi premise, không viết lại chương cũ.`,
     `Chương phải nối trực tiếp từ chương trước, có cảnh mới, đối thoại mới, hành động mới và ít nhất một bước tiến thật của vật chứng/xung đột.`,
+    `Nếu chương trước đã là phòng họp/đối chất/niêm phong/tạm ngưng, chương này phải ưu tiên một loại cảnh khác hoặc tạo hậu quả mới rõ ràng.`,
     isFinalChapter
       ? `Đây là chương cuối: phải trả payoff chính, kết thúc mâu thuẫn trung tâm rõ ràng, không cliffhanger giả.`
       : `Đây chưa phải chương cuối: phải đẩy xung đột lên một nấc và để lại hook cụ thể cho chương sau.`,
@@ -419,7 +505,7 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
           ? (story as any).story_memory
           : safeJson((story as any).story_memory)
       let nextChapterNumber = story.nextChapterNumber
-      const recentChapters = buildContinueRecentChapters(story.chapters, nextChapterNumber)
+      const recentChapters = buildContinueRecentChapters(story.chapters)
 
       storyMemory = buildContinueMemoryContext({
         baseMemory: storyMemory,
@@ -479,6 +565,7 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
                 nextChapterNumber,
                 targetChapters: story.targetChapters,
                 isFinalChapter,
+                recentChapterTitles: recentChapters.map((chapter) => chapter.title || ''),
               }),
               runShortId: `${storyId}-${nextChapterNumber}`,
               storySeed: (story as any).story_dna || null,
@@ -522,15 +609,22 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
           recentChapters.push({
             chapter_number: nextChapterNumber,
             title: parsed.chapterTitle,
-            content: compactText(parsed.readerOnly, 6000),
+            content: compactText(parsed.readerOnly, 6500),
             summary: buildPublicChapterSummary(parsed.readerOnly),
           })
 
-          while (recentChapters.length > 8) recentChapters.shift()
+          while (recentChapters.length > 9) recentChapters.shift()
 
-          storyMemory = [storyMemory, parsed.technicalReport]
-            .filter(Boolean)
-            .join('\n\n---\n\n')
+          storyMemory = buildContinueMemoryContext({
+            baseMemory: [storyMemory, parsed.technicalReport].filter(Boolean).join('\n\n---\n\n'),
+            story: {
+              ...(story as any),
+              story_memory: storyMemory,
+            } as ExistingStory,
+            chapters: recentChapters as unknown as ExistingChapterRow[],
+            nextChapterNumber: nextChapterNumber + 1,
+            targetChapters: story.targetChapters,
+          })
 
           await supabase
             .from('stories')

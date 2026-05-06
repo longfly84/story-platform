@@ -1,5 +1,6 @@
 import type { NormalizedGeneratePayload } from './types.js'
 import { compactText, safeText } from './textUtils.js'
+import { getLengthRule } from './model.js'
 import {
   buildStoryContext,
   getChapterAdvancementInstruction,
@@ -170,6 +171,7 @@ Chương 10:
 }
 
 export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
+  const lengthRule = getLengthRule(payload.chapterLengthLabel)
   const chapterMinChars = Math.max(1000, Math.floor(Number(payload.chapterMinChars || 3500)))
   const chapterMaxChars = Math.max(chapterMinChars, Math.floor(Number(payload.chapterMaxChars || 4500)))
   const characterLengthRule = `khoảng ${chapterMinChars}–${chapterMaxChars} ký tự tiếng Việt cho riêng phần BẢN ĐỌC CHO ĐỘC GIẢ`
@@ -267,6 +269,25 @@ CHAPTER CONTINUATION RULE:
 - Tiêu đề chương bắt buộc dùng dạng: "# Chương ${nextChapterNumber} — [tên chương ngắn, cụ thể, có hook]".
 - Tên chương phải thể hiện biến cố/vật chứng/state change chính của chương này, không được là tiêu đề chung chung hoặc giống phân tích.
 - Nếu là Chương 1, phần kỹ thuật bắt buộc có "Tên truyện đề xuất" khác với tiêu đề chương.
+
+CONTINUITY STATE CHANGE RULE:
+- Chương này bắt buộc phải làm trạng thái truyện thay đổi rõ ràng so với chương trước.
+- Không được chỉ nhắc lại bằng chứng cũ.
+- Không được chỉ họp và tranh luận lại chuyện cũ.
+- Nếu đã có một vật chứng ở chương trước, chương này phải:
+  1. dùng vật chứng đó để mở ra vật chứng mới; hoặc
+  2. khiến một nhân vật đổi phe; hoặc
+  3. khiến phản diện phản công; hoặc
+  4. làm quyền lực của phản diện bị lung lay; hoặc
+  5. làm nữ chính lấy lại một phần quyền kiểm soát.
+- Nếu chương trước đã có cảnh họp/phòng điều hành/đối chất/niêm phong, chương này phải ưu tiên chuyển sang cảnh hành động, cảnh gia đình, cảnh lấy chứng cứ, cảnh nhân chứng hoặc cảnh phản công.
+- Mỗi chương viết tiếp phải có một hậu quả mới từ chương trước: quyền bị thay đổi, người đổi phe, bằng chứng được xác thực, phản diện ra đòn mới, dư luận đổi chiều hoặc đứa trẻ bị ảnh hưởng rõ.
+
+ANTI-REPEAT SCENE RULE:
+- Không dùng lại cùng loại cảnh chính với chương liền trước nếu không có biến cố mới.
+- Nếu chương trước là họp/phòng điều hành/đối chất, chương này nên chuyển sang cảnh hành động, cảnh gia đình, cảnh lấy chứng cứ, cảnh theo dõi, cảnh nhân chứng hoặc cảnh phản công.
+- Mỗi chương phải có ít nhất một cảnh mới, một địa điểm mới hoặc một hành động mới có giá trị.
+- Không được reset conflict về trạng thái ban đầu như “lần đầu bị vu oan”, “lần đầu bị tước quyền”, “lần đầu phát hiện vật chứng” nếu context đã có các sự kiện đó.
 
 ${cliffhangerRule}
 
@@ -419,6 +440,7 @@ export function buildPrompt(payload: NormalizedGeneratePayload) {
 
 
 export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draftText: string) {
+  const lengthRule = getLengthRule(payload.chapterLengthLabel)
   const chapterMinChars = Math.max(1000, Math.floor(Number(payload.chapterMinChars || 3500)))
   const chapterMaxChars = Math.max(chapterMinChars, Math.floor(Number(payload.chapterMaxChars || 4500)))
   const characterLengthRule = `khoảng ${chapterMinChars}–${chapterMaxChars} ký tự tiếng Việt cho riêng phần BẢN ĐỌC CHO ĐỘC GIẢ`
@@ -460,6 +482,7 @@ THÔNG TIN TRUYỆN:
 - Kiểu nữ chính: ${payload.mainCharacterStyleLabel}
 - Độ dài mục tiêu phần đọc: ${characterLengthRule}
 - Khoảng ký tự bắt buộc: ${chapterMinChars}–${chapterMaxChars} ký tự tiếng Việt
+- Fallback length rule cũ: ${lengthRule.readerLength}
 - Core premise: ${storySeed?.corePremise || payload.promptIdea || payload.storySummary || 'Không có'}
 - Evidence object: ${storySeed?.evidenceObject || 'Không có'}
 - Main conflict: ${storySeed?.mainConflict || 'Không có'}
@@ -498,6 +521,15 @@ Nhiệm vụ đặt tên trong editor pass:
 CONTEXT GẦN NHẤT:
 ${recentContext || '- Chưa có chương trước.'}
 
+EDITOR CONTINUITY CHECK:
+- Nếu chương mới giống đang viết lại một chương cũ, hãy sửa.
+- Nếu chương chỉ lặp lại cảnh họp/tố cáo/niêm phong mà không có bằng chứng mới hoặc hậu quả mới, hãy sửa.
+- Nếu conflict bị reset về trạng thái cũ, hãy sửa.
+- Nếu nữ chính không có nước đi mới, hãy thêm nước đi cụ thể.
+- Nếu chương trước đã có bằng chứng A, chương này phải dùng A để tạo hậu quả mới, mở khóa bằng chứng B hoặc khiến phản diện phản công.
+- Nếu con/người yếu thế không có ảnh hưởng cảm xúc nào trong 1–2 chương gần đây, hãy thêm một khoảnh khắc ngắn nhưng đau.
+- BẢN ĐỌC sau rewrite phải nằm trong khoảng ${chapterMinChars}–${chapterMaxChars} ký tự tiếng Việt. Nếu quá ngắn, mở rộng bằng cảnh/đối thoại/hành động mới có ích. Nếu quá dài, cắt phần giải thích lặp.
+
 EDITOR CHECKLIST BẮT BUỘC:
 1. Giữ đúng logic chính, tên nhân vật, vật chứng, bối cảnh và kết quả chính của chương.
 2. Không đổi mission của chương. Nếu chapter plan yêu cầu power shift, bản final phải có power shift thật.
@@ -511,7 +543,7 @@ EDITOR CHECKLIST BẮT BUỘC:
 10. BẢN ĐỌC phải là văn truyện mượt, không có bullet/list/checklist/kỹ thuật.
 11. Tên chương phải được kiểm tra lại. Nếu tên chương không thể hiện đúng nội dung chương, hãy đổi lại ngay trong dòng “# Chương ${chapterNumber} — ...”.
 12. BẢN PHÂN TÍCH KỸ THUẬT vẫn giữ để admin debug, nhưng phải cập nhật đúng sau khi rewrite, đặc biệt phần kiểm tra tên truyện/tên chương.
-13. BẢN ĐỌC CHO ĐỘC GIẢ sau khi rewrite phải nằm trong khoảng ${chapterMinChars}–${chapterMaxChars} ký tự tiếng Việt. Nếu bản nháp quá ngắn, hãy mở rộng bằng cảnh/đối thoại/hành động mới có ích. Nếu quá dài, hãy cắt phần giải thích lặp.
+13. Chương final phải có state change mới rõ ràng so với chương trước; nếu vẫn chỉ tranh luận lại bằng chứng cũ hoặc lặp phòng họp, hãy rewrite sang cảnh/hành động mới.
 
 CẤM:
 - Không đổi tên nữ chính, phản diện, mẹ/con/người thân đã có.
