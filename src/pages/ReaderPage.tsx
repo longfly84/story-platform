@@ -180,7 +180,16 @@ function ReaderAdBlock() {
 }
 
 export default function ReaderPage() {
-  const { slug, chapter } = useParams<{ slug: string; chapter: string }>()
+  const params = useParams<Record<string, string | undefined>>()
+
+  const slug = params.slug || params.storySlug || ''
+  const chapter =
+    params.chapter ||
+    params.chapterSlug ||
+    params.chapterNumber ||
+    params.number ||
+    params.chapterId ||
+    ''
 
   const { fontSize, theme } = useReaderSettings()
   const [loading, setLoading] = useState(true)
@@ -210,12 +219,7 @@ export default function ReaderPage() {
         return
       }
 
-      if (!chapter) {
-        if (!mounted) return
-        setErrorType('chapter')
-        setLoading(false)
-        return
-      }
+      const routeChapterValue = chapter || '1'
 
       try {
         const { data: storyRow, error: storyError } = await supabase
@@ -268,11 +272,22 @@ export default function ReaderPage() {
         }
 
         const currentChapter = allChapters.find((item) => {
-          const itemSlug = String(item.slug || '')
-          const itemNumber = String(item.number || '')
-          const routeChapter = String(chapter || '')
+          const itemSlug = String(item.slug || '').trim()
+          const itemNumber = String(item.number || '').trim()
+          const routeChapter = String(routeChapterValue || '').trim()
 
-          return itemSlug === routeChapter || itemNumber === routeChapter
+          const normalizedRoute = routeChapter.toLowerCase()
+          const normalizedSlug = itemSlug.toLowerCase()
+
+          return (
+            normalizedSlug === normalizedRoute ||
+            itemNumber === routeChapter ||
+            normalizedSlug === `chuong-${routeChapter}` ||
+            normalizedSlug === `chapter-${routeChapter}` ||
+            normalizedSlug === `chuong-${itemNumber}` ||
+            normalizedRoute === `chuong-${itemNumber}` ||
+            normalizedRoute === `chapter-${itemNumber}`
+          )
         })
 
         if (!currentChapter) {
@@ -329,7 +344,7 @@ export default function ReaderPage() {
     const currentId = String(chapterData.id || '')
     const currentSlug = String(chapterData.slug || '')
     const currentNumber = String(chapterData.number || '')
-    const routeChapter = String(chapter || '')
+    const routeChapter = String(chapter || '1')
 
     return sortedChapters.findIndex((item) => {
       const itemId = String(item.id || '')
