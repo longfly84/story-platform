@@ -121,6 +121,39 @@ export default function AIFactoryPanelView({
     )
   }
 
+  const coverStyleOptions: Array<{ value: AIFactoryConfig['coverStyle']; label: string; desc: string }> = [
+    {
+      value: 'auto',
+      label: 'Tự động theo nội dung truyện',
+      desc: 'AI tự chọn khung cảnh phù hợp nhất theo vật chứng, bối cảnh và cao trào truyện.',
+    },
+    {
+      value: 'family-dinner',
+      label: 'Bữa cơm gia tộc',
+      desc: 'Bàn ăn biệt thự, gia đình quyền lực, bí mật bị nén dưới vẻ sang trọng.',
+    },
+    {
+      value: 'penthouse-dossier',
+      label: 'Penthouse / hồ sơ trong tay',
+      desc: 'Nữ chính khí chất, cầm hồ sơ, bối cảnh căn hộ hoặc văn phòng cao cấp.',
+    },
+    {
+      value: 'airport-secret',
+      label: 'Sân bay / kẻ giữ bí mật',
+      desc: 'Lounge sân bay, vali, vé máy bay, cảm giác bí mật sắp bị mang đi.',
+    },
+    {
+      value: 'public-exposure',
+      label: 'Vả mặt công khai',
+      desc: 'Tiệc lớn, họp báo, đám đông sốc khi nữ chính tung bằng chứng.',
+    },
+    {
+      value: 'phone-showdown',
+      label: 'Đối chất bằng điện thoại',
+      desc: 'Phòng khách sang trọng, nữ chính giơ điện thoại có ghi âm/tin nhắn/bằng chứng.',
+    },
+  ]
+
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-6 text-slate-100 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
@@ -446,20 +479,52 @@ export default function AIFactoryPanelView({
                 </label>
               </div>
 
-              <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-200">
-                  <input
-                    type="checkbox"
-                    disabled={isRunning}
-                    checked={config.generateCover}
-                    onChange={(event) => updateConfig('generateCover', event.target.checked)}
-                    className="h-4 w-4 accent-yellow-300"
-                  />
-                  Generate cover
-                </label>
-                <span className="ml-2 text-xs text-slate-500">
-                  Mock sẽ skip, OpenAI sẽ tạo ảnh thật + upload public
-                </span>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:col-span-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-200">
+                    <input
+                      type="checkbox"
+                      disabled={isRunning}
+                      checked={config.generateCover}
+                      onChange={(event) => updateConfig('generateCover', event.target.checked)}
+                      className="h-4 w-4 accent-yellow-300"
+                    />
+                    <span className="font-semibold text-white">Generate cover</span>
+                  </label>
+
+                  <span className="text-xs leading-relaxed text-slate-500">
+                    Mock sẽ skip, OpenAI sẽ tạo ảnh thật + upload public
+                  </span>
+                </div>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-[220px_1fr] sm:items-start">
+                  <div>
+                    <FieldLabel>Phong cách cover</FieldLabel>
+                    <select
+                      disabled={isRunning || !config.generateCover}
+                      value={config.coverStyle}
+                      onChange={(event) =>
+                        updateConfig(
+                          'coverStyle',
+                          event.target.value as AIFactoryConfig['coverStyle'],
+                        )
+                      }
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {coverStyleOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <SmallHint>
+                    {coverStyleOptions.find((option) => option.value === config.coverStyle)?.desc}
+                    <br />
+                    Dù chọn style nào, prompt vẫn ép đưa nội dung truyện + vật chứng chính vào ảnh.
+                  </SmallHint>
+                </div>
               </div>
             </div>
           </Section>

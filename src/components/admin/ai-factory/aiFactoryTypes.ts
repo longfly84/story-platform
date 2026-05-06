@@ -1,5 +1,12 @@
 export type FactoryProvider = 'mock' | 'openai'
 export type FactoryModelKey = 'economy' | 'premium' | 'auto'
+export type FactoryCoverStyleKey =
+  | 'auto'
+  | 'family-dinner'
+  | 'penthouse-dossier'
+  | 'airport-secret'
+  | 'public-exposure'
+  | 'phone-showdown'
 
 export type FactoryStatus =
   | 'idle'
@@ -37,6 +44,7 @@ export type AIFactoryConfig = {
   autoCompleteByTarget: boolean
   delayMs: number
   generateCover: boolean
+  coverStyle: FactoryCoverStyleKey
   storyStatus: 'draft'
   chapterStatus: 'draft'
   chapterLengthLabel: string

@@ -18,9 +18,9 @@ export function extractStoryInput(body: JsonRecord): StoryInput {
     story_dna: storyDna,
     storyDna,
     author: safeString(source.author || body.author),
-    style: safeString(source.style || body.style),
-    visual_style: safeString(source.visual_style || body.visual_style),
-    cover_style: safeString(source.cover_style || body.cover_style),
+    style: safeString(source.style || source.styleLabel || body.style || body.styleLabel),
+    visual_style: safeString(source.visual_style || source.visualStyle || source.styleLabel || body.visual_style || body.visualStyle || body.styleLabel),
+    cover_style: safeString(source.cover_style || source.coverStyle || source.imageStyle || body.cover_style || body.coverStyle || body.imageStyle),
   }
 }
 

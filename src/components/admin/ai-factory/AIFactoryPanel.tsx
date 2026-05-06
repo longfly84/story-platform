@@ -62,6 +62,7 @@ const defaultConfig: AIFactoryConfig = {
   maxTargetChapters: 20,
   delayMs: 2000,
   generateCover: false,
+  coverStyle: 'auto',
   autoCompleteByTarget: false,
   storyStatus: 'draft',
   chapterStatus: 'draft',
@@ -787,7 +788,9 @@ Yêu cầu:
               }
             : null,
         },
-        styleLabel: 'cinematic multi-character asian webnovel story poster, no text, no logo',
+        coverStyle: config.coverStyle,
+        cover_style: config.coverStyle,
+        styleLabel: 'cinematic multi-character asian webnovel story poster with story-grounded evidence and premium typography',
         aspectRatio: '2:3',
       }),
     })

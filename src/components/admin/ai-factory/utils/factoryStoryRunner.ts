@@ -333,7 +333,9 @@ export async function generateAndAttachFactoryCover(params: {
         tags: [params.genreLabel, params.heroineLabel].filter(Boolean),
         story_dna: storyDna,
       },
-      styleLabel: 'cinematic multi-character asian webnovel story poster, no text, no logo',
+      coverStyle: params.config.coverStyle,
+      cover_style: params.config.coverStyle,
+      styleLabel: 'cinematic multi-character asian webnovel story poster with story-grounded evidence and premium typography',
       aspectRatio: '2:3',
     }),
   })
