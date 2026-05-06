@@ -21,10 +21,12 @@ import AdminFacebookPostsPage from '@/pages/admin/AdminFacebookPostsPage'
 import AdminEditStoryPage from '@/pages/AdminEditStoryPage'
 import LoginPage from '@/pages/LoginPage'
 import RequireAdminAuth from '@/components/admin/RequireAdminAuth'
+import AnalyticsRouteTracker from '@/components/AnalyticsRouteTracker'
 
 export default function App() {
   return (
     <BrowserRouter>
+      <AnalyticsRouteTracker />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<HomePage />} />

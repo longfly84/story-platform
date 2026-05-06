@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+
 import MainLayout from '@/layouts/MainLayout'
 import ReaderToolbar from '@/components/reader/ReaderToolbar'
 import { useReaderSettings } from '@/hooks/useReaderSettings'
+import { useChapterAnalytics } from '@/hooks/useChapterAnalytics'
 import { supabase } from '@/lib/supabase'
 
 type ReaderErrorType = 'story' | 'chapter' | null
+
+type ReaderChapterNavItem = {
+  id?: string | null
+  title?: string | null
+  slug?: string | null
+  number?: number | null
+}
 
 const themeStyles: Record<string, { background: string; color: string }> = {
   dark: { background: '#0b0b0d', color: '#e6eef3' },
@@ -54,6 +63,74 @@ function splitReaderContent(content: string): ReaderContentSplitResult {
     ].filter(Boolean),
     shouldInsertAds: true,
   }
+}
+
+function getChapterReadPath(storySlug: string, chapterItem: ReaderChapterNavItem) {
+  const chapterSlug = chapterItem.slug || chapterItem.number
+
+  return `/doc-truyen/${storySlug}/${chapterSlug}`
+}
+
+function ReaderChapterHeadbar({
+  storySlug,
+  prevChapter,
+  nextChapter,
+  onNextChapterClick,
+}: {
+  storySlug: string
+  prevChapter: ReaderChapterNavItem | null
+  nextChapter: ReaderChapterNavItem | null
+  onNextChapterClick?: () => void
+}) {
+  return (
+    <div className="sticky top-0 z-30 -mx-4 mb-5 border-b border-zinc-800 bg-zinc-950/95 px-3 py-3 shadow-lg shadow-black/20 backdrop-blur sm:-mx-6 lg:-mx-8">
+      <div className="mx-auto flex max-w-4xl items-center justify-between gap-2">
+        {prevChapter ? (
+          <Link
+            to={getChapterReadPath(storySlug, prevChapter)}
+            className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 px-2 py-2 text-center text-xs font-medium text-zinc-100 transition hover:bg-zinc-800 sm:flex-none sm:px-4 sm:text-sm"
+            title={prevChapter.title || 'Chương trước'}
+          >
+            ← Chương trước
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="inline-flex min-h-10 flex-1 cursor-not-allowed items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50 px-2 py-2 text-center text-xs font-medium text-zinc-600 sm:flex-none sm:px-4 sm:text-sm"
+          >
+            ← Chương trước
+          </button>
+        )}
+
+        <Link
+          to={`/truyen/${storySlug}`}
+          className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-amber-300 px-2 py-2 text-center text-xs font-bold text-zinc-950 transition hover:bg-amber-200 sm:flex-none sm:px-4 sm:text-sm"
+        >
+          Danh sách chương
+        </Link>
+
+        {nextChapter ? (
+          <Link
+            to={getChapterReadPath(storySlug, nextChapter)}
+            onClick={onNextChapterClick}
+            className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 px-2 py-2 text-center text-xs font-medium text-zinc-100 transition hover:bg-zinc-800 sm:flex-none sm:px-4 sm:text-sm"
+            title={nextChapter.title || 'Chương sau'}
+          >
+            Chương sau →
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="inline-flex min-h-10 flex-1 cursor-not-allowed items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50 px-2 py-2 text-center text-xs font-medium text-zinc-600 sm:flex-none sm:px-4 sm:text-sm"
+          >
+            Chương sau →
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function ReaderAdBlock() {
@@ -109,6 +186,7 @@ export default function ReaderPage() {
   const [loading, setLoading] = useState(true)
   const [story, setStory] = useState<any | null>(null)
   const [chapterData, setChapterData] = useState<any | null>(null)
+  const [chapters, setChapters] = useState<ReaderChapterNavItem[]>([])
   const [errorType, setErrorType] = useState<ReaderErrorType>(null)
 
   useEffect(() => {
@@ -119,6 +197,7 @@ export default function ReaderPage() {
       setErrorType(null)
       setStory(null)
       setChapterData(null)
+      setChapters([])
 
       if (import.meta.env.DEV) {
         console.log('[reader-params]', { slug, chapter })
@@ -154,33 +233,52 @@ export default function ReaderPage() {
         if (storyError || !storyRow) {
           setErrorType('story')
           setStory(null)
+          setChapterData(null)
+          setChapters([])
           setLoading(false)
           return
         }
 
         setStory(storyRow)
 
-        const { data: chapterRow, error: chapterError } = await supabase
-          .from('chapters')
-          .select('*')
-          .eq('story_id', storyRow.id)
-          .eq('slug', chapter)
-          .maybeSingle()
+        const [chapterResult, chaptersResult] = await Promise.all([
+          supabase
+            .from('chapters')
+            .select('*')
+            .eq('story_id', storyRow.id)
+            .eq('slug', chapter)
+            .maybeSingle(),
+
+          supabase
+            .from('chapters')
+            .select('id,title,slug,number')
+            .eq('story_id', storyRow.id)
+            .order('number', { ascending: true }),
+        ])
 
         if (!mounted) return
 
         if (import.meta.env.DEV) {
-          console.log('[reader-chapter]', { chapterData: chapterRow, chapterError })
+          console.log('[reader-chapter]', {
+            chapterData: chapterResult.data,
+            chapterError: chapterResult.error,
+          })
+          console.log('[reader-chapters]', {
+            chapters: chaptersResult.data,
+            chaptersError: chaptersResult.error,
+          })
         }
 
-        if (chapterError || !chapterRow) {
+        if (chapterResult.error || !chapterResult.data) {
           setErrorType('chapter')
           setChapterData(null)
+          setChapters(Array.isArray(chaptersResult.data) ? chaptersResult.data : [])
           setLoading(false)
           return
         }
 
-        setChapterData(chapterRow)
+        setChapterData(chapterResult.data)
+        setChapters(Array.isArray(chaptersResult.data) ? chaptersResult.data : [])
         setLoading(false)
       } catch (err) {
         if (!mounted) return
@@ -188,6 +286,7 @@ export default function ReaderPage() {
         setErrorType('story')
         setStory(null)
         setChapterData(null)
+        setChapters([])
         setLoading(false)
       }
     }
@@ -204,6 +303,33 @@ export default function ReaderPage() {
   const contentParts = useMemo(() => {
     return splitReaderContent(chapterData?.content || '')
   }, [chapterData?.content])
+
+  const currentChapterIndex = useMemo(() => {
+    if (!chapterData || chapters.length === 0) return -1
+
+    return chapters.findIndex((item) => {
+      if (chapterData.id && item.id === chapterData.id) return true
+      if (chapterData.slug && item.slug === chapterData.slug) return true
+      return String(item.number || '') === String(chapterData.number || '')
+    })
+  }, [chapterData, chapters])
+
+  const prevChapter = useMemo(() => {
+    if (currentChapterIndex <= 0) return null
+    return chapters[currentChapterIndex - 1] || null
+  }, [chapters, currentChapterIndex])
+
+  const nextChapter = useMemo(() => {
+    if (currentChapterIndex < 0) return null
+    return chapters[currentChapterIndex + 1] || null
+  }, [chapters, currentChapterIndex])
+
+  const { trackNextChapterClick } = useChapterAnalytics({
+    storyId: story?.id,
+    storySlug: story?.slug,
+    chapterId: chapterData?.id,
+    chapterNumber: chapterData?.number,
+  })
 
   // track reader view once per story+chapter
   useEffect(() => {
@@ -281,6 +407,20 @@ export default function ReaderPage() {
   return (
     <MainLayout>
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+        <ReaderChapterHeadbar
+          storySlug={story.slug}
+          prevChapter={prevChapter}
+          nextChapter={nextChapter}
+          onNextChapterClick={() => {
+            if (!nextChapter) return
+
+            trackNextChapterClick({
+              toChapterId: nextChapter.id,
+              toChapterNumber: nextChapter.number,
+            })
+          }}
+        />
+
         <div className="mb-4">
           <Link to={`/truyen/${story.slug}`} className="text-sm text-amber-300 hover:underline">
             &larr; Quay lại truyện

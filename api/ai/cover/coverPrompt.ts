@@ -201,21 +201,29 @@ function inferEvidenceFromText(record: JsonRecord): string {
         'màn hình CCTV, đoạn camera bị xóa, timestamp bất thường và khoảng thời gian mất dữ liệu',
     },
     {
-      keywords: ['ghi âm', 'cuộc gọi', 'file âm thanh', 'điện thoại'],
+      keywords: ['ghi âm', 'cuộc gọi', 'file âm thanh', 'điện thoại', 'tin nhắn'],
       evidence:
-        'điện thoại hiển thị bằng chứng ghi âm hoặc cuộc gọi khiến phản diện không thể chối cãi',
+        'điện thoại hiển thị bằng chứng ghi âm, tin nhắn hoặc cuộc gọi khiến phản diện không thể chối cãi',
     },
     {
       keywords: ['thẻ phòng', 'khách sạn', 'mã phòng'],
       evidence: 'thẻ phòng khách sạn, log ra vào và thông tin phòng bị che giấu',
     },
     {
-      keywords: ['hợp đồng', 'cổ phần', 'tài sản', 'chuyển khoản'],
+      keywords: ['hợp đồng', 'cổ phần', 'tài sản', 'chuyển khoản', 'sao kê'],
       evidence: 'hợp đồng, sao kê chuyển khoản, giấy tờ tài sản hoặc cổ phần bị thao túng',
     },
     {
-      keywords: ['xét nghiệm', 'dna', 'giám định'],
+      keywords: ['xét nghiệm', 'dna', 'giám định', 'adn'],
       evidence: 'giấy xét nghiệm hoặc kết quả giám định bị sửa đổi',
+    },
+    {
+      keywords: ['khám thai', 'thai sản', 'khoa sản', 'siêu âm'],
+      evidence: 'sổ khám thai, phiếu siêu âm hoặc hồ sơ thai sản bị che giấu',
+    },
+    {
+      keywords: ['vé máy bay', 'boarding', 'sân bay', 'vali'],
+      evidence: 'vé máy bay, boarding pass, vali khóa số hoặc hộ chiếu liên quan tới bí mật',
     },
   ]
 
@@ -251,6 +259,14 @@ function inferSettingFromText(record: JsonRecord): string {
     {
       keywords: ['văn phòng', 'tập đoàn', 'hội đồng quản trị', 'công ty'],
       setting: 'văn phòng cao cấp, phòng họp tập đoàn, không khí đấu trí và quyền lực',
+    },
+    {
+      keywords: ['hầm rượu', 'wine cellar'],
+      setting: 'hầm rượu sang trọng trong biệt thự, ánh đèn tối ấm, kệ rượu dài và không khí bí mật',
+    },
+    {
+      keywords: ['bệnh viện', 'khoa sản', 'phòng khám', 'xét nghiệm'],
+      setting: 'bệnh viện tư hoặc phòng khám cao cấp, hành lang lạnh sáng và không khí căng thẳng',
     },
   ]
 
@@ -309,6 +325,9 @@ function inferSceneTemplate(record: JsonRecord, textBlob: string): SceneTemplate
       'phơi bày',
       'vả mặt',
       'hot search',
+      'đám cưới',
+      'hôn lễ',
+      'lễ đính hôn',
     ])
   ) {
     return 'public-exposure'
@@ -471,13 +490,18 @@ function normalizePromptData(input: unknown): CoverPromptData {
 function buildStoryGroundingBlock(data: CoverPromptData): string {
   return `
 STORY GROUNDING — highest priority:
-Create a vertical Vietnamese web-novel cover, aspect ratio 2:3, premium commercial quality.
+Create a vertical illustrated cover art image for a Vietnamese web novel, aspect ratio 2:3, premium commercial quality.
+
+IMPORTANT:
+- This is illustration-only cover art.
+- The final image must contain absolutely NO text.
+- Do not draw any title, words, letters, typography, captions, logos, watermarks, signs, labels, UI text, or decorative text.
+- If any text appears in the image, the result is incorrect.
 
 The image must NOT be a generic beauty portrait.
 The image must visually tell the core story through characters, setting, facial expressions, conflict, and evidence objects.
 
 Story information:
-- Title: "${data.title}"
 - Genre: ${data.genre}
 - Short logline: ${data.logline}
 - Female lead / heroine: ${data.heroine}
@@ -493,15 +517,19 @@ Mandatory visual rules:
 - The most important evidence / visual anchor must be visible in the image: ${data.keyEvidence}
 - The image must show tension, secrecy, confrontation, betrayal, or a truth about to be revealed.
 - The scene must feel specific to this story, not a generic fashion poster.
-- Use supporting characters, props, documents, screens, photos, or reflections to communicate the plot.
+- Use supporting characters, props, documents, phones, screens, photos, or reflections to communicate the plot.
 - The scene layout must be chosen according to the story content automatically.
+- Prioritize story scene, Chinese character appearance, and evidence objects over decorative design.
+- The output must be a clean text-free illustration only.
 `.trim()
 }
 
 function buildGeneralQualityBlock(): string {
   return `
 General quality rules:
-- High-end modern Asian web-novel cover.
+- High-end modern Chinese / East Asian web-novel cover.
+- All visible characters should look like modern East Asian adults, especially Chinese urban-drama characters.
+- Faces, styling, and atmosphere should feel like a premium modern Chinese romance-drama / family-drama story.
 - Strong composition, commercially usable, premium visual polish.
 - Adult characters only, expressive faces, emotional tension.
 - Clear focal point, readable hierarchy, polished storytelling image.
@@ -540,7 +568,8 @@ Rendering direction:
 - monochrome or near-monochrome black-and-white ink feeling
 - strong linework, screen-tone vibe, expressive emotional contrast
 - manga panel energy but still presented as one coherent cover composition
-- keep title area readable and the central story evidence visible
+- keep the central story evidence visible
+- absolutely no text inside the artwork
 `.trim()
 
     case 'semi-realistic':
@@ -561,6 +590,7 @@ Rendering direction:
 - dramatic lighting, strong depth, high emotional impact
 - polished character arrangement like a premium drama film poster
 - elegant, tense, commercial, striking
+- no text inside the artwork
 `.trim()
 
     case 'auto':
@@ -570,8 +600,37 @@ Selected art style: AUTO.
 Rendering direction:
 - choose the most suitable premium modern web-novel cover rendering style
 - lean toward polished anime/manhwa commercial cover aesthetics
+- keep the image premium, dramatic, and story-driven
 `.trim()
   }
+}
+
+function buildNoTextEthnicityAndFramingBlock(): string {
+  return `
+TEXT RENDERING IS STRICTLY FORBIDDEN:
+- Do NOT put any text inside the generated image.
+- Do NOT render the story title inside the image.
+- Do NOT add Vietnamese text, English text, Chinese text, typography, letters, captions, subtitles, logos, publisher marks, QR codes, labels, signs, UI text, or watermarks.
+- The website will display the title outside the image.
+- The cover art itself must be completely text-free.
+- If any visible letters or words appear, the image is wrong.
+
+Character identity / ethnicity:
+- The characters must look like modern East Asian adults.
+- Prefer specifically modern Chinese urban-drama appearance and styling.
+- Faces, hairstyles, clothing, and atmosphere should feel like contemporary Chinese web-novel / C-drama aesthetics.
+- Avoid Western-looking characters unless the story explicitly requires it.
+
+Framing and composition safety rules:
+- Do NOT create an extreme close-up portrait.
+- Do NOT let the female lead's face or body fill almost the entire frame.
+- Prefer a medium shot, medium-long shot, or 3/4 body composition.
+- The main character should usually occupy around 35% to 50% of the frame, not 80% to 100%.
+- Leave enough breathing room to show background, supporting characters, and story evidence.
+- Show the surrounding environment clearly so the image tells the story.
+- Avoid cropping the character too tightly.
+- Avoid a single giant character blocking all important props and context.
+`.trim()
 }
 
 function buildSceneTemplateBlock(scene: SceneTemplateKey): string {
@@ -582,10 +641,13 @@ AUTO SELECTED SCENE TEMPLATE: FAMILY DINNER DRAMA.
 
 Composition guidance:
 - wealthy family dining room or elegant banquet table
-- female lead in the foreground or center
+- female lead in the foreground or center, but not oversized
+- use a medium shot or 3/4 body framing
+- the female lead should not fill the whole frame
 - 4 to 5 related characters around the table: patriarch, matriarch, husband, rival, family members
 - tension shown through eye contact, silence, posture
 - dishes, tea cups, wine glasses, flowers, plus the key evidence visible on the table
+- clearly show the table setting and surrounding people
 - the mood should feel beautiful on the surface but suffocating underneath
 `.trim()
 
@@ -595,9 +657,11 @@ AUTO SELECTED SCENE TEMPLATE: AIRPORT SECRET.
 
 Composition guidance:
 - luxury airport lounge or departure area
+- use a medium shot or medium-long shot, not a close-up portrait
 - character near a large glass window with airplane or runway outside
 - luggage, boarding pass, departure board, dark table, reflections
 - the key evidence must appear in hand, on the table, or near the suitcase
+- clearly show the airport setting instead of letting one character fill the whole frame
 - the mood should suggest that someone is carrying the truth away or trying to flee
 `.trim()
 
@@ -608,9 +672,11 @@ AUTO SELECTED SCENE TEMPLATE: PUBLIC EXPOSURE.
 Composition guidance:
 - luxury party, ballroom, press event, banquet hall, or public gathering
 - female lead in the center or foreground revealing proof
-- shocked family members, rival, husband, or crowd in the background
+- use a medium shot or 3/4 body composition
+- keep enough space to show shocked family members, rival, husband, or crowd in the background
 - flying papers, dramatic movement, elegant event lighting
 - the image should feel like a public reveal or public humiliation moment
+- do not let one giant character block the crowd and the evidence
 `.trim()
 
     case 'phone-showdown':
@@ -620,8 +686,11 @@ AUTO SELECTED SCENE TEMPLATE: PHONE EVIDENCE SHOWDOWN.
 Composition guidance:
 - luxury living room or elegant private interior
 - female lead standing in the center holding up a phone with proof
+- use a medium shot or 3/4 body framing
 - other characters reacting strongly: pointing, shouting, lunging, collapsing, freezing
 - on the table: dossier, photos, family picture, contract, papers, or other story evidence
+- the room should be visible clearly
+- do not make the main character too large or too close to the camera
 - the scene should feel like a truth bomb has just exploded
 `.trim()
 
@@ -631,24 +700,15 @@ Composition guidance:
 AUTO SELECTED SCENE TEMPLATE: PENTHOUSE DOSSIER.
 
 Composition guidance:
-- luxury apartment, penthouse, office, or high-rise interior
-- female lead centered, holding a dossier, folder, envelope, or key document
-- supporting characters in the background: husband, rival, matriarch, lawyer, family member
-- marble table, laptop, flowers, tea cup, skyline through tall windows
+- luxury apartment, penthouse, office, villa interior, or high-rise interior
+- female lead centered, holding a dossier, folder, envelope, medical record, or key document
+- use a medium shot or 3/4 body composition
+- supporting characters in the background: husband, rival, matriarch, lawyer, doctor, bodyguard, or family member
+- marble table, laptop, flowers, tea cup, skyline through tall windows, or emotionally relevant interior props
 - calm surface, but emotionally tense and story-heavy
+- do not create a giant close-up character that hides the dossier, evidence, or background
 `.trim()
   }
-}
-
-function buildTypographyBlock(data: CoverPromptData): string {
-  return `
-Typography:
-- Add the Vietnamese title clearly and beautifully: "${data.title}"
-- Add a short tagline if there is enough space: "${data.tagline}"
-- Typography should feel premium, dramatic, elegant, and readable.
-- Use Vietnamese diacritics correctly as much as possible.
-- Do not add random English title text, logos, publisher marks, QR codes, watermarks, or unrelated UI elements.
-`.trim()
 }
 
 function buildNegativeBlock(): string {
@@ -662,37 +722,47 @@ Avoid:
 - Do not add unrelated weapons, police badges, horror monsters, zombies, or supernatural effects.
 - Do not add website UI, buttons, screenshots, app interface, or browser elements.
 - Do not use any watermark or logo.
+- Do not put any visible text inside the image.
+- Do not render the story title inside the image.
+- Do not create any letters, words, decorative typography, subtitles, signs, labels, or captions.
+- If the model tries to place text, remove the text completely and keep only illustration.
+- Do not create oversized close-up character portraits that occupy almost the entire frame.
+- Do not crop so tightly that the background, evidence, and supporting characters disappear.
+- Do not generate non-Asian-looking lead characters for this project unless explicitly requested.
 `.trim()
 }
 
 function buildFallbackPrompt(data: CoverPromptData): string {
-  return `Vertical 2:3 premium Vietnamese modern drama web-novel cover for "${data.title}". Art style: ${data.coverArtStyle}. Story-driven scene template: ${data.sceneTemplate}. Central adult female lead, emotional confrontation, visible story evidence: ${data.keyEvidence}. Elegant Vietnamese title, no logo, no watermark.`
+  return `Vertical 2:3 premium modern Chinese drama web-novel illustrated cover art. Central adult East Asian female lead with modern Chinese appearance, emotional confrontation, visible story evidence: ${data.keyEvidence}. Main setting: ${data.setting}. Mood: ${data.moodKeywords}. No text, no title, no words, no letters, no logo, no watermark. Illustration only. Medium shot or 3/4 body composition. The character must not fill the whole frame. Show background, supporting characters, and context clearly.`
 }
 
 export function buildCoverPrompt(input: unknown): CoverPromptResult {
   const data = normalizePromptData(input)
 
   const prompt = [
-    buildStoryGroundingBlock(data),
-    buildGeneralQualityBlock(),
-    buildArtStyleBlock(data.coverArtStyle),
-    buildSceneTemplateBlock(data.sceneTemplate),
-    buildTypographyBlock(data),
-    buildNegativeBlock(),
-    `
+  buildStoryGroundingBlock(data),
+  buildGeneralQualityBlock(),
+  buildArtStyleBlock(data.coverArtStyle),
+  buildNoTextEthnicityAndFramingBlock(),
+  buildSceneTemplateBlock(data.sceneTemplate),
+  buildNegativeBlock(),
+  `
 Final instruction:
-Create one polished final cover image in vertical 2:3 format.
-The selected ART STYLE is "${data.coverArtStyle}".
-The SCENE TEMPLATE must be inferred from story content and is "${data.sceneTemplate}".
-Story content, key evidence, and emotional conflict are more important than pure beauty.
+Create one polished final vertical 2:3 illustrated cover art image.
+This must be a text-free illustration.
+Do not draw any words or letters.
+Story content, evidence, setting, and emotional conflict are more important than decorative design.
+The characters should read visually as modern Chinese / East Asian drama characters.
+Do not make the main character too large. Show the environment, supporting cast, and evidence clearly.
+If any text appears, remove it completely.
 `.trim(),
-  ].join('\n\n')
+].join('\n\n')
 
   return {
     prompt,
     fallbackPrompt: buildFallbackPrompt(data),
     coverConcept: {
-      version: 'story-grounded-cover-art-style-v2',
+      version: 'story-grounded-cover-art-style-v3',
       coverArtStyle: data.coverArtStyle,
       sceneTemplate: data.sceneTemplate,
       title: data.title,
