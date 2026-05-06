@@ -13,12 +13,14 @@ type ReaderChapterNavItem = {
   id?: string | null
   title?: string | null
   slug?: string | null
-  number?: number | null
-  content?: string | null
-  story_id?: string | null
-  story_slug?: string | null
-  chapter_slug?: string | null
+  number?: number | string | null
   chapter_number?: number | string | null
+  chapter_slug?: string | null
+  story_id?: string | null
+  storyId?: string | null
+  story_slug?: string | null
+  storySlug?: string | null
+  content?: string | null
 }
 
 const themeStyles: Record<string, { background: string; color: string }> = {
@@ -84,19 +86,26 @@ function getNumberValue(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function getChapterNumber(chapter: ReaderChapterNavItem) {
+function getChapterNumber(chapter: ReaderChapterNavItem | null | undefined) {
+  if (!chapter) return 0
+
   return getNumberValue(chapter.number ?? chapter.chapter_number)
 }
 
-function getChapterReadPath(storySlug: string, chapterItem: ReaderChapterNavItem) {
-  const chapterSlug =
-    chapterItem.slug ||
-    chapterItem.chapter_slug ||
-    chapterItem.number ||
-    chapterItem.chapter_number ||
-    1
+function getChapterSlug(chapter: ReaderChapterNavItem | null | undefined) {
+  if (!chapter) return '1'
 
-  return `/doc-truyen/${storySlug}/${chapterSlug}`
+  return (
+    chapter.slug ||
+    chapter.chapter_slug ||
+    chapter.number ||
+    chapter.chapter_number ||
+    '1'
+  )
+}
+
+function getChapterReadPath(storySlug: string, chapterItem: ReaderChapterNavItem) {
+  return `/doc-truyen/${storySlug}/${getChapterSlug(chapterItem)}`
 }
 
 function resolveReaderRoute(
@@ -136,6 +145,44 @@ function resolveReaderRoute(
   }
 }
 
+function sortChapters(chapters: ReaderChapterNavItem[]) {
+  return [...chapters].sort((a, b) => {
+    const aNumber = getChapterNumber(a)
+    const bNumber = getChapterNumber(b)
+
+    if (aNumber !== bNumber) return aNumber - bNumber
+
+    return String(getChapterSlug(a)).localeCompare(String(getChapterSlug(b)))
+  })
+}
+
+function dedupeChapters(chapters: ReaderChapterNavItem[]) {
+  const uniqueMap = new Map<string, ReaderChapterNavItem>()
+
+  for (const chapter of chapters) {
+    const key =
+      String(chapter.id || '') ||
+      `${chapter.slug || chapter.chapter_slug || ''}-${chapter.number || chapter.chapter_number || ''}`
+
+    if (key) uniqueMap.set(key, chapter)
+  }
+
+  return sortChapters(Array.from(uniqueMap.values()))
+}
+
+function chapterBelongsToStory(chapter: ReaderChapterNavItem, storyRow: any) {
+  const storyId = String(storyRow?.id || '')
+  const storySlug = String(storyRow?.slug || '')
+
+  const chapterStoryId = String(chapter.story_id || chapter.storyId || '')
+  const chapterStorySlug = String(chapter.story_slug || chapter.storySlug || '')
+
+  return (
+    (!!storyId && chapterStoryId === storyId) ||
+    (!!storySlug && chapterStorySlug === storySlug)
+  )
+}
+
 function findCurrentChapter(
   allChapters: ReaderChapterNavItem[],
   routeChapter: string,
@@ -156,6 +203,9 @@ function findCurrentChapter(
       `chuong-${itemNumber}`,
       `chapter-${itemNumber}`,
       `ch-${itemNumber}`,
+      `chuong-${itemChapterNumber}`,
+      `chapter-${itemChapterNumber}`,
+      `ch-${itemChapterNumber}`,
     ]
       .map(normalizeChapterKey)
       .filter(Boolean)
@@ -166,7 +216,9 @@ function findCurrentChapter(
   if (matched) return matched
 
   return (
-    allChapters.find((item) => String(item.number || item.chapter_number || '') === '1') ||
+    allChapters.find((item) => {
+      return String(item.number || item.chapter_number || '') === '1'
+    }) ||
     allChapters[0] ||
     null
   )
@@ -179,40 +231,25 @@ async function loadChaptersForStory(storyRow: any) {
     .from('chapters')
     .select('*')
     .eq('story_id', storyRow.id)
-    .order('number', { ascending: true })
 
-  if (Array.isArray(byStoryId.data)) {
+  if (!byStoryId.error && Array.isArray(byStoryId.data)) {
     allResults.push(...(byStoryId.data as ReaderChapterNavItem[]))
   }
 
-  if (allResults.length === 0 && storyRow.slug) {
-    const byStorySlug = await supabase
-      .from('chapters')
-      .select('*')
-      .eq('story_slug', storyRow.slug)
-      .order('number', { ascending: true })
+  if (allResults.length === 0) {
+    const allChaptersResult = await supabase.from('chapters').select('*').limit(1000)
 
-    if (!byStorySlug.error && Array.isArray(byStorySlug.data)) {
-      allResults.push(...(byStorySlug.data as ReaderChapterNavItem[]))
+    if (!allChaptersResult.error && Array.isArray(allChaptersResult.data)) {
+      const matched = (allChaptersResult.data as ReaderChapterNavItem[]).filter((item) => {
+        return chapterBelongsToStory(item, storyRow)
+      })
+
+      allResults.push(...matched)
     }
   }
 
-  const uniqueMap = new Map<string, ReaderChapterNavItem>()
-
-  for (const chapter of allResults) {
-    const key =
-      String(chapter.id || '') ||
-      `${chapter.slug || chapter.chapter_slug || ''}-${chapter.number || chapter.chapter_number || ''}`
-
-    if (key) uniqueMap.set(key, chapter)
-  }
-
-  const uniqueChapters = Array.from(uniqueMap.values()).sort((a, b) => {
-    return getChapterNumber(a) - getChapterNumber(b)
-  })
-
   return {
-    chapters: uniqueChapters,
+    chapters: dedupeChapters(allResults),
     error: byStoryId.error,
   }
 }
@@ -327,6 +364,7 @@ function ReaderAdBlock() {
 export default function ReaderPage() {
   const params = useParams<Record<string, string | undefined>>()
   const location = useLocation()
+
   const { slug, chapter } = useMemo(() => {
     return resolveReaderRoute(params, location.pathname)
   }, [params, location.pathname])
@@ -334,7 +372,7 @@ export default function ReaderPage() {
   const { fontSize, theme } = useReaderSettings()
   const [loading, setLoading] = useState(true)
   const [story, setStory] = useState<any | null>(null)
-  const [chapterData, setChapterData] = useState<any | null>(null)
+  const [chapterData, setChapterData] = useState<ReaderChapterNavItem | null>(null)
   const [chapters, setChapters] = useState<ReaderChapterNavItem[]>([])
   const [errorType, setErrorType] = useState<ReaderErrorType>(null)
 
@@ -392,6 +430,8 @@ export default function ReaderPage() {
               chapter_number: item.chapter_number,
               slug: item.slug,
               chapter_slug: item.chapter_slug,
+              story_id: item.story_id,
+              story_slug: item.story_slug,
               title: item.title,
             })),
           })
@@ -469,7 +509,7 @@ export default function ReaderPage() {
     storyId: story?.id,
     storySlug: story?.slug,
     chapterId: chapterData?.id,
-    chapterNumber: chapterData?.number || chapterData?.chapter_number,
+    chapterNumber: getChapterNumber(chapterData),
   })
 
   useEffect(() => {
