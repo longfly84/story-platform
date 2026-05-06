@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 
 import MainLayout from '@/layouts/MainLayout'
 import ReaderToolbar from '@/components/reader/ReaderToolbar'
@@ -181,15 +181,27 @@ function ReaderAdBlock() {
 
 export default function ReaderPage() {
   const params = useParams<Record<string, string | undefined>>()
+  const location = useLocation()
 
-  const slug = params.slug || params.storySlug || ''
+  const pathParts = location.pathname
+    .split('/')
+    .map((item) => decodeURIComponent(item.trim()))
+    .filter(Boolean)
+
+  const slug =
+    params.slug ||
+    params.storySlug ||
+    pathParts[pathParts.length - 2] ||
+    ''
+
   const chapter =
     params.chapter ||
     params.chapterSlug ||
     params.chapterNumber ||
     params.number ||
     params.chapterId ||
-    ''
+    pathParts[pathParts.length - 1] ||
+    '1'
 
   const { fontSize, theme } = useReaderSettings()
   const [loading, setLoading] = useState(true)
@@ -271,24 +283,42 @@ export default function ReaderPage() {
           return
         }
 
-        const currentChapter = allChapters.find((item) => {
-          const itemSlug = String(item.slug || '').trim()
-          const itemNumber = String(item.number || '').trim()
-          const routeChapter = String(routeChapterValue || '').trim()
+        const routeChapterValue = String(chapter || '1').trim()
 
-          const normalizedRoute = routeChapter.toLowerCase()
-          const normalizedSlug = itemSlug.toLowerCase()
+        function normalizeChapterKey(value: unknown) {
+          return String(value || '')
+            .trim()
+            .toLowerCase()
+            .replace(/^chuong-/, '')
+            .replace(/^chapter-/, '')
+            .replace(/^ch-/, '')
+        }
 
-          return (
-            normalizedSlug === normalizedRoute ||
-            itemNumber === routeChapter ||
-            normalizedSlug === `chuong-${routeChapter}` ||
-            normalizedSlug === `chapter-${routeChapter}` ||
-            normalizedSlug === `chuong-${itemNumber}` ||
-            normalizedRoute === `chuong-${itemNumber}` ||
-            normalizedRoute === `chapter-${itemNumber}`
-          )
-        })
+        const normalizedRouteChapter = normalizeChapterKey(routeChapterValue)
+
+        const currentChapter =
+          allChapters.find((item) => {
+            const itemSlug = String(item.slug || '').trim()
+            const itemNumber = String(item.number || '').trim()
+            const itemChapterSlug = String((item as any).chapter_slug || '').trim()
+            const itemChapterNumber = String((item as any).chapter_number || '').trim()
+
+            const candidates = [
+              itemSlug,
+              itemNumber,
+              itemChapterSlug,
+              itemChapterNumber,
+              `chuong-${itemNumber}`,
+              `chapter-${itemNumber}`,
+              `ch-${itemNumber}`,
+            ]
+              .map(normalizeChapterKey)
+              .filter(Boolean)
+
+            return candidates.includes(normalizedRouteChapter)
+          }) ||
+          allChapters.find((item) => String(item.number || '') === '1') ||
+          allChapters[0]
 
         if (!currentChapter) {
           setErrorType('chapter')
