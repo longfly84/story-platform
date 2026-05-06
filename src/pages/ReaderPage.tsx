@@ -14,6 +14,7 @@ type ReaderChapterNavItem = {
   title?: string | null
   slug?: string | null
   number?: number | null
+  content?: string | null
 }
 
 const themeStyles: Record<string, { background: string; color: string }> = {
@@ -181,7 +182,6 @@ function ReaderAdBlock() {
 export default function ReaderPage() {
   const { slug, chapter } = useParams<{ slug: string; chapter: string }>()
 
-  // All hooks must stay before every conditional return.
   const { fontSize, theme } = useReaderSettings()
   const [loading, setLoading] = useState(true)
   const [story, setStory] = useState<any | null>(null)
@@ -241,48 +241,58 @@ export default function ReaderPage() {
 
         setStory(storyRow)
 
-        const [chapterResult, chaptersResult] = await Promise.all([
-          supabase
-            .from('chapters')
-            .select('*')
-            .eq('story_id', storyRow.id)
-            .eq('slug', chapter)
-            .maybeSingle(),
-
-          supabase
-            .from('chapters')
-            .select('id,title,slug,number')
-            .eq('story_id', storyRow.id)
-            .order('number', { ascending: true }),
-        ])
+        const { data: chaptersRows, error: chaptersError } = await supabase
+          .from('chapters')
+          .select('*')
+          .eq('story_id', storyRow.id)
+          .order('number', { ascending: true })
 
         if (!mounted) return
 
         if (import.meta.env.DEV) {
-          console.log('[reader-chapter]', {
-            chapterData: chapterResult.data,
-            chapterError: chapterResult.error,
-          })
-          console.log('[reader-chapters]', {
-            chapters: chaptersResult.data,
-            chaptersError: chaptersResult.error,
+          console.log('[reader-all-chapters]', {
+            routeChapter: chapter,
+            chaptersRows,
+            chaptersError,
           })
         }
 
-        if (chapterResult.error || !chapterResult.data) {
+        const allChapters = Array.isArray(chaptersRows) ? chaptersRows : []
+
+        if (chaptersError || allChapters.length === 0) {
           setErrorType('chapter')
           setChapterData(null)
-          setChapters(Array.isArray(chaptersResult.data) ? chaptersResult.data : [])
+          setChapters([])
           setLoading(false)
           return
         }
 
-        setChapterData(chapterResult.data)
-        setChapters(Array.isArray(chaptersResult.data) ? chaptersResult.data : [])
+        const currentChapter = allChapters.find((item) => {
+          const itemSlug = String(item.slug || '')
+          const itemNumber = String(item.number || '')
+          const routeChapter = String(chapter || '')
+
+          return itemSlug === routeChapter || itemNumber === routeChapter
+        })
+
+        if (!currentChapter) {
+          setErrorType('chapter')
+          setChapterData(null)
+          setChapters(allChapters)
+          setLoading(false)
+          return
+        }
+
+        setChapterData(currentChapter)
+        setChapters(allChapters)
         setLoading(false)
       } catch (err) {
         if (!mounted) return
-        if (import.meta.env.DEV) console.log('[reader-load-exception]', err)
+
+        if (import.meta.env.DEV) {
+          console.log('[reader-load-exception]', err)
+        }
+
         setErrorType('story')
         setStory(null)
         setChapterData(null)
@@ -305,48 +315,48 @@ export default function ReaderPage() {
   }, [chapterData?.content])
 
   const sortedChapters = useMemo(() => {
-  return [...chapters].sort((a, b) => {
-    const aNumber = Number(a.number || 0)
-    const bNumber = Number(b.number || 0)
+    return [...chapters].sort((a, b) => {
+      const aNumber = Number(a.number || 0)
+      const bNumber = Number(b.number || 0)
 
-    return aNumber - bNumber
-  })
-}, [chapters])
+      return aNumber - bNumber
+    })
+  }, [chapters])
 
-const currentChapterIndex = useMemo(() => {
-  if (!chapterData || sortedChapters.length === 0) return -1
+  const currentChapterIndex = useMemo(() => {
+    if (!chapterData || sortedChapters.length === 0) return -1
 
-  const currentId = String(chapterData.id || '')
-  const currentSlug = String(chapterData.slug || '')
-  const currentNumber = String(chapterData.number || '')
-  const routeChapter = String(chapter || '')
+    const currentId = String(chapterData.id || '')
+    const currentSlug = String(chapterData.slug || '')
+    const currentNumber = String(chapterData.number || '')
+    const routeChapter = String(chapter || '')
 
-  return sortedChapters.findIndex((item) => {
-    const itemId = String(item.id || '')
-    const itemSlug = String(item.slug || '')
-    const itemNumber = String(item.number || '')
+    return sortedChapters.findIndex((item) => {
+      const itemId = String(item.id || '')
+      const itemSlug = String(item.slug || '')
+      const itemNumber = String(item.number || '')
 
-    return (
-      (!!currentId && itemId === currentId) ||
-      (!!currentSlug && itemSlug === currentSlug) ||
-      (!!currentNumber && itemNumber === currentNumber) ||
-      (!!routeChapter && itemSlug === routeChapter) ||
-      (!!routeChapter && itemNumber === routeChapter)
-    )
-  })
-}, [chapter, chapterData, sortedChapters])
+      return (
+        (!!currentId && itemId === currentId) ||
+        (!!currentSlug && itemSlug === currentSlug) ||
+        (!!currentNumber && itemNumber === currentNumber) ||
+        (!!routeChapter && itemSlug === routeChapter) ||
+        (!!routeChapter && itemNumber === routeChapter)
+      )
+    })
+  }, [chapter, chapterData, sortedChapters])
 
-const prevChapter = useMemo(() => {
-  if (currentChapterIndex <= 0) return null
+  const prevChapter = useMemo(() => {
+    if (currentChapterIndex <= 0) return null
 
-  return sortedChapters[currentChapterIndex - 1] || null
-}, [currentChapterIndex, sortedChapters])
+    return sortedChapters[currentChapterIndex - 1] || null
+  }, [currentChapterIndex, sortedChapters])
 
-const nextChapter = useMemo(() => {
-  if (currentChapterIndex < 0) return null
+  const nextChapter = useMemo(() => {
+    if (currentChapterIndex < 0) return null
 
-  return sortedChapters[currentChapterIndex + 1] || null
-}, [currentChapterIndex, sortedChapters])
+    return sortedChapters[currentChapterIndex + 1] || null
+  }, [currentChapterIndex, sortedChapters])
 
   const { trackNextChapterClick } = useChapterAnalytics({
     storyId: story?.id,
@@ -355,7 +365,6 @@ const nextChapter = useMemo(() => {
     chapterNumber: chapterData?.number,
   })
 
-  // track reader view once per story+chapter
   useEffect(() => {
     ;(async () => {
       if (!story?.slug || !chapterData?.slug) return
@@ -377,7 +386,9 @@ const nextChapter = useMemo(() => {
           })
         }
       } catch (err) {
-        if (import.meta.env.DEV) console.warn('[track-view-error]', err)
+        if (import.meta.env.DEV) {
+          console.warn('[track-view-error]', err)
+        }
       }
     })()
   }, [story?.slug, chapterData?.slug])
@@ -397,6 +408,7 @@ const nextChapter = useMemo(() => {
       <MainLayout>
         <main className="mx-auto max-w-4xl px-4 py-10 text-center text-zinc-400">
           Truyện không tồn tại
+
           <div className="mt-4">
             <Link
               to="/"
@@ -415,6 +427,7 @@ const nextChapter = useMemo(() => {
       <MainLayout>
         <main className="mx-auto max-w-4xl px-4 py-10 text-center text-zinc-400">
           Chương không tồn tại
+
           <div className="mt-4">
             <Link
               to={story?.slug ? `/truyen/${story.slug}` : '/'}
@@ -457,6 +470,7 @@ const nextChapter = useMemo(() => {
           <h1 className="text-3xl font-bold leading-tight text-zinc-100 sm:text-4xl">
             {story.title}
           </h1>
+
           <h2 className="mt-3 text-xl font-semibold leading-snug text-zinc-300">
             {chapterData.title}
           </h2>
