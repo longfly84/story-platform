@@ -231,7 +231,7 @@ export default function ReaderPage() {
         return
       }
 
-      const routeChapterValue = chapter || '1'
+      
 
       try {
         const { data: storyRow, error: storyError } = await supabase
