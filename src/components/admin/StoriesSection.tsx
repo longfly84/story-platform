@@ -12,6 +12,8 @@ type Props = {
   onTogglePublish: (story: any) => void | Promise<void>
   onDeleteStory: (id: number) => void | Promise<void>
   onOpenChapters: (slug: string, title?: string) => void | Promise<void>
+  onCopyChapters?: (story: any) => void | Promise<void>
+  copyingStoryId?: string | null
 }
 
 const STORIES_PER_PAGE = 10
@@ -174,6 +176,8 @@ export default function StoriesSection({
   onTogglePublish,
   onDeleteStory,
   onOpenChapters,
+  onCopyChapters,
+  copyingStoryId,
 }: Props) {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
@@ -446,6 +450,17 @@ export default function StoriesSection({
                           >
                             View
                           </Link>
+
+                          {onCopyChapters ? (
+                            <button
+                              type="button"
+                              onClick={() => void onCopyChapters(story)}
+                              disabled={copyingStoryId === String(story.id)}
+                              className="rounded bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {copyingStoryId === String(story.id) ? 'Copying...' : 'Copy chapters'}
+                            </button>
+                          ) : null}
                         </div>
                       </div>
                     </div>
