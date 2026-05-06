@@ -207,6 +207,10 @@ type ContinueStoryLedger = {
   unresolvedThreads: string[]
   forbiddenRepeats: string[]
   nextChapterObligations: string[]
+  usedChapterTitles: string[]
+  repeatedStylePhrases: string[]
+  supportRoleWarnings: string[]
+  latestChapterRole: string
 }
 
 function normalizeForLedger(input: string) {
@@ -305,6 +309,102 @@ function extractPendingPromisesFromText(text: string) {
   )
 }
 
+
+function normalizeTitleForCompare(input: string) {
+  return normalizeForLedger(input)
+    .replace(/^chuong\s+\d+\s*/i, '')
+    .replace(/^(chuong|chapter)\s*/i, '')
+    .replace(/^[\s:—\-]+/, '')
+    .trim()
+}
+
+function getChapterTitleList(sources: Array<{ chapterNumber: number; title: string }>) {
+  return uniqueLedgerItems(
+    sources
+      .map((chapter) => chapter.title)
+      .filter(Boolean)
+      .map((title) => title.replace(/^#?\s*Chương\s+\d+\s*[—:-]?\s*/i, '').trim()),
+    18,
+  )
+}
+
+function extractRepeatedStylePhrasesFromChapters(sources: Array<{ text: string }>) {
+  const normalizedTexts = sources.map((source) => normalizeForLedger(source.text))
+  const phraseRules = [
+    { label: 'tóc búi lỏng / áo khoác mỏng / không mặc đồng phục', tokens: ['toc bui long', 'ao khoac mong', 'khong mac dong phuc'] },
+    { label: 'giọng lạnh như thép / như dao / như kính', tokens: ['giong lanh nhu thep', 'giong lanh nhu dao', 'giong lanh nhu kinh'] },
+    { label: 'nụ cười như dao / lưỡi dao / kính', tokens: ['nu cuoi nhu dao', 'luoi dao', 'nhu kinh'] },
+    { label: 'ánh đèn lạnh dội lên kính / phòng họp kính', tokens: ['anh den lanh', 'doi len kinh', 'phong hop'] },
+    { label: 'tôi không khóc / tôi không la / tôi chỉ giữ bình tĩnh', tokens: ['toi khong khoc', 'toi khong la', 'giu binh tinh'] },
+    { label: 'mùi bã cà phê / tiếng piano rạc rạc', tokens: ['mui ba ca phe', 'tieng piano rac rac'] },
+    { label: 'tin nhắn vẫn còn in trên màn hình', tokens: ['tin nhan', 'van con in tren man hinh'] },
+  ]
+
+  const repeated = phraseRules.filter((rule) => {
+    let count = 0
+
+    normalizedTexts.forEach((text) => {
+      if (rule.tokens.some((token) => text.includes(token))) count += 1
+    })
+
+    return count >= 2
+  })
+
+  return uniqueLedgerItems(
+    repeated.map((rule) => `Không lặp lại cụm/motif văn phong: ${rule.label}`),
+    10,
+  )
+}
+
+function inferChapterRole(chapter: { title: string; summary?: string; content?: string; text?: string }) {
+  const source = normalizeForLedger([chapter.title, chapter.summary, chapter.content, chapter.text].filter(Boolean).join(' '))
+
+  const roleRules: Array<{ role: string; keywords: string[] }> = [
+    { role: 'public accusation / công khai tố cáo', keywords: ['gala', 'hop bao', 'livestream', 'cong khai', 'san khau', 'weibo', 'hot search'] },
+    { role: 'boardroom confrontation / họp hội đồng', keywords: ['phong hop', 'hoi dong', 'co dong', 'bo phieu', 'tam quyen', 'dinh chi'] },
+    { role: 'hospital human stakes / bệnh viện người thân', keywords: ['benh vien', 'thuoc', 'me toi', 'phong benh', 'y ta', 'bac si', 'cap cuu'] },
+    { role: 'evidence retrieval / lấy chứng cứ', keywords: ['kho kiem toan', 'lay ban goc', 'log', 'server', 'may in', 'metadata', 'usb', 'cctv', 'camera'] },
+    { role: 'bank freeze / ngân hàng phong tỏa', keywords: ['ngan hang', 'phong toa', 'tai khoan', 'the truy cap', 'dong bang'] },
+    { role: 'witness pressure / nhân chứng bị ép', keywords: ['nhan chung', 'bi de doa', 'bi ep', 'doi loi khai', 'sa thai', 'dinh chi', 'con toi'] },
+    { role: 'private trap / gài bẫy riêng tư', keywords: ['quan tra', 'quan ca phe', 'hen', 'bay', 'thu am', 'gap rieng'] },
+    { role: 'final payoff / kết payoff', keywords: ['dieu tra vien', 'lenh bat', 'tam giam', 'khoi to', 'xin loi cong khai', 'boi thuong', 'khoi phuc'] },
+  ]
+
+  const matched = roleRules.find((rule) => rule.keywords.some((keyword) => source.includes(normalizeForLedger(keyword))))
+  return matched?.role || 'general progression / tiến triển chung'
+}
+
+function buildSupportRoleWarnings(sources: Array<{ text: string }>) {
+  const names = ['ly diem', 'manh tin', 'tong yen', 'tuong ky', 'trinh vien', 'ha linh y', 'vien hao', 'bach khang']
+  const roleActions = [
+    'luat su',
+    'ky thuat',
+    'it',
+    'metadata',
+    'kiem toan',
+    'ngan hang',
+    'dieu tra',
+    'thu am',
+    'sao luu',
+    'bao ve',
+    'truyen thong',
+    'phap vu',
+  ]
+  const allText = normalizeForLedger(sources.map((source) => source.text).join(' '))
+
+  return uniqueLedgerItems(
+    names
+      .map((name) => {
+        if (!allText.includes(name)) return ''
+        const actionCount = roleActions.filter((action) => allText.includes(action)).length
+        if (actionCount < 6) return ''
+        return `Khóa vai phụ ${name}: không để một nhân vật làm quá nhiều việc. Nếu cần kỹ thuật/kiểm toán/pháp lý, hãy tách qua cộng sự hoặc mô tả rõ vai chính của họ.`
+      })
+      .filter(Boolean),
+    8,
+  )
+}
+
 function buildContinueStoryLedger(args: {
   chapters: Array<ExistingChapterRow | RecentChapterForGenerate>
   nextChapterNumber: number
@@ -312,6 +412,10 @@ function buildContinueStoryLedger(args: {
   const normalized = normalizeChapters(args.chapters as ExistingChapterRow[])
   const sources = normalized.map((chapter, index) => buildChapterLedgerSource(chapter, index + 1))
   const latest = sources.at(-1)
+  const usedChapterTitles = getChapterTitleList(sources)
+  const repeatedStylePhrases = extractRepeatedStylePhrasesFromChapters(sources)
+  const supportRoleWarnings = buildSupportRoleWarnings(sources)
+  const latestChapterRole = latest ? inferChapterRole(latest) : 'general progression / tiến triển chung'
 
   const eventItems = sources
     .slice(-8)
@@ -457,6 +561,8 @@ function buildContinueStoryLedger(args: {
       ...usedEvidence.map((item) => `Không phát hiện lại như mới: ${item}`),
       ...usedScenes.slice(-6).map((item) => `Không lặp lại cảnh chính nếu không có biến cố mới: ${item}`),
       ...usedVillainMoves.slice(-6).map((item) => `Không dùng lại cùng đòn phản diện: ${item}`),
+      ...usedChapterTitles.slice(-8).map((item) => `Không đặt lại tiêu đề chương đã dùng: ${item}`),
+      ...repeatedStylePhrases,
       'Không reset nữ chính về trạng thái chưa biết sự thật đã biết ở chương trước.',
       'Không mở một vụ việc mới để né hook còn treo của chương trước.',
       'Không viết lại cùng một cuộc họp/đối chất/hồ sơ/camera như bản remake của chương cũ.',
@@ -475,6 +581,8 @@ function buildContinueStoryLedger(args: {
         : 'Trong 800–1200 chữ đầu phải xử lý hậu quả trực tiếp từ hook/chứng cứ/chuyển biến cuối chương trước.',
       'Nếu một cuộc hẹn/cuộc gọi/deadline bị cắt ngang, phải nói rõ ai chặn, vì sao chặn, và việc đó làm tình thế xấu đi thế nào.',
       'Chương mới phải tạo ít nhất 1 state change thật: nhân chứng đổi phe, phản diện ra đòn mới, bằng chứng cũ đảo nghĩa, quyền lực đổi trạng thái, hoặc nữ chính chủ động gài bẫy.',
+      latest ? `Vai trò chương trước là: ${latestChapterRole}. Chương mới không được có cùng vai trò nếu không tạo biến cố/hậu quả khác hẳn.` : '',
+      'Tiêu đề chương mới phải khác tất cả tiêu đề đã dùng và phải phản ánh biến cố mới, không chỉ lặp lại tên vật chứng cũ.',
       'Cuối chương phải để lại hook mới phát sinh từ hành động trong chương này, không dùng lại hook cũ.',
     ],
     8,
@@ -489,6 +597,10 @@ function buildContinueStoryLedger(args: {
     unresolvedThreads,
     forbiddenRepeats,
     nextChapterObligations,
+    usedChapterTitles,
+    repeatedStylePhrases,
+    supportRoleWarnings,
+    latestChapterRole,
   }
 }
 
@@ -517,6 +629,15 @@ ${formatLedgerSection('7. CẤM LẶP', ledger.forbiddenRepeats)}
 
 ${formatLedgerSection('8. NGHĨA VỤ CHƯƠNG TIẾP THEO', ledger.nextChapterObligations)}
 
+${formatLedgerSection('9. TIÊU ĐỀ CHƯƠNG ĐÃ DÙNG — CẤM TRÙNG', ledger.usedChapterTitles)}
+
+${formatLedgerSection('10. CỤM VĂN PHONG / MÔ TẢ ĐANG BỊ LẶP — PHẢI ĐỔI CÁCH VIẾT', ledger.repeatedStylePhrases)}
+
+${formatLedgerSection('11. CẢNH BÁO VAI PHỤ ÔM QUÁ NHIỀU VIỆC', ledger.supportRoleWarnings)}
+
+### 12. VAI TRÒ CHƯƠNG GẦN NHẤT
+- ${ledger.latestChapterRole || 'Không rõ'}
+
 LUẬT BẮT BUỘC:
 - Chương mới không được lơ open loop gần nhất.
 - Nếu chương trước có cuộc hẹn, lời hứa, deadline, cuộc gọi chưa xử lý, bằng chứng vừa phát hiện, hoặc câu cuối kiểu “đến nơi X / gặp người Y / mở file Z”, chương mới phải xử lý trực tiếp trong 800–1200 chữ đầu.
@@ -526,6 +647,9 @@ LUẬT BẮT BUỘC:
 - Không dùng lại cùng cảnh đối chất/họp/phòng pháp lý nếu không có biến cố mới.
 - Không reset conflict về trạng thái cũ.
 - Mỗi chương mới phải tiến lên một nấc, không viết remake của chương trước.
+- Không được đặt tiêu đề trùng hoặc gần trùng các chương đã có.
+- Không được lặp cụm mô tả ngoại hình/không khí/cử chỉ đã dùng nhiều lần; phải đổi cách diễn đạt hoặc chuyển sang hành động cụ thể.
+- Không để một nhân vật phụ làm tất cả việc luật sư + kỹ thuật + kiểm toán + truyền thông + cứu nguy. Mỗi nhân vật phụ chỉ giữ 1 vai chính.
 `.trim()
 }
 
@@ -582,12 +706,39 @@ function hasTokenOverlap(text: string, items: string[], minOverlap = 2) {
 
 function validateContinueOutputAgainstLedger(args: {
   readerOnly: string
+  chapterTitle?: string
   ledger: ContinueStoryLedger
   attempt: number
 }) {
   const warnings: string[] = []
   const reader = normalizeForLedger(args.readerOnly)
   const firstPart = normalizeForLedger(args.readerOnly.slice(0, 1800))
+  const chapterTitle = normalizeTitleForCompare(args.chapterTitle || '')
+
+  if (chapterTitle) {
+    const titleRepeated = args.ledger.usedChapterTitles.some((title) => {
+      const oldTitle = normalizeTitleForCompare(title)
+      return oldTitle && (chapterTitle === oldTitle || chapterTitle.includes(oldTitle) || oldTitle.includes(chapterTitle))
+    })
+
+    if (titleRepeated) {
+      warnings.push('Tiêu đề chương mới bị trùng hoặc quá gần tiêu đề chương đã có.')
+    }
+  }
+
+  const repeatedStyleHits = args.ledger.repeatedStylePhrases.filter((item) => {
+    const normalized = normalizeForLedger(item)
+    if (normalized.includes('toc bui long') && (reader.includes('toc bui long') || reader.includes('ao khoac mong'))) return true
+    if (normalized.includes('giong lanh') && reader.includes('giong lanh')) return true
+    if (normalized.includes('nu cuoi') && reader.includes('nu cuoi') && reader.includes('dao')) return true
+    if (normalized.includes('anh den lanh') && reader.includes('anh den lanh')) return true
+    if (normalized.includes('mui ba ca phe') && reader.includes('mui ba ca phe')) return true
+    return false
+  })
+
+  if (repeatedStyleHits.length) {
+    warnings.push(`Bản mới còn lặp cụm văn phong/mô tả đã bị cảnh báo: ${repeatedStyleHits.slice(0, 2).join(' | ')}`)
+  }
 
   if (args.ledger.pendingPromises.length && !hasTokenOverlap(firstPart, args.ledger.pendingPromises, 2)) {
     warnings.push('Chưa nối open loop/pending promise quan trọng trong 800–1200 chữ đầu.')
@@ -609,6 +760,20 @@ function validateContinueOutputAgainstLedger(args: {
 
   if (sceneRepeatCount >= 8 && !hasNewStateChange) {
     warnings.push('Bản mới có dấu hiệu lặp cảnh cũ mà chưa tạo biến cố mới.')
+  }
+
+  const currentRole = inferChapterRole({
+    title: args.chapterTitle || '',
+    content: args.readerOnly,
+  })
+
+  if (
+    args.ledger.latestChapterRole &&
+    currentRole === args.ledger.latestChapterRole &&
+    currentRole !== 'general progression / tiến triển chung' &&
+    !hasNewStateChange
+  ) {
+    warnings.push(`Chương mới có cùng vai trò với chương trước (${currentRole}) nhưng chưa tạo state change đủ rõ.`)
   }
 
   return warnings
@@ -638,6 +803,12 @@ KHÓA LIÊN TỤC:
 
 CÁC CHƯƠNG GẦN ĐÂY ĐÃ CÓ:
 ${recentTitles || 'Không có tiêu đề chương gần đây.'}
+
+UNIQUE CHAPTER ROLE & TITLE LOCK:
+- Tiêu đề chương mới không được trùng hoặc gần trùng với bất kỳ tiêu đề chương gần đây.
+- Nếu chương trước là họp/đối chất/hội đồng, chương mới không được lại là một cảnh họp tương tự trừ khi có biến cố mới làm đảo chiều quyền lực.
+- Nếu chương trước dùng một vật chứng làm trọng tâm, chương mới phải dùng vật chứng đó để mở hậu quả mới, không được trình bày lại nó như phát hiện mới.
+- Không lặp mô tả ngoại hình/câu mở đầu/cảm giác không khí đã dùng nhiều lần.
 
 LUẬT TIẾN TRIỂN MỖI CHƯƠNG:
 - Mỗi chương mới phải tạo ra ít nhất 1 STATE CHANGE thật:
@@ -731,6 +902,10 @@ function makeContinuePromptIdea(args: {
   const strongestPending = ledger?.pendingPromises?.[0]
   const obligation = ledger?.nextChapterObligations?.[0]
   const forbiddenRepeats = ledger?.forbiddenRepeats?.slice(0, 5).join(' | ')
+  const usedTitles = ledger?.usedChapterTitles?.slice(-8).join(' / ')
+  const repeatedStylePhrases = ledger?.repeatedStylePhrases?.slice(0, 4).join(' | ')
+  const supportWarnings = ledger?.supportRoleWarnings?.slice(0, 3).join(' | ')
+  const latestRole = ledger?.latestChapterRole
 
   return [
     `Viết tiếp truyện "${storyTitle}" ở chương ${nextChapterNumber}/${targetChapters}.`,
@@ -742,6 +917,10 @@ function makeContinuePromptIdea(args: {
       : `Nếu chương trước có hook/cuộc hẹn/deadline/bằng chứng vừa mở, phải nối trực tiếp trong 800–1200 chữ đầu.`,
     obligation ? `Nghĩa vụ chương này: ${obligation}` : '',
     forbiddenRepeats ? `Cấm lặp trong chương này: ${forbiddenRepeats}` : '',
+    usedTitles ? `Cấm đặt lại các tiêu đề đã dùng/gần dùng: ${usedTitles}. Tiêu đề chương mới phải là biến cố mới.` : '',
+    latestRole ? `Vai trò chương trước: ${latestRole}. Chương mới phải đổi vai trò hoặc tạo đảo chiều rõ, không remake.` : '',
+    repeatedStylePhrases ? `Cấm lặp văn phong/mô tả đang bị dùng nhiều: ${repeatedStylePhrases}.` : '',
+    supportWarnings ? `Khóa vai phụ: ${supportWarnings}` : '',
     `Nếu một cuộc hẹn hoặc móc chương trước bị cắt ngang, phải cho thấy ai/cái gì chặn nó và hậu quả mới tạo ra; không được lơ.`,
     `Nếu chương trước đã là phòng họp/đối chất/niêm phong/tạm ngưng, chương này phải ưu tiên một loại cảnh khác hoặc tạo hậu quả mới rõ ràng.`,
     isFinalChapter
@@ -998,7 +1177,7 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
                 ? storyMemory
                 : [
                     storyMemory,
-                    'REGENERATE CONTINUITY WARNING: Bản trước có dấu hiệu lặp hoặc lơ open loop. Viết lại chương mới, mở bằng hậu quả trực tiếp của chương trước, xử lý pending promise trong 800–1200 chữ đầu, tạo state change mới, không lặp vật chứng/cảnh cũ.',
+                    'REGENERATE CONTINUITY WARNING: Bản trước có dấu hiệu lặp hoặc lơ open loop. Viết lại chương mới với TIÊU ĐỀ KHÁC, vai trò chương khác, mở bằng hậu quả trực tiếp của chương trước, xử lý pending promise trong 800–1200 chữ đầu, tạo state change mới, không lặp vật chứng/cảnh cũ/cụm mô tả cũ.',
                     buildContinueLedgerPromptBlock(continueLedger),
                   ].join('\n\n---\n\n')
 
@@ -1044,6 +1223,7 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
             const continuityWarnings = validation.ok && parsed
               ? validateContinueOutputAgainstLedger({
                   readerOnly: parsed.readerOnly,
+                  chapterTitle: parsed.chapterTitle,
                   ledger: continueLedger,
                   attempt,
                 })
