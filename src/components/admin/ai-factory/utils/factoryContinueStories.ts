@@ -197,6 +197,424 @@ CURRENT STORY STATE — KHÓA MẠCH HIỆN TẠI:
 `.trim()
 }
 
+
+type ContinueStoryLedger = {
+  previousEvents: string[]
+  usedEvidence: string[]
+  usedScenes: string[]
+  usedVillainMoves: string[]
+  pendingPromises: string[]
+  unresolvedThreads: string[]
+  forbiddenRepeats: string[]
+  nextChapterObligations: string[]
+}
+
+function normalizeForLedger(input: string) {
+  return safeString(input)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9\s:/.%-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function uniqueLedgerItems(items: string[], limit = 12) {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const item of items) {
+    const clean = compactText(item, 260)
+    const key = normalizeForLedger(clean)
+    if (!clean || key.length < 8 || seen.has(key)) continue
+
+    seen.add(key)
+    result.push(clean)
+    if (result.length >= limit) break
+  }
+
+  return result
+}
+
+function splitLedgerSentences(input: string) {
+  return safeString(input)
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?。！？])\s+|\n+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 24)
+}
+
+function pickLedgerSentences(input: string, patterns: RegExp[], limit = 6) {
+  const sentences = splitLedgerSentences(input)
+  const matched: string[] = []
+
+  for (const sentence of sentences) {
+    const normalized = normalizeForLedger(sentence)
+    if (patterns.some((pattern) => pattern.test(normalized))) {
+      matched.push(sentence)
+    }
+    if (matched.length >= limit) break
+  }
+
+  return matched
+}
+
+function buildChapterLedgerSource(chapter: ExistingChapterRow | RecentChapterForGenerate, fallbackNumber: number) {
+  const chapterNumber = getChapterNumber(chapter as ExistingChapterRow, fallbackNumber)
+  const title = safeString((chapter as any).title) || `Chương ${chapterNumber}`
+  const summary = safeString((chapter as any).summary)
+  const content = safeString((chapter as any).content)
+
+  return {
+    chapterNumber,
+    title,
+    summary,
+    content,
+    text: [title, summary, compactText(content, 1800)].filter(Boolean).join('. '),
+  }
+}
+
+function extractPendingPromisesFromText(text: string) {
+  return pickLedgerSentences(
+    text,
+    [
+      /\bhen\b/,
+      /\bgap\b/,
+      /\bcho\b.*\b(toi|co|anh|em)\b/,
+      /\bgoi lai\b/,
+      /\btoi nay\b/,
+      /\bsang mai\b/,
+      /\bngay mai\b/,
+      /\bba gio\b/,
+      /\b3 gio\b/,
+      /\b9 gio\b/,
+      /\bmuoi phut\b/,
+      /\btruoc khi\b/,
+      /\bneu\b.*\bmuon biet\b/,
+      /\btoi se cho\b/,
+      /\bden\b.*\b(phong|ham|san bay|benh vien|truong|khach san|van phong|toa|cong ty|nha|biet thu)\b/,
+      /\bmo\b.*\b(file|tep|hop|ket|cua|phong|usb|dien thoai)\b/,
+      /\bxem\b.*\b(camera|clip|video|ho so|tin nhan|ghi am)\b/,
+      /\bcho toi\b.*\b(xem|gap|biet)\b/,
+      /\bdung gio\b/,
+      /\bhan cuoi\b/,
+      /\bdeadline\b/,
+    ],
+    8,
+  )
+}
+
+function buildContinueStoryLedger(args: {
+  chapters: Array<ExistingChapterRow | RecentChapterForGenerate>
+  nextChapterNumber: number
+}): ContinueStoryLedger {
+  const normalized = normalizeChapters(args.chapters as ExistingChapterRow[])
+  const sources = normalized.map((chapter, index) => buildChapterLedgerSource(chapter, index + 1))
+  const latest = sources.at(-1)
+
+  const eventItems = sources
+    .slice(-8)
+    .map((chapter) => {
+      const sourceSummary =
+        chapter.summary ||
+        splitLedgerSentences(chapter.content).slice(0, 2).join(' ') ||
+        chapter.title
+
+      return `Chương ${chapter.chapterNumber} — ${chapter.title}: ${compactText(sourceSummary, 220)}`
+    })
+
+  const usedEvidence = sources.flatMap((chapter) =>
+    pickLedgerSentences(
+      chapter.text,
+      [
+        /\bho so\b/,
+        /\bbien ban\b/,
+        /\bcamera\b/,
+        /\bcctv\b/,
+        /\bclip\b/,
+        /\bvideo\b/,
+        /\bghi am\b/,
+        /\btin nhan\b/,
+        /\bcuoc goi\b/,
+        /\bemail\b/,
+        /\busb\b/,
+        /\bthe nho\b/,
+        /\bsao ke\b/,
+        /\bhop dong\b/,
+        /\bdi chuc\b/,
+        /\badn\b/,
+        /\bdna\b/,
+        /\bxet nghiem\b/,
+        /\bgiay khai sinh\b/,
+        /\bso kham thai\b/,
+        /\bve may bay\b/,
+        /\bboarding\b/,
+        /\bvali\b/,
+        /\bthe phong\b/,
+        /\bhoa don\b/,
+        /\blog\b/,
+        /\bnhan chung\b/,
+        /\bloi khai\b/,
+      ],
+      4,
+    ),
+  )
+
+  const usedScenes = sources.flatMap((chapter) =>
+    pickLedgerSentences(
+      [chapter.title, chapter.summary, chapter.content].join('. '),
+      [
+        /\bphong hop\b/,
+        /\bdoi chat\b/,
+        /\bbenh vien\b/,
+        /\btruong\b/,
+        /\bphu huynh\b/,
+        /\bsan bay\b/,
+        /\bkhach san\b/,
+        /\bham ruou\b/,
+        /\bbiet thu\b/,
+        /\bvan phong\b/,
+        /\bcong ty\b/,
+        /\btoa an\b/,
+        /\bvan phong luat\b/,
+        /\bphong khach\b/,
+        /\bbai do xe\b/,
+        /\btang ham\b/,
+        /\bdu thuyen\b/,
+        /\bdam cuoi\b/,
+        /\bhon le\b/,
+        /\bhop bao\b/,
+        /\blivestream\b/,
+      ],
+      3,
+    ),
+  )
+
+  const usedVillainMoves = sources.flatMap((chapter) =>
+    pickLedgerSentences(
+      chapter.text,
+      [
+        /\bde doa\b/,
+        /\bep\b/,
+        /\bdoi\b.*\bky\b/,
+        /\bphong toa\b/,
+        /\bkhoa\b/,
+        /\bniem phong\b/,
+        /\btam ngung\b/,
+        /\bsa thai\b/,
+        /\btung\b.*\bclip\b/,
+        /\btung\b.*\btin\b/,
+        /\bboc phot\b/,
+        /\bhot search\b/,
+        /\bcat ghep\b/,
+        /\bdoi trang\b/,
+        /\bmua chuoc\b/,
+        /\bdoi loi khai\b/,
+        /\bvu khong\b/,
+        /\bdo toi\b/,
+      ],
+      4,
+    ),
+  )
+
+  const allPending = sources.flatMap((chapter) => extractPendingPromisesFromText(chapter.text))
+  const latestPending = latest ? extractPendingPromisesFromText(latest.text) : []
+  const pendingPromises = uniqueLedgerItems([...latestPending, ...allPending.reverse()], 10)
+
+  const unresolvedThreads = uniqueLedgerItems(
+    [
+      ...pickLedgerSentences(
+        sources.map((chapter) => chapter.text).join(' '),
+        [
+          /\bchua\b.*\bro\b/,
+          /\bchua\b.*\bbiet\b/,
+          /\bai\b.*\bdung sau\b/,
+          /\bai\b.*\bsua\b/,
+          /\bai\b.*\bdoi\b/,
+          /\bai\b.*\bcat\b/,
+          /\bvi sao\b/,
+          /\btai sao\b/,
+          /\bnguoi nao\b/,
+          /\bbi mat\b/,
+          /\bthan phan\b/,
+          /\bcha ruot\b/,
+          /\bme ruot\b/,
+          /\bnguoi thua ke\b/,
+          /\bnhan chung\b.*\b(im lang|bo tron|doi phe|so)\b/,
+        ],
+        12,
+      ),
+      ...(latestPending.length
+        ? latestPending.map((item) => `Móc gần nhất chưa được xử lý dứt điểm: ${item}`)
+        : []),
+    ],
+    12,
+  )
+
+  const forbiddenRepeats = uniqueLedgerItems(
+    [
+      ...usedEvidence.map((item) => `Không phát hiện lại như mới: ${item}`),
+      ...usedScenes.slice(-6).map((item) => `Không lặp lại cảnh chính nếu không có biến cố mới: ${item}`),
+      ...usedVillainMoves.slice(-6).map((item) => `Không dùng lại cùng đòn phản diện: ${item}`),
+      'Không reset nữ chính về trạng thái chưa biết sự thật đã biết ở chương trước.',
+      'Không mở một vụ việc mới để né hook còn treo của chương trước.',
+      'Không viết lại cùng một cuộc họp/đối chất/hồ sơ/camera như bản remake của chương cũ.',
+    ],
+    16,
+  )
+
+  const strongestPending = pendingPromises[0]
+  const nextChapterObligations = uniqueLedgerItems(
+    [
+      latest
+        ? `Mở chương ${args.nextChapterNumber} bằng hậu quả trực tiếp của Chương ${latest.chapterNumber} — ${latest.title}, không recap dài.`
+        : `Mở chương ${args.nextChapterNumber} bằng một biến cố tiếp nối mạch hiện tại.`,
+      strongestPending
+        ? `Trong 800–1200 chữ đầu phải xử lý hoặc bị chặn có lý do với open loop này: ${strongestPending}`
+        : 'Trong 800–1200 chữ đầu phải xử lý hậu quả trực tiếp từ hook/chứng cứ/chuyển biến cuối chương trước.',
+      'Nếu một cuộc hẹn/cuộc gọi/deadline bị cắt ngang, phải nói rõ ai chặn, vì sao chặn, và việc đó làm tình thế xấu đi thế nào.',
+      'Chương mới phải tạo ít nhất 1 state change thật: nhân chứng đổi phe, phản diện ra đòn mới, bằng chứng cũ đảo nghĩa, quyền lực đổi trạng thái, hoặc nữ chính chủ động gài bẫy.',
+      'Cuối chương phải để lại hook mới phát sinh từ hành động trong chương này, không dùng lại hook cũ.',
+    ],
+    8,
+  )
+
+  return {
+    previousEvents: uniqueLedgerItems(eventItems, 10),
+    usedEvidence: uniqueLedgerItems(usedEvidence, 12),
+    usedScenes: uniqueLedgerItems(usedScenes, 10),
+    usedVillainMoves: uniqueLedgerItems(usedVillainMoves, 10),
+    pendingPromises,
+    unresolvedThreads,
+    forbiddenRepeats,
+    nextChapterObligations,
+  }
+}
+
+function formatLedgerSection(title: string, items: string[]) {
+  if (!items.length) return `### ${title}\n- Không phát hiện rõ từ dữ liệu cũ.`
+  return `### ${title}\n${items.map((item) => `- ${item}`).join('\n')}`
+}
+
+function buildContinueLedgerPromptBlock(ledger: ContinueStoryLedger) {
+  return `
+CONTINUE STORY LEDGER — CHỐNG LẶP + GIỮ MÓC TREO:
+
+${formatLedgerSection('1. SỰ KIỆN ĐÃ XẢY RA', ledger.previousEvents)}
+
+${formatLedgerSection('2. VẬT CHỨNG / MANH MỐI ĐÃ DÙNG', ledger.usedEvidence)}
+
+${formatLedgerSection('3. CẢNH / ĐỊA ĐIỂM ĐÃ DÙNG', ledger.usedScenes)}
+
+${formatLedgerSection('4. ĐÒN PHẢN DIỆN ĐÃ DÙNG', ledger.usedVillainMoves)}
+
+${formatLedgerSection('5. OPEN LOOP / PENDING PROMISE CHƯA ĐƯỢC XỬ LÝ', ledger.pendingPromises)}
+
+${formatLedgerSection('6. TUYẾN CHƯA GIẢI QUYẾT', ledger.unresolvedThreads)}
+
+${formatLedgerSection('7. CẤM LẶP', ledger.forbiddenRepeats)}
+
+${formatLedgerSection('8. NGHĨA VỤ CHƯƠNG TIẾP THEO', ledger.nextChapterObligations)}
+
+LUẬT BẮT BUỘC:
+- Chương mới không được lơ open loop gần nhất.
+- Nếu chương trước có cuộc hẹn, lời hứa, deadline, cuộc gọi chưa xử lý, bằng chứng vừa phát hiện, hoặc câu cuối kiểu “đến nơi X / gặp người Y / mở file Z”, chương mới phải xử lý trực tiếp trong 800–1200 chữ đầu.
+- Có thể cho open loop bị cắt ngang, nhưng phải cắt ngang bằng một đòn phản diện/hậu quả hợp lý, không được bỏ qua.
+- Không phát hiện lại vật chứng đã phát hiện như lần đầu.
+- Không để nữ chính bất ngờ vì sự thật cô đã biết.
+- Không dùng lại cùng cảnh đối chất/họp/phòng pháp lý nếu không có biến cố mới.
+- Không reset conflict về trạng thái cũ.
+- Mỗi chương mới phải tiến lên một nấc, không viết remake của chương trước.
+`.trim()
+}
+
+function extractLedgerKeywordTokens(items: string[]) {
+  const stopwords = new Set([
+    'chuong',
+    'khong',
+    'duoc',
+    'trong',
+    'nhung',
+    'nguoi',
+    'chinh',
+    'phan',
+    'dien',
+    'truyen',
+    'minh',
+    'mot',
+    'nay',
+    'that',
+    'bang',
+    'chung',
+    'dieu',
+    'phan',
+    'hoi',
+    'thay',
+    'xuat',
+    'hien',
+  ])
+
+  return Array.from(
+    new Set(
+      items
+        .join(' ')
+        .split(/\s+/)
+        .map((item) => normalizeForLedger(item))
+        .filter((item) => item.length >= 5 && !stopwords.has(item)),
+    ),
+  ).slice(0, 24)
+}
+
+function hasTokenOverlap(text: string, items: string[], minOverlap = 2) {
+  const normalized = normalizeForLedger(text)
+  const tokens = extractLedgerKeywordTokens(items)
+  if (!tokens.length) return true
+
+  let overlap = 0
+  for (const token of tokens) {
+    if (normalized.includes(token)) overlap += 1
+    if (overlap >= minOverlap) return true
+  }
+
+  return false
+}
+
+function validateContinueOutputAgainstLedger(args: {
+  readerOnly: string
+  ledger: ContinueStoryLedger
+  attempt: number
+}) {
+  const warnings: string[] = []
+  const reader = normalizeForLedger(args.readerOnly)
+  const firstPart = normalizeForLedger(args.readerOnly.slice(0, 1800))
+
+  if (args.ledger.pendingPromises.length && !hasTokenOverlap(firstPart, args.ledger.pendingPromises, 2)) {
+    warnings.push('Chưa nối open loop/pending promise quan trọng trong 800–1200 chữ đầu.')
+  }
+
+  const repeatedEvidenceCount = extractLedgerKeywordTokens(args.ledger.usedEvidence).filter((token) =>
+    reader.includes(token),
+  ).length
+
+  const hasNewStateChange =
+    /\b(nhan chung|doi phe|lo so ho|phan cong|doi chieu|mat quyen|lay lai|xac thuc|mo khoa|doi loi khai|lo bang chung|bi chan|bi ep|bi goi|bi trieu tap|cong khai|hot search|hoi dong|toa|luat su|benh vien|camera|sao ke|tin nhan|ghi am)\b/.test(reader)
+
+  if (repeatedEvidenceCount >= 8 && !hasNewStateChange) {
+    warnings.push('Bản mới nhắc lại quá nhiều vật chứng cũ nhưng chưa thấy state change mới.')
+  }
+
+  const forbiddenSceneTokens = extractLedgerKeywordTokens(args.ledger.usedScenes.slice(-4))
+  const sceneRepeatCount = forbiddenSceneTokens.filter((token) => reader.includes(token)).length
+
+  if (sceneRepeatCount >= 8 && !hasNewStateChange) {
+    warnings.push('Bản mới có dấu hiệu lặp cảnh cũ mà chưa tạo biến cố mới.')
+  }
+
+  return warnings
+}
+
+
 function buildContinueModeInstruction(params: {
   storyTitle: string
   nextChapterNumber: number
@@ -275,6 +693,11 @@ function buildContinueMemoryContext(args: {
   const description = compactText(safeString((story as any).description), 1800)
   const chapterContext = buildRecentChapterContext(contextChapters)
   const currentStateContext = buildCurrentStateContext(chapters, nextChapterNumber)
+  const continueLedger = buildContinueStoryLedger({
+    chapters,
+    nextChapterNumber,
+  })
+  const continueLedgerContext = buildContinueLedgerPromptBlock(continueLedger)
   const continueInstruction = buildContinueModeInstruction({
     storyTitle: title,
     nextChapterNumber,
@@ -284,6 +707,7 @@ function buildContinueMemoryContext(args: {
 
   return [
     continueInstruction,
+    continueLedgerContext,
     currentStateContext,
     `Tên truyện gốc: ${title}`,
     description ? `Mô tả public gốc: ${description}` : '',
@@ -301,19 +725,29 @@ function makeContinuePromptIdea(args: {
   targetChapters: number
   isFinalChapter: boolean
   recentChapterTitles: string[]
+  ledger?: ContinueStoryLedger
 }) {
-  const { storyTitle, nextChapterNumber, targetChapters, isFinalChapter, recentChapterTitles } = args
+  const { storyTitle, nextChapterNumber, targetChapters, isFinalChapter, recentChapterTitles, ledger } = args
+  const strongestPending = ledger?.pendingPromises?.[0]
+  const obligation = ledger?.nextChapterObligations?.[0]
+  const forbiddenRepeats = ledger?.forbiddenRepeats?.slice(0, 5).join(' | ')
 
   return [
     `Viết tiếp truyện "${storyTitle}" ở chương ${nextChapterNumber}/${targetChapters}.`,
     `Các chương mốc đã có: ${recentChapterTitles.filter(Boolean).join(' / ') || 'không rõ'}.`,
     `Không mở truyện mới, không đổi tên truyện, không đổi premise, không viết lại chương cũ.`,
     `Chương phải nối trực tiếp từ chương trước, có cảnh mới, đối thoại mới, hành động mới và ít nhất một bước tiến thật của vật chứng/xung đột.`,
+    strongestPending
+      ? `OPEN LOOP BẮT BUỘC PHẢI NỐI TRONG 800–1200 CHỮ ĐẦU: ${strongestPending}`
+      : `Nếu chương trước có hook/cuộc hẹn/deadline/bằng chứng vừa mở, phải nối trực tiếp trong 800–1200 chữ đầu.`,
+    obligation ? `Nghĩa vụ chương này: ${obligation}` : '',
+    forbiddenRepeats ? `Cấm lặp trong chương này: ${forbiddenRepeats}` : '',
+    `Nếu một cuộc hẹn hoặc móc chương trước bị cắt ngang, phải cho thấy ai/cái gì chặn nó và hậu quả mới tạo ra; không được lơ.`,
     `Nếu chương trước đã là phòng họp/đối chất/niêm phong/tạm ngưng, chương này phải ưu tiên một loại cảnh khác hoặc tạo hậu quả mới rõ ràng.`,
     isFinalChapter
       ? `Đây là chương cuối: phải trả payoff chính, kết thúc mâu thuẫn trung tâm rõ ràng, không cliffhanger giả.`
       : `Đây chưa phải chương cuối: phải đẩy xung đột lên một nấc và để lại hook cụ thể cho chương sau.`,
-  ].join('\n')
+  ].filter(Boolean).join('\n')
 }
 
 export async function scanIncompleteStoriesForFactory(params: ScanIncompleteStoriesParams) {
@@ -546,8 +980,28 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
           let output = ''
           let parsed: ParsedChapterOutput | null = null
           let validationErrors: string[] = []
+          const continueLedger = buildContinueStoryLedger({
+            chapters: recentChapters as unknown as ExistingChapterRow[],
+            nextChapterNumber,
+          })
+
+          if (continueLedger.pendingPromises.length) {
+            addLog(
+              `Open loop cần nối: ${compactText(continueLedger.pendingPromises[0], 180)}`,
+              'info',
+            )
+          }
 
           for (let attempt = 1; attempt <= 2; attempt += 1) {
+            const attemptStoryMemory =
+              attempt === 1
+                ? storyMemory
+                : [
+                    storyMemory,
+                    'REGENERATE CONTINUITY WARNING: Bản trước có dấu hiệu lặp hoặc lơ open loop. Viết lại chương mới, mở bằng hậu quả trực tiếp của chương trước, xử lý pending promise trong 800–1200 chữ đầu, tạo state change mới, không lặp vật chứng/cảnh cũ.',
+                    buildContinueLedgerPromptBlock(continueLedger),
+                  ].join('\n\n---\n\n')
+
             output = await generateChapter({
               provider: config.provider,
               modelKey: config.modelKey,
@@ -559,13 +1013,14 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
               targetChapters: story.targetChapters,
               isFinalChapter,
               recentChapters,
-              storyMemory,
+              storyMemory: attemptStoryMemory,
               factoryPromptIdea: makeContinuePromptIdea({
                 storyTitle,
                 nextChapterNumber,
                 targetChapters: story.targetChapters,
                 isFinalChapter,
                 recentChapterTitles: recentChapters.map((chapter) => chapter.title || ''),
+                ledger: continueLedger,
               }),
               runShortId: `${storyId}-${nextChapterNumber}`,
               storySeed: (story as any).story_dna || null,
@@ -586,13 +1041,25 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
               storyTitle,
             })
 
-            if (validation.ok) {
+            const continuityWarnings = validation.ok && parsed
+              ? validateContinueOutputAgainstLedger({
+                  readerOnly: parsed.readerOnly,
+                  ledger: continueLedger,
+                  attempt,
+                })
+              : []
+
+            if (validation.ok && !continuityWarnings.length) {
               validationErrors = []
               break
             }
 
-            validationErrors = validation.errors
-            addLog(`Validate fail lần ${attempt}: ${validation.errors.join(' | ')}`, 'warning')
+            validationErrors = [
+              ...validation.errors,
+              ...continuityWarnings,
+            ].filter(Boolean)
+
+            addLog(`Validate/continuity fail lần ${attempt}: ${validationErrors.join(' | ')}`, 'warning')
           }
 
           if (!parsed || validationErrors.length) {
