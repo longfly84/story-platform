@@ -866,6 +866,193 @@ function pickDramaLane(seed: string, avoidLibrary?: AvoidLibrary) {
 }
 
 
+
+function makeSlugToken(input: string) {
+  return normalizeForCompare(input)
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 10)
+    .join("-");
+}
+
+function pickGenreLabelParts(genreLabel: string) {
+  return genreLabel
+    .split("/")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function inferGenreSettings(parts: string[], genreLabel: string) {
+  const source = normalizeForCompare([genreLabel, ...parts].join(" | "));
+  const firstPart = parts[0] || genreLabel;
+
+  const settings: string[] = [];
+
+  const add = (...items: string[]) => {
+    items.forEach((item) => {
+      if (item && !settings.includes(item)) settings.push(item);
+    });
+  };
+
+  if (source.includes("san bay") || source.includes("chuyen bay") || source.includes("tiep vien")) {
+    add(firstPart, "phòng chờ VIP sân bay", "cửa kính nhìn ra đường băng", "khoang hạng thương gia");
+  } else if (source.includes("khach san") || source.includes("resort") || source.includes("du thuyen")) {
+    add(firstPart, "sảnh khách sạn cao cấp", "hành lang phòng VIP", "khu nghỉ dưỡng riêng tư");
+  } else if (source.includes("benh vien") || source.includes("khoa san") || source.includes("phong kham") || source.includes("xet nghiem") || source.includes("adn") || source.includes("dna")) {
+    add(firstPart, "hành lang bệnh viện tư", "phòng xét nghiệm", "khu chờ khoa sản");
+  } else if (source.includes("truong") || source.includes("phu huynh") || source.includes("hoc sinh") || source.includes("nha tre")) {
+    add(firstPart, "trường quốc tế", "phòng họp phụ huynh", "khu vui chơi trẻ em");
+  } else if (source.includes("toa an") || source.includes("luat") || source.includes("don to cao") || source.includes("canh sat")) {
+    add(firstPart, "văn phòng luật sư", "phòng hòa giải", "hành lang tòa án");
+  } else if (source.includes("co phan") || source.includes("hoi dong") || source.includes("ngan hang") || source.includes("startup") || source.includes("doanh nghiep") || source.includes("tai chinh")) {
+    add(firstPart, "phòng họp hội đồng quản trị", "ngân hàng phòng VIP", "sảnh tập đoàn");
+  } else if (source.includes("showbiz") || source.includes("hop bao") || source.includes("livestream") || source.includes("idol") || source.includes("phim truong") || source.includes("pr")) {
+    add(firstPart, "phòng họp báo", "hậu trường phát sóng", "sân khấu truyền thông");
+  } else if (source.includes("dam cuoi") || source.includes("hon le") || source.includes("le dinh hon") || source.includes("tiec gia toc")) {
+    add(firstPart, "sảnh tiệc cưới", "phòng cô dâu", "lễ đường hào môn");
+  } else if (source.includes("gia toc") || source.includes("hao mon") || source.includes("me chong") || source.includes("di chuc") || source.includes("thua ke")) {
+    add(firstPart, "phòng khách hào môn", "từ đường gia tộc", "bữa tiệc gia đình");
+  } else {
+    add(firstPart, "căn hộ cao cấp", "phòng khách đối chất", "không gian công khai có người chứng kiến");
+  }
+
+  return settings.slice(0, 5);
+}
+
+function inferGenreEvidence(parts: string[], genreLabel: string) {
+  const source = normalizeForCompare([genreLabel, ...parts].join(" | "));
+  const explicitPart = parts[1] || "";
+
+  const evidenceObjects: string[] = [];
+  const add = (...items: string[]) => {
+    items.forEach((item) => {
+      if (item && !evidenceObjects.includes(item)) evidenceObjects.push(item);
+    });
+  };
+
+  if (
+    explicitPart &&
+    !normalizeForCompare(explicitPart).match(/^(tieu tam|than the|hao mon|gia toc|me chong|nha chong|nu cuong|tra thu|ngoai tinh|showbiz|phap ly)$/)
+  ) {
+    add(explicitPart);
+  }
+
+  if (source.includes("dien thoai") || source.includes("tin nhan") || source.includes("cuoc goi") || source.includes("ghi am")) {
+    add("điện thoại cũ chứa tin nhắn và ghi âm", "lịch sử cuộc gọi lúc nửa đêm", "file âm thanh bị cắt đoạn");
+  } else if (source.includes("camera") || source.includes("hanh trinh") || source.includes("nghe len")) {
+    add("camera hành trình", "video camera hành lang", "thẻ nhớ camera bị giấu");
+  } else if (source.includes("adn") || source.includes("dna") || source.includes("xet nghiem") || source.includes("khoa san")) {
+    add("kết quả ADN lệch mã mẫu", "vòng tay trẻ sơ sinh", "phiếu xét nghiệm bị đổi tên");
+  } else if (source.includes("khach san") || source.includes("ngoai tinh") || source.includes("phong vip")) {
+    add("thẻ phòng khách sạn", "hóa đơn minibar", "phiếu gửi đồ đứng sai tên");
+  } else if (source.includes("dam cuoi") || source.includes("hon le") || source.includes("hon uoc") || source.includes("lien hon")) {
+    add("thiệp cưới bị giấu", "nhẫn cưới khắc sai tên", "hợp đồng hôn nhân có phụ lục bí mật");
+  } else if (source.includes("san bay") || source.includes("chuyen bay") || source.includes("mat tich")) {
+    add("vé máy bay một chiều", "boarding pass bị xé", "vali khóa số");
+  } else if (source.includes("co phan") || source.includes("ngan hang") || source.includes("tai chinh") || source.includes("hoi dong")) {
+    add("sao kê ngân hàng", "hợp đồng chuyển nhượng cổ phần", "biên lai giao dịch phòng VIP");
+  } else if (source.includes("di chuc") || source.includes("thua ke") || source.includes("dau gia") || source.includes("tin vat")) {
+    add("di chúc viết tay", "tín vật gia tộc", "ảnh cũ trong két sắt");
+  } else if (source.includes("email") || source.includes("usb") || source.includes("du lieu")) {
+    add("USB dữ liệu mật", "email nội bộ bị chuyển nhầm", "ổ cứng phục hồi file đã xóa");
+  } else if (source.includes("bao mau") || source.includes("tre") || source.includes("con")) {
+    add("đồ chơi có máy ghi âm", "camera phòng trẻ", "ảnh chụp món đồ của con ở sai địa điểm");
+  }
+
+  add("ảnh chụp màn hình bị xóa vội", "một vật chứng nhỏ xuất hiện sai thời điểm");
+
+  return evidenceObjects.slice(0, 6);
+}
+
+function inferGenrePressures(parts: string[], genreLabel: string) {
+  const source = normalizeForCompare([genreLabel, ...parts].join(" | "));
+  const pressures: string[] = [];
+  const add = (...items: string[]) => {
+    items.forEach((item) => {
+      if (item && !pressures.includes(item)) pressures.push(item);
+    });
+  };
+
+  if (source.includes("hot search") || source.includes("showbiz") || source.includes("livestream") || source.includes("pr") || source.includes("kol") || source.includes("idol")) {
+    add("hot search trên mạng xã hội", "buổi họp báo", "livestream bị hàng nghìn người xem");
+  } else if (source.includes("hoi dong") || source.includes("co phan") || source.includes("startup") || source.includes("doanh nghiep")) {
+    add("hội đồng quản trị công ty", "buổi họp cổ đông", "bản tin nội bộ cố ý kết tội nữ chính");
+  } else if (source.includes("truong") || source.includes("phu huynh") || source.includes("hoc sinh")) {
+    add("nhóm chat phụ huynh", "cuộc họp phụ huynh", "topic ẩn danh trong diễn đàn trường học");
+  } else if (source.includes("toa an") || source.includes("luat") || source.includes("quyen nuoi")) {
+    add("phiên hòa giải pháp lý", "đơn kiện công khai", "buổi xét duyệt quyền nuôi con");
+  } else if (source.includes("gia toc") || source.includes("me chong") || source.includes("hao mon") || source.includes("di chuc")) {
+    add("họp gia đình có người ngoài chứng kiến", "lời đồn trong giới hào môn", "cuộc bỏ phiếu trong gia tộc");
+  } else if (source.includes("dam cuoi") || source.includes("hon le") || source.includes("le dinh hon")) {
+    add("đám cưới có khách mời thượng lưu", "màn hình LED ở sảnh tiệc", "danh sách khách mời bị rò rỉ");
+  } else {
+    add("đám đông chứng kiến", "tin nhắn bị leak vào nhóm nội bộ", "một cuộc đối chất có người ngoài làm chứng");
+  }
+
+  return pressures.slice(0, 5);
+}
+
+function buildGenreLockedLaneFromLabel(genreLabel: string): StoryDramaLane {
+  const parts = pickGenreLabelParts(genreLabel);
+  const settingParts = inferGenreSettings(parts, genreLabel);
+  const evidenceParts = inferGenreEvidence(parts, genreLabel);
+  const pressureParts = inferGenrePressures(parts, genreLabel);
+  const twistPart = parts[2] || parts[1] || "một sự thật bị che giấu đảo ngược vị thế của nữ chính";
+  const normalizedKey = makeSlugToken(genreLabel) || "custom-genre";
+
+  const mainSetting = settingParts[0];
+  const mainEvidence = evidenceParts[0];
+  const mainPressure = pressureParts[0];
+
+  return {
+    key: `genre-lock-${normalizedKey}`,
+    label: `khóa thể loại đã chọn / ${genreLabel}`,
+    conflicts: [
+      `xung đột phải bám đúng thể loại "${genreLabel}", mở bằng ${mainEvidence} tại ${mainSetting}`,
+      `nữ chính bị ép vào thế yếu vì ${mainPressure}, nhưng điểm sai nằm trong ${mainEvidence}`,
+      `phản diện lợi dụng bối cảnh "${genreLabel}" để dựng chuyện, không được tự chuyển sang motif trường học/hồ sơ nếu genre không có`,
+      `bí mật trung tâm xoay quanh: ${twistPart}`,
+    ],
+    settings: settingParts,
+    evidenceObjects: evidenceParts,
+    publicPressures: pressureParts,
+    hiddenTruths: [
+      `${twistPart} không phải tai nạn mà là một phần của kế hoạch đã chuẩn bị trước`,
+      `người tưởng là nạn nhân trong "${genreLabel}" thật ra đang che một bí mật lớn hơn`,
+      `vật chứng ${mainEvidence} chỉ là lớp đầu, sự thật nằm ở người đã cố tình để nó xuất hiện sai thời điểm`,
+      `người im lặng nhất trong bối cảnh ${mainSetting} mới là người biết toàn bộ đường đi của chứng cứ`,
+    ],
+    villainAttacks: [
+      `phản diện dùng ${mainPressure} để ép nữ chính nhận lỗi ngay trước khi cô kịp kiểm tra ${mainEvidence}`,
+      `phản diện cố biến ${mainEvidence} thành bằng chứng chống lại nữ chính`,
+      `phản diện kéo một người thân/nhân chứng vào ${mainSetting} để làm nữ chính mất thế chủ động`,
+      `phản diện tung tin sai lệch về "${genreLabel}" để đám đông nhìn nữ chính như kẻ có lỗi`,
+    ],
+    heroineCounters: [
+      `nữ chính không tranh cãi dài dòng mà kiểm tra điểm lệch thời gian trong ${mainEvidence}`,
+      `nữ chính giữ bình tĩnh, để phản diện nói hết rồi dùng ${mainEvidence} đảo nghĩa lời buộc tội`,
+      `nữ chính tìm người duy nhất có mặt tại ${mainSetting} trước khi ${mainPressure} nổ ra`,
+      `nữ chính biến chính sân khấu ${mainPressure} thành nơi phản diện tự lộ sơ hở`,
+    ],
+    emotionalStakes: [
+      `nữ chính bị người quan trọng nghi ngờ vì câu chuyện trong "${genreLabel}" bị bóp méo`,
+      `một người yếu thế bị kéo vào ${mainSetting} khiến nữ chính không thể chỉ nghĩ cho mình`,
+      `nữ chính phải nuốt một câu nhục trước ${mainPressure} để giữ lại cơ hội phản công`,
+      `cú đau thật không nằm ở ${mainEvidence}, mà ở việc người thân từng biết chuyện nhưng im lặng`,
+    ],
+    dopamineHooks: [
+      `một chi tiết nhỏ trên ${mainEvidence} chứng minh phản diện không thể vô can`,
+      `người tưởng đứng về phe phản diện bất ngờ xác nhận thời điểm thật tại ${mainSetting}`,
+      `đúng lúc ${mainPressure} đạt đỉnh, nữ chính tung ra phần chứng cứ khiến mọi người đổi sắc`,
+      `câu nói lỡ miệng của phản diện khớp với ${mainEvidence} và làm lộ kế hoạch`,
+    ],
+  };
+}
+
+function getLaneGenreLockBonus(lane: StoryDramaLane) {
+  return lane.key.startsWith("genre-lock-") ? -0.45 : 0;
+}
+
 function cleanTitleToken(input: string) {
   return input
     .replace(/^một\s+/i, "")
@@ -943,8 +1130,10 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
 
   variants.push(
     `${token} Sai Thời Điểm`,
-    `${token} Bị Đánh Dấu`,
+    `${token} Không Thuộc Về Người Đó`,
     `Dấu Vết Từ ${token}`,
+    `${token} Xuất Hiện Quá Muộn`,
+    `${token} Trong Tay Người Không Nên Có`,
   );
 
   return uniqueStringsForCover(variants, 10);
@@ -1670,7 +1859,13 @@ export function buildMockStorySeed(params: {
   let bestCandidate: ReturnType<typeof buildSeedCandidate> | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
 
-  const laneOrder = FACTORY_DRAMA_LANES.map((lane, index) => {
+  const genreLockedLane = buildGenreLockedLaneFromLabel(params.genreLabel);
+  const lanePool = [
+    genreLockedLane,
+    ...FACTORY_DRAMA_LANES.filter((lane) => lane.key !== genreLockedLane.key),
+  ];
+
+  const laneOrder = lanePool.map((lane, index) => {
     const laneText = [
       lane.label,
       ...lane.conflicts,
@@ -1685,9 +1880,12 @@ export function buildMockStorySeed(params: {
       score:
         scoreOverlapWithAvoidLibrary(laneText, params.avoidLibrary) * 2 +
         countProceduralTerms(laneText) / 35 +
+        getLaneGenreLockBonus(lane) +
         Number(
           pickSeedItem(
-            ["0.00", "0.01", "0.02", "0.03", "0.04", "0.05"],
+            lane.key.startsWith("genre-lock-")
+              ? ["0.00", "0.00", "0.01"]
+              : ["0.00", "0.01", "0.02", "0.03", "0.04", "0.05"],
             params.seed,
             `lane-order-${lane.key}-${index}`,
           ),
@@ -1902,7 +2100,10 @@ QUY TẮC BẮT BUỘC THEO STORY SEED:
 - Chương 1 phải mở theo opening scene trên.
 - Biến cố chính phải dùng inciting incident trên.
 - Vật chứng quan trọng phải là evidence object trên.
+- GENRE LOCK: Truyện phải bám đúng genre đã chọn trong Genre blend. Nếu genre nói sân bay/khách sạn/hôn lễ/tài chính/showbiz/bệnh viện thì không được tự kéo về trường học, hồ sơ nhập học, biên bản họp phụ huynh.
 - Không tự đổi về mô típ đã có trong kho truyện nếu seed không yêu cầu.
+- Cấm lặp title pattern gần đây kiểu “Hồ Sơ...”, “Biên Bản...”, “...Bị Đánh Dấu”, “...Bị Thay Trang” trừ khi chính seed yêu cầu vật chứng đó.
+- Vật chứng phải bám genre đã chọn: khách sạn dùng thẻ phòng/camera/hóa đơn; sân bay dùng vé máy bay/vali/boarding pass; hôn lễ dùng thiệp cưới/nhẫn/hợp đồng; tài chính dùng sao kê/cổ phần; bệnh viện dùng ADN/bệnh án/vòng tay trẻ sơ sinh; showbiz dùng clip/hợp đồng đen/hot search.
 - Không dùng lại khung cảnh, vật chứng, bối cảnh, bí mật hoặc áp lực xã hội đã xuất hiện nhiều trong danh sách motif cần tránh.
 - Truyện phải khác rõ rệt ở bối cảnh, vật chứng, áp lực và bí mật.
 - Không để nhiều chương liên tiếp dùng cùng một nhịp: đến một nơi → bị chặn bằng giấy tờ/pháp lý → luật sư/pháp vụ xuất hiện → nữ chính nói sẽ kiện/giám định.
