@@ -62,7 +62,7 @@ const defaultConfig: AIFactoryConfig = {
   maxTargetChapters: 20,
   delayMs: 2000,
   generateCover: false,
-  coverStyle: 'auto',
+  coverArtStyle: 'auto',
   autoCompleteByTarget: false,
   storyStatus: 'draft',
   chapterStatus: 'draft',
@@ -70,6 +70,24 @@ const defaultConfig: AIFactoryConfig = {
   chapterMinChars: 3500,
   chapterMaxChars: 4500,
   cliffhangerLabel: 'Mặc định — AI tự chọn theo mạch truyện',
+}
+
+function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
+  switch (style) {
+    case 'anime-cinematic':
+      return 'anime cinematic dramatic novel cover'
+    case 'modern-manhwa':
+      return 'modern manhwa romance drama cover'
+    case 'manga-drama':
+      return 'dramatic manga cover, black and white ink style'
+    case 'semi-realistic':
+      return 'semi realistic premium webnovel cover'
+    case 'movie-poster':
+      return 'cinematic movie poster style drama cover'
+    case 'auto':
+    default:
+      return 'premium asian webnovel cover, style chosen automatically'
+  }
 }
 
 const STORY_SEED_MAX_ATTEMPTS = 10
@@ -788,9 +806,10 @@ Yêu cầu:
               }
             : null,
         },
-        coverStyle: config.coverStyle,
-        cover_style: config.coverStyle,
-        styleLabel: 'cinematic multi-character asian webnovel story poster with story-grounded evidence and premium typography',
+        cover_art_style: config.coverArtStyle,
+        visual_style: config.coverArtStyle,
+        style: config.coverArtStyle,
+        styleLabel: getCoverArtStyleLabel(config.coverArtStyle),
         aspectRatio: '2:3',
       }),
     })

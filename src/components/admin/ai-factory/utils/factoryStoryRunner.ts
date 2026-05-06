@@ -25,6 +25,24 @@ import { buildFactoryPublicStoryDescription } from './factoryPublicDescription'
 
 type AddLog = (message: string, type?: FactoryLog['type']) => void
 
+function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
+  switch (style) {
+    case 'anime-cinematic':
+      return 'anime cinematic dramatic novel cover'
+    case 'modern-manhwa':
+      return 'modern manhwa romance drama cover'
+    case 'manga-drama':
+      return 'dramatic manga cover, black and white ink style'
+    case 'semi-realistic':
+      return 'semi realistic premium webnovel cover'
+    case 'movie-poster':
+      return 'cinematic movie poster style drama cover'
+    case 'auto':
+    default:
+      return 'premium asian webnovel cover, style chosen automatically'
+  }
+}
+
 type SupabaseLike = {
   from: (table: string) => any
 }
@@ -333,9 +351,10 @@ export async function generateAndAttachFactoryCover(params: {
         tags: [params.genreLabel, params.heroineLabel].filter(Boolean),
         story_dna: storyDna,
       },
-      coverStyle: params.config.coverStyle,
-      cover_style: params.config.coverStyle,
-      styleLabel: 'cinematic multi-character asian webnovel story poster with story-grounded evidence and premium typography',
+      cover_art_style: params.config.coverArtStyle,
+      visual_style: params.config.coverArtStyle,
+      style: params.config.coverArtStyle,
+      styleLabel: getCoverArtStyleLabel(params.config.coverArtStyle),
       aspectRatio: '2:3',
     }),
   })

@@ -5,10 +5,21 @@ export function extractStoryInput(body: JsonRecord): StoryInput {
   const source = body.story || body.storyData || body.payload || body
   const storyDna = source.story_dna ?? source.storyDna ?? body.story_dna ?? body.storyDna ?? null
 
+  const coverArtStyle = safeString(
+    source.cover_art_style ||
+      source.coverArtStyle ||
+      body.cover_art_style ||
+      body.coverArtStyle ||
+      source.visual_style ||
+      body.visual_style ||
+      source.style ||
+      body.style,
+  )
+
   return {
     id: safeString(source.id || body.storyId || body.id),
     title: safeString(source.title || body.title),
-    summary: safeString(source.summary || body.summary),
+    summary: safeString(source.summary || body.summary || body.storySummary),
     description: safeString(source.description || source.desc || body.description || body.desc),
     genre: safeString(source.genre || body.genre),
     genreLabel: safeString(source.genreLabel || body.genreLabel),
@@ -18,9 +29,13 @@ export function extractStoryInput(body: JsonRecord): StoryInput {
     story_dna: storyDna,
     storyDna,
     author: safeString(source.author || body.author),
-    style: safeString(source.style || source.styleLabel || body.style || body.styleLabel),
-    visual_style: safeString(source.visual_style || source.visualStyle || source.styleLabel || body.visual_style || body.visualStyle || body.styleLabel),
-    cover_style: safeString(source.cover_style || source.coverStyle || source.imageStyle || body.cover_style || body.coverStyle || body.imageStyle),
+
+    // Phong cách vẽ user chọn. Bố cục/cảnh ảnh sẽ do coverPrompt.ts tự suy ra từ nội dung truyện.
+    style: coverArtStyle,
+    visual_style: coverArtStyle,
+
+    // Giữ để backward compatible nếu project cũ còn truyền cover_style.
+    cover_style: safeString(source.cover_style || body.cover_style),
   }
 }
 
