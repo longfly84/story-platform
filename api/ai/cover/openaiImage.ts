@@ -17,6 +17,54 @@ function normalizeImageQuality(value: string) {
 
 const OPENAI_IMAGE_QUALITY = normalizeImageQuality(process.env.OPENAI_IMAGE_QUALITY || 'medium')
 
+function safeString(value: unknown) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return 'Unknown error'
+  }
+}
+
+function isModerationBlockedError(error: unknown) {
+  const message = getErrorMessage(error).toLowerCase()
+  const detail = String((error as any)?.detail ? JSON.stringify((error as any).detail) : '').toLowerCase()
+
+  return (
+    message.includes('moderation') ||
+    message.includes('blocked') ||
+    message.includes('violence') ||
+    message.includes('safety') ||
+    detail.includes('moderation') ||
+    detail.includes('flagged') ||
+    detail.includes('violence')
+  )
+}
+
+function buildEmergencyFallbackPrompt() {
+  return `
+Vertical 2:3 premium modern East Asian web-novel cover illustration.
+
+Scene:
+A resilient adult East Asian woman stands in a modern city night environment, luxury hotel corridor or glass office background, rain on window, reflective floor, cold blue and warm amber cinematic lighting. Blurred silhouettes far behind her suggest betrayal, secrets, pressure, and hidden truth.
+
+Style:
+Polished anime / manhwa inspired cinematic cover art, premium drama poster, elegant composition, medium shot or 3/4 body, background and atmosphere clearly visible.
+
+Strict rules:
+No text, no title, no letters, no typography, no logo, no watermark.
+No blood, no weapons, no knife, no gun, no corpse, no dead body, no wounds, no gore, no explicit violence, no self-harm.
+Represent conflict only through symbolic emotional tension, shadows, reflections, distance, documents, phones, and lighting.
+Safe public social media cover art.
+`.trim()
+}
+
 async function moderatePromptOrThrow(prompt: string) {
   if (!OPENAI_API_KEY) {
     throw new Error('Missing OPENAI_API_KEY')
@@ -78,7 +126,7 @@ async function moderatePromptOrThrow(prompt: string) {
     const error = new Error(
       `Cover prompt blocked by moderation${
         flaggedKeys.length ? `: ${flaggedKeys.join(', ')}` : ''
-      }`
+      }`,
     ) as Error & {
       detail?: unknown
       categories?: Record<string, boolean>
@@ -97,7 +145,13 @@ async function requestOpenAIImage(prompt: string) {
     throw new Error('Missing OPENAI_API_KEY')
   }
 
-  await moderatePromptOrThrow(prompt)
+  const safePrompt = safeString(prompt)
+
+  if (!safePrompt) {
+    throw new Error('Missing cover prompt')
+  }
+
+  await moderatePromptOrThrow(safePrompt)
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -107,7 +161,7 @@ async function requestOpenAIImage(prompt: string) {
     },
     body: JSON.stringify({
       model: OPENAI_IMAGE_MODEL,
-      prompt,
+      prompt: safePrompt,
       size: OPENAI_IMAGE_SIZE,
       quality: OPENAI_IMAGE_QUALITY,
     }),
@@ -160,23 +214,64 @@ async function requestOpenAIImage(prompt: string) {
 }
 
 export async function generateCoverImage(primaryPrompt: string, fallbackPrompt: string) {
+  const safePrimaryPrompt = safeString(primaryPrompt)
+  const safeFallbackPrompt = safeString(fallbackPrompt) || buildEmergencyFallbackPrompt()
+
   try {
-    const result = await requestOpenAIImage(primaryPrompt)
+    const result = await requestOpenAIImage(safePrimaryPrompt)
+
     return {
       ...result,
-      promptUsed: primaryPrompt,
+      promptUsed: safePrimaryPrompt,
       fallbackUsed: false,
       primaryError: null as string | null,
+      fallbackError: null as string | null,
     }
   } catch (primaryError: any) {
-    console.error('[generate-cover] primary prompt failed:', primaryError?.message, primaryError?.detail || '')
+    console.error(
+      '[generate-cover] primary prompt failed:',
+      primaryError?.message,
+      primaryError?.detail || '',
+    )
 
-    const result = await requestOpenAIImage(fallbackPrompt)
-    return {
-      ...result,
-      promptUsed: fallbackPrompt,
-      fallbackUsed: true,
-      primaryError: primaryError?.message || 'Primary prompt failed',
+    try {
+      const result = await requestOpenAIImage(safeFallbackPrompt)
+
+      return {
+        ...result,
+        promptUsed: safeFallbackPrompt,
+        fallbackUsed: true,
+        emergencyFallbackUsed: false,
+        primaryError: primaryError?.message || 'Primary prompt failed',
+        fallbackError: null as string | null,
+      }
+    } catch (fallbackError: any) {
+      console.error(
+        '[generate-cover] fallback prompt failed:',
+        fallbackError?.message,
+        fallbackError?.detail || '',
+      )
+
+      const shouldTryEmergency =
+        safeFallbackPrompt !== buildEmergencyFallbackPrompt() &&
+        isModerationBlockedError(fallbackError)
+
+      if (!shouldTryEmergency) {
+        throw fallbackError
+      }
+
+      const emergencyPrompt = buildEmergencyFallbackPrompt()
+
+      const result = await requestOpenAIImage(emergencyPrompt)
+
+      return {
+        ...result,
+        promptUsed: emergencyPrompt,
+        fallbackUsed: true,
+        emergencyFallbackUsed: true,
+        primaryError: primaryError?.message || 'Primary prompt failed',
+        fallbackError: fallbackError?.message || 'Fallback prompt failed',
+      }
     }
   }
 }

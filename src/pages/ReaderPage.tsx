@@ -304,25 +304,49 @@ export default function ReaderPage() {
     return splitReaderContent(chapterData?.content || '')
   }, [chapterData?.content])
 
-  const currentChapterIndex = useMemo(() => {
-    if (!chapterData || chapters.length === 0) return -1
+  const sortedChapters = useMemo(() => {
+  return [...chapters].sort((a, b) => {
+    const aNumber = Number(a.number || 0)
+    const bNumber = Number(b.number || 0)
 
-    return chapters.findIndex((item) => {
-      if (chapterData.id && item.id === chapterData.id) return true
-      if (chapterData.slug && item.slug === chapterData.slug) return true
-      return String(item.number || '') === String(chapterData.number || '')
-    })
-  }, [chapterData, chapters])
+    return aNumber - bNumber
+  })
+}, [chapters])
 
-  const prevChapter = useMemo(() => {
-    if (currentChapterIndex <= 0) return null
-    return chapters[currentChapterIndex - 1] || null
-  }, [chapters, currentChapterIndex])
+const currentChapterIndex = useMemo(() => {
+  if (!chapterData || sortedChapters.length === 0) return -1
 
-  const nextChapter = useMemo(() => {
-    if (currentChapterIndex < 0) return null
-    return chapters[currentChapterIndex + 1] || null
-  }, [chapters, currentChapterIndex])
+  const currentId = String(chapterData.id || '')
+  const currentSlug = String(chapterData.slug || '')
+  const currentNumber = String(chapterData.number || '')
+  const routeChapter = String(chapter || '')
+
+  return sortedChapters.findIndex((item) => {
+    const itemId = String(item.id || '')
+    const itemSlug = String(item.slug || '')
+    const itemNumber = String(item.number || '')
+
+    return (
+      (!!currentId && itemId === currentId) ||
+      (!!currentSlug && itemSlug === currentSlug) ||
+      (!!currentNumber && itemNumber === currentNumber) ||
+      (!!routeChapter && itemSlug === routeChapter) ||
+      (!!routeChapter && itemNumber === routeChapter)
+    )
+  })
+}, [chapter, chapterData, sortedChapters])
+
+const prevChapter = useMemo(() => {
+  if (currentChapterIndex <= 0) return null
+
+  return sortedChapters[currentChapterIndex - 1] || null
+}, [currentChapterIndex, sortedChapters])
+
+const nextChapter = useMemo(() => {
+  if (currentChapterIndex < 0) return null
+
+  return sortedChapters[currentChapterIndex + 1] || null
+}, [currentChapterIndex, sortedChapters])
 
   const { trackNextChapterClick } = useChapterAnalytics({
     storyId: story?.id,

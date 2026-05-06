@@ -57,7 +57,9 @@ const DEFAULT_TAGLINE =
   'Có những bí mật được giấu đi không phải để bảo vệ, mà để che đậy một lời nói dối.'
 
 function asRecord(value: unknown): JsonRecord {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as JsonRecord) : {}
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : {}
 }
 
 function safeString(value: unknown, fallback = ''): string {
@@ -84,6 +86,53 @@ function compactText(value: string, maxLength: number): string {
   const normalized = value.replace(/\s+/g, ' ').trim()
   if (normalized.length <= maxLength) return normalized
   return `${normalized.slice(0, maxLength).trim()}...`
+}
+
+function sanitizeCoverSafetyText(value: string): string {
+  let text = safeString(value)
+
+  const replacements: Array<[RegExp, string]> = [
+    [/đẫm máu/gi, 'căng thẳng cao độ'],
+    [/vũng máu/gi, 'bầu không khí u ám'],
+    [/máu/gi, 'căng thẳng'],
+    [/xác chết/gi, 'bí mật đen tối'],
+    [/thi thể/gi, 'bí mật đen tối'],
+    [/giết người/gi, 'tội ác được che giấu'],
+    [/giết/gi, 'hủy hoại'],
+    [/sát hại/gi, 'hãm hại'],
+    [/tự sát/gi, 'tuyệt vọng'],
+    [/tự tử/gi, 'tuyệt vọng'],
+    [/dao/gi, 'bóng tối'],
+    [/súng/gi, 'đe dọa'],
+    [/đâm/gi, 'tấn công tinh thần'],
+    [/chém/gi, 'xung đột dữ dội'],
+    [/bạo hành/gi, 'áp bức'],
+    [/tra tấn/gi, 'áp lực tàn nhẫn'],
+    [/vết thương/gi, 'tổn thương tinh thần'],
+    [/tai nạn/gi, 'biến cố'],
+
+    [/\bblood\b/gi, 'dark tension'],
+    [/\bbloody\b/gi, 'intense tension'],
+    [/\bcorpse\b/gi, 'hidden secret'],
+    [/\bdead body\b/gi, 'hidden secret'],
+    [/\bkill\b/gi, 'destroy'],
+    [/\bmurder\b/gi, 'crime mystery'],
+    [/\bsuicide\b/gi, 'despair'],
+    [/\bknife\b/gi, 'shadow'],
+    [/\bgun\b/gi, 'threat'],
+    [/\bweapon\b/gi, 'shadow'],
+    [/\binjury\b/gi, 'emotional wound'],
+    [/\bwound\b/gi, 'emotional wound'],
+    [/\bgore\b/gi, 'dark drama'],
+    [/\bstabbing\b/gi, 'emotional confrontation'],
+    [/\bshooting\b/gi, 'dangerous pressure'],
+  ]
+
+  for (const [pattern, replacement] of replacements) {
+    text = text.replace(pattern, replacement)
+  }
+
+  return text.replace(/\s+/g, ' ').trim()
 }
 
 function getStoryDna(record: JsonRecord): JsonRecord {
@@ -488,6 +537,16 @@ function normalizePromptData(input: unknown): CoverPromptData {
 }
 
 function buildStoryGroundingBlock(data: CoverPromptData): string {
+  const safeGenre = sanitizeCoverSafetyText(data.genre)
+  const safeLogline = sanitizeCoverSafetyText(data.logline)
+  const safeHeroine = sanitizeCoverSafetyText(data.heroine)
+  const safeAntagonist = sanitizeCoverSafetyText(data.antagonist)
+  const safeRelationshipCore = sanitizeCoverSafetyText(data.relationshipCore)
+  const safeKeyEvidence = sanitizeCoverSafetyText(data.keyEvidence)
+  const safeSetting = sanitizeCoverSafetyText(data.setting)
+  const safeEmotionalCore = sanitizeCoverSafetyText(data.emotionalCore)
+  const safeMoodKeywords = sanitizeCoverSafetyText(data.moodKeywords)
+
   return `
 STORY GROUNDING — highest priority:
 Create a vertical illustrated cover art image for a Vietnamese web novel, aspect ratio 2:3, premium commercial quality.
@@ -502,19 +561,19 @@ The image must NOT be a generic beauty portrait.
 The image must visually tell the core story through characters, setting, facial expressions, conflict, and evidence objects.
 
 Story information:
-- Genre: ${data.genre}
-- Short logline: ${data.logline}
-- Female lead / heroine: ${data.heroine}
-- Antagonist or opposing force: ${data.antagonist}
-- Central relationship / conflict: ${data.relationshipCore}
-- Most important evidence / visual anchor: ${data.keyEvidence}
-- Main setting: ${data.setting}
-- Emotional core scene: ${data.emotionalCore}
-- Mood keywords: ${data.moodKeywords}
+- Genre: ${safeGenre}
+- Short logline: ${safeLogline}
+- Female lead / heroine: ${safeHeroine}
+- Antagonist or opposing force: ${safeAntagonist}
+- Central relationship / conflict: ${safeRelationshipCore}
+- Most important evidence / visual anchor: ${safeKeyEvidence}
+- Main setting: ${safeSetting}
+- Emotional core scene: ${safeEmotionalCore}
+- Mood keywords: ${safeMoodKeywords}
 
 Mandatory visual rules:
 - The cover must have one clear central female lead.
-- The most important evidence / visual anchor must be visible in the image: ${data.keyEvidence}
+- The most important evidence / visual anchor must be visible in the image in a safe symbolic way: ${safeKeyEvidence}
 - The image must show tension, secrecy, confrontation, betrayal, or a truth about to be revealed.
 - The scene must feel specific to this story, not a generic fashion poster.
 - Use supporting characters, props, documents, phones, screens, photos, or reflections to communicate the plot.
@@ -729,24 +788,60 @@ Avoid:
 - Do not create oversized close-up character portraits that occupy almost the entire frame.
 - Do not crop so tightly that the background, evidence, and supporting characters disappear.
 - Do not generate non-Asian-looking lead characters for this project unless explicitly requested.
+- Do not depict blood, blood stains, wounds, corpses, dead bodies, gore, knives, guns, weapons, suicide, self-harm, murder, stabbing, shooting, or any explicit physical violence.
+- If the story contains violent or dangerous events, represent them only through symbolic tension, shadows, facial expressions, distance, lighting, documents, phones, reflections, and atmosphere.
+- Keep the cover safe for public social media posting.
 `.trim()
 }
 
 function buildFallbackPrompt(data: CoverPromptData): string {
-  return `Vertical 2:3 premium modern Chinese drama web-novel illustrated cover art. Central adult East Asian female lead with modern Chinese appearance, emotional confrontation, visible story evidence: ${data.keyEvidence}. Main setting: ${data.setting}. Mood: ${data.moodKeywords}. No text, no title, no words, no letters, no logo, no watermark. Illustration only. Medium shot or 3/4 body composition. The character must not fill the whole frame. Show background, supporting characters, and context clearly.`
+  const safeKeyEvidence = sanitizeCoverSafetyText(data.keyEvidence)
+  const safeSetting = sanitizeCoverSafetyText(data.setting)
+  const safeMoodKeywords = sanitizeCoverSafetyText(data.moodKeywords)
+
+  return `Vertical 2:3 premium modern Chinese drama web-novel illustrated cover art. Central adult East Asian female lead with modern Chinese appearance, emotional confrontation, visible story evidence shown in a safe symbolic way: ${safeKeyEvidence}. Main setting: ${safeSetting}. Mood: ${safeMoodKeywords}. No text, no title, no words, no letters, no logo, no watermark. Illustration only. Medium shot or 3/4 body composition. The character must not fill the whole frame. Show background, supporting characters, and context clearly. No blood, no weapons, no knife, no gun, no corpse, no dead body, no wounds, no gore, no explicit violence, no self-harm. If the story has dangerous events, show only symbolic emotional tension through lighting, shadows, reflections, documents, phones, and atmosphere.`
+}
+
+export function buildSafeFallbackCoverPrompt(input: unknown): string {
+  const data = normalizePromptData(input)
+
+  return buildFallbackPrompt({
+    ...data,
+    genre: sanitizeCoverSafetyText(data.genre),
+    logline: sanitizeCoverSafetyText(data.logline),
+    heroine: sanitizeCoverSafetyText(data.heroine),
+    antagonist: sanitizeCoverSafetyText(data.antagonist),
+    relationshipCore: sanitizeCoverSafetyText(data.relationshipCore),
+    keyEvidence: sanitizeCoverSafetyText(data.keyEvidence),
+    setting: sanitizeCoverSafetyText(data.setting),
+    emotionalCore: sanitizeCoverSafetyText(data.emotionalCore),
+    moodKeywords: sanitizeCoverSafetyText(data.moodKeywords),
+    tagline: sanitizeCoverSafetyText(data.tagline),
+  })
 }
 
 export function buildCoverPrompt(input: unknown): CoverPromptResult {
   const data = normalizePromptData(input)
 
+  const safeGenre = sanitizeCoverSafetyText(data.genre)
+  const safeLogline = sanitizeCoverSafetyText(data.logline)
+  const safeHeroine = sanitizeCoverSafetyText(data.heroine)
+  const safeAntagonist = sanitizeCoverSafetyText(data.antagonist)
+  const safeRelationshipCore = sanitizeCoverSafetyText(data.relationshipCore)
+  const safeKeyEvidence = sanitizeCoverSafetyText(data.keyEvidence)
+  const safeSetting = sanitizeCoverSafetyText(data.setting)
+  const safeEmotionalCore = sanitizeCoverSafetyText(data.emotionalCore)
+  const safeMoodKeywords = sanitizeCoverSafetyText(data.moodKeywords)
+  const safeTagline = sanitizeCoverSafetyText(data.tagline)
+
   const prompt = [
-  buildStoryGroundingBlock(data),
-  buildGeneralQualityBlock(),
-  buildArtStyleBlock(data.coverArtStyle),
-  buildNoTextEthnicityAndFramingBlock(),
-  buildSceneTemplateBlock(data.sceneTemplate),
-  buildNegativeBlock(),
-  `
+    buildStoryGroundingBlock(data),
+    buildGeneralQualityBlock(),
+    buildArtStyleBlock(data.coverArtStyle),
+    buildNoTextEthnicityAndFramingBlock(),
+    buildSceneTemplateBlock(data.sceneTemplate),
+    buildNegativeBlock(),
+    `
 Final instruction:
 Create one polished final vertical 2:3 illustrated cover art image.
 This must be a text-free illustration.
@@ -755,27 +850,29 @@ Story content, evidence, setting, and emotional conflict are more important than
 The characters should read visually as modern Chinese / East Asian drama characters.
 Do not make the main character too large. Show the environment, supporting cast, and evidence clearly.
 If any text appears, remove it completely.
+If the source story contains violent or dangerous events, do not depict them literally. Convert them into symbolic emotional tension only.
+No blood, no weapons, no wounds, no corpse, no dead body, no gore, no explicit violence, no self-harm.
 `.trim(),
-].join('\n\n')
+  ].join('\n\n')
 
   return {
     prompt,
-    fallbackPrompt: buildFallbackPrompt(data),
+    fallbackPrompt: buildSafeFallbackCoverPrompt(data),
     coverConcept: {
-      version: 'story-grounded-cover-art-style-v3',
+      version: 'story-grounded-cover-art-style-v3-safe',
       coverArtStyle: data.coverArtStyle,
       sceneTemplate: data.sceneTemplate,
       title: data.title,
-      genre: data.genre,
-      logline: data.logline,
-      heroine: data.heroine,
-      antagonist: data.antagonist,
-      relationshipCore: data.relationshipCore,
-      keyEvidence: data.keyEvidence,
-      setting: data.setting,
-      emotionalCore: data.emotionalCore,
-      moodKeywords: data.moodKeywords,
-      tagline: data.tagline,
+      genre: safeGenre,
+      logline: safeLogline,
+      heroine: safeHeroine,
+      antagonist: safeAntagonist,
+      relationshipCore: safeRelationshipCore,
+      keyEvidence: safeKeyEvidence,
+      setting: safeSetting,
+      emotionalCore: safeEmotionalCore,
+      moodKeywords: safeMoodKeywords,
+      tagline: safeTagline,
     },
   }
 }
