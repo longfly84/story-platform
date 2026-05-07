@@ -763,6 +763,11 @@ function buildGenreEvidenceAtoms(atoms: string[]) {
     else if (atomHasAny(atom, ["băng gạc"])) evidence.add("băng gạc có dấu vết lạ và thời điểm sử dụng không khớp");
     else if (atomHasAny(atom, ["thư cũ"])) evidence.add("thư cũ mở khóa bí mật bị giấu trong lớp bìa kép");
     else if (atomHasAny(atom, ["gấu bông"])) evidence.add("con gấu bông chứa vật nhỏ chứng minh đứa trẻ từng ở nơi bị phủ nhận");
+    else if (atomHasAny(atom, ["quản lý khách sạn", "sổ quản lý", "sổ ra vào", "khách sạn"])) {
+      evidence.add("sổ quản lý khách sạn có dòng ra vào bị ghi sai giờ");
+      evidence.add("phiếu bàn giao phòng VIP có chữ ký lệch nét");
+      evidence.add("chuông cửa phòng VIP phát ra hai nốt không thuộc hệ thống khách sạn");
+    }
     else if (atomHasAny(atom, ["camera", "ảnh", "video", "khung hình"])) evidence.add(`${atom} có chi tiết nền bị bỏ sót, không chỉ là camera/log chung`);
     else if (atomHasAny(atom, ["adn", "xét nghiệm"])) evidence.add("kết quả xét nghiệm có mã mẫu lệch với người được công bố");
     else if (atomHasAny(atom, ["di chúc", "thừa kế"])) evidence.add("trang di chúc hoặc tín vật thừa kế có dấu đổi trang");
@@ -773,7 +778,10 @@ function buildGenreEvidenceAtoms(atoms: string[]) {
     }
     else if (atomHasAny(atom, ["điện thoại", "tin nhắn", "ghi âm", "usb"])) evidence.add(`${atom} chứa mảnh bằng chứng bị hiểu sai cho tới khi đối chiếu với bối cảnh`);
     else if (atomHasAny(atom, ["vé", "sân bay", "chuyến bay"])) evidence.add("vé hoặc lịch trình di chuyển có thời điểm phá vỡ lời khai");
-    else evidence.add(`${atom} được biến thành vật chứng riêng của thể loại này, không dùng như giấy tờ pháp lý chung`);
+    else {
+      evidence.add(`một dấu vết đời sống gắn với ${atom} khiến lời buộc tội tự mâu thuẫn`);
+      evidence.add(`một vật nhỏ liên quan tới ${atom} bị đặt sai chỗ và làm lộ người sắp bẫy`);
+    }
   }
 
   return Array.from(evidence).slice(0, 8);
@@ -1031,8 +1039,55 @@ function isGenericAbstractTitle(title: string) {
   return !hasConcreteTitleAnchor(title);
 }
 
+const TECHNICAL_TITLE_PATTERNS = [
+  "duoc bien thanh",
+  "cua the loai nay",
+  "khong dung nhu",
+  "giay to phap ly chung",
+  "doi nghia",
+  "genre",
+  "genre lock",
+  "seed",
+  "motif",
+  "fingerprint",
+  "pipeline",
+  "story dna",
+  "exact evidence",
+  "exact attack",
+  "exact counter",
+  "quan ly khach san duoc",
+];
+
+function isTechnicalSeedTitle(title: string) {
+  const normalized = normalizeForCompare(title);
+
+  if (!normalized) return true;
+  if (title.length > 42) return true;
+  if (/[\/|]/.test(title)) return true;
+
+  return TECHNICAL_TITLE_PATTERNS.some((pattern) => normalized.includes(pattern));
+}
+
+function sanitizeTitleCandidate(title: string) {
+  return title
+    .replace(/\s+/g, " ")
+    .replace(/\s*[\/|]\s*/g, " ")
+    .replace(/\s+Đổi Nghĩa$/i, "")
+    .replace(/\s+doi nghia$/i, "")
+    .trim();
+}
+
+function isHumanStoryTitle(title: string, avoidTitles?: string[]) {
+  const clean = sanitizeTitleCandidate(title);
+  if (!clean) return false;
+  if (isTechnicalSeedTitle(clean)) return false;
+  if (clean.split(/\s+/).length > 8) return false;
+  return isTitleAllowedByMemory(clean, avoidTitles);
+}
+
 function isTitleAllowedByMemory(title: string, avoidTitles?: string[]) {
   if (isGenericAbstractTitle(title)) return false;
+  if (isTechnicalSeedTitle(title)) return false;
 
   const normalized = normalizeForCompare(title);
   const signature = getTitleStructureSignature(title);
@@ -1125,6 +1180,9 @@ function pickDramaLane(seed: string, avoidLibrary?: AvoidLibrary) {
 
 function cleanTitleToken(input: string) {
   return input
+    .replace(/được biến thành.*$/i, "")
+    .replace(/không dùng như.*$/i, "")
+    .replace(/của thể loại này.*$/i, "")
     .replace(/^một\s+/i, "")
     .replace(/^một chiếc\s+/i, "Chiếc ")
     .replace(/^một đoạn\s+/i, "Đoạn ")
@@ -1152,6 +1210,15 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   const token = titleCaseFirst(cleanTitleToken(evidenceObject));
 
   const variants: string[] = [];
+
+  if (normalized.includes("quan ly khach san") || normalized.includes("so quan ly") || normalized.includes("so ra vao")) {
+    variants.push(
+      "Sổ Ra Vào Phòng 307",
+      "Dòng Giờ Trong Sổ Khách Sạn",
+      "Chữ Ký Lệch Trong Sổ Quản Lý",
+      "Hai Nốt Chuông Phòng 307",
+    );
+  }
 
   if (normalized.includes("tieng chuong")) {
     variants.push(
@@ -1198,19 +1265,26 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   if (normalized.includes("polaroid")) variants.push("Tấm Polaroid Lệch Ngày", "Ngày Tháng Sau Tấm Ảnh Cũ");
   if (normalized.includes("phieu gui do")) variants.push("Phiếu Gửi Đồ Trong Khách Sạn", "Tên Người Gửi Trên Phiếu Cũ");
 
+  if (token && token.length <= 24 && !isTechnicalSeedTitle(token)) {
+    variants.push(
+      `Người Giữ ${token}`,
+      `Đêm ${token} Lộ Mặt`,
+    );
+  }
+
   variants.push(
-    `Dấu Vết Từ ${token}`,
-    `${token} Đổi Nghĩa`,
-    `Người Giữ ${token}`,
-    `Đêm ${token} Lộ Mặt`,
+    "Món Quà Bị Lộ",
+    "Dấu Mực Trên Trang Cũ",
+    "Người Im Lặng Ở Cuối Phòng",
   );
 
-  return uniqueStringsForCover(variants, 10);
+  return uniqueStringsForCover(variants.filter((item) => !isTechnicalSeedTitle(item)), 10);
 }
 
 function makeEvidenceTitle(evidenceObject: string, seed: string) {
+  const variants = makeEvidenceTitleVariants(evidenceObject).filter((item) => isHumanStoryTitle(item));
   return pickSeedItem(
-    makeEvidenceTitleVariants(evidenceObject),
+    variants.length ? variants : ["Món Quà Bị Lộ", "Dấu Mực Trên Trang Cũ", "Người Im Lặng Ở Cuối Phòng"],
     seed,
     "evidence-title-pattern",
   );
@@ -1253,8 +1327,16 @@ function makeSeedAlignedTitle(params: {
     12,
   );
 
-  const cleanOptions = options.filter((item) => isTitleAllowedByMemory(item, params.avoidTitles));
-  return cleanOptions[0] || evidenceTitles.find((item) => !isGenericAbstractTitle(item)) || evidenceTitle;
+  const cleanOptions = options
+    .map((item) => sanitizeTitleCandidate(item))
+    .filter((item) => isHumanStoryTitle(item, params.avoidTitles));
+
+  return (
+    cleanOptions[0] ||
+    evidenceTitles.find((item) => isHumanStoryTitle(item, params.avoidTitles)) ||
+    sanitizeTitleCandidate(evidenceTitle) ||
+    "Món Quà Bị Lộ"
+  );
 }
 
 function makeChapterTitle(params: {
@@ -2016,16 +2098,21 @@ export function buildMockStorySeed(params: {
       lane: genreExpandedLanes[0] ?? pickDramaLane(params.seed, params.avoidLibrary),
     });
 
-  const title = makeSeedAlignedTitle({
+  const generatedTitle = makeSeedAlignedTitle({
     candidate,
     seed: params.seed,
     avoidTitles: params.avoidLibrary?.titles,
-  }) ||
-    buildUniqueFactoryTitle({
-      genreLabel: params.genreLabel,
-      seed: params.seed,
-      avoidTitles: params.avoidLibrary?.titles,
-    });
+  });
+  const fallbackTitle = buildUniqueFactoryTitle({
+    genreLabel: params.genreLabel,
+    seed: params.seed,
+    avoidTitles: params.avoidLibrary?.titles,
+  });
+  const title = isHumanStoryTitle(generatedTitle, params.avoidLibrary?.titles)
+    ? sanitizeTitleCandidate(generatedTitle)
+    : isHumanStoryTitle(fallbackTitle, params.avoidLibrary?.titles)
+      ? sanitizeTitleCandidate(fallbackTitle)
+      : makeEvidenceTitle(candidate.evidenceObject, `${params.seed}-safe-title`);
 
   const storyPlan = buildFactoryStoryPlan({
     title,
@@ -2121,7 +2208,7 @@ export function buildMockStorySeed(params: {
       chapterWriter: true,
       storyEditor: true,
       polishRewriter: false,
-      note: "Planner v3 genre-lock: seed DNA lấy từ genre + heroine thật, không default camera/log/pháp lý/phong tỏa.",
+      note: "Planner v4 title-safe genre-lock: seed DNA lấy từ genre + heroine thật, không default camera/log/pháp lý/phong tỏa.",
     },
   } as FactoryStorySeed;
 }
@@ -2195,6 +2282,7 @@ export function buildStorySeedPromptContext(
   return `
 STORY SEED / STORY DNA BẮT BUỘC:
 - Tên truyện định hướng: ${storySeed.title}
+- CẤM để tên truyện hoặc tên chương giống seed kỹ thuật. Không dùng cụm: "được biến thành", "của thể loại này", "không dùng như", "Đổi Nghĩa", "motif", "genre", "fingerprint".
 - Genre blend: ${storySeed.genreBlend.join(" | ")}
 - Core premise: ${storySeed.corePremise}
 - Opening scene bắt buộc: ${storySeed.openingScene}

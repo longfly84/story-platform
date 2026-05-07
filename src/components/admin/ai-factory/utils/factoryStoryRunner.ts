@@ -52,16 +52,16 @@ function normalizeCoverArtStyle(value: unknown): CoverArtStyle {
 function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
   switch (normalizeCoverArtStyle(style)) {
     case 'anime_cinematic':
-      return 'anime cinematic webnovel cover, dramatic lighting, expressive characters, modern East Asian urban drama'
+      return 'Anime — Chinese commercial webnovel cover, glossy mature anime-inspired Chinese webnovel beauty, luxury urban drama color'
     case 'manga_manhwa':
-      return 'manga manhwa webtoon cover style, clean line art, dramatic composition, emotional character acting'
-    case 'cinematic_realistic':
-      return 'cinematic realistic drama poster, premium film still lighting, modern East Asian urban suspense'
+      return 'Manga — Chinese commercial webnovel cover, polished manga/manhua-inspired line art, luxury full-color rendering'
     case 'popular_webnovel_collage':
-      return 'popular webnovel collage poster, multiple character composition, evidence object, dramatic layered story poster'
+      return 'Chinese manhua luxury collage, layered storytelling, 3 to 7 story fragments, glossy premium Chinese webnovel cover'
+    case 'cinematic_realistic':
+      return 'Siêu thực — ultra-realistic Chinese urban drama premium poster illustration, luxury cinematic realism'
     case 'auto':
     default:
-      return 'style automatically chosen from story content, premium modern East Asian webnovel cover'
+      return 'premium Chinese commercial webnovel cover, automatically matched to story content'
   }
 }
 

@@ -79,18 +79,17 @@ const defaultConfig: AIFactoryConfig = {
   cliffhangerLabel: 'Mặc định — AI tự chọn theo mạch truyện',
 }
 
-
 function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'] {
   const raw = String(value || '').trim()
 
   if (
+    raw === 'auto' ||
     raw === 'anime_cinematic' ||
     raw === 'manga_manhwa' ||
     raw === 'cinematic_realistic' ||
-    raw === 'popular_webnovel_collage' ||
-    raw === 'auto'
+    raw === 'popular_webnovel_collage'
   ) {
-    return raw
+    return raw as AIFactoryConfig['coverArtStyle']
   }
 
   // Map key cũ trong localStorage / config cũ sang key mới.
@@ -106,16 +105,16 @@ function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'
 function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
   switch (normalizeCoverArtStyle(style)) {
     case 'anime_cinematic':
-      return 'premium anime cinematic webnovel cover, polished modern East Asian urban drama, warm gold and teal city-light palette, attractive commercial colors, not horror'
+      return 'Anime — Chinese commercial webnovel cover, glossy mature anime-inspired Chinese webnovel beauty, luxury urban drama color'
     case 'manga_manhwa':
-      return 'premium manga manhwa webtoon cover, clean line art, expressive character acting, crisp rose gold teal palette, bright commercial webnovel style, not horror'
-    case 'cinematic_realistic':
-      return 'cinematic realistic Chinese urban-drama poster, clean luxury lighting, warm hotel or glass boardroom palette, polished commercial drama, not horror thriller'
+      return 'Manga — Chinese commercial webnovel cover, polished manga/manhua-inspired line art, luxury full-color rendering'
     case 'popular_webnovel_collage':
-      return 'popular Chinese webnovel collage poster, central heroine plus story fragments, vivid readable commercial palette, evidence and conflict visible, not dark horror'
+      return 'Chinese manhua luxury collage, layered storytelling, 3 to 7 story fragments, glossy premium Chinese webnovel cover'
+    case 'cinematic_realistic':
+      return 'Siêu thực — ultra-realistic Chinese urban drama premium poster illustration, luxury cinematic realism'
     case 'auto':
     default:
-      return 'style automatically chosen from story content, premium modern East Asian webnovel cover, polished readable commercial colors, not horror'
+      return 'premium Chinese commercial webnovel cover, automatically matched to story content'
   }
 }
 
@@ -517,7 +516,6 @@ export default function AIFactoryPanel() {
         setConfig({
           ...defaultConfig,
           ...snapshot.config,
-          coverArtStyle: normalizeCoverArtStyle((snapshot.config as any).coverArtStyle),
           autoCompleteByTarget: Boolean((snapshot.config as any).autoCompleteByTarget),
         })
       }
