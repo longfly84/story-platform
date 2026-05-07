@@ -189,8 +189,6 @@ ${motifUniquenessInstruction}
 
 ${storySeedInstruction}
 
-${motifBankEnforcementInstruction}
-
 ${antiRepeatInstruction}
 
 ${nameDiversityInstruction}
@@ -299,141 +297,65 @@ Chương 10:
 }
 
 
-function getVietnamesePlainCommercialProseGateInstruction() {
+function getVietnameseSentenceSurgeryGateInstruction() {
   return `
-VIETNAMESE PLAIN COMMERCIAL PROSE GATE — CỔNG VĂN THƯƠNG MẠI DỄ HIỂU:
-Mục tiêu: giảm mùi AI bằng cách viết rõ, đời, có hành động. Không biến mỗi câu thành ẩn dụ. Không viết để “nghe văn”, hãy viết để độc giả hiểu ngay chuyện gì đang xảy ra.
+VIETNAMESE SENTENCE SURGERY GATE — CỔNG PHẪU THUẬT CÂU CHỮ:
+Đây là cổng quan trọng nhất. Không chỉ đúng plot; từng câu phải thuận tai, tự nhiên, không lủng củng, không giống AI dịch/AI trang trí.
 
-1) NGUYÊN TẮC CÂU DỄ HIỂU:
-- Mỗi câu nên có chủ thể rõ, hành động rõ, hậu quả rõ.
-- Ưu tiên câu ngắn và vừa. Không nối quá nhiều hình ảnh trong một câu.
-- Một đoạn 4–6 câu chỉ nên có tối đa 1 câu dùng so sánh/ẩn dụ nhẹ.
-- Nếu câu có thể viết bằng hành động cụ thể thì không dùng ẩn dụ.
-- Nếu đọc lớn lên thấy lạ tai, phải viết lại theo cách nói thông thường của người Việt.
+1) SELF TEST BẮT BUỘC CHO TỪNG CÂU:
+- Người Việt có viết/nói như vậy không?
+- Chủ thể có rõ không?
+- Động từ có đúng không?
+- Hình ảnh so sánh có cần thiết không?
+- Câu có đang cố “văn vẻ” nhưng làm nghĩa mờ đi không?
+Nếu câu nào không qua được, viết lại ngay.
 
-2) CẤM ẨN DỤ AI / CỤM VĂN VẺ KHÓ HIỂU:
-Không dùng hoặc phải viết lại các kiểu câu sau:
-- Sai: “giấu cả sân khấu vào trong túi áo”
-  Đúng: “tự tin như thể mọi thứ trong hậu trường đã nằm trong tay anh ta”
-- Sai: “khoảnh khắc đó lọt vào mắt tôi như một đồng minh”
-  Đúng: “chi tiết ấy khiến tôi khựng lại”
-- Sai: “giọng gọi đi thẳng vào tai người nghe như mũi dao”
-  Đúng: “giọng gọi ấy cắt ngang tiếng ồn trong hành lang”
-- Sai: “mỗi chữ như một lưỡi dao cố gắng dán miệng tôi”
-  Đúng: “mỗi chữ đều nhằm khóa miệng tôi trước đám đông”
-- Sai: “tôi gom chúng vào đường ngắm như người chụp ảnh chọn điểm lấy nét”
-  Đúng: “tôi ghi nhớ từng thứ một: miếng dán, chiếc camera, túi giao hàng còn mở”
-- Sai: “giọng như một chiếc cân”
-  Đúng: “giọng cô ta đều đều, như đã chuẩn bị sẵn từng chữ”
-- Sai: “mùi hoa nhài nặng như áp lực”
-  Đúng: “mùi hoa nhài trong phòng bỗng trở nên ngột ngạt”
-- Sai: “lời anh như một khớp răng ráp vào mạch sự kiện”
-  Đúng: “lời anh khớp với điều tôi vừa nhìn thấy”
-- Sai: “một mũi kim nhỏ giữa quả cầu đỏ đang lăn”
-  Đúng: “đó là một manh mối nhỏ, nhưng đủ để tôi bám vào”
-- Sai: “thời hạn đã được đặt cạnh đầu tôi”
-  Đúng: “họ đã đặt sẵn thời hạn để ép tôi phải cúi đầu”
-- Sai: “tảng đá ném vào mặt nước yên”
-  Đúng: “câu nói ấy khiến mọi người cùng quay lại”
+2) CẤM CÂU LỦNG CỦNG / SAI KẾT HỢP TỪ:
+- “Tiệm hoa nép mình cuối một con ngõ ở quận” → “Tiệm hoa nằm cuối một con ngõ nhỏ giữa khu phố đông đúc.”
+- “điện thoại lục cục” → “tiếng điện thoại rung và tiếng bàn tán lẫn vào nhau.”
+- “chiếc điện thoại bừng sáng một bức ảnh” → “màn hình điện thoại sáng lên, hiện một bức ảnh.”
+- “cậu ấy cúi lấy ruy-băng” → “cậu cúi xuống lấy cuộn ruy-băng.”
+- “anh ta quần ánh mắt” → “anh ta quét mắt qua những người đứng quanh.”
+- “giọng nặng như đe dọa công khai” → “giọng anh ta đủ thấp để nghe như một lời đe dọa.”
+- “một cái ghì xuống” → “một sức ép đè xuống.”
+- “tờ vé và mảnh giấy vẫn không chịu phai” → “tờ vé và mảnh giấy vẫn nằm trong phong bì.”
+- “câu nói rơi xuống như viên đá nặng” → “câu nói ấy khiến căn phòng im đi.”
+- “hành lang của quyền lực” → “đó là cách anh ta dùng quyền hạn để kéo dài mọi việc.”
+- “cầu nho nhỏ để bấu lấy” → “một điểm nhỏ để tôi bám vào.”
+- “mũi dao nhỏ nhắm thẳng vào con đường xấu nhất” → “lời đó nhắm thẳng vào nỗi sợ lớn nhất của tôi.”
+- “trái tim lạnh đi nhưng đầu óc tỉnh táo” → “tôi sợ, nhưng vẫn phải tỉnh táo.”
+- “như một vệt dầu loang” nếu nói về tin đồn → “tiếng bàn tán vẫn bám theo tôi.”
 
-3) CHỈ GIỮ ẨN DỤ KHI NÓ GIÚP CẢNH RÕ HƠN:
-- Ẩn dụ tốt phải gắn với hành động cụ thể và không làm câu khó hiểu.
-- Không dùng ẩn dụ để thay cho thông tin cần nói.
-- Không dùng 2 hình ảnh liên tiếp trong cùng một câu.
-- Không biến đồ vật/trừu tượng thành người nếu câu mất nghĩa.
-- Mỗi 800 chữ chỉ nên có tối đa 2–3 câu so sánh/ẩn dụ. Còn lại phải là hành động, đối thoại, phản ứng cơ thể, vật chứng, hậu quả.
+3) CẤM HÌNH ẢNH SÁO / AI TRANG TRÍ:
+Không dùng quá nhiều kiểu:
+- như mũi dao
+- như lửa
+- như viên đá
+- như nhịp trống
+- như chiếc cân
+- như một lớp kính
+- như lưỡi dao
+- như một chiếc áo khoác ướt
+Nếu cần áp lực, hãy viết bằng hành động: người lùi lại, điện thoại giơ lên, nhân chứng im, người yếu thế run, cửa bị khóa, hồ sơ bị giữ.
 
-4) VĂN NỮ TẦN THƯƠNG MẠI PHẢI CÓ LỰC, KHÔNG CẦN HOA MỸ:
-- Cảnh bị ép: viết rõ ai ép, ép bằng gì, nữ chính mất gì.
-- Cảnh vật chứng: viết rõ vật nằm ở đâu, ai thấy, vì sao nó đáng nghi.
-- Cảnh phản công: viết rõ nữ chính hỏi câu gì, đối phương khựng ở đâu.
-- Cảm xúc: bám vào cơ thể/hành động nhỏ, không diễn văn.
-  Ví dụ: “Tôi siết tay con bé”, “Tạ Như nhìn tôi rồi cúi xuống”, “người giao hàng lùi nửa bước”.
+4) ƯU TIÊN CÂU ĐỜI, RÕ, CÓ LỰC:
+Thay vì: “Tôi thấy cơn giận như lửa đỏ trong ngực.”
+Viết: “Tôi tức đến mức tay siết chặt tờ vé, nhưng vẫn ép mình im lặng.”
+Thay vì: “Lời thì thầm lan nhanh như mũi dao.”
+Viết: “Tiếng thì thầm lan dần ra cửa tiệm. Vài người đã nhìn tôi bằng ánh mắt khác.”
+Thay vì: “Tôi không cần chứng minh với họ. Tôi chỉ ghi nhớ.”
+Viết: “Tôi chưa cần nói hết. Việc cần làm bây giờ là giữ lại bằng chứng và nhớ mặt từng người có mặt ở đây.”
 
-5) GIẢM NHỒI MANH MỐI:
-- Mỗi chương chỉ dùng 1 vật chứng chính + 1 vật chứng phụ.
-- Không liệt kê quá nhiều thứ trong một đoạn: vé, QR, điện thoại, thư mục, mùi nước hoa, thẻ, bản sao, người bí ẩn...
-- Nếu có hơn 2 manh mối, hãy giữ một cái cho chương sau.
-- Chương 1 nên rõ: vật chứng chính là gì, ai dùng nó để ép nữ chính, nữ chính phát hiện điểm lệch nào.
+5) DÒNG DIỄN BIẾN PHẢI LIỀN MẠCH:
+- Không được nhảy cảnh đột ngột nếu chưa có cầu nối.
+- Chương 2 phải nối từ địa điểm/hậu quả của chương 1. Nếu chương 1 ở sảnh chung cư, chương 2 không được tự nhảy sang phòng chờ VIP nhà ga nếu chưa giải thích rõ vì sao đến đó.
+- Mỗi nhân vật xuất hiện phải có lý do. Không đưa nhân viên/pháp chế/bảo vệ/người giao hàng vào chỉ để giải plot.
+- Không đổi cách gọi nhân vật lung tung: cậu/anh/cô/bà phải nhất quán theo giới tính và vai.
 
-6) EDITOR PASS PHẢI REWRITE THẬT:
-- Nếu bản nháp có ẩn dụ lạ, không sửa một chữ; hãy viết lại cả câu.
-- Nếu đoạn mở đầu quá bóng bẩy, hãy viết lại thành cảnh rõ hơn.
-- Nếu câu “đúng ý nhưng khó hiểu”, bắt buộc thay bằng câu đời hơn.
-- Không giữ câu văn vì nó có vẻ hay. Chỉ giữ nếu nó rõ, tự nhiên, và đẩy truyện.
-`.trim()
-}
-
-
-
-function getMotifBankEnforcementInstruction(payload: NormalizedGeneratePayload) {
-  const storySeed = payload.storySeed as any
-  const seedText = [
-    storySeed?.title,
-    storySeed?.shortFingerprint,
-    storySeed?.motifText,
-    storySeed?.corePremise,
-    storySeed?.openingScene,
-    storySeed?.evidenceObject,
-    storySeed?.mainConflict,
-    storySeed?.hiddenTruth,
-    storySeed?.setting,
-    storySeed?.publicPressure,
-    storySeed?.motifFingerprint?.fingerprint,
-    storySeed?.motifFingerprint?.evidenceObject,
-    storySeed?.motifFingerprint?.evidenceType,
-    storySeed?.motifFingerprint?.openingArena,
-    storySeed?.motifFingerprint?.mainArena,
-  ]
-    .filter(Boolean)
-    .join(' | ')
-
-  const normalized = seedText
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-
-  const isMotifBankSeed = normalized.includes('motif-bank')
-  const looksLifeMotif =
-    isMotifBankSeed ||
-    /soi|but chi|hop com|soi chi|the giat|tui giao hang|tem|mieng dan|tieng hoa|tang ham|chung cu|nha kinh|tieu thuong|bao mau|shipper|tien giat|hieu thuoc|studio|mam non|cong truong|khu dan cu|hoa|vai|banh|xe dap|moc khoa/.test(normalized)
-
-  return `
-MOTIF BANK ENFORCEMENT GATE — KHÓA KHÔNG CHO WRITER KÉO NGƯỢC VỀ MOTIF CŨ:
-Story seed hiện tại:
-- Seed/title: ${storySeed?.title || payload.title}
-- Evidence object: ${storySeed?.evidenceObject || 'không có'}
-- Setting/opening: ${storySeed?.setting || storySeed?.openingScene || 'không có'}
-- Main conflict: ${storySeed?.mainConflict || 'không có'}
-- Hidden truth: ${storySeed?.hiddenTruth || 'không có'}
-- Motif bank/life motif detected: ${looksLifeMotif ? 'YES' : 'NO'}
-
-LUẬT BẮT BUỘC:
-- Nếu seed đang dùng vật chứng đời sống hoặc motif bank, chương 1–2 phải bám vật chứng đời sống đó. Không tự nâng cấp thành vụ pháp lý/tài chính/bệnh viện/khách sạn nếu seed không yêu cầu rõ.
-- Không tự thêm các motif cũ sau nếu seed không ghi rõ:
-  + mã QR / thư mục ẩn / tài khoản ẩn danh làm lõi
-  + file quét / ảnh chụp màn hình / log camera / metadata làm lõi
-  + hồ sơ bệnh án / kết quả ADN / di chúc / ngân hàng / phong tỏa / pháp chế
-  + phòng khách sạn / phòng VIP / du thuyền / phòng họp hội đồng
-  + khóa quyền truy cập / khóa tài khoản / khóa phân ca / tạm đình chỉ bằng giấy tờ
-- Nếu cần hậu quả, ưu tiên hậu quả đời sống:
-  + bị hàng xóm/khách hàng/phụ huynh bàn tán
-  + người giao hàng/bảo mẫu/nhân viên bị đổ lỗi
-  + bị chủ tiệm/ban quản lý nhỏ gây sức ép
-  + con/người yếu thế bị ảnh hưởng
-  + bị hủy đơn hàng, mất ca làm, mất chỗ học tạm, mất uy tín nghề nghiệp nhỏ
-- Nếu seed là “sợi chỉ”, “miếng dán”, “thẻ giặt”, “hộp cơm”, “phiếu bánh”, “vé gửi xe”, “móc khóa”, “vết đất”, “bó hoa”, “túi giao hàng”:
-  + vật chứng chính phải là chính nó
-  + không được để nó biến thành cớ mở hồ sơ bệnh án/ADN/ngân hàng
-  + chương chỉ được thêm 1 vật chứng phụ cùng đời sống, ví dụ nhân chứng, phiếu giao, túi hàng, sổ trực, chứ không thêm chuỗi pháp lý kỹ thuật.
-- Chương 2 phải tiếp tục điều tra theo đường đời sống của vật chứng chính. Ví dụ:
-  + sợi chỉ → tiệm giặt/xưởng may/người trông trẻ
-  + miếng dán → lô hàng/túi giao/đồ chơi/đứa trẻ
-  + thẻ tủ đồ → phòng tập/bảo vệ/tủ đồ/sổ trực
-  + bó hoa → tiệm hoa/người đặt/gói giấy/ruy-băng
-  + vé gửi xe → chốt bảo vệ/tài xế/phiếu giữ xe
-- Nếu bản nháp đã trượt về bệnh viện/ngân hàng/phong tỏa/khách sạn/pháp chế mà seed không yêu cầu, editor pass phải rewrite lại đường điều tra về vật chứng đời sống.
+6) EDITOR PASS PHẢI SỬA MẠNH:
+Nếu bản nháp có câu lủng củng, editor không được vá một từ. Phải viết lại cả câu hoặc cả đoạn cho thuận.
+Nếu 5 đoạn đầu còn câu gượng, rewrite 5 đoạn đầu.
+Nếu chương có hơn 3 câu so sánh trong 800 chữ đầu, cắt bớt so sánh và đổi sang hành động cụ thể.
 `.trim()
 }
 
@@ -464,8 +386,7 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const villainPresenceInstruction = getVillainPresenceInstruction()
   const humanCostInstruction = getHumanCostInstruction()
   const vietnameseProseHardGateInstruction = getVietnameseProseHardGateInstruction()
-  const vietnamesePlainCommercialProseGateInstruction = getVietnamesePlainCommercialProseGateInstruction()
-  const motifBankEnforcementInstruction = getMotifBankEnforcementInstruction(payload)
+  const vietnameseSentenceSurgeryGateInstruction = getVietnameseSentenceSurgeryGateInstruction()
   const nextChapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
   const isContinuation = nextChapterNumber > 1
 
@@ -573,7 +494,6 @@ GENRE + PREMISE + HEROINE EXECUTION RULE:
 - Không dùng Weibo/hot search làm hook chính chỉ vì module có chữ viral. Chỉ dùng khi hợp thể loại/prompt.
 - Mỗi chương phải có ít nhất 2 chi tiết chỉ thuộc genreLabel/storySeed hiện tại; nếu xóa tên genre mà chương vẫn giống truyện cũ, phải rewrite.
 - Không được quay về vòng lặp hồ sơ/camera/log/phong tỏa/pháp lý nếu seed không yêu cầu rõ.
-- Nếu storySeed/motif bank là đời sống, cấm tự bẻ sang bệnh viện/ngân hàng/pháp chế/khách sạn ở chương 1–2.
 
 MALE ANTAGONIST PRESENCE RULE:
 - Nếu có nam phản diện/chồng/CEO/tổng tài, hắn phải có ít nhất 1–2 câu thoại sắc, gây tổn thương trực tiếp hoặc tạo áp lực thật.
@@ -652,7 +572,7 @@ HUMAN PROSE RULE:
 
 ${vietnameseProseHardGateInstruction}
 
-${vietnamesePlainCommercialProseGateInstruction}
+${vietnameseSentenceSurgeryGateInstruction}
 
 SELF-REVISION PASS BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
 Trước khi xuất kết quả cuối cùng, hãy tự đọc lại bản chương như một biên tập viên và tự sửa trong im lặng theo checklist này:
@@ -744,8 +664,7 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
   )
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
   const vietnameseEditorHardGateInstruction = getVietnameseEditorHardGateInstruction()
-  const vietnamesePlainCommercialProseGateInstruction = getVietnamesePlainCommercialProseGateInstruction()
-  const motifBankEnforcementInstruction = getMotifBankEnforcementInstruction(payload)
+  const vietnameseSentenceSurgeryGateInstruction = getVietnameseSentenceSurgeryGateInstruction()
 
   const recentContext = payload.recentChapters
     .slice(0, 3)
@@ -784,9 +703,7 @@ ${urbanFemaleScaleLockInstruction}
 
 ${vietnameseEditorHardGateInstruction}
 
-${vietnamesePlainCommercialProseGateInstruction}
-
-${motifBankEnforcementInstruction}
+${vietnameseSentenceSurgeryGateInstruction}
 
 CHAPTER PLAN HIỆN TẠI:
 - Mission: ${currentPlan?.mission || 'Không có'}
@@ -854,6 +771,7 @@ CẤM:
 - Không thêm nam chính cứu toàn bộ tình thế.
 - Không để phần đọc lộ chữ “editor”, “checklist”, “planner”, “rule”, “mission”.
 - Không dùng tiếng Anh thô như “reputational”; phải viết “rủi ro về danh tiếng”.
+- Không giữ các cụm sai tai như “anh ta quần ánh mắt”, “điện thoại lục cục”, “hành lang của quyền lực”, “cầu nho nhỏ để bấu lấy”.
 - Không để văn đọc như bản dịch máy/convert word-by-word.
 - Không dùng thuật ngữ kỹ thuật thô nếu chưa Việt hóa hoặc giải thích bằng ngữ cảnh.
 
