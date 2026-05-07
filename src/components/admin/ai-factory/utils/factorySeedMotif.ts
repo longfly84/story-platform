@@ -195,7 +195,7 @@ async function evaluateStorySeedMotif(params: {
   const rejectResult = shouldRejectMotif({
     candidate,
     existing: comparisonPool,
-    threshold: 0.62,
+    threshold: 0.72,
   })
 
   enrichedSeed.motifSimilarity = rejectResult.best
@@ -296,11 +296,25 @@ export async function buildUniqueStorySeed(params: {
     )
   }
 
+  const best = lastRejected?.rejectResult.best
+  if (
+    lastRejected?.seed &&
+    best &&
+    best.fieldScore < 0.65 &&
+    best.embeddingScore < 0.95
+  ) {
+    params.addLog(
+      `Cho pass seed cuối vì field motif đã khác đủ; embedding cao chủ yếu do cùng vibe nữ tần đô thị: ${formatMotifSimilarityForLog(
+        best,
+      )}`,
+      'warning',
+    )
+    return lastRejected.seed
+  }
+
   throw new Error(
     `Không tạo được story seed đủ khác motif sau ${STORY_SEED_MAX_ATTEMPTS} lần. ${
-      lastRejected?.rejectResult.best
-        ? formatMotifSimilarityForLog(lastRejected.rejectResult.best)
-        : ''
+      best ? formatMotifSimilarityForLog(best) : ''
     }`,
   )
 }

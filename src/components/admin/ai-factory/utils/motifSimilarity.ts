@@ -44,6 +44,21 @@ function isUsefulTag(tag: string) {
   // Các tag này quá chung trong tiếng Việt/Trung Quốc hiện đại, nếu tính vào similarity
   // sẽ làm nhiều truyện khác nhau bị reject nhầm vì cùng vibe/ngôn ngữ.
   const noisyTags = new Set([
+    'tinh',
+    'danh',
+    'cang',
+    'song',
+    'khien',
+    'buoc',
+    'thuan',
+    'quanh',
+    'chon',
+    'giua',
+    'chiu',
+    'nhat',
+    'chia',
+    'khoa',
+    'chieu',
     'anh',
     'chi',
     'co',
@@ -213,8 +228,8 @@ export function getHybridMotifSimilarity(params: {
   fieldWeight?: number
   embeddingWeight?: number
 }) {
-  const fieldWeight = params.fieldWeight ?? 0.76
-  const embeddingWeight = params.embeddingWeight ?? 0.24
+  const fieldWeight = params.fieldWeight ?? 0.9
+  const embeddingWeight = params.embeddingWeight ?? 0.1
 
   const fieldResult = getMotifFieldSimilarity(
     params.candidate.fingerprint,
@@ -278,7 +293,7 @@ export function shouldRejectMotif(params: {
   existing: StoryMotifRegistryItem[]
   threshold?: number
 }) {
-  const threshold = params.threshold ?? 0.7
+  const threshold = params.threshold ?? 0.72
   const best = findMostSimilarMotif({
     candidate: params.candidate,
     existing: params.existing,
@@ -286,32 +301,35 @@ export function shouldRejectMotif(params: {
 
   const realMotifOverlap = hasRealMotifOverlap(best)
 
-  // Reject chính: điểm hybrid cao và phải có overlap thật ở lõi motif.
-  const hybridReject = Boolean(best && realMotifOverlap && best.hybridScore >= threshold)
+  // Không để embedding bóp nghẹt Factory.
+  // Truyện cùng dòng nữ tần đô thị thường có embedding 0.88–0.92 vì cùng vibe:
+  // bị ép công khai, phản công, vật chứng, trả giá. Nhưng như vậy chưa đủ để gọi là trùng motif.
+  const enoughFieldOverlapForReject = Boolean(best && best.fieldScore >= 0.68)
+  const strongFieldReject = Boolean(best && best.fieldScore >= 0.76 && realMotifOverlap)
 
-  // Reject phụ: nếu field đã rất giống thì reject dù embedding không quá cao.
-  const strongFieldReject = Boolean(best && best.fieldScore >= 0.74 && realMotifOverlap)
+  const hybridReject = Boolean(
+    best &&
+      realMotifOverlap &&
+      enoughFieldOverlapForReject &&
+      best.hybridScore >= threshold,
+  )
 
-  // Embedding của các truyện cùng thể loại nữ tần rất dễ cao 0.88–0.93.
-  // Vì vậy không reject chỉ vì embedding cao nữa. Phải đi kèm field overlap rõ.
   const strongEmbeddingReject = Boolean(
-    best && best.embeddingScore >= 0.94 && best.fieldScore >= 0.35 && realMotifOverlap,
-  )
-  const softEmbeddingReject = Boolean(
-    best && best.embeddingScore >= 0.9 && best.fieldScore >= 0.45 && realMotifOverlap,
+    best &&
+      realMotifOverlap &&
+      best.embeddingScore >= 0.95 &&
+      best.fieldScore >= 0.68,
   )
 
-  const reject = hybridReject || strongFieldReject || strongEmbeddingReject || softEmbeddingReject
+  const reject = hybridReject || strongFieldReject || strongEmbeddingReject
 
   let reason = ''
-  if (hybridReject) {
-    reason = `hybridScore >= ${threshold} và có overlap motif lõi`
-  } else if (strongFieldReject) {
-    reason = 'fieldScore >= 0.74 và có overlap motif lõi'
+  if (strongFieldReject) {
+    reason = 'fieldScore >= 0.76 và có overlap motif lõi'
+  } else if (hybridReject) {
+    reason = `hybridScore >= ${threshold} với fieldScore >= 0.68 và có overlap motif lõi`
   } else if (strongEmbeddingReject) {
-    reason = 'embeddingScore >= 0.94, fieldScore >= 0.35 và có overlap motif lõi'
-  } else if (softEmbeddingReject) {
-    reason = 'embeddingScore >= 0.90, fieldScore >= 0.45 và có overlap motif lõi'
+    reason = 'embeddingScore >= 0.95, fieldScore >= 0.68 và có overlap motif lõi'
   }
 
   return {
