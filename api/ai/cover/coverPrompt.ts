@@ -348,6 +348,43 @@ function inferMood(sceneType: CoverSceneType): string {
   }
 }
 
+
+type CoverCompositionMode =
+  | 'left_third_environmental'
+  | 'right_third_environmental'
+  | 'layered_story_scene'
+  | 'narrative_collage'
+
+function hashString(value: string): number {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+  return hash
+}
+
+function chooseCompositionMode(data: {
+  title: string
+  sceneType: CoverSceneType
+  coverArtStyle: CoverArtStyleKey
+}): CoverCompositionMode {
+  if (data.coverArtStyle === 'popular_webnovel_collage') {
+    return data.sceneType === 'collage_story_poster'
+      ? 'narrative_collage'
+      : 'layered_story_scene'
+  }
+
+  const options: CoverCompositionMode[] = [
+    'left_third_environmental',
+    'right_third_environmental',
+    'layered_story_scene',
+    'narrative_collage',
+  ]
+
+  const seed = `${data.title}|${data.sceneType}|${data.coverArtStyle}`
+  return options[hashString(seed) % options.length]
+}
+
 function buildSourceText(story: JsonRecord, storyDna: JsonRecord): string {
   return compactText(
     story.title,
@@ -434,6 +471,11 @@ function buildPromptData(input: unknown) {
   )
   const chapterHints = sanitizeForPrompt(buildChapterHints(story), '')
   const storyStage = inferStoryStage(currentChapterCount, targetChapters)
+  const compositionMode = chooseCompositionMode({
+    title,
+    sceneType,
+    coverArtStyle,
+  })
 
   return {
     title,
@@ -452,6 +494,7 @@ function buildPromptData(input: unknown) {
     coverArtStyle,
     sceneType,
     storyStage,
+    compositionMode,
   }
 }
 
@@ -696,6 +739,102 @@ VISUAL DIVERSITY LOCK — very important:
 }
 
 
+
+function buildCompositionHardLockBlock(data: ReturnType<typeof buildPromptData>): string {
+  let compositionVariantDescription = ''
+
+  switch (data.compositionMode) {
+    case 'left_third_environmental':
+      compositionVariantDescription = `
+COMPOSITION VARIANT: LEFT_THIRD_ENVIRONMENTAL.
+- Place the heroine on the left third of the canvas.
+- Keep the right side open for story environment, supporting cast, or the key confrontation background.
+- Let the background breathe and tell the plot.`.trim()
+      break
+    case 'right_third_environmental':
+      compositionVariantDescription = `
+COMPOSITION VARIANT: RIGHT_THIRD_ENVIRONMENTAL.
+- Place the heroine on the right third of the canvas.
+- Keep the left side open for story environment, supporting cast, or the key confrontation background.
+- Let the background breathe and tell the plot.`.trim()
+      break
+    case 'layered_story_scene':
+      compositionVariantDescription = `
+COMPOSITION VARIANT: LAYERED_STORY_SCENE.
+- Put the heroine off-center in the foreground or midground.
+- Show clear depth: foreground, midground, background.
+- Use supporting characters, architecture, or emotional distance to tell the story.`.trim()
+      break
+    case 'narrative_collage':
+    default:
+      compositionVariantDescription = `
+COMPOSITION VARIANT: NARRATIVE_COLLAGE.
+- Build a story-dense composition with one heroine off-center and multiple supporting story layers.
+- Make sure the background, fragments, or secondary characters remain readable.
+- The heroine must not block most of the setting.`.trim()
+      break
+  }
+
+  const sceneExample = (() => {
+    switch (data.sceneType) {
+      case 'private_betrayal_confrontation':
+        return '- For hotel / betrayal stories, clearly show corridor, room doorway, suite interior, or hotel lighting behind the heroine. The room card or private evidence should be a small story clue, not the whole picture.'
+      case 'public_reveal_confrontation':
+        return '- For public reveal scenes, show banquet hall, press wall, stage, tables, crowd reaction, or event lights in the background. The heroine must not block the public setting.'
+      case 'boardroom_evidence_reveal':
+        return '- For boardroom stories, show the meeting table, glass wall, screen area, executives, or office skyline. Keep the heroine off-center so the power setting reads clearly.'
+      case 'hospital_legal_suspense':
+        return '- For hospital stories, show corridor, consultation room, hospital counter, doctors, or medical setting clearly behind or beside the heroine.'
+      case 'school_parent_conflict':
+        return '- For school stories, show school office, parent meeting room, hallway, child-related area, or classroom details in the environment.'
+      case 'airport_secret_tension':
+        return '- For airport stories, clearly show windows, runway, gate seating, luggage, or departure atmosphere around the heroine.'
+      case 'family_banquet_confrontation':
+        return '- For family banquet stories, clearly show table setting, villa interior, banquet hall, or relatives in the background.'
+      case 'mother_child_protection':
+        return '- For mother-child stories, keep the heroine offset and leave room to show the child, caregiver, home, school, or emotional pressure in the environment.'
+      case 'collage_story_poster':
+        return '- For collage posters, background and mini-scenes must stay visible. Do not turn this into a centered single-character portrait.'
+      case 'evidence_discovery_scene':
+      default:
+        return '- For evidence-discovery scenes, let the setting explain the evidence: desk, room, lobby, meeting room, hospital, school, or public place must remain visible.'
+    }
+  })()
+
+  return `
+COVER COMPOSITION HARD LOCK — absolute priority:
+- This must be a storytelling cover, not a centered character portrait.
+- The heroine must NOT stand dead-center in a way that blocks most of the background.
+- Prefer an off-center composition using the rule of thirds.
+- The heroine should usually occupy about 28% to 40% of the canvas width, not 50% to 70%.
+- The environment must remain clearly visible and must help tell the plot.
+- Use an environmental cover composition, not a close portrait or profile-card style image.
+- Prefer medium-long shot, 3/4 body, or elegant full-body framing when helpful.
+- Background must show story space clearly: hotel, lobby, hallway, hospital, banquet, boardroom, school, airport, villa, restaurant, stage, or another setting that matches the story.
+- Show depth: foreground, midground, and background should be distinguishable.
+- Include at least one supporting visual layer beyond the heroine: antagonist, witness, child, family member, executives, crowd reaction, doorway, table, reception desk, stage, screen, or emotional distance between characters.
+- If there is a key evidence object, keep it story-relevant but small enough that it does not dominate the whole cover.
+- Do NOT use the formula: one heroine in the middle, holding paper / phone / card in front of her chest, with a vague background hidden behind her.
+- Do NOT use a symmetrical centered hero poster.
+- The cover must still read well as a thumbnail, but it must also show enough background to communicate story context.
+${compositionVariantDescription}
+${sceneExample}
+`.trim()
+}
+
+function buildAntiBadCoverFormulaBlock(): string {
+  return `
+ANTI BAD COVER FORMULA:
+- Do not place one lone heroine in the exact center blocking the whole environment.
+- Do not make the heroine too large or too close to the camera.
+- Do not make the cover look like a beauty portrait, profile card, or generic fashion poster.
+- Do not rely on heroine + paper / heroine + phone / heroine + card as the entire composition.
+- Do not blur away the environment until the story setting becomes unreadable.
+- Do not reduce the background to a vague corridor, vague glow, or empty wall.
+- Do not let the evidence object hide the plot, the setting, or the supporting cast.
+`.trim()
+}
+
 function buildFramingAndCharacterBlock(): string {
   return `
 CHARACTER / ETHNICITY / FRAMING RULES:
@@ -703,12 +842,14 @@ CHARACTER / ETHNICITY / FRAMING RULES:
 - One clear female lead must anchor the image.
 - Do not make the female lead too large.
 - Do not create an extreme close-up portrait.
-- Prefer medium shot, medium-long shot, or 3/4 body composition.
-- The heroine should usually occupy about 35% to 50% of the frame, not the whole frame.
+- Prefer medium-long shot, 3/4 body, or elegant full-body framing more often than chest-up portrait framing.
+- The heroine should usually occupy about 28% to 40% of the frame width.
 - Leave enough room to show setting, supporting cast, and evidence.
 - Supporting characters should only be added when they strengthen the story.
+- The image should read like a story cover with visible environment, not like a character card.
 `.trim()
 }
+
 
 function buildNoTextBlock(): string {
   return `
@@ -762,7 +903,7 @@ function buildFinalInstructionBlock(style: CoverArtStyleKey): string {
   return `
 FINAL OUTPUT INSTRUCTION:
 Create one polished final vertical 2:3 cover illustration.
-The image must feel like a commercially strong Chinese web-novel cover: dramatic, emotional, addictive, polished, colorful enough for readers to click, and immediately understandable.
+The image must feel like a commercially strong Chinese web-novel cover: dramatic, emotional, addictive, polished, colorful enough for readers to click, immediately understandable, and clearly storytelling through visible environment.
 Story content, conflict, setting, and evidence are more important than decorative prettiness.
 ${styleCompositionLine}
 Commercial color requirement: avoid muddy green/yellow horror grading, heavy grey-black, sickly skin, dirty shadows. Prefer clean skin tones, elegant contrast, warm/cool balanced lighting, and attractive web-novel poster color.
@@ -771,7 +912,7 @@ The final result must be a finished cover artwork illustration only, with zero t
 }
 
 function buildFallbackPrompt(data: ReturnType<typeof buildPromptData>): string {
-  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Polished commercial webnovel color, clean skin tones, warm gold / rose / teal / navy accents, attractive readable lighting. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, blurred, turned away, or unreadable. Not a generic portrait. Show the environment, supporting figures, and conflict clearly. Medium shot or 3/4 body framing. The character must not fill the whole frame. No horror, no dirty green-yellow grading, no sickly skin, no blood, no wounds, no corpse, no weapons, no explicit violence.`
+  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Polished commercial webnovel color, clean skin tones, warm gold / rose / teal / navy accents, attractive readable lighting. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, blurred, turned away, or unreadable. Not a generic portrait. Use an off-center storytelling composition. Show the environment, supporting figures, and conflict clearly. Prefer medium-long shot, 3/4 body, or elegant full-body framing. The heroine should usually occupy about 28% to 40% of the frame width and must not block most of the background. No horror, no dirty green-yellow grading, no sickly skin, no blood, no wounds, no corpse, no weapons, no explicit violence.`
 }
 
 export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): CoverBuildResult {
@@ -784,6 +925,8 @@ export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): Cove
     buildStyleBlock(data.coverArtStyle),
     buildSceneSelectionBlock(data.sceneType, data.coverArtStyle),
     buildVisualDiversityBlock(data),
+    buildCompositionHardLockBlock(data),
+    buildAntiBadCoverFormulaBlock(),
     buildFramingAndCharacterBlock(),
     buildNoTextBlock(),
     buildAntiGenericBlock(data.sceneType),
@@ -794,7 +937,7 @@ export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): Cove
     prompt,
     fallbackPrompt: buildFallbackPrompt(data),
     coverConcept: {
-      version: 'cover-bright-commercial-style-lock-v4',
+      version: 'cover-composition-storytelling-lock-v5',
       coverArtStyle: data.coverArtStyle,
       sceneType: data.sceneType,
       storyStage: data.storyStage,
