@@ -1,4 +1,8 @@
 import type { AvoidLibrary, FactoryStorySeed } from "../aiFactoryTypes";
+import {
+  FACTORY_MOTIF_BANK_10000,
+  type FactoryMotifBankItem,
+} from "./factoryMotifBank10000";
 import { buildUniqueFactoryTitle } from "./factoryPromptShared";
 
 type StoryDramaLane = {
@@ -1306,16 +1310,16 @@ function makeSeedAlignedTitle(params: {
       evidenceTitle,
       ...evidenceTitles,
       setting.includes("truong") || pressure.includes("phu huynh")
-        ? "Dòng Camera Trong Phòng Họp Phụ Huynh"
+        ? "Vệt Bút Chì Sau Giờ Đón Trẻ"
         : "",
       setting.includes("benh vien") || hidden.includes("benh")
-        ? "Mã Hồ Sơ Trong Phòng Bệnh"
+        ? "Túi Thuốc Ở Quầy Chờ"
         : "",
       setting.includes("ngan hang") || pressure.includes("co dong")
         ? "Dòng Ký Tên Trước Giờ Bỏ Phiếu"
         : "",
       setting.includes("khach san") || setting.includes("resort")
-        ? "Phiếu Phòng Trong Khách Sạn"
+        ? "Nút Buộc Trên Túi Giao Hàng"
         : "",
       setting.includes("gia toc") || pressure.includes("gia toc") || hidden.includes("di chuc")
         ? "Trang Di Chúc Trong Từ Đường"
@@ -2002,6 +2006,254 @@ function getSeedAttempt(seed: string, attempt: number) {
   return attempt === 0 ? seed : `${seed}-variant-${attempt + 1}`;
 }
 
+
+const MOTIF_BANK_SAMPLE_SIZE = 360;
+
+const OVERUSED_MOTIF_TERMS = [
+  "mã qr",
+  "qr",
+  "thư mục ẩn",
+  "tai khoan phu",
+  "tài khoản phụ",
+  "ho so benh an",
+  "hồ sơ bệnh án",
+  "phong khach san",
+  "phòng khách sạn",
+  "phong vip",
+  "phòng vip",
+  "du thuyen",
+  "du thuyền",
+  "quyen truy cap",
+  "quyền truy cập",
+  "khoa quyen",
+  "khóa quyền",
+  "dieu tra noi bo",
+  "điều tra nội bộ",
+];
+
+function hashSeed(input: string) {
+  let hash = 2166136261;
+
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+function hasOverusedMotifTerm(text: string) {
+  const normalized = normalizeForCompare(text);
+
+  return OVERUSED_MOTIF_TERMS.some((term) =>
+    normalized.includes(normalizeForCompare(term)),
+  );
+}
+
+function motifBankText(motif: FactoryMotifBankItem) {
+  return [
+    motif.title,
+    motif.premiseLabel,
+    motif.evidenceLabel,
+    motif.hiddenTruthLabel,
+    motif.villainAttackLabel,
+    motif.heroineCounterLabel,
+    motif.arenaLabel,
+    motif.publicPressureLabel,
+    motif.powerStructureLabel,
+    motif.deadlineLabel,
+    motif.heroineStyleLabel,
+    motif.promptHint,
+  ].join(" | ");
+}
+
+function getAvoidMotifFieldText(avoidLibrary?: AvoidLibrary) {
+  return [
+    ...(avoidLibrary?.motifTexts ?? []),
+    ...(avoidLibrary?.titles ?? []),
+    ...(avoidLibrary?.motifFingerprints ?? []).map((item) => {
+      const record = item as unknown as Record<string, unknown>;
+
+      return [
+        record.motifText,
+        record.fingerprint,
+        record.title,
+        tryStringify(record.motifFingerprint),
+        tryStringify(record.fingerprint),
+      ]
+        .filter(Boolean)
+        .join(" | ");
+    }),
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function tryStringify(value: unknown) {
+  if (!value) return "";
+
+  if (typeof value === "string") return value;
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
+}
+
+function scoreMotifBankAgainstAvoid(
+  motif: FactoryMotifBankItem,
+  avoidLibrary?: AvoidLibrary,
+) {
+  const candidateText = motifBankText(motif);
+  const avoidText = getAvoidMotifFieldText(avoidLibrary);
+
+  let score = scoreOverlapWithAvoidLibrary(candidateText, avoidLibrary) * 1.25;
+
+  if (hasOverusedMotifTerm(candidateText)) score += 2.5;
+
+  if (avoidText) {
+    const normalizedAvoid = normalizeForCompare(avoidText);
+    const exactFields = [
+      motif.premiseFamily,
+      motif.evidenceType,
+      motif.hiddenTruthType,
+      motif.villainAttackType,
+      motif.heroineCounterType,
+      motif.openingArena,
+      motif.mainArena,
+      motif.publicPressure,
+      motif.powerStructure,
+      motif.deadlineStyle,
+    ];
+
+    for (const field of exactFields) {
+      const normalizedField = normalizeForCompare(field);
+      if (normalizedField && normalizedAvoid.includes(normalizedField)) {
+        score += 0.22;
+      }
+    }
+
+    // Các label đời sống giống nhau cũng nên bị phạt nhẹ để tránh cứ quanh một cụm motif.
+    const labelFields = [
+      motif.evidenceLabel,
+      motif.arenaLabel,
+      motif.hiddenTruthLabel,
+      motif.villainAttackLabel,
+      motif.heroineCounterLabel,
+    ];
+
+    for (const label of labelFields) {
+      const tags = compactTags(label);
+      const repeatedTagCount = tags.filter((tag) => normalizedAvoid.includes(tag)).length;
+      score += repeatedTagCount * 0.04;
+    }
+  }
+
+  score += countProceduralTerms(candidateText) / 35;
+
+  return score;
+}
+
+function pickMotifBankItem(params: {
+  seed: string;
+  genreLabel: string;
+  heroineLabel: string;
+  avoidLibrary?: AvoidLibrary;
+}) {
+  const bank = FACTORY_MOTIF_BANK_10000;
+  if (!bank.length) return null;
+
+  const baseHash = hashSeed(
+    `${params.seed}|${params.genreLabel}|${params.heroineLabel}|motif-bank-v1`,
+  );
+
+  let best: FactoryMotifBankItem | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  const sampleCount = Math.min(MOTIF_BANK_SAMPLE_SIZE, bank.length);
+
+  for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
+    const bankIndex = (baseHash + sampleIndex * 9973 + sampleIndex * sampleIndex * 37) % bank.length;
+    const motif = bank[bankIndex];
+    const score =
+      scoreMotifBankAgainstAvoid(motif, params.avoidLibrary) +
+      Number(
+        pickSeedItem(
+          ["0.000", "0.006", "0.012", "0.018", "0.024"],
+          params.seed,
+          `motif-bank-jitter-${sampleIndex}`,
+        ),
+      );
+
+    if (score < bestScore) {
+      bestScore = score;
+      best = motif;
+    }
+
+    if (score <= 0.04) break;
+  }
+
+  return best;
+}
+
+function buildMotifBankLane(
+  motif: FactoryMotifBankItem,
+  heroineLabel: string,
+): StoryDramaLane {
+  const heroine = heroineLabel || motif.heroineStyleLabel || "nữ chính đô thị hiện đại";
+
+  return {
+    key: `motif-bank-${motif.id}`,
+    label: `motif bank 10000: ${motif.premiseLabel}`,
+    conflicts: [
+      motif.premiseLabel,
+      `${heroine} bị kéo vào ${motif.premiseLabel}, nhưng điểm lệch thật nằm ở ${motif.evidenceLabel}`,
+      `phản diện dùng ${motif.villainAttackLabel} để biến nữ chính thành người có lỗi`,
+      `${motif.hiddenTruthLabel}; câu chuyện phải bám đời sống cụ thể, không quay về QR/thư mục ẩn/hồ sơ bệnh án/phòng khách sạn VIP`,
+    ],
+    settings: [
+      motif.arenaLabel,
+      `${motif.arenaLabel}, nơi ${motif.publicPressureLabel}`,
+      `${motif.arenaLabel}, dưới sức ép của ${motif.powerStructureLabel}`,
+    ],
+    evidenceObjects: [
+      motif.evidenceLabel,
+      `${motif.evidenceLabel} bị đặt sai chỗ`,
+      `${motif.evidenceLabel} có một chi tiết lệch mà chỉ nữ chính nhận ra`,
+    ],
+    publicPressures: [
+      motif.publicPressureLabel,
+      `${motif.publicPressureLabel} khiến nữ chính không thể im lặng`,
+      `${motif.publicPressureLabel} trước ${motif.deadlineLabel}`,
+    ],
+    hiddenTruths: [
+      motif.hiddenTruthLabel,
+      `${motif.hiddenTruthLabel}, nhưng phản diện cố bẻ nghĩa bằng ${motif.villainAttackLabel}`,
+    ],
+    villainAttacks: [
+      motif.villainAttackLabel,
+      `${motif.villainAttackLabel} ngay tại ${motif.arenaLabel}`,
+      `${motif.villainAttackLabel} bằng cách lợi dụng ${motif.evidenceLabel}`,
+    ],
+    heroineCounters: [
+      motif.heroineCounterLabel,
+      `${heroine} ${motif.heroineCounterLabel}`,
+      `${heroine} giữ bình tĩnh, bảo vệ người yếu thế rồi ${motif.heroineCounterLabel}`,
+    ],
+    emotionalStakes: [
+      `${motif.deadlineLabel}; nếu thua, nữ chính mất danh dự/người cần bảo vệ/quyền tự quyết`,
+      `điều nữ chính phải bảo vệ không phải thể diện, mà là người yếu thế đang bị kéo vào ${motif.premiseLabel}`,
+      `cảm xúc đến từ ${motif.premiseLabel}, không phải từ giấy tờ pháp lý chung chung`,
+    ],
+    dopamineHooks: [
+      `nữ chính dùng ${motif.evidenceLabel} để buộc phản diện lộ sơ hở`,
+      `người im lặng nhất trong ${motif.arenaLabel} trở thành chìa khóa đảo chiều`,
+      `chi tiết nhỏ trong ${motif.evidenceLabel} lật ngược cách đám đông hiểu sự việc`,
+    ],
+  };
+}
+
 export function buildMockStorySeed(params: {
   genreLabel: string;
   heroineLabel: string;
@@ -2010,6 +2262,17 @@ export function buildMockStorySeed(params: {
 }): FactoryStorySeed {
   let bestCandidate: ReturnType<typeof buildSeedCandidate> | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
+
+  const motifBankItem = pickMotifBankItem({
+    seed: params.seed,
+    genreLabel: params.genreLabel,
+    heroineLabel: params.heroineLabel,
+    avoidLibrary: params.avoidLibrary,
+  });
+
+  const motifBankLane = motifBankItem
+    ? buildMotifBankLane(motifBankItem, params.heroineLabel)
+    : null;
 
   const genreExpandedLanes = buildGenreExpandedLanesFromLabel(
     params.genreLabel,
@@ -2020,9 +2283,11 @@ export function buildMockStorySeed(params: {
   const shouldUseFallbackLanes =
     !params.genreLabel || normalizeForCompare(params.genreLabel).length < 6;
 
-  const lanePool = shouldUseFallbackLanes
-    ? [...genreExpandedLanes, ...FACTORY_DRAMA_LANES.slice(0, 2)]
-    : genreExpandedLanes;
+  const lanePool = [
+    ...(motifBankLane ? [motifBankLane] : []),
+    ...genreExpandedLanes,
+    ...(shouldUseFallbackLanes ? FACTORY_DRAMA_LANES.slice(0, 2) : []),
+  ];
 
   const laneOrder = lanePool.map((lane, index) => {
     const laneText = [
@@ -2036,6 +2301,7 @@ export function buildMockStorySeed(params: {
       ...lane.heroineCounters,
     ].join(" | ");
 
+    const motifBankBonus = lane.key.startsWith("motif-bank-") ? -6.5 : 0;
     const genreLaneBonus = lane.key.startsWith("genre-lock-") ? -2.5 : 0;
     const avoidPenalty = scoreOverlapWithAvoidLibrary(laneText, params.avoidLibrary);
     const proceduralPenalty = countProceduralTerms(laneText) / 80;
@@ -2045,7 +2311,7 @@ export function buildMockStorySeed(params: {
 
     return {
       lane,
-      score: genreLaneBonus + avoidPenalty * 0.9 + proceduralPenalty + seedBias,
+      score: motifBankBonus + genreLaneBonus + avoidPenalty * 0.9 + proceduralPenalty + seedBias,
     };
   }).sort((a, b) => a.score - b.score);
 
@@ -2208,7 +2474,7 @@ export function buildMockStorySeed(params: {
       chapterWriter: true,
       storyEditor: true,
       polishRewriter: false,
-      note: "Planner v4 title-safe genre-lock: seed DNA lấy từ genre + heroine thật, không default camera/log/pháp lý/phong tỏa.",
+      note: "Planner v5 motif-bank-10000: seed DNA ưu tiên motif bank lớn, cấm quay vòng QR/thư mục ẩn/hồ sơ bệnh án/phòng khách sạn VIP/khóa quyền truy cập.",
     },
   } as FactoryStorySeed;
 }
@@ -2312,6 +2578,7 @@ QUY TẮC BẮT BUỘC THEO STORY SEED:
 - Không tự đổi về mô típ đã có trong kho truyện nếu seed không yêu cầu.
 - Không dùng lại khung cảnh, vật chứng, bối cảnh, bí mật hoặc áp lực xã hội đã xuất hiện nhiều trong danh sách motif cần tránh.
 - Truyện phải khác rõ rệt ở bối cảnh, vật chứng, áp lực và bí mật.
+- Nếu story seed lấy từ motif bank, phải bám đúng vật chứng đời sống và bối cảnh đời sống đó; không tự đổi về mã QR, thư mục ẩn, hồ sơ bệnh án, phòng khách sạn/VIP, khóa quyền truy cập hoặc điều tra nội bộ.
 - Không để nhiều chương liên tiếp dùng cùng một nhịp: đến một nơi → bị chặn bằng giấy tờ/pháp lý → luật sư/pháp vụ xuất hiện → nữ chính nói sẽ kiện/giám định.
 - Nếu seed có yếu tố hồ sơ/log/giám định/niêm phong/phong tỏa, các yếu tố đó chỉ là một phần của conflict; chương sau phải đổi trọng tâm sang đối đầu trực diện, cảm xúc, truyền thông bẩn, người phản bội, hoặc cú vả mặt công khai.
 - Phản diện chính phải có mặt hoặc để lại dấu ấn cá nhân rõ trong mỗi 1–2 chương; không để luật sư/PR/trợ lý gánh vai ác quá lâu.
