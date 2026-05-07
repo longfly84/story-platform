@@ -635,42 +635,6 @@ export const FACTORY_DRAMA_LANES: StoryDramaLane[] = [
   },
 ];
 
-const GENERIC_MOTIF_TAG_STOPWORDS = new Set([
-  "phong",
-  "xung",
-  "phai",
-  "loai",
-  "bang",
-  "nhan",
-  "phan",
-  "dien",
-  "canh",
-  "chung",
-  "kien",
-  "cuoc",
-  "nguoi",
-  "nhung",
-  "trong",
-  "khong",
-  "duoc",
-  "dang",
-  "dung",
-  "mot",
-  "moi",
-  "noi",
-  "chuyen",
-  "thoi",
-  "diem",
-  "dieu",
-  "that",
-  "chinh",
-  "truyen",
-  "story",
-  "drama",
-  "nu",
-  "chinh",
-]);
-
 const PROCEDURAL_TERMS = [
   "niêm phong",
   "phong tỏa",
@@ -707,7 +671,8 @@ function compactTags(input: string) {
     .replace(/đ/g, "d")
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
-    .filter((item) => item.length >= 4 && !GENERIC_MOTIF_TAG_STOPWORDS.has(item))
+    .filter((item) => item.length >= 4)
+    .filter((item) => !MOTIF_TAG_STOPWORDS.has(item))
     .slice(0, 12);
 }
 
@@ -721,6 +686,258 @@ function normalizeForCompare(input: string) {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+
+const MOTIF_TAG_STOPWORDS = new Set([
+  "phong", "xung", "phai", "loai", "bang", "nhan", "phan", "dien", "canh",
+  "chung", "kien", "cuoc", "nguoi", "trong", "ngoai", "khong", "duoc",
+  "dung", "dang", "thanh", "truoc", "sau", "truyen", "chinh", "that",
+  "mat", "dau", "moi", "mot", "cua", "voi", "cho", "khi", "lan", "nua",
+  "quan", "leak", "camera", "file", "log", "phap", "ly", "ho", "so",
+]);
+
+function splitGenreAtoms(genreLabel: string): string[] {
+  return genreLabel
+    .split(/[\/|,;·•+]+/g)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function slugifySeedPart(input: string) {
+  return normalizeForCompare(input).replace(/\s+/g, "-").replace(/-+/g, "-").slice(0, 56) || "genre";
+}
+
+
+function atomHasAny(atom: string, keywords: string[]) {
+  const normalized = normalizeForCompare(atom);
+  return keywords.some((keyword) => normalized.includes(normalizeForCompare(keyword)));
+}
+
+function pickAtom(atoms: string[], seed: string, salt: string, fallback: string) {
+  return pickSeedItem(atoms.length ? atoms : [fallback], seed, salt) || fallback;
+}
+
+function buildGenreSettingAtoms(atoms: string[]) {
+  const settings = new Set<string>();
+
+  for (const atom of atoms) {
+    if (atomHasAny(atom, ["trường", "phụ huynh", "học sinh", "nhập học", "bắt nạt"])) {
+      settings.add(`phòng họp phụ huynh nơi ${atom} trở thành áp lực chính`);
+      settings.add(`hành lang trường học khi ${atom} bị lôi ra trước mặt người lớn`);
+    } else if (atomHasAny(atom, ["bệnh viện", "phòng khám", "khoa sản", "xét nghiệm", "khám thai", "thai sản"])) {
+      settings.add(`hành lang bệnh viện tư nơi ${atom} bị che giấu`);
+      settings.add(`phòng tư vấn y tế nơi ${atom} bất ngờ đổi nghĩa`);
+    } else if (atomHasAny(atom, ["khách sạn", "resort", "phòng", "du lịch", "camera khách sạn"])) {
+      settings.add(`sảnh khách sạn nơi ${atom} trở thành cái bẫy danh dự`);
+      settings.add(`hành lang phòng VIP nơi ${atom} bị dùng để ép nữ chính im lặng`);
+    } else if (atomHasAny(atom, ["sân bay", "chuyến bay", "mất tích", "quay về"])) {
+      settings.add(`phòng chờ sân bay nơi ${atom} làm lộ người định bỏ trốn`);
+      settings.add(`cửa ra máy bay khi ${atom} buộc nữ chính phải chọn ở lại hay rời đi`);
+    } else if (atomHasAny(atom, ["họp báo", "livestream", "showbiz", "concert", "truyền thông", "hot search"])) {
+      settings.add(`hậu trường sự kiện nơi ${atom} chuẩn bị bị công khai`);
+      settings.add(`sân khấu truyền thông nơi ${atom} đảo chiều trước đám đông`);
+    } else if (atomHasAny(atom, ["hội đồng", "cổ phần", "tập đoàn", "công ty", "phòng kiểm toán", "ngân hàng", "startup"])) {
+      settings.add(`phòng họp quyền lực nơi ${atom} được dùng làm đòn ép`);
+      settings.add(`phòng kiểm toán hoặc phòng tài chính nơi ${atom} hé ra lỗ hổng thật`);
+    } else if (atomHasAny(atom, ["mẹ chồng", "nhà chồng", "gia tộc", "từ đường", "di chúc", "thừa kế", "hào môn"])) {
+      settings.add(`từ đường hoặc phòng khách gia tộc nơi ${atom} biến thành màn xét tội`);
+      settings.add(`bữa tiệc gia đình hào môn nơi ${atom} khiến cả bàn im phăng phắc`);
+    } else if (atomHasAny(atom, ["cà phê", "hiệu sách", "nhà hàng", "quán"])) {
+      settings.add(`quán gặp riêng nơi ${atom} làm nữ chính nhận ra người nói dối`);
+      settings.add(`góc bàn cạnh cửa kính nơi ${atom} bị đặt vào tay sai người`);
+    } else {
+      settings.add(`${atom} trong một bối cảnh đô thị cụ thể, có người chứng kiến và hậu quả cảm xúc rõ`);
+    }
+  }
+
+  return Array.from(settings).slice(0, 8);
+}
+
+function buildGenreEvidenceAtoms(atoms: string[]) {
+  const evidence = new Set<string>();
+
+  for (const atom of atoms) {
+    if (atomHasAny(atom, ["sổ khám thai", "khám thai"])) evidence.add("sổ khám thai có trang bị xé và một ký hiệu không ai giải thích");
+    else if (atomHasAny(atom, ["giấy báo nợ"])) evidence.add("giấy báo nợ có tên người bảo lãnh bị che");
+    else if (atomHasAny(atom, ["băng gạc"])) evidence.add("băng gạc có dấu vết lạ và thời điểm sử dụng không khớp");
+    else if (atomHasAny(atom, ["thư cũ"])) evidence.add("thư cũ mở khóa bí mật bị giấu trong lớp bìa kép");
+    else if (atomHasAny(atom, ["gấu bông"])) evidence.add("con gấu bông chứa vật nhỏ chứng minh đứa trẻ từng ở nơi bị phủ nhận");
+    else if (atomHasAny(atom, ["camera", "ảnh", "video", "khung hình"])) evidence.add(`${atom} có chi tiết nền bị bỏ sót, không chỉ là camera/log chung`);
+    else if (atomHasAny(atom, ["adn", "xét nghiệm"])) evidence.add("kết quả xét nghiệm có mã mẫu lệch với người được công bố");
+    else if (atomHasAny(atom, ["di chúc", "thừa kế"])) evidence.add("trang di chúc hoặc tín vật thừa kế có dấu đổi trang");
+    else if (atomHasAny(atom, ["hợp đồng", "cổ phần", "kiểm toán", "sao kê"])) evidence.add(`${atom} có dòng phụ/điều khoản phụ làm lộ người thao túng`);
+    else if (atomHasAny(atom, ["điện thoại", "tin nhắn", "ghi âm", "usb"])) evidence.add(`${atom} chứa mảnh bằng chứng bị hiểu sai cho tới khi đối chiếu với bối cảnh`);
+    else if (atomHasAny(atom, ["vé", "sân bay", "chuyến bay"])) evidence.add("vé hoặc lịch trình di chuyển có thời điểm phá vỡ lời khai");
+    else evidence.add(`${atom} được biến thành vật chứng riêng của thể loại này, không dùng như giấy tờ pháp lý chung`);
+  }
+
+  return Array.from(evidence).slice(0, 8);
+}
+
+function buildGenrePressureAtoms(atoms: string[]) {
+  const pressure = new Set<string>();
+
+  for (const atom of atoms) {
+    if (atomHasAny(atom, ["trường", "phụ huynh"])) pressure.add(`buổi họp phụ huynh nơi ${atom} khiến nữ chính bị ép xin lỗi`);
+    else if (atomHasAny(atom, ["bệnh viện", "xét nghiệm", "khám thai"])) pressure.add(`quy trình y tế bị lợi dụng để khiến ${atom} thành lời buộc tội`);
+    else if (atomHasAny(atom, ["họp báo", "livestream", "showbiz", "concert"])) pressure.add(`ánh đèn truyền thông biến ${atom} thành cuộc xét xử công khai`);
+    else if (atomHasAny(atom, ["mẹ chồng", "nhà chồng", "gia tộc"])) pressure.add(`cả nhà chồng dùng ${atom} để ép nữ chính nhận tội trước người ngoài`);
+    else if (atomHasAny(atom, ["hội đồng", "cổ phần", "kiểm toán", "ngân hàng"])) pressure.add(`cuộc họp quyền lực dùng ${atom} để tước quyền quyết định của nữ chính`);
+    else if (atomHasAny(atom, ["khách sạn", "resort", "ngoại tình"])) pressure.add(`lời đồn trong nhóm khách VIP biến ${atom} thành bằng chứng bôi nhọ`);
+    else pressure.add(`một nhóm người liên quan tới ${atom} đồng loạt gây sức ép để nữ chính phải im`);
+  }
+
+  return Array.from(pressure).slice(0, 8);
+}
+
+function buildGenreHiddenTruthAtoms(atoms: string[]) {
+  const truths = new Set<string>();
+
+  for (const atom of atoms) {
+    if (atomHasAny(atom, ["mẹ chồng", "nhà chồng"])) truths.add(`người trong nhà chồng dựng bẫy vì muốn che một lỗi cũ gắn với ${atom}`);
+    else if (atomHasAny(atom, ["sổ khám thai", "khoa sản", "adn", "xét nghiệm"])) truths.add(`${atom} không chứng minh điều mọi người nghĩ, mà chỉ ra người đã tráo mẫu/giấu thân phận`);
+    else if (atomHasAny(atom, ["camera", "ảnh", "video"])) truths.add(`${atom} không quan trọng ở người trong hình, mà ở chi tiết nền phản chiếu phía sau`);
+    else if (atomHasAny(atom, ["giấy báo nợ", "ngân hàng", "cổ phần", "kiểm toán"])) truths.add(`${atom} là vỏ ngoài của một khoản chuyển quyền hoặc trách nhiệm bị đẩy sang nữ chính`);
+    else if (atomHasAny(atom, ["gấu bông", "con", "nhận nuôi"])) truths.add(`${atom} chứng minh đứa trẻ đã bị đưa tới nơi người lớn phủ nhận`);
+    else truths.add(`sự thật về ${atom} nằm ở người im lặng nhất, không phải người la lớn nhất`);
+  }
+
+  return Array.from(truths).slice(0, 8);
+}
+
+function buildGenreVillainAttacks(atoms: string[]) {
+  const attacks = new Set<string>();
+
+  for (const atom of atoms) {
+    if (atomHasAny(atom, ["mẹ chồng", "nhà chồng"])) attacks.add(`phản diện dùng lễ nghi gia đình và người ngoài làm chứng để biến ${atom} thành tội của nữ chính`);
+    else if (atomHasAny(atom, ["trường", "phụ huynh"])) attacks.add(`phản diện để đứa trẻ hoặc hồ sơ trường học bị gọi tên trước đám đông phụ huynh`);
+    else if (atomHasAny(atom, ["bệnh viện", "xét nghiệm", "khám thai"])) attacks.add(`phản diện ép nhân chứng y tế im lặng rồi công bố một phần ${atom} bị cắt nghĩa`);
+    else if (atomHasAny(atom, ["khách sạn", "resort", "ngoại tình"])) attacks.add(`phản diện dàn cảnh để nữ chính xuất hiện đúng lúc ${atom} bị hiểu thành bê bối`);
+    else if (atomHasAny(atom, ["hội đồng", "cổ phần", "kiểm toán", "ngân hàng"])) attacks.add(`phản diện đưa ${atom} vào cuộc họp để buộc nữ chính mất quyền ký hoặc mất phiếu`);
+    else if (atomHasAny(atom, ["họp báo", "livestream", "showbiz", "concert"])) attacks.add(`phản diện chờ lúc đông người nhất mới tung ${atom} phiên bản bị bóp méo`);
+    else attacks.add(`phản diện biến ${atom} thành cú nhục công khai vừa đủ đau nhưng vẫn có sơ hở riêng`);
+  }
+
+  return Array.from(attacks).slice(0, 8);
+}
+
+function buildGenreHeroineCounters(atoms: string[], heroineLabel: string) {
+  const counters = new Set<string>();
+  const heroine = heroineLabel || "nữ chính";
+
+  for (const atom of atoms) {
+    if (atomHasAny(atom, ["mẹ chồng", "nhà chồng"])) counters.add(`${heroine} không cãi tay đôi, cô hỏi đúng người chứng kiến trong nhà và buộc bẫy gia đình tự lộ`);
+    else if (atomHasAny(atom, ["trường", "phụ huynh"])) counters.add(`${heroine} đưa đứa trẻ rời khỏi phòng trước, rồi mới dùng câu hỏi về ${atom} để bắt người lớn tự khai`);
+    else if (atomHasAny(atom, ["bệnh viện", "xét nghiệm", "khám thai"])) counters.add(`${heroine} bảo vệ nhân chứng y tế trước, sau đó đối chiếu mã/thời điểm của ${atom}`);
+    else if (atomHasAny(atom, ["khách sạn", "resort", "ngoại tình"])) counters.add(`${heroine} không giải thích chuyện tình cảm, cô chứng minh ai có mặt tại nơi ${atom} được dựng bẫy`);
+    else if (atomHasAny(atom, ["hội đồng", "cổ phần", "kiểm toán", "ngân hàng"])) counters.add(`${heroine} không xin thêm thời gian, cô buộc cuộc họp kiểm tra nguồn gốc của ${atom} ngay tại chỗ`);
+    else if (atomHasAny(atom, ["họp báo", "livestream", "showbiz", "concert"])) counters.add(`${heroine} để bản sai được tung hết rồi mới mở mảnh gốc khiến đám đông tự đảo chiều`);
+    else counters.add(`${heroine} dùng cách phản công đúng tính cách của mình: bình tĩnh, ít lời, đánh vào sơ hở riêng của ${atom}`);
+  }
+
+  return Array.from(counters).slice(0, 8);
+}
+
+function buildGenreEmotionalStakes(atoms: string[], heroineLabel: string) {
+  const stakes = new Set<string>();
+  const heroine = heroineLabel || "nữ chính";
+
+  for (const atom of atoms) {
+    if (atomHasAny(atom, ["con", "gấu bông", "trường", "phụ huynh", "nhận nuôi"])) stakes.add(`đứa trẻ bị kéo vào ${atom}, khiến ${heroine} phải bảo vệ con trước khi tự minh oan`);
+    else if (atomHasAny(atom, ["mẹ", "bệnh viện", "khám thai", "xét nghiệm"])) stakes.add(`người thân yếu thế hoặc bí mật sinh tử khiến ${heroine} không thể chỉ nghĩ cho bản thân`);
+    else if (atomHasAny(atom, ["hôn nhân", "ngoại tình", "khách sạn", "vị hôn phu"])) stakes.add(`${heroine} bị buộc nhìn quan hệ từng tin tưởng trở thành công cụ sỉ nhục`);
+    else if (atomHasAny(atom, ["mẹ chồng", "nhà chồng", "gia tộc"])) stakes.add(`${heroine} đau vì người nhà dùng danh phận và lễ nghĩa để ép cô cúi đầu`);
+    else stakes.add(`${heroine} bị tổn thương thật vì ${atom}, nhưng vẫn chọn phản công có kiểm soát`);
+  }
+
+  return Array.from(stakes).slice(0, 8);
+}
+
+function buildGenreDopamineHooks(atoms: string[]) {
+  const hooks = new Set<string>();
+
+  for (const atom of atoms) {
+    if (atomHasAny(atom, ["mẹ chồng", "nhà chồng"])) hooks.add(`một người trong nhà tưởng đứng về phe phản diện lại xác nhận chi tiết trong ${atom}`);
+    else if (atomHasAny(atom, ["trường", "phụ huynh"])) hooks.add(`một câu nói vô tình của đứa trẻ làm lộ người lớn đã nói dối về ${atom}`);
+    else if (atomHasAny(atom, ["bệnh viện", "xét nghiệm", "khám thai"])) hooks.add(`mã mẫu/thời điểm trong ${atom} khiến người công bố bằng chứng tái mặt`);
+    else if (atomHasAny(atom, ["khách sạn", "resort"])) hooks.add(`một chi tiết dịch vụ nhỏ trong ${atom} chứng minh phản diện mới là người đặt bẫy`);
+    else if (atomHasAny(atom, ["hội đồng", "kiểm toán", "ngân hàng", "cổ phần"])) hooks.add(`một dòng phụ trong ${atom} làm đổi phiếu/quyền ngay trước mặt người có quyền`);
+    else if (atomHasAny(atom, ["họp báo", "livestream", "showbiz", "concert"])) hooks.add(`đám đông đang mắng nữ chính bỗng im khi ${atom} phiên bản gốc xuất hiện`);
+    else hooks.add(`${atom} đảo nghĩa đúng lúc, biến cú nhục thành cú phản công khiến phản diện không kịp trở tay`);
+  }
+
+  return Array.from(hooks).slice(0, 8);
+}
+
+function buildGenreExpandedLanesFromLabel(
+  genreLabel: string,
+  heroineLabel: string,
+  seed: string,
+): StoryDramaLane[] {
+  const atoms = splitGenreAtoms(genreLabel);
+  const primary = pickAtom(atoms, seed, "genre-primary-atom", genreLabel || "nữ tần đô thị drama");
+  const secondary = pickAtom(
+    atoms.filter((item) => item !== primary),
+    seed,
+    "genre-secondary-atom",
+    atoms[1] || primary,
+  );
+  const tertiary = pickAtom(
+    atoms.filter((item) => item !== primary && item !== secondary),
+    seed,
+    "genre-tertiary-atom",
+    atoms[2] || secondary || primary,
+  );
+
+  const baseAtoms = [primary, secondary, tertiary].filter(Boolean);
+  const allAtoms = atoms.length ? atoms : baseAtoms;
+
+  const lane: StoryDramaLane = {
+    key: `genre-lock-${slugifySeedPart(genreLabel || primary)}`,
+    label: `nữ tần đô thị drama theo genre khóa: ${genreLabel || primary}`,
+    conflicts: [
+      `xung đột phải mọc trực tiếp từ "${primary}" và bị đẩy căng bởi "${secondary}"`,
+      `${heroineLabel || "nữ chính"} bị ép vào thế yếu vì ${primary}, nhưng sơ hở thật nằm ở ${tertiary}`,
+      `phản diện dùng ${secondary} để biến nữ chính thành người có lỗi, trong khi ${primary} mới là chìa khóa đảo chiều`,
+      `một bí mật đời sống đô thị quanh ${primary} khiến ${heroineLabel || "nữ chính"} phải chọn giữa chịu nhục và phản công`,
+    ],
+    settings: buildGenreSettingAtoms(allAtoms),
+    evidenceObjects: buildGenreEvidenceAtoms(allAtoms),
+    publicPressures: buildGenrePressureAtoms(allAtoms),
+    hiddenTruths: buildGenreHiddenTruthAtoms(allAtoms),
+    villainAttacks: buildGenreVillainAttacks(allAtoms),
+    heroineCounters: buildGenreHeroineCounters(allAtoms, heroineLabel),
+    emotionalStakes: buildGenreEmotionalStakes(allAtoms, heroineLabel),
+    dopamineHooks: buildGenreDopamineHooks(allAtoms),
+  };
+
+  const rotate = (items: string[], salt: string) => {
+    if (items.length <= 1) return items;
+    const first = Math.abs(
+      normalizeForCompare(`${seed}-${salt}`).split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0),
+    ) % items.length;
+    return [...items.slice(first), ...items.slice(0, first)];
+  };
+
+  return [
+    lane,
+    {
+      ...lane,
+      key: `${lane.key}-emotional`,
+      label: `${lane.label} / biến thể cảm xúc`,
+      settings: rotate(lane.settings, "setting"),
+      evidenceObjects: rotate(lane.evidenceObjects, "evidence"),
+      publicPressures: rotate(lane.publicPressures, "pressure"),
+      hiddenTruths: rotate(lane.hiddenTruths, "truth"),
+      villainAttacks: rotate(lane.villainAttacks, "attack"),
+      heroineCounters: rotate(lane.heroineCounters, "counter"),
+      emotionalStakes: rotate(lane.emotionalStakes, "stakes"),
+      dopamineHooks: rotate(lane.dopamineHooks, "hook"),
+    },
+  ];
+}
+
 
 const ABSTRACT_TITLE_PATTERNS = [
   "nguoi cuoi cung",
@@ -902,199 +1119,6 @@ function pickDramaLane(seed: string, avoidLibrary?: AvoidLibrary) {
 }
 
 
-function makeSlugToken(input: string) {
-  return normalizeForCompare(input)
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 10)
-    .join("-");
-}
-
-function splitGenreParts(genreLabel: string) {
-  return String(genreLabel || "")
-    .split("/")
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
-function inferUrbanSettingFromGenre(parts: string[], genreLabel: string) {
-  const source = normalizeForCompare([genreLabel, ...parts].join(" | "))
-  const primary = parts[0] || genreLabel || "đô thị hiện đại"
-  const settings: string[] = []
-  const add = (...items: string[]) => items.forEach((item) => item && !settings.includes(item) && settings.push(item))
-
-  if (source.includes("ham ruou")) add("hầm rượu trong biệt thự hào môn", "lối cầu thang tối sau phòng tiệc", "phòng khách biệt thự sau cánh cửa hầm rượu")
-  else if (source.includes("san bay") || source.includes("chuyen bay") || source.includes("tiep vien")) add("phòng chờ VIP sân bay", "cửa boarding sát đường băng", "khoang hạng thương gia trước giờ cất cánh")
-  else if (source.includes("khach san") || source.includes("resort") || source.includes("du thuyen")) add("sảnh khách sạn cao cấp", "hành lang phòng VIP", "khu nghỉ dưỡng riêng tư")
-  else if (source.includes("benh vien") || source.includes("khoa san") || source.includes("phong kham") || source.includes("xet nghiem") || source.includes("adn") || source.includes("dna") || source.includes("thai")) add("hành lang bệnh viện tư", "phòng chờ khoa sản", "phòng xét nghiệm sau giờ làm")
-  else if (source.includes("truong") || source.includes("phu huynh") || source.includes("hoc sinh") || source.includes("nha tre")) add("trường quốc tế", "phòng họp phụ huynh", "khu vui chơi trẻ em")
-  else if (source.includes("toa an") || source.includes("luat") || source.includes("don to cao") || source.includes("canh sat")) add("văn phòng luật sư", "phòng hòa giải", "hành lang tòa án")
-  else if (source.includes("co phan") || source.includes("hoi dong") || source.includes("ngan hang") || source.includes("startup") || source.includes("doanh nghiep") || source.includes("tai chinh")) add("phòng họp hội đồng quản trị", "ngân hàng phòng VIP", "sảnh tập đoàn")
-  else if (source.includes("showbiz") || source.includes("hop bao") || source.includes("livestream") || source.includes("idol") || source.includes("phim truong") || source.includes("pr")) add("phòng họp báo", "hậu trường phát sóng", "sân khấu truyền thông")
-  else if (source.includes("dam cuoi") || source.includes("hon le") || source.includes("dinh hon") || source.includes("lien hon")) add("sảnh tiệc cưới", "phòng cô dâu", "lễ đường hào môn")
-  else if (source.includes("gia toc") || source.includes("hao mon") || source.includes("me chong") || source.includes("di chuc") || source.includes("thua ke") || source.includes("biet thu")) add("phòng khách hào môn", "từ đường gia tộc", "bữa tiệc gia đình trong biệt thự")
-  else if (source.includes("nha hang") || source.includes("dau bep") || source.includes("am thuc")) add("nhà hàng riêng của gia tộc", "bếp sau trước giờ phục vụ", "phòng thử món VIP")
-  else if (source.includes("trien lam") || source.includes("tranh") || source.includes("dau gia")) add("phòng tranh trong đêm khai mạc", "nhà đấu giá", "hậu trường triển lãm")
-  else add(primary, "căn hộ cao cấp", "phòng khách đối chất", "không gian công khai có người chứng kiến")
-
-  return settings.slice(0, 5)
-}
-
-function inferUrbanEvidenceFromGenre(parts: string[], genreLabel: string) {
-  const source = normalizeForCompare([genreLabel, ...parts].join(" | "))
-  const secondary = parts[1] || ""
-  const tertiary = parts[2] || ""
-  const evidence: string[] = []
-  const add = (...items: string[]) => items.forEach((item) => item && !evidence.includes(item) && evidence.push(item))
-
-  if (secondary && !normalizeForCompare(secondary).match(/^(tieu tam|hao mon|gia toc|me chong|nha chong|nu cuong|tra thu|ngoai tinh|showbiz|phap ly|tong tai|ngon tinh)$/)) add(secondary)
-  if (tertiary && normalizeForCompare(tertiary).length > 6 && !normalizeForCompare(tertiary).includes("che giau than phan")) add(tertiary)
-
-  if (source.includes("so kham thai") || source.includes("thai")) add("sổ khám thai có trang bị xé", "phiếu siêu âm bị đổi tên", "vòng tay khoa sản cũ")
-  else if (source.includes("dien thoai") || source.includes("tin nhan") || source.includes("cuoc goi") || source.includes("ghi am")) add("điện thoại cũ chứa tin nhắn và ghi âm", "lịch sử cuộc gọi lúc nửa đêm", "file âm thanh bị cắt đoạn")
-  else if (source.includes("camera") || source.includes("hanh trinh") || source.includes("nghe len")) add("camera hành trình", "video camera hành lang", "thẻ nhớ camera bị giấu")
-  else if (source.includes("adn") || source.includes("dna") || source.includes("xet nghiem") || source.includes("khoa san")) add("kết quả ADN lệch mã mẫu", "vòng tay trẻ sơ sinh", "phiếu xét nghiệm bị đổi tên")
-  else if (source.includes("khach san") || source.includes("ngoai tinh") || source.includes("phong vip")) add("thẻ phòng khách sạn", "hóa đơn minibar", "phiếu gửi đồ đứng sai tên")
-  else if (source.includes("dam cuoi") || source.includes("hon le") || source.includes("hon uoc") || source.includes("lien hon")) add("thiệp cưới bị giấu", "nhẫn cưới khắc sai tên", "hợp đồng hôn nhân có phụ lục bí mật")
-  else if (source.includes("san bay") || source.includes("chuyen bay") || source.includes("mat tich")) add("vé máy bay một chiều", "boarding pass bị xé", "vali khóa số")
-  else if (source.includes("co phan") || source.includes("ngan hang") || source.includes("tai chinh") || source.includes("hoi dong")) add("sao kê ngân hàng", "hợp đồng chuyển nhượng cổ phần", "biên lai giao dịch phòng VIP")
-  else if (source.includes("di chuc") || source.includes("thua ke") || source.includes("dau gia") || source.includes("tin vat")) add("di chúc viết tay", "tín vật gia tộc", "ảnh cũ trong két sắt")
-  else if (source.includes("email") || source.includes("usb") || source.includes("du lieu")) add("USB dữ liệu mật", "email nội bộ bị chuyển nhầm", "ổ cứng phục hồi file đã xóa")
-  else if (source.includes("bao mau") || source.includes("tre") || source.includes("con")) add("đồ chơi có máy ghi âm", "camera phòng trẻ", "ảnh chụp món đồ của con ở sai địa điểm")
-
-  if (!evidence.length) add(parts[1] || parts[2] || "vật chứng riêng của thể loại đã chọn", "một chi tiết cụ thể chỉ tồn tại trong bối cảnh này")
-  return evidence.slice(0, 6)
-}
-
-function inferUrbanPressuresFromGenre(parts: string[], genreLabel: string) {
-  const source = normalizeForCompare([genreLabel, ...parts].join(" | "))
-  const pressures: string[] = []
-  const add = (...items: string[]) => items.forEach((item) => item && !pressures.includes(item) && pressures.push(item))
-
-  if (source.includes("hot search") || source.includes("showbiz") || source.includes("livestream") || source.includes("pr") || source.includes("kol") || source.includes("idol")) add("hot search trên mạng xã hội", "buổi họp báo", "livestream bị hàng nghìn người xem")
-  else if (source.includes("hoi dong") || source.includes("co phan") || source.includes("startup") || source.includes("doanh nghiep")) add("hội đồng quản trị công ty", "buổi họp cổ đông", "bản tin nội bộ cố ý kết tội nữ chính")
-  else if (source.includes("truong") || source.includes("phu huynh") || source.includes("hoc sinh")) add("nhóm chat phụ huynh", "cuộc họp phụ huynh", "topic ẩn danh trong diễn đàn trường học")
-  else if (source.includes("toa an") || source.includes("luat") || source.includes("quyen nuoi")) add("phiên hòa giải pháp lý", "đơn kiện công khai", "buổi xét duyệt quyền nuôi con")
-  else if (source.includes("gia toc") || source.includes("me chong") || source.includes("hao mon") || source.includes("di chuc") || source.includes("biet thu")) add("họp gia đình có người ngoài chứng kiến", "lời đồn trong giới hào môn", "cuộc bỏ phiếu trong gia tộc")
-  else if (source.includes("dam cuoi") || source.includes("hon le") || source.includes("dinh hon")) add("đám cưới có khách mời thượng lưu", "màn hình LED ở sảnh tiệc", "danh sách khách mời bị rò rỉ")
-  else add("đám đông chứng kiến", "tin nhắn bị leak vào nhóm nội bộ", "một cuộc đối chất có người ngoài làm chứng")
-
-  return pressures.slice(0, 5)
-}
-
-function normalizeHeroineStyle(heroineLabel: string) {
-  return normalizeForCompare(heroineLabel || "nữ chính tỉnh táo, có cảm xúc và biết phản công")
-}
-
-function buildHeroineDramaProfile(heroineLabel: string) {
-  const source = normalizeHeroineStyle(heroineLabel)
-
-  if (source.includes("diu dang") || source.includes("mem") || source.includes("hien")) return {
-    responseStyle: "nữ chính bề ngoài mềm và biết nhường một nhịp, nhưng quan sát rất kỹ trước khi ra đòn",
-    counterMove: "cô dùng một câu nói dịu để khiến phản diện chủ quan, rồi tung chi tiết khiến cả phòng im lặng",
-    emotionalFaultLine: "người khác tưởng cô dễ bị ép vì cô không gào lên, nhưng chính sự bình tĩnh đó làm đòn phản công đau hơn",
-    publicAura: "vả mặt không ồn ào, nhưng sắc và làm phản diện mất đường lui",
-  }
-
-  if (source.includes("lanh") || source.includes("ly tri") || source.includes("quyet doan")) return {
-    responseStyle: "nữ chính lý trí, nói ít, ra quyết định nhanh và không để cảm xúc kéo lệch mục tiêu",
-    counterMove: "cô khóa đường lui của phản diện bằng thứ tự chứng cứ, nhân chứng và câu hỏi công khai",
-    emotionalFaultLine: "cô càng lạnh thì càng phải có một vết đau riêng khiến độc giả hiểu vì sao cô không được thua",
-    publicAura: "vả mặt sắc lạnh, có tính kiểm soát và làm quyền lực đối phương sụp từng bước",
-  }
-
-  if (source.includes("ngay tho") || source.includes("yeu duoi") || source.includes("tu ti")) return {
-    responseStyle: "nữ chính ban đầu bị xem thường, phản ứng chậm hơn nhưng học rất nhanh sau cú đau đầu tiên",
-    counterMove: "cô dùng chính điểm bị khinh thường để khiến phản diện lộ sự ngạo mạn",
-    emotionalFaultLine: "độc giả phải thấy khoảnh khắc cô từ run rẩy chuyển sang dám nhìn thẳng",
-    publicAura: "vả mặt có cảm giác trưởng thành, từ yếu thế thành chủ động",
-  }
-
-  if (source.includes("sac sao") || source.includes("thong minh") || source.includes("chien luoc")) return {
-    responseStyle: "nữ chính sắc sảo, luôn giữ lại một nửa sự thật để gài phản diện nói hớ",
-    counterMove: "cô dựng một cái bẫy xã hội nhỏ, để phản diện tự bước vào trước khi cô đưa vật chứng ra",
-    emotionalFaultLine: "sự thông minh phải đi kèm cái giá cảm xúc, không được thành máy giải án vô hồn",
-    publicAura: "vả mặt bằng chiến thuật, có nhịp chờ, đảo chiều và payoff rõ",
-  }
-
-  if (source.includes("nong") || source.includes("boc dong") || source.includes("thang")) return {
-    responseStyle: "nữ chính có lửa, dễ bùng lên nhưng học cách biến tức giận thành hành động có chứng cứ",
-    counterMove: "cô suýt phản ứng trực diện, rồi kịp dừng lại để tung một đòn khiến phản diện không chối được",
-    emotionalFaultLine: "cơn giận của cô phải có lý do đời sống, không phải chỉ để tạo drama rỗng",
-    publicAura: "vả mặt có lực, giàu cảm xúc, nhưng vẫn phải có logic",
-  }
-
-  return {
-    responseStyle: `nữ chính đúng kiểu "${heroineLabel || "đô thị nữ tần"}": có cảm xúc thật, biết chịu đau đúng lúc và phản công bằng lựa chọn chủ động`,
-    counterMove: "cô không thắng nhờ may mắn; cô thắng vì nhận ra điểm lệch trong lời nói, vật chứng hoặc quan hệ",
-    emotionalFaultLine: "phải có một cái giá cá nhân khiến độc giả thương và muốn cô thắng",
-    publicAura: "vả mặt phải có cảm xúc, bằng chứng và hậu quả thật",
-  }
-}
-
-function buildGenreExpandedLanesFromLabel(genreLabel: string, heroineLabel: string, _seed: string): StoryDramaLane[] {
-  const parts = splitGenreParts(genreLabel)
-  const primary = parts[0] || genreLabel || "nữ tần đô thị"
-  const secondary = parts[1] || "vật chứng riêng"
-  const tertiary = parts[2] || "bí mật bị che giấu"
-  const settings = inferUrbanSettingFromGenre(parts, genreLabel)
-  const evidenceObjects = inferUrbanEvidenceFromGenre(parts, genreLabel)
-  const pressures = inferUrbanPressuresFromGenre(parts, genreLabel)
-  const profile = buildHeroineDramaProfile(heroineLabel)
-  const normalizedKey = makeSlugToken(genreLabel) || "custom-genre"
-
-  const makeLane = (index: number, focus: string): StoryDramaLane => ({
-    key: `genre-expand-${normalizedKey}-${index}`,
-    label: `nữ tần đô thị mở rộng / ${genreLabel} / ${focus}`,
-    conflicts: [
-      `xung đột phải mọc ra từ "${primary}", không được đổi sang DNA hồ sơ-camera-log chung`,
-      `trọng tâm là ${secondary}, nhưng cú đau cảm xúc nằm ở ${tertiary}`,
-      `${profile.responseStyle}; conflict phải khiến kiểu nữ chính này phản ứng khác các kiểu nữ chính khác`,
-      `phản diện dùng quyền lực đời sống trong bối cảnh ${settings[index % settings.length]} để ép cô mất mặt trước người liên quan`,
-    ],
-    settings: [settings[index % settings.length], settings[(index + 1) % settings.length], settings[(index + 2) % settings.length]].filter(Boolean),
-    evidenceObjects: [evidenceObjects[index % evidenceObjects.length], evidenceObjects[(index + 1) % evidenceObjects.length], secondary].filter(Boolean),
-    publicPressures: [pressures[index % pressures.length], pressures[(index + 1) % pressures.length], "một cuộc đối chất có người ngoài làm chứng"].filter(Boolean),
-    hiddenTruths: [
-      `${tertiary} là tầng bí mật chính, không được thay bằng hidden_conspiracy chung chung`,
-      `người tưởng chỉ là nhân chứng trong "${primary}" thật ra đang giữ một lựa chọn khiến cục diện đảo chiều`,
-      `vật chứng ${secondary} chạm vào mối quan hệ/thân phận/quyền lợi riêng của genre này`,
-    ],
-    villainAttacks: [
-      `phản diện đánh vào ${secondary} để biến nữ chính thành người có lỗi trong đúng bối cảnh "${primary}"`,
-      `phản diện không chỉ tung giấy tờ; họ dùng một người nữ chính còn quan tâm để ép cô tự im`,
-      `phản diện tạo một cú nhục công khai vừa đủ đau, nhưng vẫn có kẽ hở riêng của ${genreLabel}`,
-    ],
-    heroineCounters: [
-      profile.counterMove,
-      `nữ chính dùng chi tiết riêng của ${secondary} để lật ngược lời buộc tội, không dựa mặc định vào luật sư/log/camera`,
-      `nữ chính chọn bảo vệ một người yếu thế trước, rồi mới vả mặt phản diện bằng bằng chứng`,
-    ],
-    emotionalStakes: [
-      profile.emotionalFaultLine,
-      `cú đau cá nhân phải gắn với ${primary}: danh dự, người thân, con, nghề nghiệp, tình yêu hoặc quyền sống tử tế`,
-      `một người yếu thế bị kéo vào khiến nữ chính không thể chỉ phản công cho bản thân`,
-    ],
-    dopamineHooks: [
-      profile.publicAura,
-      `đúng lúc phản diện tưởng thắng, một chi tiết chỉ thuộc ${genreLabel} làm đám đông đổi sắc`,
-      `nữ chính để phản diện tự xác nhận điểm sai trước mặt người chứng kiến`,
-    ],
-  })
-
-  return [
-    makeLane(0, "core-genre-hook"),
-    makeLane(1, "emotional-stakes"),
-    makeLane(2, "public-reversal"),
-    makeLane(3, "relationship-cut"),
-    makeLane(4, "power-loss"),
-    makeLane(5, "hidden-witness"),
-    makeLane(6, "intimate-betrayal"),
-    makeLane(7, "dopamine-payoff"),
-  ]
-}
-
-
 function cleanTitleToken(input: string) {
   return input
     .replace(/^một\s+/i, "")
@@ -1171,9 +1195,10 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   if (normalized.includes("phieu gui do")) variants.push("Phiếu Gửi Đồ Trong Khách Sạn", "Tên Người Gửi Trên Phiếu Cũ");
 
   variants.push(
-    `${token} Sai Thời Điểm`,
-    `${token} Bị Đánh Dấu`,
     `Dấu Vết Từ ${token}`,
+    `${token} Đổi Nghĩa`,
+    `Người Giữ ${token}`,
+    `Đêm ${token} Lộ Mặt`,
   );
 
   return uniqueStringsForCover(variants, 10);
@@ -1333,16 +1358,17 @@ function buildSeedCandidate(params: {
     publicPressure,
   ].filter(Boolean);
 
-  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bị cuốn vào xung đột ${relationshipConflict}, mở đầu tại ${setting}, khi ${evidenceObject} làm lộ một điểm bất thường không ai muốn nhắc tới. Đây vẫn là nữ tần đô thị drama/vả mặt cuốn hút, nhưng DNA phải mở rộng theo thể loại đã chọn: ${params.genreLabel}. Truyện phải ưu tiên drama lane: ${params.lane.label}.`;
+  const exactGenre = params.genreLabel || params.lane.label;
+  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bước vào một nữ tần đô thị drama bám chặt genre "${exactGenre}". Xung đột mở tại ${setting}; trọng tâm không phải hồ sơ-camera-log chung mà là ${relationshipConflict}. ${evidenceObject} chỉ là chìa khóa riêng của genre này, buộc cô nhìn thấy ai đang dùng ${publicPressure} để ép mình cúi đầu.`;
   const openingScene = setting;
-  const incitingIncident = `${evidenceObject} xuất hiện sai thời điểm hoặc bị đặt vào sai ngữ cảnh, khiến nữ chính nhận ra có người đang dựng một câu chuyện bất lợi cho mình; cú đánh đầu tiên phải cụ thể theo thể loại "${params.genreLabel}", không mặc định là giấy tờ/pháp lý/log, mà là: ${villainAttack}.`;
-  const mainConflict = `Nữ chính phải đối đầu với cấu trúc quyền lực quanh ${relationshipConflict}, trong khi ${publicPressure} khiến cô khó phản kháng trực diện. Conflict chính phải luân phiên giữa chứng cứ, đối đầu cảm xúc, áp lực công khai và cú phản công chủ động; không được biến nhiều chương liên tiếp thành chuỗi niêm phong/phong tỏa/giám định/log.`;
-  const villainType = `Người thao túng đứng sau xung đột ${relationshipConflict}, có cá tính rõ và đòn đánh riêng: ${villainAttack}. Phản diện chính phải ra mặt hoặc để lại dấu vân tay cá nhân, không núp mãi sau luật sư/PR/pháp vụ.`;
-  const heroineArc = `${params.heroineLabel}: cách chịu nhục, cách quan sát, cách đối thoại và cách phản công phải khác các kiểu nữ chính khác. Arc: bị ép vào thế yếu → chịu một cú đau thật (${emotionalStake}) → phản ứng đúng tính cách (${heroineCounter}) → vả mặt có cảm xúc và hậu quả thật → giành lại thế chủ động từng phần.`;
-  const emotionalHook = `${emotionalStake}. Một người phụ nữ bị ép nhận phần thua thiệt, nhưng lần này cảm xúc đau không làm cô gục mà biến thành lý do phản công.`;
-  const powerStructure = `Gia đình / công ty / quan hệ xã hội đang đứng về phía phản diện, còn nữ chính chỉ có trí nhớ, sự bình tĩnh, ${evidenceObject}, và một chiến thuật phản công: ${heroineCounter}.`;
-  const shortFingerprint = `${params.lane.key} + genre:${params.genreLabel} + heroine:${params.heroineLabel} + setting:${setting} + evidence:${evidenceObject} + conflict:${relationshipConflict}`;
-  const dramaBalance = `Drama balance bắt buộc: uất ức thật (${villainAttack}) → cái giá cảm xúc (${emotionalStake}) → phản công đúng kiểu nữ chính (${heroineCounter}) → dopamine hook/vả mặt có hậu quả: ${dopamineHook}.`;
+  const incitingIncident = `Tại ${setting}, ${villainAttack}. ${evidenceObject} không phải vật chứng rơi vào scene theo công thức cũ; nó được đặt trong một tình huống cụ thể của "${exactGenre}" khiến nữ chính bị hiểu sai trước người liên quan.`;
+  const mainConflict = `Nữ chính phải xử lý ${relationshipConflict} bằng logic riêng của genre "${exactGenre}": cảm xúc thật, áp lực đô thị, cú nhục rõ, phản công chủ động. Không được tự kéo về chuỗi camera/log/phong tỏa/pháp lý nếu genre không đòi hỏi.`;
+  const villainType = `Phản diện chính thao túng ${relationshipConflict} bằng đòn riêng: ${villainAttack}. Họ phải có mục tiêu cá nhân, lời nói/cử chỉ nhận diện được, không chỉ là luật sư/PR/pháp vụ vô danh.`;
+  const heroineArc = `${params.heroineLabel}: chịu đau có lý do → quan sát điểm lệch trong ${evidenceObject} → bảo vệ điều quan trọng (${emotionalStake}) → phản công bằng cách riêng (${heroineCounter}) → vả mặt có cảm xúc và payoff.`;
+  const emotionalHook = `${emotionalStake}. Cảm xúc phải đến từ đúng kiểu nữ chính "${params.heroineLabel}", không biến cô thành một nữ tổng tài lạnh lùng giống mọi truyện.`;
+  const powerStructure = `Quyền lực đối đầu đến từ ${publicPressure} và thế lực quanh ${relationshipConflict}; nữ chính có ${evidenceObject}, sự bình tĩnh, tổn thương thật, và cách phản công riêng: ${heroineCounter}.`;
+  const shortFingerprint = `${params.lane.key} + genre:${exactGenre} + setting:${setting} + evidence:${evidenceObject} + conflict:${relationshipConflict} + heroine:${params.heroineLabel}`;
+  const dramaBalance = `Drama balance theo genre: attack=${villainAttack} → hurt=${emotionalStake} → counter=${heroineCounter} → payoff=${dopamineHook}.`;
 
   return {
     relationshipConflict,
@@ -1398,16 +1424,16 @@ function buildFactoryStoryPlan(params: {
     ) || candidate.setting;
 
   const evidencePlan = [
-    `Chương 1 cài vật chứng chính: ${candidate.evidenceObject}, chỉ hé điểm sai đầu tiên.`,
-    `Chương 2–3 cho vật chứng bị phản diện bẻ nghĩa, không lặp thêm một lệnh niêm phong nếu chương trước đã dùng thủ tục.`,
-    `Chương 4–5 đưa vật chứng phụ: ${alternateEvidence}, dùng để mở một cú vả mặt nhỏ hoặc đổi phe.`,
+    `Chương 1 cài vật chứng chính: ${candidate.evidenceObject}, trong một tình huống cụ thể của genre; không dùng công thức vật chứng rơi ra đúng lúc chung chung.`,
+    `Chương 2–3 cho vật chứng bị bẻ nghĩa bằng áp lực đời sống/cảm xúc của genre, không mặc định phong tỏa/niêm phong/pháp lý.`,
+    `Chương 4–5 đưa vật chứng phụ: ${alternateEvidence}, nhưng phải khác loại và khác chức năng với vật chứng chính.`,
     `Chương 6–8 hé một mảnh của hidden truth: ${candidate.hiddenTruth}, chưa xả hết.`,
     `Chương 9–11 gom chứng cứ thành bẫy ngược, buộc phản diện chính tự lộ dấu tay.`,
     `Chương cuối payoff toàn bộ vật chứng, không giải quyết bằng kể tóm tắt.`,
   ];
 
   const villainCurve = [
-    `Mở đầu: phản diện dùng đòn ${candidate.publicPressure} và ${candidate.dramaBalance}.`,
+    `Mở đầu: phản diện dùng đòn ${candidate.publicPressure} gắn trực tiếp với genre, không dùng lại motif camera/log/pháp lý nếu không có trong seed.`,
     `Đầu truyện: phản diện chính hoặc dấu tay cá nhân phải xuất hiện, không chỉ luật sư/PR/pháp vụ.`,
     `Giữa truyện: phản diện thắng một ván thật, khiến nữ chính mất mặt hoặc mất quyền tạm thời.`,
     `Sau midpoint: phản diện bắt đầu sợ, chuyển từ thao túng xa sang đối đầu trực diện.`,
@@ -1416,7 +1442,7 @@ function buildFactoryStoryPlan(params: {
 
   const payoffPlan = [
     `Payoff emotional: ${candidate.emotionalHook}`,
-    `Payoff evidence: ${candidate.evidenceObject} không chỉ là đồ vật, mà là chìa khóa đảo chiều lời nói dối.`,
+    `Payoff evidence: ${candidate.evidenceObject} phải trả bằng logic riêng của genre, không biến thành một file/camera/log chung.`,
     `Payoff hidden truth: ${candidate.hiddenTruth}`,
     `Payoff heroine arc: nữ chính không thắng nhờ may mắn, mà nhờ chủ động gài bẫy và giữ bình tĩnh.`,
   ];
@@ -1425,7 +1451,7 @@ function buildFactoryStoryPlan(params: {
     {
       chapterNumber: 1,
       title: makeChapterTitle({ chapterNumber: 1, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission: `Mở tại ${candidate.openingScene}, cho ${candidate.evidenceObject} xuất hiện sai thời điểm và làm nữ chính hiểu có người dựng chuyện.`,
+      mission: `Mở tại ${candidate.openingScene}. ${candidate.evidenceObject} bị dùng trong một tình huống cụ thể của genre để làm nữ chính mất thế; không dùng câu vật chứng rơi ra đúng lúc chung chung.`,
       sceneType: "opening hook / public pressure",
       mainScene: candidate.openingScene,
       evidenceBeat: `Cài ${candidate.evidenceObject}, chỉ cho thấy 1 điểm lệch logic.`,
@@ -1441,7 +1467,7 @@ function buildFactoryStoryPlan(params: {
       chapterNumber: 2,
       title: makeChapterTitle({ chapterNumber: 2, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
-        "Không lặp chỉ một thủ tục pháp lý; phải cho hậu quả chạm vào người thân, công việc hoặc danh dự.",
+        "Không lặp thủ tục/pháp lý/log/camera. Chương này phải cho hậu quả chạm vào người thân, công việc, danh dự hoặc quan hệ theo đúng genre.",
       sceneType: "emotional cost / villain pressure",
       mainScene: alternateSetting,
       evidenceBeat: `Vật chứng chính bị phản diện bẻ nghĩa; chưa giải thích hết ${candidate.evidenceObject}.`,
@@ -1458,7 +1484,7 @@ function buildFactoryStoryPlan(params: {
     {
       chapterNumber: 3,
       title: makeChapterTitle({ chapterNumber: 3, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission: `Chuyển trọng tâm sang ${alternatePressure} hoặc đối thoại trực diện, tránh nhịp đến nơi rồi bị chặn bằng giấy tờ.`,
+      mission: `Chuyển trọng tâm sang ${alternatePressure} hoặc đối thoại trực diện, tạo scene mới khác chương trước, không dùng lại nhịp bị chặn bằng giấy tờ/log.`,
       sceneType: "direct confrontation / social pressure",
       mainScene: alternatePressure,
       evidenceBeat: `Hé ${alternateEvidence} như vật chứng phụ, không thay thế vật chứng chính.`,
@@ -1476,7 +1502,7 @@ function buildFactoryStoryPlan(params: {
       chapterNumber: 4,
       title: makeChapterTitle({ chapterNumber: 4, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
-        "Đẩy tuyến phản bội/đổi phe, không biến chương này thành chương giám định/log thuần túy.",
+        "Đẩy tuyến phản bội/đổi phe bằng chi tiết đời sống hoặc quan hệ; không biến chương này thành giám định/log/thủ tục thuần túy.",
       sceneType: "betrayal / witness scene",
       mainScene: "một không gian kín có đối thoại căng",
       evidenceBeat:
@@ -1494,7 +1520,7 @@ function buildFactoryStoryPlan(params: {
     {
       chapterNumber: 5,
       title: makeChapterTitle({ chapterNumber: 5, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission: `Tạo payoff nhỏ trước ${candidate.publicPressure}: nữ chính thắng một ván nhưng chưa lật hết ${candidate.hiddenTruth}.`,
+      mission: `Tạo payoff nhỏ trước ${candidate.publicPressure}: nữ chính thắng một ván bằng logic genre và tính cách heroine, chưa lật hết ${candidate.hiddenTruth}.`,
       sceneType: "public face-slap / small payoff",
       mainScene: candidate.publicPressure,
       evidenceBeat: `Dùng ${candidate.evidenceObject} hoặc ${alternateEvidence} để chứng minh một lời nói dối nhỏ.`,
@@ -1904,9 +1930,12 @@ export function buildMockStorySeed(params: {
     params.heroineLabel,
     params.seed,
   );
-  const shouldUseFallbackLanes = !params.genreLabel || normalizeForCompare(params.genreLabel).length < 6;
+
+  const shouldUseFallbackLanes =
+    !params.genreLabel || normalizeForCompare(params.genreLabel).length < 6;
+
   const lanePool = shouldUseFallbackLanes
-    ? [...genreExpandedLanes, ...FACTORY_DRAMA_LANES.slice(0, 3)]
+    ? [...genreExpandedLanes, ...FACTORY_DRAMA_LANES.slice(0, 2)]
     : genreExpandedLanes;
 
   const laneOrder = lanePool.map((lane, index) => {
@@ -1917,28 +1946,25 @@ export function buildMockStorySeed(params: {
       ...lane.evidenceObjects,
       ...lane.publicPressures,
       ...lane.hiddenTruths,
+      ...lane.villainAttacks,
+      ...lane.heroineCounters,
     ].join(" | ");
+
+    const genreLaneBonus = lane.key.startsWith("genre-lock-") ? -2.5 : 0;
+    const avoidPenalty = scoreOverlapWithAvoidLibrary(laneText, params.avoidLibrary);
+    const proceduralPenalty = countProceduralTerms(laneText) / 80;
+    const seedBias = Number(
+      pickSeedItem(["0.00", "0.01", "0.02", "0.03"], params.seed, `lane-order-${lane.key}-${index}`),
+    );
 
     return {
       lane,
-      score:
-        scoreOverlapWithAvoidLibrary(laneText, params.avoidLibrary) * (lane.key.startsWith("genre-expand-") ? 0.45 : 2) +
-        countProceduralTerms(laneText) / (lane.key.startsWith("genre-expand-") ? 90 : 35) +
-        (lane.key.startsWith("genre-expand-") ? -1.5 : 0) +
-        Number(
-          pickSeedItem(
-            lane.key.startsWith("genre-expand-")
-              ? ["0.00", "0.00", "0.01", "0.02"]
-              : ["0.00", "0.01", "0.02", "0.03", "0.04", "0.05"],
-            params.seed,
-            `lane-order-${lane.key}-${index}`,
-          ),
-        ),
+      score: genreLaneBonus + avoidPenalty * 0.9 + proceduralPenalty + seedBias,
     };
   }).sort((a, b) => a.score - b.score);
 
   for (const laneItem of laneOrder) {
-    for (let attempt = 0; attempt < 4; attempt += 1) {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
       const attemptSeed = `${getSeedAttempt(params.seed, attempt)}-${laneItem.lane.key}`;
       const candidate = buildSeedCandidate({
         genreLabel: params.genreLabel,
@@ -1957,25 +1983,24 @@ export function buildMockStorySeed(params: {
         candidate.villainAttack,
         candidate.heroineCounter,
         candidate.emotionalStake,
+        params.genreLabel,
+        params.heroineLabel,
       ].join(" | ");
 
-      const overlapPenalty = scoreOverlapWithAvoidLibrary(
-        candidateText,
-        params.avoidLibrary,
-      );
-      const proceduralPenalty = countProceduralTerms(candidateText) / 22;
-      const lanePenalty = laneItem.score;
-      const score = overlapPenalty * (laneItem.lane.key.startsWith("genre-expand-") ? 1.2 : 2.4) + proceduralPenalty + lanePenalty;
+      const overlapPenalty = scoreOverlapWithAvoidLibrary(candidateText, params.avoidLibrary);
+      const proceduralPenalty = countProceduralTerms(candidateText) / 55;
+      const exactGenrePenalty = candidate.shortFingerprint.includes(`genre:${params.genreLabel}`) ? -1.2 : 1.2;
+      const score = overlapPenalty * 1.15 + proceduralPenalty + laneItem.score + exactGenrePenalty;
 
       if (score < bestScore) {
         bestScore = score;
         bestCandidate = candidate;
       }
 
-      if (overlapPenalty <= 0.16 && proceduralPenalty <= 0.28) break;
+      if (overlapPenalty <= 0.18 && proceduralPenalty <= 0.18) break;
     }
 
-    if (bestScore <= 0.42) break;
+    if (bestScore <= -0.55) break;
   }
 
   const candidate =
@@ -2011,36 +2036,60 @@ export function buildMockStorySeed(params: {
     storyPlan,
   });
 
+  const antiRepeatTags = Array.from(
+    new Set([
+      ...compactTags(params.genreLabel),
+      ...compactTags(params.heroineLabel),
+      ...compactTags(candidate.setting),
+      ...compactTags(candidate.evidenceObject),
+      ...compactTags(candidate.relationshipConflict),
+      ...compactTags(candidate.publicPressure),
+      ...compactTags(candidate.hiddenTruth),
+      ...compactTags(candidate.villainAttack),
+      ...compactTags(candidate.heroineCounter),
+      ...compactTags(candidate.dramaBalance),
+    ]),
+  ).slice(0, 18);
+
   const motifFingerprint = {
-    version: "genre-scale-v5",
-    genreLabel: params.genreLabel,
-    heroineLabel: params.heroineLabel,
-    laneKey: candidate.shortFingerprint.split(" + ")[0] || "genre-expanded",
-    premiseFamily: `genre:${params.genreLabel} | conflict:${candidate.relationshipConflict}`,
-    openingArena: `setting:${candidate.setting}`,
-    incitingIncident: `incident:${candidate.incitingIncident}`,
-    evidenceType: `evidence:${candidate.evidenceObject}`,
-    villainAttackType: `attack:${candidate.villainAttack}`,
-    heroineCounterType: `heroine:${params.heroineLabel} | counter:${candidate.heroineCounter}`,
-    powerStructure: `power:${candidate.powerStructure}`,
-    publicPressure: `pressure:${candidate.publicPressure}`,
-    hiddenTruthType: `truth:${candidate.hiddenTruth}`,
-    deadlineStyle: `pace:genre-specific-escalation | no-generic-legal-loop`,
-    emotionalStakes: `stakes:${candidate.emotionalStake}`,
-    dopamineHook: `payoff:${candidate.dopamineHook}`,
-    motifText: [
-      params.genreLabel,
-      params.heroineLabel,
-      candidate.setting,
-      candidate.evidenceObject,
-      candidate.relationshipConflict,
-      candidate.villainAttack,
-      candidate.heroineCounter,
-      candidate.emotionalStake,
-      candidate.hiddenTruth,
-      candidate.publicPressure,
-    ].join(" | "),
+    premiseFamily: `genre-lock:${params.genreLabel} | relationship:${candidate.relationshipConflict}`,
+    openingArena: `setting-specific:${candidate.setting}`,
+    incitingIncident: `genre-incident:${candidate.incitingIncident}`,
+    evidenceType: `exact-evidence:${candidate.evidenceObject}`,
+    evidenceObject: candidate.evidenceObject,
+    villainAttackType: `exact-attack:${candidate.villainAttack}`,
+    heroineCounterType: `heroine:${params.heroineLabel} | exact-counter:${candidate.heroineCounter}`,
+    powerStructure: `power-from-genre:${candidate.powerStructure}`,
+    publicPressure: `pressure-specific:${candidate.publicPressure}`,
+    emotionalWound: `emotional:${candidate.emotionalStake}`,
+    hiddenTruthType: `exact-truth:${candidate.hiddenTruth}`,
+    mainArena: `main-arena:${candidate.setting}`,
+    secondaryArena: `pressure-arena:${candidate.publicPressure}`,
+    relationshipCore: `relationship-core:${candidate.relationshipConflict}`,
+    twistEngine: `twist-from-evidence:${candidate.evidenceObject} -> ${candidate.hiddenTruth}`,
+    deadlineStyle: `genre-specific-deadline:${candidate.publicPressure}`,
+    endingPromise: `payoff:${candidate.dopamineHook}`,
+    antiRepeatTags,
+    fingerprint: [
+      `genre=${params.genreLabel}`,
+      `heroine=${params.heroineLabel}`,
+      `lane=${candidate.shortFingerprint}`,
+      `setting=${candidate.setting}`,
+      `evidence=${candidate.evidenceObject}`,
+      `attack=${candidate.villainAttack}`,
+      `counter=${candidate.heroineCounter}`,
+      `truth=${candidate.hiddenTruth}`,
+      `pressure=${candidate.publicPressure}`,
+    ].join(" || "),
   };
+
+  const motifText = [
+    motifFingerprint.fingerprint,
+    candidate.corePremise,
+    candidate.mainConflict,
+    candidate.emotionalHook,
+    candidate.dramaBalance,
+  ].join(" | ");
 
   return {
     title,
@@ -2058,17 +2107,9 @@ export function buildMockStorySeed(params: {
     powerStructure: candidate.powerStructure,
     publicPressure: candidate.publicPressure,
     shortFingerprint: candidate.shortFingerprint,
+    antiRepeatTags,
     motifFingerprint,
-    antiRepeatTags: Array.from(
-      new Set([
-        ...compactTags(candidate.setting),
-        ...compactTags(candidate.evidenceObject),
-        ...compactTags(candidate.relationshipConflict),
-        ...compactTags(candidate.publicPressure),
-        ...compactTags(candidate.hiddenTruth),
-        ...compactTags(candidate.dramaBalance),
-      ]),
-    ).slice(0, 12),
+    motifText,
     coverConcept,
     storyPlan,
     pipeline: {
@@ -2076,7 +2117,7 @@ export function buildMockStorySeed(params: {
       chapterWriter: true,
       storyEditor: true,
       polishRewriter: false,
-      note: "Planner v2 tạo outline/evidence/villain/payoff + visual DNA. Story Editor Pass chạy ở generate.ts; polish rewriter riêng chưa tách API.",
+      note: "Planner v3 genre-lock: seed DNA lấy từ genre + heroine thật, không default camera/log/pháp lý/phong tỏa.",
     },
   } as FactoryStorySeed;
 }
@@ -2164,7 +2205,6 @@ STORY SEED / STORY DNA BẮT BUỘC:
 - Power structure: ${storySeed.powerStructure}
 - Public pressure: ${storySeed.publicPressure}
 - Short fingerprint: ${storySeed.shortFingerprint}
-- Motif fingerprint: ${JSON.stringify((storySeed as any).motifFingerprint || null)}
 
 ${storyPlanBlock}
 

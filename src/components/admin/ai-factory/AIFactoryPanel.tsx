@@ -79,24 +79,45 @@ const defaultConfig: AIFactoryConfig = {
   cliffhangerLabel: 'Mặc định — AI tự chọn theo mạch truyện',
 }
 
-function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
-  switch (style) {
-    case 'anime-cinematic':
-      return 'anime cinematic dramatic novel cover'
-    case 'modern-manhwa':
-      return 'modern manhwa romance drama cover'
-    case 'manga-drama':
-      return 'dramatic manga cover, black and white ink style'
-    case 'semi-realistic':
-      return 'semi realistic premium webnovel cover'
-    case 'movie-poster':
-      return 'cinematic movie poster style drama cover'
-    case 'auto':
-    default:
-      return 'premium asian webnovel cover, style chosen automatically'
+
+function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'] {
+  const raw = String(value || '').trim()
+
+  if (
+    raw === 'anime_cinematic' ||
+    raw === 'manga_manhwa' ||
+    raw === 'cinematic_realistic' ||
+    raw === 'popular_webnovel_collage' ||
+    raw === 'auto'
+  ) {
+    return raw
   }
+
+  // Map key cũ trong localStorage / config cũ sang key mới.
+  if (raw === 'anime-cinematic') return 'anime_cinematic'
+  if (raw === 'modern-manhwa') return 'manga_manhwa'
+  if (raw === 'manga-drama') return 'manga_manhwa'
+  if (raw === 'semi-realistic') return 'cinematic_realistic'
+  if (raw === 'movie-poster') return 'popular_webnovel_collage'
+
+  return 'auto'
 }
 
+function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
+  switch (normalizeCoverArtStyle(style)) {
+    case 'anime_cinematic':
+      return 'anime cinematic webnovel cover, dramatic lighting, expressive characters, modern East Asian urban drama'
+    case 'manga_manhwa':
+      return 'manga manhwa webtoon cover style, clean line art, dramatic composition, emotional character acting'
+    case 'cinematic_realistic':
+      return 'cinematic realistic drama poster, premium film still lighting, modern East Asian urban suspense'
+    case 'popular_webnovel_collage':
+      return 'popular webnovel collage poster, multiple character composition, evidence object, dramatic layered story poster'
+    case 'auto':
+    default:
+      return 'style automatically chosen from story content, premium modern East Asian webnovel cover'
+  }
+}
 
 function normalizeDescriptionForCheck(input: string) {
   return input
@@ -496,6 +517,7 @@ export default function AIFactoryPanel() {
         setConfig({
           ...defaultConfig,
           ...snapshot.config,
+          coverArtStyle: normalizeCoverArtStyle((snapshot.config as any).coverArtStyle),
           autoCompleteByTarget: Boolean((snapshot.config as any).autoCompleteByTarget),
         })
       }
@@ -1146,9 +1168,9 @@ Yêu cầu:
               }
             : null,
         },
-        cover_art_style: config.coverArtStyle,
-        visual_style: config.coverArtStyle,
-        style: config.coverArtStyle,
+        cover_art_style: normalizeCoverArtStyle(config.coverArtStyle),
+        visual_style: normalizeCoverArtStyle(config.coverArtStyle),
+        style: normalizeCoverArtStyle(config.coverArtStyle),
         styleLabel: getCoverArtStyleLabel(config.coverArtStyle),
         aspectRatio: '2:3',
       }),

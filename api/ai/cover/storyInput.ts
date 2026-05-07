@@ -1,19 +1,131 @@
 import type { JsonRecord, StoryInput } from './coverTypes.js'
 import { safeArray, safeString } from './coverText.js'
 
-export function extractStoryInput(body: JsonRecord): StoryInput {
-  const source = body.story || body.storyData || body.payload || body
-  const storyDna = source.story_dna ?? source.storyDna ?? body.story_dna ?? body.storyDna ?? null
+function safeNumber(value: unknown, fallback = 0) {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : fallback
+}
 
-  const coverArtStyle = safeString(
-    source.cover_art_style ||
+function safeChapterTitles(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      if (typeof item === 'string') return item.trim()
+      if (item && typeof item === 'object') {
+        const chapter = item as Record<string, unknown>
+        return safeString(chapter.title || chapter.name || chapter.chapter_title)
+      }
+      return ''
+    })
+    .filter(Boolean)
+}
+
+function normalizeCoverArtStyle(raw: string): string {
+  const value = safeString(raw).trim().toLowerCase()
+  if (!value) return 'auto'
+
+  if (
+    value === 'anime_cinematic' ||
+    value === 'anime-cinematic' ||
+    value === 'anime' ||
+    value.includes('anime cinematic') ||
+    value.includes('anime điện ảnh')
+  ) {
+    return 'anime_cinematic'
+  }
+
+  if (
+    value === 'manga_manhwa' ||
+    value === 'manga-manhwa' ||
+    value === 'manga' ||
+    value === 'manhwa' ||
+    value.includes('manga') ||
+    value.includes('manhwa')
+  ) {
+    return 'manga_manhwa'
+  }
+
+  if (
+    value === 'cinematic_realistic' ||
+    value === 'cinematic-realistic' ||
+    value === 'realistic' ||
+    value === 'semi-realistic' ||
+    value === 'movie-poster' ||
+    value.includes('cinematic') ||
+    value.includes('realistic') ||
+    value.includes('giống thật') ||
+    value.includes('điện ảnh')
+  ) {
+    return 'cinematic_realistic'
+  }
+
+  if (
+    value === 'popular_webnovel_collage' ||
+    value === 'popular-webnovel-collage' ||
+    value.includes('collage') ||
+    value.includes('webnovel') ||
+    value.includes('tiểu thuyết mạng') ||
+    value.includes('ưa chuộng')
+  ) {
+    return 'popular_webnovel_collage'
+  }
+
+  return 'auto'
+}
+
+export function extractStoryInput(body: JsonRecord): StoryInput {
+  const source = (body.story || body.storyData || body.payload || body) as Record<string, unknown>
+  const storyDna = source.story_dna ?? source.storyDna ?? body.story_dna ?? body.storyDna ?? null
+  const storyDnaRecord = storyDna && typeof storyDna === 'object' && !Array.isArray(storyDna)
+    ? (storyDna as Record<string, unknown>)
+    : {}
+
+  const chapters = safeArray(source.chapters || body.chapters)
+  const chapterTitles = safeChapterTitles(
+    source.chapterTitles ||
+      source.chapter_titles ||
+      body.chapterTitles ||
+      body.chapter_titles ||
+      chapters,
+  )
+
+  const coverArtStyle = normalizeCoverArtStyle(
+    safeString(
       source.coverArtStyle ||
-      body.cover_art_style ||
-      body.coverArtStyle ||
-      source.visual_style ||
-      body.visual_style ||
-      source.style ||
-      body.style,
+        source.cover_art_style ||
+        source.visual_style ||
+        source.cover_style ||
+        source.style ||
+        body.coverArtStyle ||
+        body.cover_art_style ||
+        body.visual_style ||
+        body.cover_style ||
+        body.style,
+    ),
+  )
+
+  const currentChapterCount =
+    safeNumber(
+      source.currentChapterCount ||
+        source.current_chapter_count ||
+        source.chapterCount ||
+        source.chapter_count ||
+        body.currentChapterCount ||
+        body.current_chapter_count ||
+        body.chapterCount ||
+        body.chapter_count,
+      0,
+    ) || chapters.length
+
+  const targetChapters = safeNumber(
+    source.targetChapters ||
+      source.target_chapters ||
+      body.targetChapters ||
+      body.target_chapters ||
+      storyDnaRecord.targetChapters ||
+      storyDnaRecord.target_chapters,
+    0,
   )
 
   return {
@@ -22,23 +134,38 @@ export function extractStoryInput(body: JsonRecord): StoryInput {
     summary: safeString(source.summary || body.summary || body.storySummary),
     description: safeString(source.description || source.desc || body.description || body.desc),
     genre: safeString(source.genre || body.genre),
-    genreLabel: safeString(source.genreLabel || body.genreLabel),
+    genreLabel: safeString(source.genreLabel || source.genre_label || body.genreLabel || body.genre_label),
     genres: safeArray(source.genres || body.genres),
     tags: safeArray(source.tags || body.tags),
     slug: safeString(source.slug || body.slug),
     story_dna: storyDna,
     storyDna,
     author: safeString(source.author || body.author),
-
-    // Phong cách vẽ user chọn. Bố cục/cảnh ảnh sẽ do coverPrompt.ts tự suy ra từ nội dung truyện.
     style: coverArtStyle,
     visual_style: coverArtStyle,
-
-    // Giữ để backward compatible nếu project cũ còn truyền cover_style.
     cover_style: safeString(source.cover_style || body.cover_style),
+    coverArtStyle,
+    suggestedCoverSceneType: safeString(
+      source.suggestedCoverSceneType ||
+        source.suggested_cover_scene_type ||
+        body.suggestedCoverSceneType ||
+        body.suggested_cover_scene_type ||
+        storyDnaRecord.suggestedCoverSceneType ||
+        storyDnaRecord.suggested_cover_scene_type,
+    ),
+    currentChapterCount,
+    targetChapters,
+    coverBrief: safeString(source.coverBrief || source.cover_brief || body.coverBrief || body.cover_brief),
+    chapterTitles,
+    chapters,
   }
 }
 
 export function pickSummary(story: StoryInput): string {
-  return safeString(story.summary) || safeString(story.description) || ''
+  return (
+    safeString(story.summary) ||
+    safeString(story.description) ||
+    safeString(story.coverBrief) ||
+    ''
+  )
 }

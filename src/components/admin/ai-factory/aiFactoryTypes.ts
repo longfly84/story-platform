@@ -3,11 +3,10 @@ export type FactoryModelKey = 'economy' | 'premium' | 'auto'
 
 export type CoverArtStyle =
   | 'auto'
-  | 'anime-cinematic'
-  | 'modern-manhwa'
-  | 'manga-drama'
-  | 'semi-realistic'
-  | 'movie-poster'
+  | 'anime_cinematic'
+  | 'manga_manhwa'
+  | 'cinematic_realistic'
+  | 'popular_webnovel_collage'
 
 export type FactoryStatus =
   | 'idle'

@@ -1,60 +1,29 @@
-type CoverArtStyleKey =
-  | 'auto'
-  | 'anime-cinematic'
-  | 'modern-manhwa'
-  | 'manga-drama'
-  | 'semi-realistic'
-  | 'movie-poster'
-
-type SceneTemplateKey =
-  | 'family-dinner'
-  | 'penthouse-dossier'
-  | 'airport-secret'
-  | 'public-exposure'
-  | 'phone-showdown'
-
-type JsonRecord = Record<string, unknown>
-
-type CoverPromptResult = {
-  prompt: string
-  fallbackPrompt: string
-  coverConcept: JsonRecord
-}
-
-type CoverPromptData = {
-  title: string
-  genre: string
-  logline: string
-  heroine: string
-  antagonist: string
-  relationshipCore: string
-  keyEvidence: string
-  setting: string
-  emotionalCore: string
-  moodKeywords: string
-  tagline: string
-  coverArtStyle: CoverArtStyleKey
-  sceneTemplate: SceneTemplateKey
-}
+import type {
+  CoverArtStyleKey,
+  CoverBuildResult,
+  CoverSceneType,
+  CoverStoryStage,
+  JsonRecord,
+  StoryInput,
+} from './coverTypes.js'
 
 const DEFAULT_TITLE = 'Bí Mật Chưa Được Gọi Tên'
-const DEFAULT_GENRE = 'drama đô thị hiện đại, bí mật gia đình, trả thù cảm xúc'
+const DEFAULT_GENRE = 'nữ tần đô thị hiện đại, drama cảm xúc, bí mật gia đình, phản công'
 const DEFAULT_HEROINE =
-  'một người phụ nữ trẻ, xinh đẹp, thông minh, ngoài mềm trong cứng, đang cố giữ bình tĩnh khi phát hiện sự thật'
+  'nữ chính là phụ nữ trẻ hiện đại, thông minh, cảm xúc sâu, ngoài mềm trong cứng, biết chịu đựng nhưng sẽ phản công khi chạm giới hạn'
 const DEFAULT_ANTAGONIST =
-  'những người thân hoặc thế lực giàu có đang che giấu bí mật và gây áp lực lên nữ chính'
+  'người thân, đối thủ hoặc thế lực giàu có đang che giấu sự thật và gây áp lực lên nữ chính'
 const DEFAULT_RELATIONSHIP =
-  'xung đột gia đình, phản bội, bí mật bị che giấu, sự thật bị bóp méo'
+  'phản bội, che giấu, hiểu lầm, quyền lực chèn ép và một sự thật đang chuẩn bị bị lật ra'
 const DEFAULT_EVIDENCE =
-  'một tập hồ sơ mật, giấy tờ quan trọng, ảnh cũ hoặc bằng chứng bị che giấu'
+  'một vật chứng then chốt gắn trực tiếp với sự thật trung tâm của câu chuyện'
 const DEFAULT_SETTING =
-  'không gian hiện đại sang trọng: biệt thự, căn hộ cao cấp, văn phòng, phòng khách hoặc nơi đối chất'
-const DEFAULT_EMOTIONAL_CORE =
-  'khoảnh khắc nữ chính phát hiện hoặc chuẩn bị phơi bày một bí mật có thể làm sụp đổ tất cả'
-const DEFAULT_MOOD =
-  'căng thẳng, bí mật, đau lòng, sang trọng, đối đầu, sự thật sắp bị phơi bày'
-const DEFAULT_TAGLINE =
-  'Có những bí mật được giấu đi không phải để bảo vệ, mà để che đậy một lời nói dối.'
+  'bối cảnh đô thị hiện đại nhiều áp lực cảm xúc như bệnh viện, trường học, sân bay, khách sạn, quán cà phê, phòng họp, biệt thự hoặc tiệc gia đình'
+const DEFAULT_EMOTIONAL_HOOK =
+  'khoảnh khắc nữ chính buộc phải đối diện sự thật hoặc chuẩn bị lật mặt một lời nói dối lớn'
+const DEFAULT_STAKES =
+  'danh dự, con cái, hôn nhân, thân phận, quyền lợi hoặc tương lai của nữ chính đang bị đe dọa'
+const DEFAULT_MOOD = 'căng thẳng, cuốn hút, đau lòng, bí mật, phản công, vỡ lở'
 
 function asRecord(value: unknown): JsonRecord {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -63,816 +32,774 @@ function asRecord(value: unknown): JsonRecord {
 }
 
 function safeString(value: unknown, fallback = ''): string {
-  if (typeof value === 'string') return value.trim()
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim()
-  return fallback
+  return typeof value === 'string' ? value.trim() : fallback
 }
 
-function safeArrayText(value: unknown): string {
-  if (!Array.isArray(value)) return ''
-  return value.map((item) => safeString(item)).filter(Boolean).join(', ')
+function safeArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : []
 }
 
-function firstNonEmpty(record: JsonRecord, keys: string[], fallback = ''): string {
-  for (const key of keys) {
-    const value = safeString(record[key]) || safeArrayText(record[key])
-    if (value) return value
+function compactText(...parts: unknown[]): string {
+  return parts
+    .flatMap((part) => {
+      if (Array.isArray(part)) return part
+      return [part]
+    })
+    .map((item) => safeString(item))
+    .filter(Boolean)
+    .join(' | ')
+}
+
+function normalizeText(value: unknown): string {
+  return safeString(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+function includesAny(text: string, keywords: string[]): boolean {
+  return keywords.some((keyword) => text.includes(keyword))
+}
+
+function sanitizeForPrompt(value: string, fallback: string): string {
+  const text = safeString(value, fallback).replace(/\s+/g, ' ').trim()
+  return text || fallback
+}
+
+function tryJsonString(value: unknown): string {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return ''
   }
-
-  return fallback
 }
 
-function compactText(value: string, maxLength: number): string {
-  const normalized = value.replace(/\s+/g, ' ').trim()
-  if (normalized.length <= maxLength) return normalized
-  return `${normalized.slice(0, maxLength).trim()}...`
+function buildChapterHints(story: JsonRecord): string {
+  const titles = safeArray(story.chapterTitles || story.chapter_titles || story.chapters)
+    .map((item) => {
+      if (typeof item === 'string') return item.trim()
+      const chapter = asRecord(item)
+      return safeString(chapter.title || chapter.name || chapter.chapter_title)
+    })
+    .filter(Boolean)
+    .slice(0, 8)
+
+  return titles.join(' | ')
 }
 
-function sanitizeCoverSafetyText(value: string): string {
-  let text = safeString(value)
-
-  const replacements: Array<[RegExp, string]> = [
-    [/đẫm máu/gi, 'căng thẳng cao độ'],
-    [/vũng máu/gi, 'bầu không khí u ám'],
-    [/máu/gi, 'căng thẳng'],
-    [/xác chết/gi, 'bí mật đen tối'],
-    [/thi thể/gi, 'bí mật đen tối'],
-    [/giết người/gi, 'tội ác được che giấu'],
-    [/giết/gi, 'hủy hoại'],
-    [/sát hại/gi, 'hãm hại'],
-    [/tự sát/gi, 'tuyệt vọng'],
-    [/tự tử/gi, 'tuyệt vọng'],
-    [/dao/gi, 'bóng tối'],
-    [/súng/gi, 'đe dọa'],
-    [/đâm/gi, 'tấn công tinh thần'],
-    [/chém/gi, 'xung đột dữ dội'],
-    [/bạo hành/gi, 'áp bức'],
-    [/tra tấn/gi, 'áp lực tàn nhẫn'],
-    [/vết thương/gi, 'tổn thương tinh thần'],
-    [/tai nạn/gi, 'biến cố'],
-
-    [/\bblood\b/gi, 'dark tension'],
-    [/\bbloody\b/gi, 'intense tension'],
-    [/\bcorpse\b/gi, 'hidden secret'],
-    [/\bdead body\b/gi, 'hidden secret'],
-    [/\bkill\b/gi, 'destroy'],
-    [/\bmurder\b/gi, 'crime mystery'],
-    [/\bsuicide\b/gi, 'despair'],
-    [/\bknife\b/gi, 'shadow'],
-    [/\bgun\b/gi, 'threat'],
-    [/\bweapon\b/gi, 'shadow'],
-    [/\binjury\b/gi, 'emotional wound'],
-    [/\bwound\b/gi, 'emotional wound'],
-    [/\bgore\b/gi, 'dark drama'],
-    [/\bstabbing\b/gi, 'emotional confrontation'],
-    [/\bshooting\b/gi, 'dangerous pressure'],
-  ]
-
-  for (const [pattern, replacement] of replacements) {
-    text = text.replace(pattern, replacement)
-  }
-
-  return text.replace(/\s+/g, ' ').trim()
-}
-
-function getStoryDna(record: JsonRecord): JsonRecord {
-  return asRecord(record.story_dna ?? record.storyDna)
-}
-
-function normalizeCoverArtStyle(value: unknown): CoverArtStyleKey {
-  const raw = safeString(value).toLowerCase()
+function normalizeCoverArtStyle(raw: unknown): CoverArtStyleKey {
+  const value = normalizeText(raw)
+  if (!value) return 'auto'
 
   if (
-    raw === 'anime-cinematic' ||
-    raw === 'anime_cinematic' ||
-    raw.includes('anime điện ảnh') ||
-    raw.includes('anime cinematic')
+    value === 'anime_cinematic' ||
+    value === 'anime-cinematic' ||
+    value === 'anime' ||
+    value.includes('anime cinematic') ||
+    value.includes('anime dien anh')
   ) {
-    return 'anime-cinematic'
+    return 'anime_cinematic'
   }
 
   if (
-    raw === 'modern-manhwa' ||
-    raw === 'modern_manhwa' ||
-    raw.includes('manhwa') ||
-    raw.includes('modern manhwa')
+    value === 'manga_manhwa' ||
+    value === 'manga-manhwa' ||
+    value === 'manga' ||
+    value === 'manhwa' ||
+    value.includes('manga') ||
+    value.includes('manhwa')
   ) {
-    return 'modern-manhwa'
+    return 'manga_manhwa'
   }
 
   if (
-    raw === 'manga-drama' ||
-    raw === 'manga_drama' ||
-    raw.includes('manga') ||
-    raw.includes('đen trắng')
+    value === 'cinematic_realistic' ||
+    value === 'cinematic-realistic' ||
+    value === 'realistic' ||
+    value.includes('cinematic') ||
+    value.includes('realistic') ||
+    value.includes('giong that') ||
+    value.includes('poster phim')
   ) {
-    return 'manga-drama'
+    return 'cinematic_realistic'
   }
 
   if (
-    raw === 'semi-realistic' ||
-    raw === 'semi_realistic' ||
-    raw.includes('semi realistic') ||
-    raw.includes('semi-realistic')
+    value === 'popular_webnovel_collage' ||
+    value === 'popular-webnovel-collage' ||
+    value.includes('collage') ||
+    value.includes('webnovel') ||
+    value.includes('tieu thuyet mang') ||
+    value.includes('ua chuong')
   ) {
-    return 'semi-realistic'
-  }
-
-  if (
-    raw === 'movie-poster' ||
-    raw === 'movie_poster' ||
-    raw.includes('poster phim') ||
-    raw.includes('movie poster')
-  ) {
-    return 'movie-poster'
+    return 'popular_webnovel_collage'
   }
 
   return 'auto'
 }
 
-function joinStorySource(record: JsonRecord): string {
-  const storyDna = getStoryDna(record)
-  const factorySeed = asRecord(storyDna.factory_seed)
-  const coverConcept = asRecord(storyDna.coverConcept)
-  const motifFingerprint = asRecord(storyDna.motifFingerprint)
+function resolveFinalArtStyle(style: CoverArtStyleKey, sceneType: CoverSceneType): CoverArtStyleKey {
+  // Nếu user đã chọn style rõ ràng thì tuyệt đối giữ style đó.
+  if (style !== 'auto') return style
 
-  const parts = [
-    firstNonEmpty(record, ['title', 'storyTitle', 'name']),
-    firstNonEmpty(record, ['summary', 'description', 'storySummary', 'logline', 'idea', 'prompt']),
-    firstNonEmpty(record, ['genre', 'genreLabel', 'category']),
-    firstNonEmpty(record, ['tags', 'genres']),
-    firstNonEmpty(factorySeed, [
-      'title',
-      'corePremise',
-      'openingScene',
-      'incitingIncident',
-      'evidenceObject',
-      'mainConflict',
-      'hiddenTruth',
-      'setting',
-      'villainType',
-      'emotionalHook',
-      'powerStructure',
-      'publicPressure',
-    ]),
-    firstNonEmpty(coverConcept, ['visualAnchor', 'mainScene', 'coverScene', 'mood', 'symbolicObjects']),
-    firstNonEmpty(motifFingerprint, [
-      'premiseFamily',
-      'openingArena',
-      'incitingIncident',
-      'evidenceType',
-      'evidenceObject',
-      'mainArena',
-      'relationshipCore',
-      'twistEngine',
-    ]),
-  ]
-
-  return parts.filter(Boolean).join('\n').toLowerCase()
-}
-
-function inferEvidenceFromText(record: JsonRecord): string {
-  const source = joinStorySource(record)
-
-  const evidenceRules: Array<{ keywords: string[]; evidence: string }> = [
-    {
-      keywords: ['b2309', 'nhận con nuôi', 'hồ sơ nhận con nuôi', 'adoption'],
-      evidence:
-        'hồ sơ nhận con nuôi mã B2309-A, giấy tờ bị niêm phong, ảnh trẻ em và chữ ký đáng ngờ',
-    },
-    {
-      keywords: ['gấu bông', 'đồ chơi', 'món đồ chơi'],
-      evidence: 'món đồ chơi của đứa trẻ bị bỏ lại ở nơi lẽ ra con chưa từng đến',
-    },
-    {
-      keywords: ['camera', 'cctv', 'clip', 'video', 'mất dữ liệu', 'không có dữ liệu'],
-      evidence:
-        'màn hình CCTV, đoạn camera bị xóa, timestamp bất thường và khoảng thời gian mất dữ liệu',
-    },
-    {
-      keywords: ['ghi âm', 'cuộc gọi', 'file âm thanh', 'điện thoại', 'tin nhắn'],
-      evidence:
-        'điện thoại hiển thị bằng chứng ghi âm, tin nhắn hoặc cuộc gọi khiến phản diện không thể chối cãi',
-    },
-    {
-      keywords: ['thẻ phòng', 'khách sạn', 'mã phòng'],
-      evidence: 'thẻ phòng khách sạn, log ra vào và thông tin phòng bị che giấu',
-    },
-    {
-      keywords: ['hợp đồng', 'cổ phần', 'tài sản', 'chuyển khoản', 'sao kê'],
-      evidence: 'hợp đồng, sao kê chuyển khoản, giấy tờ tài sản hoặc cổ phần bị thao túng',
-    },
-    {
-      keywords: ['xét nghiệm', 'dna', 'giám định', 'adn'],
-      evidence: 'giấy xét nghiệm hoặc kết quả giám định bị sửa đổi',
-    },
-    {
-      keywords: ['khám thai', 'thai sản', 'khoa sản', 'siêu âm'],
-      evidence: 'sổ khám thai, phiếu siêu âm hoặc hồ sơ thai sản bị che giấu',
-    },
-    {
-      keywords: ['vé máy bay', 'boarding', 'sân bay', 'vali'],
-      evidence: 'vé máy bay, boarding pass, vali khóa số hoặc hộ chiếu liên quan tới bí mật',
-    },
-  ]
-
-  for (const rule of evidenceRules) {
-    if (rule.keywords.some((keyword) => source.includes(keyword))) return rule.evidence
+  // Auto không được mặc định một màu anime mãi.
+  // Tự chọn style theo loại cảnh để cover trong danh sách admin nhìn khác nhau hơn.
+  if (sceneType === 'collage_story_poster' || sceneType === 'public_reveal_confrontation') {
+    return 'popular_webnovel_collage'
   }
 
+  if (
+    sceneType === 'hospital_legal_suspense' ||
+    sceneType === 'boardroom_evidence_reveal' ||
+    sceneType === 'school_parent_conflict' ||
+    sceneType === 'family_banquet_confrontation'
+  ) {
+    return 'cinematic_realistic'
+  }
+
+  if (sceneType === 'private_betrayal_confrontation') {
+    return 'manga_manhwa'
+  }
+
+  return 'anime_cinematic'
+}
+
+function inferKeyEvidence(text: string): string {
+  if (includesAny(text, ['ma qr', 'mã qr', 'qr code', 'qr'])) {
+    return 'một mã QR bí ẩn trên điện thoại, màn hình phải mờ và không có chữ đọc được'
+  }
+  if (includesAny(text, ['giay bao no', 'giấy báo nợ', 'khoan no', 'khoản nợ', 'chu no', 'chủ nợ'])) {
+    return 'một giấy báo nợ hoặc phong bì tài chính không có chữ đọc được'
+  }
+  if (includesAny(text, ['the nho', 'thẻ nhớ', 'memory card', 'sd card'])) {
+    return 'một thẻ nhớ nhỏ chứa bằng chứng quyết định'
+  }
+  if (includesAny(text, ['usb'])) {
+    return 'một chiếc USB chứa dữ liệu bí mật'
+  }
+  if (includesAny(text, ['ghi am', 'ghi âm', 'audio', 'file am thanh'])) {
+    return 'một thiết bị ghi âm hoặc đoạn ghi âm làm lộ sự thật, màn hình phải mờ và không có chữ đọc được'
+  }
+  if (includesAny(text, ['bai dang', 'bài đăng', 'hot search', 'tim kiem nong', 'tìm kiếm nóng'])) {
+    return 'một bài đăng đang gây bão trên mạng xã hội, chỉ thể hiện bằng giao diện mờ không chữ'
+  }
+  if (includesAny(text, ['camera', 'anh chup', 'ảnh chụp', 'buc anh', 'bức ảnh'])) {
+    return 'ảnh chụp, camera hoặc hình ảnh bằng chứng gắn với bí mật trung tâm, nội dung ảnh phải mờ không chữ'
+  }
+  if (includesAny(text, ['ho so nhap hoc', 'nhập học', 'school file', 'hoc ba', 'học bạ'])) {
+    return 'một bộ hồ sơ trường học hoặc vật dụng học sinh liên quan đến đứa trẻ, không có chữ đọc được'
+  }
+  if (includesAny(text, ['kham thai', 'khám thai', 'thai san', 'thai sản'])) {
+    return 'một sổ khám thai hoặc hồ sơ thai sản hé lộ bí mật lớn, bìa và giấy phải trống hoặc mờ'
+  }
+  if (includesAny(text, ['xet nghiem', 'xét nghiệm', 'adn', 'dna'])) {
+    return 'kết quả xét nghiệm hoặc phong bì ADN gắn với thân thế hoặc huyết thống, không có chữ đọc được'
+  }
+  if (includesAny(text, ['don thuoc', 'đơn thuốc', 'toa thuoc', 'toa thuốc'])) {
+    return 'đơn thuốc hoặc toa thuốc là mấu chốt của bí mật, giấy phải mờ và không đọc được chữ'
+  }
+  if (includesAny(text, ['hop dong', 'hợp đồng', 'co phan', 'cổ phần'])) {
+    return 'một hợp đồng hoặc hồ sơ kinh doanh quan trọng, giấy phải trống/mờ không chữ'
+  }
+  if (includesAny(text, ['dien thoai', 'điện thoại', 'phone', 'tin nhan', 'tin nhắn'])) {
+    return 'điện thoại chứa manh mối hoặc bằng chứng bị che giấu, màn hình tối hoặc mờ không chữ'
+  }
+  if (includesAny(text, ['gau bong', 'gấu bông', 'do choi', 'đồ chơi'])) {
+    return 'một món đồ trẻ em gợi ra bí mật liên quan tới đứa trẻ'
+  }
+
+  return DEFAULT_EVIDENCE
+}
+
+
+function inferSetting(text: string): string {
+  if (includesAny(text, ['benh vien', 'bệnh viện', 'phong kham', 'phòng khám', 'khoa san', 'khoa sản'])) {
+    return 'bệnh viện, hành lang bệnh viện, phòng khám hoặc phòng họp liên quan tới hồ sơ y tế'
+  }
+  if (includesAny(text, ['truong hoc', 'trường học', 'phu huynh', 'phụ huynh', 'lop hoc', 'lớp học'])) {
+    return 'trường học, phòng hiệu trưởng, phòng họp phụ huynh hoặc hành lang trường'
+  }
+  if (includesAny(text, ['san bay', 'sân bay', 'chuyen bay', 'chuyến bay', 'boarding'])) {
+    return 'sân bay, khu chờ hoặc cửa ra máy bay với cảm giác bí mật sắp bị mang đi'
+  }
+  if (includesAny(text, ['khach san', 'khách sạn', 'resort', 'phong', 'phòng'])) {
+    return 'khách sạn, resort hoặc nội thất riêng tư nơi sự phản bội bị phát hiện'
+  }
+  if (includesAny(text, ['hop bao', 'họp báo', 'livestream', 'su kien', 'sự kiện', 'da tiec', 'dạ tiệc'])) {
+    return 'không gian công khai như dạ tiệc, họp báo hoặc sự kiện đông người'
+  }
+  if (includesAny(text, ['hoi dong', 'hội đồng', 'boardroom', 'co phan', 'cổ phần', 'van phong', 'văn phòng'])) {
+    return 'phòng họp cao cấp, văn phòng quyền lực hoặc không gian doanh nghiệp hiện đại'
+  }
+  if (includesAny(text, ['bua an', 'bữa ăn', 'ban an', 'bàn ăn', 'gia dinh', 'gia đình', 'biet thu', 'biệt thự'])) {
+    return 'biệt thự, bàn tiệc gia đình hoặc không gian hào môn đầy áp lực'
+  }
+  if (includesAny(text, ['quan ca phe', 'quán cà phê', 'cafe'])) {
+    return 'quán cà phê hoặc không gian đô thị nơi vật chứng được mở ra'
+  }
+
+  return DEFAULT_SETTING
+}
+
+function inferStakes(text: string): string {
+  if (includesAny(text, ['tranh quyen nuoi', 'quyền nuôi', 'nhan nuoi', 'nhận nuôi', 'con nuoi', 'con nuôi'])) {
+    return 'quyền nuôi con, danh nghĩa người mẹ và sự an toàn của đứa trẻ'
+  }
+  if (includesAny(text, ['hon nhan', 'hôn nhân', 'ngoai tinh', 'ngoại tình', 'tieu tam', 'tiểu tam'])) {
+    return 'hôn nhân, danh dự và quyền lựa chọn tương lai của nữ chính'
+  }
+  if (includesAny(text, ['than the', 'thân thế', 'di chuc', 'di chúc', 'thua ke', 'thừa kế', 'adn', 'dna'])) {
+    return 'thân thế thật, quyền thừa kế và vị trí của nữ chính trong gia đình hoặc gia tộc'
+  }
+  if (includesAny(text, ['co phan', 'cổ phần', 'cong ty', 'công ty', 'hop dong', 'hợp đồng'])) {
+    return 'quyền lực, tài sản và vị thế của nữ chính trong cuộc chiến doanh nghiệp'
+  }
+  if (includesAny(text, ['benh vien', 'bệnh viện', 'toa thuoc', 'toa thuốc', 'xet nghiem', 'xét nghiệm'])) {
+    return 'sự thật y tế, tính mạng, danh dự nghề nghiệp và trách nhiệm pháp lý'
+  }
+
+  return DEFAULT_STAKES
+}
+
+function inferSceneType(text: string, requested: string): CoverSceneType {
+  const requestedNormalized = normalizeText(requested)
+  if (requestedNormalized) {
+    if (requestedNormalized.includes('collage')) return 'collage_story_poster'
+    if (requestedNormalized.includes('mother') || requestedNormalized.includes('child')) return 'mother_child_protection'
+    if (requestedNormalized.includes('evidence')) return 'evidence_discovery_scene'
+    if (requestedNormalized.includes('public')) return 'public_reveal_confrontation'
+    if (requestedNormalized.includes('betrayal')) return 'private_betrayal_confrontation'
+    if (requestedNormalized.includes('hospital')) return 'hospital_legal_suspense'
+    if (requestedNormalized.includes('school')) return 'school_parent_conflict'
+    if (requestedNormalized.includes('airport')) return 'airport_secret_tension'
+    if (requestedNormalized.includes('family')) return 'family_banquet_confrontation'
+    if (requestedNormalized.includes('boardroom')) return 'boardroom_evidence_reveal'
+  }
+
+  // Ưu tiên scene theo bối cảnh/motif chính trước, không để mọi thứ rơi về evidence generic.
+  if (includesAny(text, ['nhan nuoi', 'nhận nuôi', 'tranh quyen nuoi', 'quyền nuôi', 'con nuoi', 'con nuôi', 'gau bong', 'gấu bông', 'me con', 'mẹ con', 'dua tre', 'đứa trẻ', 'con gai', 'con gái', 'con trai'])) {
+    return 'mother_child_protection'
+  }
+  if (includesAny(text, ['truong hoc', 'trường học', 'phu huynh', 'phụ huynh', 'nhap hoc', 'nhập học', 'bat nat', 'bắt nạt', 'hieu truong', 'hiệu trưởng', 'lop hoc', 'lớp học'])) {
+    return 'school_parent_conflict'
+  }
+  if (includesAny(text, ['benh vien', 'bệnh viện', 'phong kham', 'phòng khám', 'xet nghiem', 'xét nghiệm', 'toa thuoc', 'toa thuốc', 'kham thai', 'khám thai', 'so kham thai', 'sổ khám thai', 'thai san', 'thai sản'])) {
+    return 'hospital_legal_suspense'
+  }
+  if (includesAny(text, ['san bay', 'sân bay', 'chuyen bay', 'chuyến bay', 'boarding', 'departure', 'cua ra may bay', 'cửa ra máy bay'])) {
+    return 'airport_secret_tension'
+  }
+  if (includesAny(text, ['hop bao', 'họp báo', 'livestream', 'hot search', 'cong khai', 'công khai', 'quy goi', 'quỳ gối', 'da tiec', 'dạ tiệc', 'bao chi', 'báo chí', 'bai dang', 'bài đăng', 'mang xa hoi', 'mạng xã hội'])) {
+    return 'public_reveal_confrontation'
+  }
+  if (includesAny(text, ['nha chong', 'nhà chồng', 'me chong', 'mẹ chồng', 'bo chong', 'bố chồng', 'gia toc', 'gia tộc', 'ban an', 'bàn ăn', 'tiec gia dinh', 'tiệc gia đình', 'biet thu', 'biệt thự', 'hao mon', 'hào môn'])) {
+    return 'family_banquet_confrontation'
+  }
+  if (includesAny(text, ['giay bao no', 'giấy báo nợ', 'khoan no', 'khoản nợ', 'chu no', 'chủ nợ', 'hoi dong', 'hội đồng', 'co phan', 'cổ phần', 'boardroom', 'tong giam doc', 'tổng giám đốc', 'cong ty', 'công ty', 'hop dong', 'hợp đồng'])) {
+    return 'boardroom_evidence_reveal'
+  }
+  if (includesAny(text, ['ngoai tinh', 'ngoại tình', 'tieu tam', 'tiểu tam', 'khach san', 'khách sạn', 'hon le', 'hôn lễ', 'chong', 'chồng', 'vo', 'vợ', 'phong khach san', 'phòng khách sạn'])) {
+    return 'private_betrayal_confrontation'
+  }
+  if (includesAny(text, ['ma qr', 'mã qr', 'qr', 'the nho', 'thẻ nhớ', 'usb', 'ghi am', 'ghi âm', 'camera', 'anh chup', 'ảnh chụp', 'dien thoai', 'điện thoại'])) {
+    return 'evidence_discovery_scene'
+  }
+  if (includesAny(text, ['bi mat', 'bí mật', 'anh bi xe', 'ảnh bị xé', 'qua khu', 'quá khứ', 'ky uc', 'ký ức', 'nhieu tang', 'nhiều tầng'])) {
+    return 'collage_story_poster'
+  }
+
+  return 'collage_story_poster'
+}
+
+
+function inferStoryStage(currentChapterCount: number, targetChapters: number): CoverStoryStage {
+  if (!targetChapters || targetChapters <= 0) return 'early-hook'
+  const ratio = currentChapterCount / targetChapters
+  if (ratio < 0.34) return 'early-hook'
+  if (ratio < 0.76) return 'mid-escalation'
+  return 'late-payoff'
+}
+
+function inferMood(sceneType: CoverSceneType): string {
+  switch (sceneType) {
+    case 'mother_child_protection':
+      return 'tender but dangerous, protective, tense, emotional, maternal, dramatic'
+    case 'school_parent_conflict':
+      return 'humiliated, protective, tense, public pressure, righteous anger, dramatic'
+    case 'hospital_legal_suspense':
+      return 'cold tension, hidden truth, legal pressure, emotional suspense, modern urban drama'
+    case 'airport_secret_tension':
+      return 'departure tension, secrecy, emotional distance, night-city melancholy, truth on the move'
+    case 'public_reveal_confrontation':
+      return 'explosive reveal, public humiliation, power reversal, glamorous tension, high drama'
+    case 'private_betrayal_confrontation':
+      return 'betrayal, heartbreak, intimate scandal, suffocating tension, elegant bitterness'
+    case 'family_banquet_confrontation':
+      return 'beautiful but suffocating, wealthy family pressure, silence before explosion, emotional poison'
+    case 'boardroom_evidence_reveal':
+      return 'cold authority, power clash, corporate pressure, evidence reveal, controlled rage'
+    case 'collage_story_poster':
+      return 'layered secrets, emotional memory fragments, betrayal, obsession, hidden truth'
+    case 'evidence_discovery_scene':
+    default:
+      return 'mysterious, intimate, tense, story-rich, emotional, truth about to surface'
+  }
+}
+
+function buildSourceText(story: JsonRecord, storyDna: JsonRecord): string {
+  return compactText(
+    story.title,
+    story.summary,
+    story.description,
+    story.coverBrief,
+    story.genre,
+    story.genreLabel,
+    safeArray(story.genres).join(' | '),
+    safeArray(story.tags).join(' | '),
+    buildChapterHints(story),
+    tryJsonString(storyDna),
+  )
+}
+
+function firstNonEmpty(record: JsonRecord, keys: string[]): string {
+  for (const key of keys) {
+    const value = safeString(record[key])
+    if (value) return value
+  }
   return ''
 }
 
-function inferSettingFromText(record: JsonRecord): string {
-  const source = joinStorySource(record)
-
-  const settingRules: Array<{ keywords: string[]; setting: string }> = [
-    {
-      keywords: ['sân bay', 'airport', 'máy bay', 'boarding', 'vali'],
-      setting: 'sân bay, phòng chờ hạng thương gia, cửa kính nhìn ra đường băng và vali bên cạnh',
-    },
-    {
-      keywords: ['bữa cơm', 'bàn ăn', 'gia tộc', 'biệt thự', 'mẹ chồng'],
-      setting: 'biệt thự giàu có, bàn ăn gia tộc, ánh sáng vàng sang trọng nhưng ngột ngạt',
-    },
-    {
-      keywords: ['họp báo', 'livestream', 'bữa tiệc', 'phòng tiệc', 'đám đông'],
-      setting:
-        'sảnh tiệc hoặc nơi công khai sang trọng, nhiều người chứng kiến khoảnh khắc sự thật bị phơi bày',
-    },
-    {
-      keywords: ['phòng khách', 'căn hộ', 'penthouse', 'chung cư cao cấp'],
-      setting:
-        'phòng khách hoặc penthouse hiện đại, nội thất cao cấp, cửa kính lớn nhìn ra thành phố',
-    },
-    {
-      keywords: ['văn phòng', 'tập đoàn', 'hội đồng quản trị', 'công ty'],
-      setting: 'văn phòng cao cấp, phòng họp tập đoàn, không khí đấu trí và quyền lực',
-    },
-    {
-      keywords: ['hầm rượu', 'wine cellar'],
-      setting: 'hầm rượu sang trọng trong biệt thự, ánh đèn tối ấm, kệ rượu dài và không khí bí mật',
-    },
-    {
-      keywords: ['bệnh viện', 'khoa sản', 'phòng khám', 'xét nghiệm'],
-      setting: 'bệnh viện tư hoặc phòng khám cao cấp, hành lang lạnh sáng và không khí căng thẳng',
-    },
-  ]
-
-  for (const rule of settingRules) {
-    if (rule.keywords.some((keyword) => source.includes(keyword))) return rule.setting
-  }
-
-  return ''
-}
-
-function inferSceneTemplate(record: JsonRecord, textBlob: string): SceneTemplateKey {
-  const source = `${joinStorySource(record)}\n${textBlob}`.toLowerCase()
-  const hasAny = (keywords: string[]) => keywords.some((keyword) => source.includes(keyword))
-
-  if (
-    hasAny([
-      'sân bay',
-      'airport',
-      'máy bay',
-      'boarding',
-      'vali',
-      'hộ chiếu',
-      'vé máy bay',
-      'bỏ trốn',
-      'xuất cảnh',
-    ])
-  ) {
-    return 'airport-secret'
-  }
-
-  if (
-    hasAny([
-      'ghi âm',
-      'cuộc gọi',
-      'điện thoại',
-      'tin nhắn',
-      'sms',
-      'file âm thanh',
-      'recording',
-      'call log',
-    ])
-  ) {
-    return 'phone-showdown'
-  }
-
-  if (
-    hasAny([
-      'họp báo',
-      'livestream',
-      'phòng tiệc',
-      'bữa tiệc',
-      'đám đông',
-      'công khai',
-      'vạch mặt',
-      'bóc trần',
-      'phơi bày',
-      'vả mặt',
-      'hot search',
-      'đám cưới',
-      'hôn lễ',
-      'lễ đính hôn',
-    ])
-  ) {
-    return 'public-exposure'
-  }
-
-  if (
-    hasAny([
-      'bữa cơm',
-      'bàn ăn',
-      'gia tộc',
-      'mẹ chồng',
-      'bố chồng',
-      'nhà họ',
-      'biệt thự',
-      'tiệc gia đình',
-      'gia đình chồng',
-    ])
-  ) {
-    return 'family-dinner'
-  }
-
-  return 'penthouse-dossier'
-}
-
-function buildFallbackLogline(title: string): string {
-  return `Câu chuyện "${title}" xoay quanh một bí mật bị che giấu, một vật chứng quan trọng và khoảnh khắc nữ chính buộc phải đối mặt với những người từng lừa dối mình.`
-}
-
-function normalizePromptData(input: unknown): CoverPromptData {
+function buildPromptData(input: unknown) {
   const story = asRecord(input)
-  const storyDna = getStoryDna(story)
-  const factorySeed = asRecord(storyDna.factory_seed)
-  const coverConcept = asRecord(storyDna.coverConcept)
-  const motifFingerprint = asRecord(storyDna.motifFingerprint)
+  const storyDna = asRecord(story.story_dna || story.storyDna)
+  const textBlob = normalizeText(buildSourceText(story, storyDna))
 
-  const title = firstNonEmpty(story, ['title', 'storyTitle', 'story_title', 'name'], DEFAULT_TITLE)
+  const currentChapterCount = Number(story.currentChapterCount || story.current_chapter_count || 0) || 0
+  const targetChapters = Number(story.targetChapters || story.target_chapters || 0) || 0
 
-  const genre = firstNonEmpty(
-    story,
-    ['genreLabel', 'genre', 'category', 'moduleLabel', 'module_label', 'module', 'theme', 'tags', 'genres'],
+  const requestedStyle = normalizeCoverArtStyle(
+    story.coverArtStyle || story.cover_art_style || story.style || story.visual_style || story.cover_style,
+  )
+
+  const requestedSceneType = safeString(story.suggestedCoverSceneType || story.suggested_cover_scene_type)
+  const sceneType = inferSceneType(textBlob, requestedSceneType)
+  const coverArtStyle = resolveFinalArtStyle(requestedStyle, sceneType)
+
+  const title = sanitizeForPrompt(safeString(story.title), DEFAULT_TITLE)
+  const genre = sanitizeForPrompt(
+    safeString(story.genreLabel || story.genre || safeArray(story.genres).join(', ')),
     DEFAULT_GENRE,
   )
-
-  const logline = compactText(
-    firstNonEmpty(story, ['logline', 'summary', 'description', 'storySummary', 'idea', 'prompt'], '') ||
-      firstNonEmpty(factorySeed, ['corePremise', 'mainConflict', 'hiddenTruth', 'emotionalHook'], '') ||
-      buildFallbackLogline(title),
-    900,
+  const heroine = sanitizeForPrompt(
+    firstNonEmpty(storyDna, ['heroine', 'coverHeroine', 'femaleLead', 'heroineProfile']) ||
+      firstNonEmpty(story, ['heroine', 'femaleLead', 'heroineLabel']),
+    DEFAULT_HEROINE,
   )
-
-  const heroine = compactText(
-    firstNonEmpty(
-      story,
-      ['heroine', 'heroineLabel', 'femaleLead', 'female_lead', 'mainCharacter', 'protagonist'],
-      '',
-    ) || firstNonEmpty(factorySeed, ['heroineArc'], DEFAULT_HEROINE),
-    260,
+  const antagonist = sanitizeForPrompt(
+    firstNonEmpty(storyDna, ['antagonist', 'villain', 'pressureSource']) ||
+      firstNonEmpty(story, ['antagonist', 'villain']),
+    DEFAULT_ANTAGONIST,
   )
-
-  const antagonist = compactText(
-    firstNonEmpty(story, ['antagonist', 'villain', 'opponent', 'rival', 'enemy'], '') ||
-      firstNonEmpty(factorySeed, ['villainType', 'powerStructure'], DEFAULT_ANTAGONIST),
-    260,
+  const relationshipCore = sanitizeForPrompt(
+    firstNonEmpty(storyDna, ['relationshipCore', 'coreConflict', 'relationshipConflict']) ||
+      firstNonEmpty(story, ['relationshipCore', 'coreConflict']),
+    DEFAULT_RELATIONSHIP,
   )
-
-  const relationshipCore = compactText(
-    firstNonEmpty(
-      story,
-      ['relationshipCore', 'relationship_core', 'centralRelationship', 'conflict', 'coreConflict'],
-      '',
-    ) ||
-      firstNonEmpty(motifFingerprint, ['relationshipCore', 'premiseFamily'], '') ||
-      firstNonEmpty(factorySeed, ['mainConflict', 'powerStructure'], DEFAULT_RELATIONSHIP),
-    300,
+  const keyEvidence = sanitizeForPrompt(
+    firstNonEmpty(storyDna, ['keyEvidence', 'signatureObject', 'evidenceType', 'evidenceObject']) ||
+      firstNonEmpty(story, ['keyEvidence', 'signatureObject']) ||
+      inferKeyEvidence(textBlob),
+    DEFAULT_EVIDENCE,
   )
-
-  const keyEvidence = compactText(
-    firstNonEmpty(
-      story,
-      [
-        'keyEvidence',
-        'key_evidence',
-        'evidence',
-        'evidenceObject',
-        'mainEvidence',
-        'visualAnchor',
-        'motif',
-      ],
-      '',
-    ) ||
-      firstNonEmpty(coverConcept, ['visualAnchor', 'symbolicObjects'], '') ||
-      firstNonEmpty(factorySeed, ['evidenceObject', 'incitingIncident'], '') ||
-      firstNonEmpty(motifFingerprint, ['evidenceObject', 'evidenceType'], '') ||
-      inferEvidenceFromText(story) ||
-      DEFAULT_EVIDENCE,
-    260,
+  const setting = sanitizeForPrompt(
+    firstNonEmpty(storyDna, ['setting', 'arena', 'mainArena', 'openingArena']) ||
+      firstNonEmpty(story, ['setting', 'arena']) ||
+      inferSetting(textBlob),
+    DEFAULT_SETTING,
   )
-
-  const setting = compactText(
-    firstNonEmpty(story, ['setting', 'mainSetting', 'location', 'background', 'world'], '') ||
-      firstNonEmpty(coverConcept, ['mainScene', 'coverScene'], '') ||
-      firstNonEmpty(factorySeed, ['setting', 'openingScene'], '') ||
-      firstNonEmpty(motifFingerprint, ['mainArena', 'openingArena'], '') ||
-      inferSettingFromText(story) ||
-      DEFAULT_SETTING,
-    260,
+  const emotionalHook = sanitizeForPrompt(
+    firstNonEmpty(storyDna, ['emotionalHook', 'emotionalCore', 'hook']) ||
+      safeString(story.summary || story.description || story.coverBrief),
+    DEFAULT_EMOTIONAL_HOOK,
   )
-
-  const emotionalCore = compactText(
-    firstNonEmpty(story, ['emotionalCore', 'mainEmotion', 'climax', 'coverScene', 'highMoment'], '') ||
-      firstNonEmpty(coverConcept, ['mainScene', 'coverScene', 'mood'], '') ||
-      firstNonEmpty(factorySeed, ['emotionalHook', 'incitingIncident'], DEFAULT_EMOTIONAL_CORE),
-    380,
+  const stakes = sanitizeForPrompt(
+    firstNonEmpty(storyDna, ['stakes', 'storyStakes', 'risk']) || inferStakes(textBlob),
+    DEFAULT_STAKES,
   )
-
-  const moodKeywords = compactText(
-    firstNonEmpty(story, ['moodKeywords', 'mood', 'tone', 'atmosphere'], '') ||
-      firstNonEmpty(coverConcept, ['mood', 'colorMood'], DEFAULT_MOOD),
-    260,
+  const moodKeywords = sanitizeForPrompt(
+    firstNonEmpty(storyDna, ['moodKeywords', 'mood', 'tone']) || inferMood(sceneType),
+    DEFAULT_MOOD,
   )
-
-  const tagline = compactText(firstNonEmpty(story, ['tagline', 'slogan', 'subtitle'], DEFAULT_TAGLINE), 160)
-
-  const coverArtStyle = normalizeCoverArtStyle(
-    story.cover_art_style ?? story.coverArtStyle ?? story.visual_style ?? story.style,
-  )
-
-  const textBlob = [
-    title,
-    genre,
-    logline,
-    heroine,
-    antagonist,
-    relationshipCore,
-    keyEvidence,
-    setting,
-    emotionalCore,
-    moodKeywords,
-  ].join('\n')
-
-  const sceneTemplate = inferSceneTemplate(story, textBlob)
+  const chapterHints = sanitizeForPrompt(buildChapterHints(story), '')
+  const storyStage = inferStoryStage(currentChapterCount, targetChapters)
 
   return {
     title,
     genre,
-    logline,
     heroine,
     antagonist,
     relationshipCore,
     keyEvidence,
     setting,
-    emotionalCore,
+    emotionalHook,
+    stakes,
     moodKeywords,
-    tagline,
+    chapterHints,
+    currentChapterCount,
+    targetChapters,
     coverArtStyle,
-    sceneTemplate,
+    sceneType,
+    storyStage,
   }
 }
 
-function buildStoryGroundingBlock(data: CoverPromptData): string {
-  const safeGenre = sanitizeCoverSafetyText(data.genre)
-  const safeLogline = sanitizeCoverSafetyText(data.logline)
-  const safeHeroine = sanitizeCoverSafetyText(data.heroine)
-  const safeAntagonist = sanitizeCoverSafetyText(data.antagonist)
-  const safeRelationshipCore = sanitizeCoverSafetyText(data.relationshipCore)
-  const safeKeyEvidence = sanitizeCoverSafetyText(data.keyEvidence)
-  const safeSetting = sanitizeCoverSafetyText(data.setting)
-  const safeEmotionalCore = sanitizeCoverSafetyText(data.emotionalCore)
-  const safeMoodKeywords = sanitizeCoverSafetyText(data.moodKeywords)
-
+function buildPrimaryGoalBlock(): string {
   return `
-STORY GROUNDING — highest priority:
-Create a vertical illustrated cover art image for a Vietnamese web novel, aspect ratio 2:3, premium commercial quality.
+Create a premium vertical web-novel cover illustration, aspect ratio 2:3.
 
-IMPORTANT:
-- This is illustration-only cover art.
-- The final image must contain absolutely NO text.
-- Do not draw any title, words, letters, typography, captions, logos, watermarks, signs, labels, UI text, or decorative text.
-- If any text appears in the image, the result is incorrect.
-
-The image must NOT be a generic beauty portrait.
-The image must visually tell the core story through characters, setting, facial expressions, conflict, and evidence objects.
-
-Story information:
-- Genre: ${safeGenre}
-- Short logline: ${safeLogline}
-- Female lead / heroine: ${safeHeroine}
-- Antagonist or opposing force: ${safeAntagonist}
-- Central relationship / conflict: ${safeRelationshipCore}
-- Most important evidence / visual anchor: ${safeKeyEvidence}
-- Main setting: ${safeSetting}
-- Emotional core scene: ${safeEmotionalCore}
-- Mood keywords: ${safeMoodKeywords}
-
-Mandatory visual rules:
-- The cover must have one clear central female lead.
-- The most important evidence / visual anchor must be visible in the image in a safe symbolic way: ${safeKeyEvidence}
-- The image must show tension, secrecy, confrontation, betrayal, or a truth about to be revealed.
-- The scene must feel specific to this story, not a generic fashion poster.
-- Use supporting characters, props, documents, phones, screens, photos, or reflections to communicate the plot.
-- The scene layout must be chosen according to the story content automatically.
-- Prioritize story scene, Chinese character appearance, and evidence objects over decorative design.
-- The output must be a clean text-free illustration only.
+PRIMARY GOAL:
+This cover must visually tell the actual story.
+Do NOT create a generic beauty portrait.
+Do NOT create a random fashionable character image disconnected from the plot.
+The cover must clearly communicate the core conflict, emotional pressure, and most important evidence object.
 `.trim()
 }
 
-function buildGeneralQualityBlock(): string {
+function buildStoryCoreBlock(data: ReturnType<typeof buildPromptData>): string {
   return `
-General quality rules:
-- High-end modern Chinese / East Asian web-novel cover.
-- All visible characters should look like modern East Asian adults, especially Chinese urban-drama characters.
-- Faces, styling, and atmosphere should feel like a premium modern Chinese romance-drama / family-drama story.
-- Strong composition, commercially usable, premium visual polish.
-- Adult characters only, expressive faces, emotional tension.
-- Clear focal point, readable hierarchy, polished storytelling image.
-- Do not make the image childish or empty.
+STORY CORE — highest priority:
+- Title: "${data.title}"
+- Genre: ${data.genre}
+- Female lead: ${data.heroine}
+- Antagonist / opposing force: ${data.antagonist}
+- Core relationship / conflict: ${data.relationshipCore}
+- Main setting: ${data.setting}
+- Key evidence object: ${data.keyEvidence}
+- Emotional hook: ${data.emotionalHook}
+- Stakes: ${data.stakes}
+- Mood keywords: ${data.moodKeywords}
+- Existing chapter hints: ${data.chapterHints || 'chưa có gợi ý chương rõ ràng'}
+
+STORY CONTENT LOCK:
+- The image must look specific to THIS story.
+- The key evidence object must be visible and story-relevant.
+- The scene must show why the story is tense, painful, and addictive.
+- Use environment, supporting characters, posture, gaze, distance, and evidence objects to tell the plot.
+- Do not replace the key evidence with a generic blank paper prop unless the story itself is about a document.
 `.trim()
 }
 
-function buildArtStyleBlock(style: CoverArtStyleKey): string {
+function buildStoryStageBlock(stage: CoverStoryStage): string {
+  switch (stage) {
+    case 'mid-escalation':
+      return `
+STORY STAGE RULE:
+The story appears to be in the middle phase.
+Choose the strongest active conflict or major escalation scene.
+Do not invent a final ending image too early.
+Show the current pressure, danger, or reveal that is already emotionally active.
+`.trim()
+    case 'late-payoff':
+      return `
+STORY STAGE RULE:
+The story appears to be near the late phase.
+Choose a payoff-heavy cover moment: confrontation, reveal, protection, power reversal, or truth surfacing.
+The image may feel more decisive and emotionally heavier.
+`.trim()
+    case 'early-hook':
+    default:
+      return `
+STORY STAGE RULE:
+The story appears to be in the early hook phase.
+Choose the best inciting incident or discovery moment.
+The cover should promise secrets, pain, and future confrontation without needing the full ending.
+`.trim()
+  }
+}
+
+function buildStyleBlock(style: CoverArtStyleKey): string {
   switch (style) {
-    case 'anime-cinematic':
+    case 'manga_manhwa':
       return `
-Selected art style: ANIME CINEMATIC.
-Rendering direction:
-- polished anime illustration
-- cinematic lighting
-- rich glow, strong atmosphere, premium drama vibe
-- elegant faces, expressive eyes, beautiful hair rendering
-- high-detail modern web novel cover look
+STYLE PRESET LOCK: MANGA_MANHWA.
+- The artwork must look like a premium Korean/Chinese manhwa webtoon cover, not realistic photography.
+- Clean line art, polished digital painting, expressive eyes, elegant dramatic poses, clear silhouette.
+- More graphic, more illustrated, more panel-like than cinematic_realistic.
+- Use crisp edges, designed composition, emotional character acting, romantic-drama / revenge-drama webtoon feeling.
+- Avoid generic dark realistic poster. Avoid stock-photo realism. Avoid plain woman standing in rain.
+- Not childish, not chibi, not comedic, not western comic.
 `.trim()
 
-    case 'modern-manhwa':
+    case 'cinematic_realistic':
       return `
-Selected art style: MODERN MANHWA.
-Rendering direction:
-- high-end Korean webtoon / manhwa inspired cover art
-- modern fashion styling, clean rendering, elegant anatomy
-- soft luxury palette, polished shading, premium romance-drama look
-- detailed faces and stylish character presentation
+STYLE PRESET LOCK: CINEMATIC_REALISTIC.
+- The artwork must feel like a premium Chinese urban-drama film poster or high-end TV drama key visual.
+- Semi-realistic / near-realistic illustrated faces, cinematic lens depth, believable lighting, upscale modern setting.
+- More grounded and film-like than anime_cinematic or manga_manhwa.
+- Use realistic fabric, glass, hospital light, boardroom light, hotel light, or banquet light when relevant.
+- Avoid anime eyes, webtoon line art, fantasy glow, and cartoon exaggeration.
+- Still an illustration, not a raw stock photo.
 `.trim()
 
-    case 'manga-drama':
+    case 'popular_webnovel_collage':
       return `
-Selected art style: MANGA DRAMA.
-Rendering direction:
-- dramatic manga-inspired cover
-- monochrome or near-monochrome black-and-white ink feeling
-- strong linework, screen-tone vibe, expressive emotional contrast
-- manga panel energy but still presented as one coherent cover composition
-- keep the central story evidence visible
-- absolutely no text inside the artwork
+STYLE PRESET LOCK: POPULAR_WEBNOVEL_COLLAGE.
+- The artwork must be a commercial Chinese web-novel collage poster, not a single-character portrait.
+- One central heroine plus 3 to 6 surrounding story fragments / mini-scenes / symbolic clues.
+- Fragments must show different story elements: antagonist, evidence, child/family pressure, public scandal, hospital/school/business setting, or betrayal.
+- Use layered composition, dramatic diagonal layout, poster-like depth, strong readability at small thumbnail size.
+- Avoid one lone woman holding paper. Avoid a simple corridor portrait.
 `.trim()
 
-    case 'semi-realistic':
-      return `
-Selected art style: SEMI-REALISTIC.
-Rendering direction:
-- semi-realistic premium novel cover
-- realistic lighting and materials
-- refined faces, elegant styling, mature drama tone
-- luxurious commercial-cover finish with subtle illustration aesthetics
-`.trim()
-
-    case 'movie-poster':
-      return `
-Selected art style: MOVIE POSTER.
-Rendering direction:
-- cinematic poster-like composition
-- dramatic lighting, strong depth, high emotional impact
-- polished character arrangement like a premium drama film poster
-- elegant, tense, commercial, striking
-- no text inside the artwork
-`.trim()
-
-    case 'auto':
+    case 'anime_cinematic':
     default:
       return `
-Selected art style: AUTO.
-Rendering direction:
-- choose the most suitable premium modern web-novel cover rendering style
-- lean toward polished anime/manhwa commercial cover aesthetics
-- keep the image premium, dramatic, and story-driven
+STYLE PRESET LOCK: ANIME_CINEMATIC.
+- The artwork must be a polished premium anime-style urban-drama cover.
+- Clearly illustrated anime faces, cinematic lighting, elegant modern East Asian characters, dramatic atmosphere.
+- More stylized and beautiful than cinematic_realistic, but not childish and not flat.
+- Use cinematic anime composition with visible environment and evidence object.
+- Avoid realistic stock-photo look. Avoid generic dark corridor woman. Avoid only a close-up face.
 `.trim()
   }
 }
 
-function buildNoTextEthnicityAndFramingBlock(): string {
-  return `
-TEXT RENDERING IS STRICTLY FORBIDDEN:
-- Do NOT put any text inside the generated image.
-- Do NOT render the story title inside the image.
-- Do NOT add Vietnamese text, English text, Chinese text, typography, letters, captions, subtitles, logos, publisher marks, QR codes, labels, signs, UI text, or watermarks.
-- The website will display the title outside the image.
-- The cover art itself must be completely text-free.
-- If any visible letters or words appear, the image is wrong.
 
-Character identity / ethnicity:
-- The characters must look like modern East Asian adults.
-- Prefer specifically modern Chinese urban-drama appearance and styling.
-- Faces, hairstyles, clothing, and atmosphere should feel like contemporary Chinese web-novel / C-drama aesthetics.
-- Avoid Western-looking characters unless the story explicitly requires it.
+function buildSceneSelectionBlock(sceneType: CoverSceneType, style: CoverArtStyleKey): string {
+  const collageNote =
+    style === 'popular_webnovel_collage'
+      ? 'Because the selected style is collage-oriented, use one central heroine plus 3 to 6 supporting story fragments around her.'
+      : 'Prefer one dominant main scene. You may add limited supporting figures or one subtle secondary layer, but keep the composition clean.'
 
-Framing and composition safety rules:
-- Do NOT create an extreme close-up portrait.
-- Do NOT let the female lead's face or body fill almost the entire frame.
-- Prefer a medium shot, medium-long shot, or 3/4 body composition.
-- The main character should usually occupy around 35% to 50% of the frame, not 80% to 100%.
-- Leave enough breathing room to show background, supporting characters, and story evidence.
-- Show the surrounding environment clearly so the image tells the story.
-- Avoid cropping the character too tightly.
-- Avoid a single giant character blocking all important props and context.
-`.trim()
-}
-
-function buildSceneTemplateBlock(scene: SceneTemplateKey): string {
-  switch (scene) {
-    case 'family-dinner':
+  switch (sceneType) {
+    case 'mother_child_protection':
       return `
-AUTO SELECTED SCENE TEMPLATE: FAMILY DINNER DRAMA.
-
-Composition guidance:
-- wealthy family dining room or elegant banquet table
-- female lead in the foreground or center, but not oversized
-- use a medium shot or 3/4 body framing
-- the female lead should not fill the whole frame
-- 4 to 5 related characters around the table: patriarch, matriarch, husband, rival, family members
-- tension shown through eye contact, silence, posture
-- dishes, tea cups, wine glasses, flowers, plus the key evidence visible on the table
-- clearly show the table setting and surrounding people
-- the mood should feel beautiful on the surface but suffocating underneath
+COVER SCENE MODE: MOTHER_CHILD_PROTECTION.
+${collageNote}
+- The emotional center is a woman protecting a child or child-related truth.
+- Show the child clearly, or show a strongly implied child presence through teddy bear, school item, adoption clue, child photo, or small body language.
+- Supporting antagonists or pressure figures should appear behind or around them.
+- The cover must communicate protection, threat, and maternal pain.
 `.trim()
 
-    case 'airport-secret':
+    case 'school_parent_conflict':
       return `
-AUTO SELECTED SCENE TEMPLATE: AIRPORT SECRET.
-
-Composition guidance:
-- luxury airport lounge or departure area
-- use a medium shot or medium-long shot, not a close-up portrait
-- character near a large glass window with airplane or runway outside
-- luggage, boarding pass, departure board, dark table, reflections
-- the key evidence must appear in hand, on the table, or near the suitcase
-- clearly show the airport setting instead of letting one character fill the whole frame
-- the mood should suggest that someone is carrying the truth away or trying to flee
+COVER SCENE MODE: SCHOOL_PARENT_CONFLICT.
+${collageNote}
+- Show a school office, hallway, meeting room, parent conference room, or school-adjacent environment.
+- The female lead must feel emotionally pressured yet controlled.
+- A school-related clue should appear: student item, school folder, parent meeting setting, child-related document, or child silhouette.
+- The conflict should read as adult power pressure affecting a child.
 `.trim()
 
-    case 'public-exposure':
+    case 'hospital_legal_suspense':
       return `
-AUTO SELECTED SCENE TEMPLATE: PUBLIC EXPOSURE.
-
-Composition guidance:
-- luxury party, ballroom, press event, banquet hall, or public gathering
-- female lead in the center or foreground revealing proof
-- use a medium shot or 3/4 body composition
-- keep enough space to show shocked family members, rival, husband, or crowd in the background
-- flying papers, dramatic movement, elegant event lighting
-- the image should feel like a public reveal or public humiliation moment
-- do not let one giant character block the crowd and the evidence
+COVER SCENE MODE: HOSPITAL_LEGAL_SUSPENSE.
+${collageNote}
+- Show hospital, clinic, medical corridor, consultation room, or legal-pressure setting linked to a medical truth.
+- Key props can include prescription, test result folder, medical envelope, or phone showing an unreadable hospital-related image.
+- The cover should feel cold, modern, tense, and evidence-driven.
 `.trim()
 
-    case 'phone-showdown':
+    case 'airport_secret_tension':
       return `
-AUTO SELECTED SCENE TEMPLATE: PHONE EVIDENCE SHOWDOWN.
-
-Composition guidance:
-- luxury living room or elegant private interior
-- female lead standing in the center holding up a phone with proof
-- use a medium shot or 3/4 body framing
-- other characters reacting strongly: pointing, shouting, lunging, collapsing, freezing
-- on the table: dossier, photos, family picture, contract, papers, or other story evidence
-- the room should be visible clearly
-- do not make the main character too large or too close to the camera
-- the scene should feel like a truth bomb has just exploded
+COVER SCENE MODE: AIRPORT_SECRET_TENSION.
+${collageNote}
+- Show airport lounge, departure gate, large glass window, runway, luggage, or boarding atmosphere.
+- The female lead should feel like she is carrying a secret, leaving with truth, or catching someone trying to escape.
+- The evidence object must be near the hand, table, bag, or suitcase.
 `.trim()
 
-    case 'penthouse-dossier':
+    case 'public_reveal_confrontation':
+      return `
+COVER SCENE MODE: PUBLIC_REVEAL_CONFRONTATION.
+${collageNote}
+- Show a public reveal moment at a banquet, party, media event, livestream-like setting, or public confrontation.
+- The female lead is exposing proof or controlling the moment.
+- Background reactions must help tell the story: shock, fear, humiliation, pressure, or reversal.
+`.trim()
+
+    case 'private_betrayal_confrontation':
+      return `
+COVER SCENE MODE: PRIVATE_BETRAYAL_CONFRONTATION.
+${collageNote}
+- Show a private or semi-private emotional betrayal scene.
+- Good settings: hotel, elegant apartment, bedroom-adjacent corridor, living room, or intimate interior.
+- Include at least one opposing figure and make the emotional rupture visually obvious.
+- The key evidence should feel personal: photo, room card, phone, letter, or private proof.
+`.trim()
+
+    case 'family_banquet_confrontation':
+      return `
+COVER SCENE MODE: FAMILY_BANQUET_CONFRONTATION.
+${collageNote}
+- Show wealthy family dining, banquet, or villa confrontation.
+- Multiple family members can appear, but the female lead must remain the emotional center.
+- Beauty on the surface, poison underneath.
+- Table setting, tea, dishes, and evidence object should help tell the story.
+`.trim()
+
+    case 'boardroom_evidence_reveal':
+      return `
+COVER SCENE MODE: BOARDROOM_EVIDENCE_REVEAL.
+${collageNote}
+- Show boardroom, corporate meeting room, office tower interior, or high-status negotiation space.
+- The female lead should feel pressured but not broken.
+- The evidence object should look decisive and tied to power, ownership, betrayal, or control.
+- Background supporting cast should read as executives, family power, or silent witnesses.
+`.trim()
+
+    case 'collage_story_poster':
+      return `
+COVER SCENE MODE: COLLAGE_STORY_POSTER.
+- Use a strong commercial web-novel collage layout.
+- One central female lead.
+- 3 to 6 supporting mini-scenes or image fragments around her.
+- Use the fragments to show relationship damage, evidence, memory, betrayal, child danger, hidden truth, or public conflict.
+- Make the collage easy to read, elegant, and emotionally heavy.
+`.trim()
+
+    case 'evidence_discovery_scene':
     default:
       return `
-AUTO SELECTED SCENE TEMPLATE: PENTHOUSE DOSSIER.
-
-Composition guidance:
-- luxury apartment, penthouse, office, villa interior, or high-rise interior
-- female lead centered, holding a dossier, folder, envelope, medical record, or key document
-- use a medium shot or 3/4 body composition
-- supporting characters in the background: husband, rival, matriarch, lawyer, doctor, bodyguard, or family member
-- marble table, laptop, flowers, tea cup, skyline through tall windows, or emotionally relevant interior props
-- calm surface, but emotionally tense and story-heavy
-- do not create a giant close-up character that hides the dossier, evidence, or background
+COVER SCENE MODE: EVIDENCE_DISCOVERY_SCENE.
+${collageNote}
+- Show the female lead actively holding, opening, discovering, or presenting the key evidence.
+- The surrounding environment should reveal the story context.
+- Supporting figures can be placed behind, reflected, seated, or partially visible to create pressure.
+- This must feel like the exact moment a dangerous truth begins to surface.
 `.trim()
   }
 }
 
-function buildNegativeBlock(): string {
+function buildVisualDiversityBlock(data: ReturnType<typeof buildPromptData>): string {
   return `
-Avoid:
-- Do not make only a simple portrait with no story evidence.
-- Do not ignore the key evidence.
-- Do not create a random fashion editorial unrelated to the plot.
-- Do not make the image look like a children's cartoon.
-- Do not create sci-fi, fantasy, ancient costume, historical palace, or magical elements unless the story explicitly requires it.
-- Do not add unrelated weapons, police badges, horror monsters, zombies, or supernatural effects.
-- Do not add website UI, buttons, screenshots, app interface, or browser elements.
-- Do not use any watermark or logo.
-- Do not put any visible text inside the image.
-- Do not render the story title inside the image.
-- Do not create any letters, words, decorative typography, subtitles, signs, labels, or captions.
-- If the model tries to place text, remove the text completely and keep only illustration.
-- Do not create oversized close-up character portraits that occupy almost the entire frame.
-- Do not crop so tightly that the background, evidence, and supporting characters disappear.
-- Do not generate non-Asian-looking lead characters for this project unless explicitly requested.
-- Do not depict blood, blood stains, wounds, corpses, dead bodies, gore, knives, guns, weapons, suicide, self-harm, murder, stabbing, shooting, or any explicit physical violence.
-- If the story contains violent or dangerous events, represent them only through symbolic tension, shadows, facial expressions, distance, lighting, documents, phones, reflections, and atmosphere.
-- Keep the cover safe for public social media posting.
+VISUAL DIVERSITY LOCK — very important:
+- Do not reuse the default cover look: lone serious woman, dark rainy corridor, black coat, generic paper in hand.
+- The selected style is ${data.coverArtStyle}; make this style visibly different from the other presets.
+- The selected scene is ${data.sceneType}; make the background and props clearly match that scene.
+- The key evidence is: ${data.keyEvidence}. It must be visible, but it must not become the only story element.
+- Add at least TWO scene-specific visual anchors from this story: setting, antagonist/pressure figure, child/family/business/hospital/school/public-event cue, or emotional distance between characters.
+- Cover must stay readable as a thumbnail in an admin story list.
 `.trim()
 }
 
-function buildFallbackPrompt(data: CoverPromptData): string {
-  const safeKeyEvidence = sanitizeCoverSafetyText(data.keyEvidence)
-  const safeSetting = sanitizeCoverSafetyText(data.setting)
-  const safeMoodKeywords = sanitizeCoverSafetyText(data.moodKeywords)
 
-  return `Vertical 2:3 premium modern Chinese drama web-novel illustrated cover art. Central adult East Asian female lead with modern Chinese appearance, emotional confrontation, visible story evidence shown in a safe symbolic way: ${safeKeyEvidence}. Main setting: ${safeSetting}. Mood: ${safeMoodKeywords}. No text, no title, no words, no letters, no logo, no watermark. Illustration only. Medium shot or 3/4 body composition. The character must not fill the whole frame. Show background, supporting characters, and context clearly. No blood, no weapons, no knife, no gun, no corpse, no dead body, no wounds, no gore, no explicit violence, no self-harm. If the story has dangerous events, show only symbolic emotional tension through lighting, shadows, reflections, documents, phones, and atmosphere.`
+function buildFramingAndCharacterBlock(): string {
+  return `
+CHARACTER / ETHNICITY / FRAMING RULES:
+- Characters must look like modern East Asian adults, preferably modern Chinese urban-drama appearance.
+- One clear female lead must anchor the image.
+- Do not make the female lead too large.
+- Do not create an extreme close-up portrait.
+- Prefer medium shot, medium-long shot, or 3/4 body composition.
+- The heroine should usually occupy about 35% to 50% of the frame, not the whole frame.
+- Leave enough room to show setting, supporting cast, and evidence.
+- Supporting characters should only be added when they strengthen the story.
+`.trim()
 }
 
-export function buildSafeFallbackCoverPrompt(input: unknown): string {
-  const data = normalizePromptData(input)
-
-  return buildFallbackPrompt({
-    ...data,
-    genre: sanitizeCoverSafetyText(data.genre),
-    logline: sanitizeCoverSafetyText(data.logline),
-    heroine: sanitizeCoverSafetyText(data.heroine),
-    antagonist: sanitizeCoverSafetyText(data.antagonist),
-    relationshipCore: sanitizeCoverSafetyText(data.relationshipCore),
-    keyEvidence: sanitizeCoverSafetyText(data.keyEvidence),
-    setting: sanitizeCoverSafetyText(data.setting),
-    emotionalCore: sanitizeCoverSafetyText(data.emotionalCore),
-    moodKeywords: sanitizeCoverSafetyText(data.moodKeywords),
-    tagline: sanitizeCoverSafetyText(data.tagline),
-  })
+function buildNoTextBlock(): string {
+  return `
+ANTI-TEXT RULES — absolute priority:
+- Absolutely no text anywhere inside the artwork.
+- Do not render the story title.
+- Do not render Vietnamese text, English text, Chinese text, letters, words, captions, subtitles, logos, watermarks, labels, brand marks, UI, signage, chat bubbles, or typography.
+- Do not place any readable text on phones, computer screens, hospital documents, contracts, tickets, folders, books, reports, photos, ID cards, certificates, school files, prescription papers, or envelopes.
+- If a document or phone is visible, it must be blank, abstract, blurred, dark, turned away, out of focus, or unreadable.
+- If the model tries to add text, remove it completely.
+`.trim()
 }
 
-export function buildCoverPrompt(input: unknown): CoverPromptResult {
-  const data = normalizePromptData(input)
+function buildAntiGenericBlock(sceneType: CoverSceneType): string {
+  const sceneSpecificLines: string[] = []
 
-  const safeGenre = sanitizeCoverSafetyText(data.genre)
-  const safeLogline = sanitizeCoverSafetyText(data.logline)
-  const safeHeroine = sanitizeCoverSafetyText(data.heroine)
-  const safeAntagonist = sanitizeCoverSafetyText(data.antagonist)
-  const safeRelationshipCore = sanitizeCoverSafetyText(data.relationshipCore)
-  const safeKeyEvidence = sanitizeCoverSafetyText(data.keyEvidence)
-  const safeSetting = sanitizeCoverSafetyText(data.setting)
-  const safeEmotionalCore = sanitizeCoverSafetyText(data.emotionalCore)
-  const safeMoodKeywords = sanitizeCoverSafetyText(data.moodKeywords)
-  const safeTagline = sanitizeCoverSafetyText(data.tagline)
+  if (sceneType === 'mother_child_protection') {
+    sceneSpecificLines.push('- Do not forget the child-related presence or clue.')
+  }
+  if (sceneType === 'school_parent_conflict') {
+    sceneSpecificLines.push('- Do not remove all school-related visual cues.')
+  }
+  if (sceneType === 'hospital_legal_suspense') {
+    sceneSpecificLines.push('- Do not turn this into a generic banquet or fashion portrait.')
+  }
+  if (sceneType === 'airport_secret_tension') {
+    sceneSpecificLines.push('- Do not lose the airport setting.')
+  }
+
+  return `
+ANTI-GENERIC RULES:
+- Do not create a generic beautiful-woman poster.
+- Do not ignore the actual story conflict.
+- Do not make the cover depend only on a single face.
+- Do not hide the evidence object.
+- Do not replace story-specific clues with random decorative props.
+- Do not create a children cartoon, fantasy scene, historical costume, or unrelated sci-fi setting.
+- Do not show blood, gore, corpses, wounds, knives, guns, explicit violence, or self-harm.
+- If the story contains dangerous events, show them only through emotional tension, lighting, distance, posture, reflections, and atmosphere.
+${sceneSpecificLines.join('\n')}
+`.trim()
+}
+
+function buildFinalInstructionBlock(style: CoverArtStyleKey): string {
+  const styleCompositionLine =
+    style === 'popular_webnovel_collage'
+      ? '- Because the selected style is popular webnovel collage, the final image should feel more layered and story-dense.'
+      : '- Keep the composition clear and story-focused rather than overly busy.'
+
+  return `
+FINAL OUTPUT INSTRUCTION:
+Create one polished final vertical 2:3 cover illustration.
+The image must feel like a commercially strong Chinese web-novel cover: dramatic, emotional, addictive, polished, and immediately understandable.
+Story content, conflict, setting, and evidence are more important than decorative prettiness.
+${styleCompositionLine}
+The final result must be a finished cover artwork illustration only, with zero text inside the image.
+`.trim()
+}
+
+function buildFallbackPrompt(data: ReturnType<typeof buildPromptData>): string {
+  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Show the environment, supporting figures, and conflict clearly. Medium shot or 3/4 body framing. The character must not fill the whole frame. No blood, no wounds, no corpse, no weapons, no explicit violence.`
+}
+
+export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): CoverBuildResult {
+  const data = buildPromptData(input)
 
   const prompt = [
-    buildStoryGroundingBlock(data),
-    buildGeneralQualityBlock(),
-    buildArtStyleBlock(data.coverArtStyle),
-    buildNoTextEthnicityAndFramingBlock(),
-    buildSceneTemplateBlock(data.sceneTemplate),
-    buildNegativeBlock(),
-    `
-Final instruction:
-Create one polished final vertical 2:3 illustrated cover art image.
-This must be a text-free illustration.
-Do not draw any words or letters.
-Story content, evidence, setting, and emotional conflict are more important than decorative design.
-The characters should read visually as modern Chinese / East Asian drama characters.
-Do not make the main character too large. Show the environment, supporting cast, and evidence clearly.
-If any text appears, remove it completely.
-If the source story contains violent or dangerous events, do not depict them literally. Convert them into symbolic emotional tension only.
-No blood, no weapons, no wounds, no corpse, no dead body, no gore, no explicit violence, no self-harm.
-`.trim(),
+    buildPrimaryGoalBlock(),
+    buildStoryCoreBlock(data),
+    buildStoryStageBlock(data.storyStage),
+    buildStyleBlock(data.coverArtStyle),
+    buildSceneSelectionBlock(data.sceneType, data.coverArtStyle),
+    buildVisualDiversityBlock(data),
+    buildFramingAndCharacterBlock(),
+    buildNoTextBlock(),
+    buildAntiGenericBlock(data.sceneType),
+    buildFinalInstructionBlock(data.coverArtStyle),
   ].join('\n\n')
 
   return {
     prompt,
-    fallbackPrompt: buildSafeFallbackCoverPrompt(data),
+    fallbackPrompt: buildFallbackPrompt(data),
     coverConcept: {
-      version: 'story-grounded-cover-art-style-v3-safe',
+      version: 'cover-scene-style-router-v2-style-diversity-lock',
       coverArtStyle: data.coverArtStyle,
-      sceneTemplate: data.sceneTemplate,
+      sceneType: data.sceneType,
+      storyStage: data.storyStage,
       title: data.title,
-      genre: safeGenre,
-      logline: safeLogline,
-      heroine: safeHeroine,
-      antagonist: safeAntagonist,
-      relationshipCore: safeRelationshipCore,
-      keyEvidence: safeKeyEvidence,
-      setting: safeSetting,
-      emotionalCore: safeEmotionalCore,
-      moodKeywords: safeMoodKeywords,
-      tagline: safeTagline,
+      genre: data.genre,
+      heroine: data.heroine,
+      antagonist: data.antagonist,
+      relationshipCore: data.relationshipCore,
+      keyEvidence: data.keyEvidence,
+      setting: data.setting,
+      emotionalHook: data.emotionalHook,
+      stakes: data.stakes,
+      moodKeywords: data.moodKeywords,
+      chapterHints: data.chapterHints,
+      currentChapterCount: data.currentChapterCount,
+      targetChapters: data.targetChapters,
     },
   }
 }

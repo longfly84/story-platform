@@ -1,6 +1,7 @@
 import type {
   AIFactoryConfig,
   AvoidLibrary,
+  CoverArtStyle,
   FactoryGenreOption,
   FactoryHeroineOption,
   FactoryLog,
@@ -25,21 +26,42 @@ import { buildFactoryPublicStoryDescription } from './factoryPublicDescription'
 
 type AddLog = (message: string, type?: FactoryLog['type']) => void
 
+function normalizeCoverArtStyle(value: unknown): CoverArtStyle {
+  const raw = String(value || '').trim()
+
+  if (
+    raw === 'auto' ||
+    raw === 'anime_cinematic' ||
+    raw === 'manga_manhwa' ||
+    raw === 'cinematic_realistic' ||
+    raw === 'popular_webnovel_collage'
+  ) {
+    return raw
+  }
+
+  // Map key cũ còn lưu trong localStorage / config cũ sang key mới.
+  if (raw === 'anime-cinematic') return 'anime_cinematic'
+  if (raw === 'modern-manhwa') return 'manga_manhwa'
+  if (raw === 'manga-drama') return 'manga_manhwa'
+  if (raw === 'semi-realistic') return 'cinematic_realistic'
+  if (raw === 'movie-poster') return 'popular_webnovel_collage'
+
+  return 'auto'
+}
+
 function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
-  switch (style) {
-    case 'anime-cinematic':
-      return 'anime cinematic dramatic novel cover'
-    case 'modern-manhwa':
-      return 'modern manhwa romance drama cover'
-    case 'manga-drama':
-      return 'dramatic manga cover, black and white ink style'
-    case 'semi-realistic':
-      return 'semi realistic premium webnovel cover'
-    case 'movie-poster':
-      return 'cinematic movie poster style drama cover'
+  switch (normalizeCoverArtStyle(style)) {
+    case 'anime_cinematic':
+      return 'anime cinematic webnovel cover, dramatic lighting, expressive characters, modern East Asian urban drama'
+    case 'manga_manhwa':
+      return 'manga manhwa webtoon cover style, clean line art, dramatic composition, emotional character acting'
+    case 'cinematic_realistic':
+      return 'cinematic realistic drama poster, premium film still lighting, modern East Asian urban suspense'
+    case 'popular_webnovel_collage':
+      return 'popular webnovel collage poster, multiple character composition, evidence object, dramatic layered story poster'
     case 'auto':
     default:
-      return 'premium asian webnovel cover, style chosen automatically'
+      return 'style automatically chosen from story content, premium modern East Asian webnovel cover'
   }
 }
 
@@ -319,6 +341,8 @@ export async function generateAndAttachFactoryCover(params: {
   heroineLabel: string
   storySeed?: FactoryStorySeed | null
 }) {
+  const normalizedCoverArtStyle = normalizeCoverArtStyle(params.config.coverArtStyle)
+
   const storyDna = params.storySeed
     ? {
         ...params.storySeed,
@@ -351,10 +375,10 @@ export async function generateAndAttachFactoryCover(params: {
         tags: [params.genreLabel, params.heroineLabel].filter(Boolean),
         story_dna: storyDna,
       },
-      cover_art_style: params.config.coverArtStyle,
-      visual_style: params.config.coverArtStyle,
-      style: params.config.coverArtStyle,
-      styleLabel: getCoverArtStyleLabel(params.config.coverArtStyle),
+      cover_art_style: normalizedCoverArtStyle,
+      visual_style: normalizedCoverArtStyle,
+      style: normalizedCoverArtStyle,
+      styleLabel: getCoverArtStyleLabel(normalizedCoverArtStyle),
       aspectRatio: '2:3',
     }),
   })

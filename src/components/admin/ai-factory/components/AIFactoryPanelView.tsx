@@ -23,11 +23,10 @@ const COVER_ART_STYLE_OPTIONS: Array<{
   label: string
 }> = [
   { value: 'auto', label: 'Tự động theo nội dung truyện' },
-  { value: 'anime-cinematic', label: 'Anime điện ảnh' },
-  { value: 'modern-manhwa', label: 'Manhwa hiện đại' },
-  { value: 'manga-drama', label: 'Manga drama đen trắng' },
-  { value: 'semi-realistic', label: 'Semi-realistic cao cấp' },
-  { value: 'movie-poster', label: 'Poster phim drama' },
+  { value: 'anime_cinematic', label: 'Anime cinematic' },
+  { value: 'manga_manhwa', label: 'Manga / Manhwa' },
+  { value: 'cinematic_realistic', label: 'Cinematic realistic' },
+  { value: 'popular_webnovel_collage', label: 'Webnovel collage' },
 ]
 
 type AIFactoryPanelViewProps = {

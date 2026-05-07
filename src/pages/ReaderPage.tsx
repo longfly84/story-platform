@@ -35,68 +35,13 @@ type ReaderAdItem = {
   is_active?: boolean | null
 }
 
-const CHAPTER_AD_PLACEMENTS = [
-  'chapter_inline_1',
-  'chapter_inline_2',
-  'chapter_inline_3',
-  'chapter_inline',
-  'reader_inline',
-  'chapter_content',
-  'inline',
-]
-
-
 const INLINE_AD_COUNT_KEY = 'reader_inline_ad_count'
-
-function parseInlineAdCount(value: unknown) {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return Math.max(0, Math.min(3, Math.floor(value)))
-  }
-
-  if (typeof value === 'string') {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? Math.max(0, Math.min(3, Math.floor(parsed))) : 0
-  }
-
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>
-    return parseInlineAdCount(record.count ?? record.value ?? record.inlineAdCount)
-  }
-
-  return 0
-}
-
-async function loadReaderInlineAdCount() {
-  const { data, error } = await supabase
-    .from('ad_settings')
-    .select('value')
-    .eq('key', INLINE_AD_COUNT_KEY)
-    .maybeSingle()
-
-  if (error) {
-    console.warn('[reader-ad-settings-load-error]', error)
-    return 0
-  }
-
-  return parseInlineAdCount(data?.value)
-}
-
-function getAdPlacementSlot(ad: ReaderAdItem) {
-  const placement = String(ad.placement || '')
-  const matched = placement.match(/(?:chapter_inline_|reader_inline_|inline_)(\d+)/)
-
-  if (matched) {
-    const slot = Number(matched[1])
-    return Number.isFinite(slot) ? slot : 99
-  }
-
-  if (placement === 'chapter_inline') return 50
-  if (placement === 'reader_inline') return 60
-  if (placement === 'chapter_content') return 70
-  if (placement === 'inline') return 80
-
-  return 99
-}
+const CHAPTER_AD_SLOT_PLACEMENTS = [
+  ['chapter_inline_1', 'chapter_inline', 'reader_inline', 'chapter_content', 'inline'],
+  ['chapter_inline_2', 'chapter_inline', 'reader_inline', 'chapter_content', 'inline'],
+  ['chapter_inline_3', 'chapter_inline', 'reader_inline', 'chapter_content', 'inline'],
+]
+const CHAPTER_AD_QUERY_PLACEMENTS = Array.from(new Set(CHAPTER_AD_SLOT_PLACEMENTS.flat()))
 
 const themeStyles: Record<string, { background: string; color: string }> = {
   dark: { background: '#0b0b0d', color: '#e6eef3' },
@@ -154,6 +99,24 @@ function normalizeChapterKey(value: unknown) {
     .replace(/^chuong-/, '')
     .replace(/^chapter-/, '')
     .replace(/^ch-/, '')
+}
+
+function parseInlineAdCount(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, Math.min(3, Math.floor(value)))
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(3, Math.floor(parsed))) : 0
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    return parseInlineAdCount(record.count ?? record.value ?? record.inlineAdCount)
+  }
+
+  return 0
 }
 
 function getNumberValue(value: unknown) {
@@ -329,39 +292,78 @@ async function loadChaptersForStory(storyRow: any) {
   }
 }
 
-function sortAds(ads: ReaderAdItem[]) {
+function getAdStableId(ad: ReaderAdItem) {
+  return String(ad.id ?? `${ad.placement || ''}:${ad.title || ''}:${ad.target_url || ''}`)
+}
+
+function sortAdsByPriorityDesc(ads: ReaderAdItem[]) {
   return [...ads].sort((a, b) => {
-    const aSlot = getAdPlacementSlot(a)
-    const bSlot = getAdPlacementSlot(b)
-
-    if (aSlot !== bSlot) return aSlot - bSlot
-
-    const aPriority = getNumberValue(a.priority)
-    const bPriority = getNumberValue(b.priority)
-
-    if (aPriority !== bPriority) return aPriority - bPriority
+    const priorityDiff = getNumberValue(b.priority) - getNumberValue(a.priority)
+    if (priorityDiff !== 0) return priorityDiff
 
     return String(a.title || '').localeCompare(String(b.title || ''))
   })
 }
 
-async function loadChapterAds(inlineAdCount: number) {
-  const safeCount = Math.max(0, Math.min(3, Math.floor(Number(inlineAdCount || 0))))
-
+function pickAdsForInlineSlots(ads: ReaderAdItem[], inlineAdCount: number) {
+  const safeCount = parseInlineAdCount(inlineAdCount)
   if (safeCount <= 0) return []
+
+  const usedIds = new Set<string>()
+  const selected: ReaderAdItem[] = []
+
+  for (let slotIndex = 0; slotIndex < safeCount; slotIndex += 1) {
+    const allowedPlacements = CHAPTER_AD_SLOT_PLACEMENTS[slotIndex] || []
+    const candidates = sortAdsByPriorityDesc(
+      ads.filter((ad) => {
+        if (!ad?.is_active) return false
+        if (usedIds.has(getAdStableId(ad))) return false
+        return allowedPlacements.includes(String(ad.placement || ''))
+      }),
+    )
+
+    const chosen = candidates[0]
+    if (chosen) {
+      usedIds.add(getAdStableId(chosen))
+      selected.push(chosen)
+    }
+  }
+
+  return selected
+}
+
+async function loadReaderInlineAdCount() {
+  const { data, error } = await supabase
+    .from('ad_settings')
+    .select('value')
+    .eq('key', INLINE_AD_COUNT_KEY)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('[reader-ad-settings-load-error]', error)
+    return 0
+  }
+
+  return parseInlineAdCount(data?.value)
+}
+
+async function loadChapterAds() {
+  const inlineAdCount = await loadReaderInlineAdCount()
+
+  if (inlineAdCount <= 0) return []
 
   const { data, error } = await supabase
     .from('ads')
     .select('*')
     .eq('is_active', true)
-    .in('placement', CHAPTER_AD_PLACEMENTS)
+    .in('placement', CHAPTER_AD_QUERY_PLACEMENTS)
 
   if (error) {
     console.warn('[reader-ads-load-error]', error)
     return []
   }
 
-  return sortAds(Array.isArray(data) ? (data as ReaderAdItem[]) : []).slice(0, safeCount)
+  return pickAdsForInlineSlots(Array.isArray(data) ? (data as ReaderAdItem[]) : [], inlineAdCount)
 }
 
 function ReaderChapterHeadbar({
@@ -529,9 +531,8 @@ export default function ReaderPage() {
           return
         }
 
-        const [{ chapters: allChapters, error: chaptersError }, inlineAdCount] =
-          await Promise.all([loadChaptersForStory(storyRow), loadReaderInlineAdCount()])
-        const loadedAds = await loadChapterAds(inlineAdCount)
+        const [{ chapters: allChapters, error: chaptersError }, loadedAds] =
+          await Promise.all([loadChaptersForStory(storyRow), loadChapterAds()])
 
         if (!mounted) return
 
@@ -543,7 +544,6 @@ export default function ReaderPage() {
             storyId: storyRow.id,
             chaptersError,
             chaptersCount: allChapters.length,
-            inlineAdCount,
             adsCount: loadedAds.length,
             ads: loadedAds.map((item) => ({
               id: item.id,

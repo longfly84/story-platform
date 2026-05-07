@@ -60,9 +60,39 @@ Polished anime / manhwa inspired cinematic cover art, premium drama poster, eleg
 Strict rules:
 No text, no title, no letters, no typography, no logo, no watermark.
 No blood, no weapons, no knife, no gun, no corpse, no dead body, no wounds, no gore, no explicit violence, no self-harm.
-Represent conflict only through symbolic emotional tension, shadows, reflections, distance, documents, phones, and lighting.
+Represent conflict only through symbolic emotional tension, shadows, reflections, distance, blank documents, turned-away phones, and lighting.
 Safe public social media cover art.
 `.trim()
+}
+
+function buildUltraNoTextRescuePrompt(prompt: string) {
+  return `${safeString(prompt)}
+
+ULTRA NO-TEXT RESCUE:
+- Absolute zero text in the image.
+- No title area at all.
+- No letters, no words, no typography, no logo, no watermark.
+- No readable or unreadable script-like marks.
+- All papers, phones, monitors, folders, books, signs, tickets, and documents must be blank, dark, blurred, covered, turned away, or abstract.
+- This is scene illustration only, not a poster with typography.
+- If the model tends to add any title or writing, remove it completely and keep only the illustration.`.trim()
+}
+
+function containsTypographyRisk(text: string) {
+  const lowered = safeString(text).toLowerCase()
+  if (!lowered) return false
+
+  return [
+    'title',
+    'text',
+    'typography',
+    'caption',
+    'logo',
+    'watermark',
+    'font',
+    'headline',
+    'letters',
+  ].some((keyword) => lowered.includes(keyword))
 }
 
 async function moderatePromptOrThrow(prompt: string) {
@@ -213,17 +243,38 @@ async function requestOpenAIImage(prompt: string) {
   }
 }
 
+async function requestBestEffortNoTextImage(prompt: string) {
+  const first = await requestOpenAIImage(prompt)
+
+  if (!containsTypographyRisk(first.revisedPrompt || '')) {
+    return {
+      ...first,
+      noTextRescueUsed: false,
+    }
+  }
+
+  const rescuePrompt = buildUltraNoTextRescuePrompt(prompt)
+  const rescue = await requestOpenAIImage(rescuePrompt)
+
+  return {
+    ...rescue,
+    promptUsedOverride: rescuePrompt,
+    noTextRescueUsed: true,
+  }
+}
+
 export async function generateCoverImage(primaryPrompt: string, fallbackPrompt: string) {
   const safePrimaryPrompt = safeString(primaryPrompt)
   const safeFallbackPrompt = safeString(fallbackPrompt) || buildEmergencyFallbackPrompt()
 
   try {
-    const result = await requestOpenAIImage(safePrimaryPrompt)
+    const result = await requestBestEffortNoTextImage(safePrimaryPrompt)
 
     return {
       ...result,
-      promptUsed: safePrimaryPrompt,
+      promptUsed: result.promptUsedOverride || safePrimaryPrompt,
       fallbackUsed: false,
+      emergencyFallbackUsed: false,
       primaryError: null as string | null,
       fallbackError: null as string | null,
     }
@@ -235,11 +286,11 @@ export async function generateCoverImage(primaryPrompt: string, fallbackPrompt: 
     )
 
     try {
-      const result = await requestOpenAIImage(safeFallbackPrompt)
+      const result = await requestBestEffortNoTextImage(safeFallbackPrompt)
 
       return {
         ...result,
-        promptUsed: safeFallbackPrompt,
+        promptUsed: result.promptUsedOverride || safeFallbackPrompt,
         fallbackUsed: true,
         emergencyFallbackUsed: false,
         primaryError: primaryError?.message || 'Primary prompt failed',
@@ -252,21 +303,19 @@ export async function generateCoverImage(primaryPrompt: string, fallbackPrompt: 
         fallbackError?.detail || '',
       )
 
+      const emergencyPrompt = buildEmergencyFallbackPrompt()
       const shouldTryEmergency =
-        safeFallbackPrompt !== buildEmergencyFallbackPrompt() &&
-        isModerationBlockedError(fallbackError)
+        safeFallbackPrompt !== emergencyPrompt && isModerationBlockedError(fallbackError)
 
       if (!shouldTryEmergency) {
         throw fallbackError
       }
 
-      const emergencyPrompt = buildEmergencyFallbackPrompt()
-
-      const result = await requestOpenAIImage(emergencyPrompt)
+      const result = await requestBestEffortNoTextImage(emergencyPrompt)
 
       return {
         ...result,
-        promptUsed: emergencyPrompt,
+        promptUsed: result.promptUsedOverride || emergencyPrompt,
         fallbackUsed: true,
         emergencyFallbackUsed: true,
         primaryError: primaryError?.message || 'Primary prompt failed',
