@@ -5419,80 +5419,83 @@ function cleanTechnicalMarkers(text: string) {
 }
 
 
-function stripLeakedStoryTitleBeforeChapter(text: string) {
-  const normalized = String(text || "").replace(/\r\n/g, "\n");
-  const chapterMatch = normalized.match(/^#\s*Chương\s+\d+\s*[—-].*$/im);
+function replaceKnownBadVietnamesePhrases(input: string) {
+  const replacements: Array<[RegExp, string]> = [
+    [/đúng lúc chương cần cô nhất/gi, "đúng lúc chương trình cần cô nhất"],
+    [/mọi thứ đã có sẵn bằng tay/gi, "mọi bằng chứng đã nằm sẵn trong tay"],
+    [/như một cây kim chỉ huy/gi, "khiến mọi ánh mắt lập tức đổ dồn về phía cô"],
+    [/mồi câu bắt buộc phải hé lộ/gi, "một câu hỏi buộc họ phải để lộ người đứng sau"],
+    [/tấm thẻ mà giờ đây gọi là [“\"]bằng chứng[”\"]/gi, "tấm thẻ nhỏ bé đang bị biến thành “bằng chứng”"],
+    [/mở ra một lối tháo/gi, "mở ra một lối thoát"],
+    [/góc bàn này bị đặt vào tay sai người/gi, "tôi bị đặt vào sai vị trí trong một ván cờ đã sắp sẵn"],
+    [/giọng anh ta tròng đầy thách thức/gi, "giọng anh ta đầy vẻ thách thức"],
+    [/Lời của ([^\n.]+?) đặt một đạo đứt vào giữa sự việc/gi, "Lời của $1 khiến sự việc lập tức nghiêm trọng hơn"],
+    [/nó kéo một hơi dài/gi, "đủ tạo ra một khoảng chững"],
+    [/Anh ta nói như trao đổi quyền lợi trước công chúng/gi, "Anh ta nói như thể đó là một đề nghị rất công bằng"],
+    [/nhưng là người chọn cứu mình, tôi không để xúc động dẫn đường/gi, "nhưng nếu muốn tự cứu mình, tôi không được để cảm xúc dẫn đường"],
+    [/Quyền lực đã tạm chuyển hướng khỏi tôi sang nhóm muốn khóa miệng tôi/gi, "Thế trận tạm thời nghiêng về phía những người muốn buộc tôi im lặng"],
+  ];
 
-  if (!chapterMatch || typeof chapterMatch.index !== "number") {
-    return normalized;
-  }
-
-  const before = normalized.slice(0, chapterMatch.index);
-  const after = normalized.slice(chapterMatch.index);
-  const meaningfulBefore = before
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => line !== "---");
-
-  // Trường hợp AI trả: # Tên truyện / --- / --- / # Chương 1.
-  // Phần trước # Chương không phải nội dung đọc, nên bỏ cứng.
-  if (meaningfulBefore.length <= 3) {
-    return after;
-  }
-
-  return normalized;
-}
-
-function normalizeReaderSeparators(text: string) {
-  return String(text || "")
-    .replace(/\uFEFF/g, "")
-    .replace(/[\u200B-\u200D\u2060]/g, "")
-    .replace(/\r\n/g, "\n")
-    .replace(/^\s*(?:---\s*)+/g, "")
-    .replace(/(?:\n\s*---\s*)+(?=\n\s*#\s*Chương\s+\d+)/gi, "\n")
-    .replace(/\n\s*---\s*\n\s*---\s*\n/g, "\n\n")
-    .replace(/(?:\n\s*---\s*)+$/g, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function dedupeChapterHeadings(text: string) {
-  let seen = false;
-
-  return String(text || "")
-    .split("\n")
-    .filter((line) => {
-      if (!/^#\s*Chương\s+\d+\s*[—-].*$/i.test(line.trim())) {
-        return true;
-      }
-
-      if (!seen) {
-        seen = true;
-        return true;
-      }
-
-      return false;
-    })
-    .join("\n");
+  return replacements.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), input);
 }
 
 function cleanupReaderOnlyText(text: string, chapterNumber = 1) {
-  let cleaned = cleanTechnicalMarkers(text);
-  cleaned = stripLeakedStoryTitleBeforeChapter(cleaned);
-  cleaned = normalizeReaderSeparators(cleaned);
-  cleaned = dedupeChapterHeadings(cleaned);
-  cleaned = stripLeakedStoryTitleBeforeChapter(cleaned);
-  cleaned = normalizeReaderSeparators(cleaned);
+  let body = replaceKnownBadVietnamesePhrases(String(text || ""))
+    .replace(/\r\n/g, "\n")
+    .replace(/\uFEFF/g, "")
+    .replace(/[\u200B-\u200D\u2060]/g, "")
+    .replace(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*$/gim, "")
+    .replace(/^BẢN ĐỌC CHO ĐỘC GIẢ\s*$/gim, "")
+    .replace(/^\s*(?:---\s*)+/g, "")
+    .replace(/(?:\n\s*---\s*)+$/g, "")
+    .trim();
 
-  if (cleaned && !/^#\s*Chương\s+\d+\s*[—-]/im.test(cleaned)) {
-    cleaned = `# Chương ${chapterNumber} — Chưa đặt tên\n\n${cleaned}`.trim();
+  const chapterHeadingPattern = /^#?\s*Chương\s+\d+\s*(?:[—-].*)?$/gim;
+  const headings = [...body.matchAll(chapterHeadingPattern)];
+
+  if (headings.length > 0) {
+    const firstHeading = headings[0];
+    const firstIndex = firstHeading.index ?? 0;
+
+    // Luôn bỏ mọi thứ nằm trước heading chương đầu tiên: tên truyện, separator, markdown rỗng.
+    body = body.slice(firstIndex);
+
+    let seenChapterHeading = false;
+    body = body
+      .split("\n")
+      .filter((line) => {
+        const trimmed = line.trim();
+
+        if (!/^#?\s*Chương\s+\d+\s*(?:[—-].*)?$/i.test(trimmed)) return true;
+        if (seenChapterHeading) return false;
+
+        seenChapterHeading = true;
+        return true;
+      })
+      .join("\n");
   }
 
-  return cleaned;
+  body = body
+    .replace(/^\s*(?:---\s*)+/g, "")
+    .replace(/\n\s*---\s*(?=\n\s*#?\s*Chương\s+\d+)/gi, "\n")
+    .replace(/\n\s*---\s*\n\s*---\s*/g, "\n\n")
+    .replace(/(?:\n\s*---\s*)+$/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (!/^#?\s*Chương\s+\d+/im.test(body)) {
+    body = `# Chương ${chapterNumber} — Chưa đặt tên\n\n${body}`.trim();
+  }
+
+  if (!body.startsWith("#")) {
+    body = body.replace(/^Chương\s+/i, "# Chương ");
+  }
+
+  return body.trim();
 }
 
-function extractReaderOnly(output: string) {
+
+function extractReaderOnly(output: string, chapterNumber = 1) {
   const readerBlock = extractBetween(
     output,
     ["# BẢN ĐỌC CHO ĐỘC GIẢ", "BẢN ĐỌC CHO ĐỘC GIẢ"],
@@ -5503,7 +5506,7 @@ function extractReaderOnly(output: string) {
     ],
   );
 
-  return cleanupReaderOnlyText(readerBlock || output);
+  return cleanupReaderOnlyText(cleanTechnicalMarkers(readerBlock || output), chapterNumber);
 }
 
 function extractTechnicalReport(output: string) {
@@ -5858,7 +5861,7 @@ export function parseChapterOutput(params: {
   chapterNumber: number;
   runShortId: string;
 }): ParsedChapterOutput {
-  const readerOnly = cleanupReaderOnlyText(extractReaderOnly(params.output), params.chapterNumber);
+  const readerOnly = extractReaderOnly(params.output, params.chapterNumber);
   const technicalReport = extractTechnicalReport(params.output);
   const combined = `${technicalReport}\n${params.output}`;
 

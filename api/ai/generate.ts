@@ -5,6 +5,14 @@ import { normalizePayload } from './generate-lib/payload.js'
 import { buildPrompt, buildStoryEditorPrompt } from './generate-lib/promptBuilders.js'
 import { moderateTextOrThrow } from './generate-lib/moderation.js'
 
+function normalizeGeneratedText(value: unknown) {
+  return String(value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\uFEFF/g, '')
+    .replace(/[\u200B-\u200D\u2060]/g, '')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim()
+}
 
 function replaceKnownBadVietnamesePhrases(input: string) {
   const replacements: Array<[RegExp, string]> = [
@@ -26,131 +34,70 @@ function replaceKnownBadVietnamesePhrases(input: string) {
   return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), input)
 }
 
-
-function stripLeakedStoryTitleBeforeChapter(input: string) {
-  let body = input.replace(/\r\n/g, '\n')
-  const chapterHeading = body.match(/^#\s*Chương\s+\d+\s*[—-].*$/im)
-
-  if (!chapterHeading || typeof chapterHeading.index !== 'number') {
-    return body
-  }
-
-  const before = body.slice(0, chapterHeading.index)
-  const after = body.slice(chapterHeading.index)
-  const meaningfulBefore = before
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => line !== '---')
-
-  // Nếu trước # Chương chỉ là tên truyện / separator / markdown rỗng thì bỏ hết.
-  if (
-    meaningfulBefore.length <= 3 &&
-    meaningfulBefore.every((line) => /^#\s+[^#]/.test(line) || !/^#{1,6}\s*/.test(line))
-  ) {
-    return after
-  }
-
-  return body
+function getChapterHeadingRegex() {
+  return /^#?\s*Chương\s+\d+\s*(?:[—-].*)?$/gim
 }
 
-function normalizeChapterSeparators(input: string) {
-  return input
+function cleanupReaderOnlyText(input: string, chapterNumber: number) {
+  let body = replaceKnownBadVietnamesePhrases(normalizeGeneratedText(input))
+    .replace(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*$/gim, '')
+    .replace(/^BẢN ĐỌC CHO ĐỘC GIẢ\s*$/gim, '')
     .replace(/^\s*(?:---\s*)+/g, '')
-    .replace(/(?:\n\s*---\s*)+(?=\n\s*#\s*Chương\s+\d+)/gi, '\n')
-    .replace(/\n\s*---\s*\n\s*---\s*\n/g, '\n\n')
     .replace(/(?:\n\s*---\s*)+$/g, '')
-}
 
-function cleanupReaderSection(reader: string, chapterNumber: number) {
-  let cleaned = replaceKnownBadVietnamesePhrases(reader)
-    .replace(/\uFEFF/g, '')
-    .replace(/[\u200B-\u200D\u2060]/g, '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{4,}/g, '\n\n\n')
-
-  const readerHeaderMatch = cleaned.match(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*$/im)
-  let readerHeader = ''
-  let body = cleaned
-
-  if (readerHeaderMatch && typeof readerHeaderMatch.index === 'number') {
-    readerHeader = cleaned.slice(0, readerHeaderMatch.index + readerHeaderMatch[0].length).trim()
-    body = cleaned.slice(readerHeaderMatch.index + readerHeaderMatch[0].length)
-  }
-
-  body = body
-    .replace(/^\s*(?:---\s*)+/g, '\n')
-    .replace(/\n\s*(?:---\s*)+\n(?=\s*#\s*Chương\s+\d+)/gi, '\n\n')
-
-  const chapterHeadingPattern = /^#\s*Chương\s+\d+\s*[—-].*$/gim
-  const headings = [...body.matchAll(chapterHeadingPattern)]
+  const headings = [...body.matchAll(getChapterHeadingRegex())]
 
   if (headings.length > 0) {
-    const firstHeading = headings[0]
-    const firstIndex = firstHeading.index ?? 0
+    const first = headings[0]
+    const firstIndex = first.index ?? 0
+    body = body.slice(firstIndex)
 
-    if (firstIndex > 0) {
-      const beforeHeadingLines = body.slice(0, firstIndex).split('\n')
-      const usefulBeforeHeading = beforeHeadingLines
-        .map((line) => line.trim())
-        .filter((line) => line && line !== '---')
-
-      // Bỏ tên truyện / separator bị lọt trước tiêu đề chương.
-      if (usefulBeforeHeading.length <= 2) {
-        body = body.slice(firstIndex)
-      }
-    }
-
-    let seenChapterHeading = false
+    let seen = false
     body = body
       .split('\n')
       .filter((line) => {
-        if (!/^#\s*Chương\s+\d+\s*[—-].*$/i.test(line.trim())) {
-          return true
-        }
-
-        if (!seenChapterHeading) {
-          seenChapterHeading = true
-          return true
-        }
-
-        return false
+        const trimmed = line.trim()
+        if (!/^#?\s*Chương\s+\d+\s*(?:[—-].*)?$/i.test(trimmed)) return true
+        if (seen) return false
+        seen = true
+        return true
       })
       .join('\n')
   }
 
   body = body
     .replace(/^\s*(?:---\s*)+/g, '')
+    .replace(/\n\s*---\s*(?=\n\s*#?\s*Chương\s+\d+)/gi, '\n')
+    .replace(/\n\s*---\s*\n\s*---\s*/g, '\n\n')
     .replace(/(?:\n\s*---\s*)+$/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 
-  if (!/^#\s*Chương\s+\d+\s*[—-]/im.test(body)) {
+  if (!/^#?\s*Chương\s+\d+/im.test(body)) {
     body = `# Chương ${chapterNumber} — Chưa đặt tên\n\n${body}`.trim()
   }
 
-  return [readerHeader || '# BẢN ĐỌC CHO ĐỘC GIẢ', body].filter(Boolean).join('\n\n').trim()
+  if (!body.startsWith('#')) {
+    body = body.replace(/^Chương\s+/i, '# Chương ')
+  }
+
+  return body.trim()
 }
 
 function sanitizeGeneratedStoryOutput(input: string, payload: any) {
   const chapterNumber = Math.max(1, Math.floor(Number(payload?.nextChapterNumber || 1)))
-  const normalized = String(input || '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\uFEFF/g, '')
-    .replace(/[\u200B-\u200D\u2060]/g, '')
-    .trim()
-
+  const normalized = normalizeGeneratedText(input)
   const technicalMatch = normalized.match(/^#\s*BẢN PHÂN TÍCH KỸ THUẬT\s*\/\s*KHÔNG ĐĂNG\s*$/im)
 
   if (!technicalMatch || typeof technicalMatch.index !== 'number') {
-    return cleanupReaderSection(normalized, chapterNumber)
+    return cleanupReaderOnlyText(normalized, chapterNumber)
   }
 
-  const readerPart = normalized.slice(0, technicalMatch.index).replace(/(?:\n\s*---\s*)+$/g, '')
+  const readerPart = normalized.slice(0, technicalMatch.index)
   const technicalPart = normalized.slice(technicalMatch.index).trim()
-  const cleanedReader = cleanupReaderSection(readerPart, chapterNumber)
+  const cleanedReader = cleanupReaderOnlyText(readerPart, chapterNumber)
 
-  return `${cleanedReader}\n\n---\n\n${technicalPart}`.trim()
+  return `# BẢN ĐỌC CHO ĐỘC GIẢ\n\n${cleanedReader}\n\n---\n\n${technicalPart}`.trim()
 }
 
 

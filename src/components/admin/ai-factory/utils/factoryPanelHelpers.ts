@@ -26,12 +26,18 @@ export function dataUrlToBlob(dataUrl: string) {
 }
 
 export function buildPublicChapterSummary(readerOnly: string) {
-  const normalized = String(readerOnly || '').replace(/\r\n/g, '\n')
-  const chapterMatch = normalized.match(/^#\s*Chương\s*\d+\s*[—-].*$/im)
-  const content = chapterMatch?.index ? normalized.slice(chapterMatch.index) : normalized
+  const normalized = String(readerOnly || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*$/gim, '')
+    .replace(/^BẢN ĐỌC CHO ĐỘC GIẢ\s*$/gim, '')
+
+  const chapterMatch = normalized.match(/^#?\s*Chương\s*\d+\s*(?:[—-].*)?$/im)
+  const content = typeof chapterMatch?.index === 'number'
+    ? normalized.slice(chapterMatch.index)
+    : normalized
 
   return content
-    .replace(/^#\s*Chương\s*\d+\s*[—-].*$/gim, '')
+    .replace(/^#?\s*Chương\s*\d+\s*(?:[—-].*)?$/gim, '')
     .replace(/^#\s+.*$/gm, '')
     .replace(/^\s*---\s*$/gm, '')
     .replace(/#\s*BẢN PHÂN TÍCH KỸ THUẬT[\s\S]*$/i, '')
