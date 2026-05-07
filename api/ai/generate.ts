@@ -26,6 +26,42 @@ function replaceKnownBadVietnamesePhrases(input: string) {
   return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), input)
 }
 
+
+function stripLeakedStoryTitleBeforeChapter(input: string) {
+  let body = input.replace(/\r\n/g, '\n')
+  const chapterHeading = body.match(/^#\s*Chương\s+\d+\s*[—-].*$/im)
+
+  if (!chapterHeading || typeof chapterHeading.index !== 'number') {
+    return body
+  }
+
+  const before = body.slice(0, chapterHeading.index)
+  const after = body.slice(chapterHeading.index)
+  const meaningfulBefore = before
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => line !== '---')
+
+  // Nếu trước # Chương chỉ là tên truyện / separator / markdown rỗng thì bỏ hết.
+  if (
+    meaningfulBefore.length <= 3 &&
+    meaningfulBefore.every((line) => /^#\s+[^#]/.test(line) || !/^#{1,6}\s*/.test(line))
+  ) {
+    return after
+  }
+
+  return body
+}
+
+function normalizeChapterSeparators(input: string) {
+  return input
+    .replace(/^\s*(?:---\s*)+/g, '')
+    .replace(/(?:\n\s*---\s*)+(?=\n\s*#\s*Chương\s+\d+)/gi, '\n')
+    .replace(/\n\s*---\s*\n\s*---\s*\n/g, '\n\n')
+    .replace(/(?:\n\s*---\s*)+$/g, '')
+}
+
 function cleanupReaderSection(reader: string, chapterNumber: number) {
   let cleaned = replaceKnownBadVietnamesePhrases(reader)
     .replace(/\uFEFF/g, '')

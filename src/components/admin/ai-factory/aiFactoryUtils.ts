@@ -5418,6 +5418,80 @@ function cleanTechnicalMarkers(text: string) {
     .trim();
 }
 
+
+function stripLeakedStoryTitleBeforeChapter(text: string) {
+  const normalized = String(text || "").replace(/\r\n/g, "\n");
+  const chapterMatch = normalized.match(/^#\s*Chương\s+\d+\s*[—-].*$/im);
+
+  if (!chapterMatch || typeof chapterMatch.index !== "number") {
+    return normalized;
+  }
+
+  const before = normalized.slice(0, chapterMatch.index);
+  const after = normalized.slice(chapterMatch.index);
+  const meaningfulBefore = before
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => line !== "---");
+
+  // Trường hợp AI trả: # Tên truyện / --- / --- / # Chương 1.
+  // Phần trước # Chương không phải nội dung đọc, nên bỏ cứng.
+  if (meaningfulBefore.length <= 3) {
+    return after;
+  }
+
+  return normalized;
+}
+
+function normalizeReaderSeparators(text: string) {
+  return String(text || "")
+    .replace(/\uFEFF/g, "")
+    .replace(/[\u200B-\u200D\u2060]/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/^\s*(?:---\s*)+/g, "")
+    .replace(/(?:\n\s*---\s*)+(?=\n\s*#\s*Chương\s+\d+)/gi, "\n")
+    .replace(/\n\s*---\s*\n\s*---\s*\n/g, "\n\n")
+    .replace(/(?:\n\s*---\s*)+$/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function dedupeChapterHeadings(text: string) {
+  let seen = false;
+
+  return String(text || "")
+    .split("\n")
+    .filter((line) => {
+      if (!/^#\s*Chương\s+\d+\s*[—-].*$/i.test(line.trim())) {
+        return true;
+      }
+
+      if (!seen) {
+        seen = true;
+        return true;
+      }
+
+      return false;
+    })
+    .join("\n");
+}
+
+function cleanupReaderOnlyText(text: string, chapterNumber = 1) {
+  let cleaned = cleanTechnicalMarkers(text);
+  cleaned = stripLeakedStoryTitleBeforeChapter(cleaned);
+  cleaned = normalizeReaderSeparators(cleaned);
+  cleaned = dedupeChapterHeadings(cleaned);
+  cleaned = stripLeakedStoryTitleBeforeChapter(cleaned);
+  cleaned = normalizeReaderSeparators(cleaned);
+
+  if (cleaned && !/^#\s*Chương\s+\d+\s*[—-]/im.test(cleaned)) {
+    cleaned = `# Chương ${chapterNumber} — Chưa đặt tên\n\n${cleaned}`.trim();
+  }
+
+  return cleaned;
+}
+
 function extractReaderOnly(output: string) {
   const readerBlock = extractBetween(
     output,
@@ -5429,7 +5503,7 @@ function extractReaderOnly(output: string) {
     ],
   );
 
-  return cleanTechnicalMarkers(readerBlock || output);
+  return cleanupReaderOnlyText(readerBlock || output);
 }
 
 function extractTechnicalReport(output: string) {
@@ -5784,7 +5858,7 @@ export function parseChapterOutput(params: {
   chapterNumber: number;
   runShortId: string;
 }): ParsedChapterOutput {
-  const readerOnly = extractReaderOnly(params.output);
+  const readerOnly = cleanupReaderOnlyText(extractReaderOnly(params.output), params.chapterNumber);
   const technicalReport = extractTechnicalReport(params.output);
   const combined = `${technicalReport}\n${params.output}`;
 
