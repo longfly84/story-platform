@@ -3,7 +3,6 @@ import {
   FACTORY_MOTIF_BANK_10000,
   type FactoryMotifBankItem,
 } from "./factoryMotifBank10000";
-import { buildUniqueFactoryTitle } from "./factoryPromptShared";
 
 type StoryDramaLane = {
   key: string;
@@ -1217,12 +1216,50 @@ const GENERIC_BAD_STORY_TITLES = [
   "Mã QR Dẫn Tới Thư Mục Ẩn",
   "Dòng Mã Trên Vé Sự Kiện",
   "Mã Số Trong Hồ Sơ Cũ",
+  "Tin Nhắn Gửi Nhầm Vào Nhóm Gia Đình",
+  "Vệt Bút Chì Sau Giờ Đón Trẻ",
 ];
 
 function isGenericBadStoryTitle(title: string) {
   const normalized = normalizeForCompare(title);
   return GENERIC_BAD_STORY_TITLES.some((item) => normalizeForCompare(item) === normalized);
 }
+
+function titleMatchesEvidenceObject(title: string, evidenceObject: string) {
+  const titleTags = new Set(compactTags(title));
+  const evidenceTags = compactTags(evidenceObject).filter(
+    (tag) =>
+      tag.length >= 3 &&
+      ![
+        "mot",
+        "mau",
+        "dau",
+        "noi",
+        "ben",
+        "sai",
+        "dat",
+        "cho",
+        "trong",
+        "tren",
+        "duoi",
+        "goc",
+        "cu",
+        "bi",
+      ].includes(tag),
+  );
+
+  if (!evidenceTags.length) return true;
+
+  return evidenceTags.some((tag) => titleTags.has(tag));
+}
+
+function isSafeGeneratedStoryTitle(title: string, evidenceObject: string, avoidTitles?: string[]) {
+  if (!isHumanStoryTitle(title, avoidTitles)) return false;
+  if (isGenericBadStoryTitle(title)) return false;
+  if (!titleMatchesEvidenceObject(title, evidenceObject)) return false;
+  return true;
+}
+
 
 function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
   const token = titleCaseFirst(cleanTitleToken(evidenceObject))
@@ -2427,16 +2464,9 @@ export function buildMockStorySeed(params: {
     seed: params.seed,
     avoidTitles: params.avoidLibrary?.titles,
   });
-  const fallbackTitle = buildUniqueFactoryTitle({
-    genreLabel: params.genreLabel,
-    seed: params.seed,
-    avoidTitles: params.avoidLibrary?.titles,
-  });
-  const title = isHumanStoryTitle(generatedTitle, params.avoidLibrary?.titles)
+  const title = isSafeGeneratedStoryTitle(generatedTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
     ? sanitizeTitleCandidate(generatedTitle)
-    : isHumanStoryTitle(fallbackTitle, params.avoidLibrary?.titles)
-      ? sanitizeTitleCandidate(fallbackTitle)
-      : makeEvidenceTitle(candidate.evidenceObject, `${params.seed}-safe-title`);
+    : makeEvidenceTitle(candidate.evidenceObject, `${params.seed}-safe-title`);
 
   const storyPlan = buildFactoryStoryPlan({
     title,

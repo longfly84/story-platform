@@ -32,6 +32,22 @@ function replaceKnownBadVietnamesePhrases(input: string) {
     [/mép có sự chia phần/gi, 'khóe môi lộ vẻ tính toán'],
     [/nhân phẩm tôi lộ ra giữa đám đông/gi, 'danh dự của tôi bị đem ra mổ xẻ trước mặt tất cả'],
     [/Cánh cửa khép lại phía sau như một lớp da che phủ tạm thời/gi, 'Cánh cửa khép lại sau lưng, ngăn bớt tiếng thì thầm ngoài hành lang'],
+    [/mũi kim tiêm: như thể mọi quyết định nhỏ hôm nay sẽ theo tôi về nhà/gi, 'mũi tiêm hôm nay chỉ là chuyện nhỏ, nhưng những ánh mắt quanh tôi thì không nhỏ chút nào'],
+    [/nụ cười đó giống như nẹp một vết rạn/gi, 'tôi cố cười để con không sợ, nhưng cơ mặt cứng lại'],
+    [/Dòng mã phòng hiện lên như bằng chứng/gi, 'Dòng mã phòng trên ảnh khiến vài người lập tức quay sang nhìn tôi'],
+    [/những câu chữ như mảnh dao nhỏ/gi, 'từng câu họ nói đều nhằm kéo tôi vào thế khó'],
+    [/nén nhang còn âm ỉ như một câu chưa kết/gi, 'nén nhang trên bàn thờ vẫn chưa tàn'],
+    [/che chở như bọc lấy một cành cây non giữa mưa gió/gi, 'tôi kéo đứa trẻ sát vào lòng để tránh ống kính'],
+    [/giọng bà ta như đặt một mũi kim vào giữa niềm tin của tôi/gi, 'giọng bà ta nhỏ, nhưng đủ khiến những người quanh đó nhìn tôi khác đi'],
+    [/khuôn mặt phẳng như tờ đơn khiếu nại/gi, 'mặt anh ta không lộ cảm xúc, tay cầm sẵn tờ khiếu nại'],
+    [/Câu cuối mang ý nghi vấn đặt lên tôi như một mũi tên/gi, 'Câu cuối khiến mọi ánh mắt quay về phía tôi'],
+    [/bóp nát đi sự chân thành của mẩu giấy/gi, 'phủi sạch ý nghĩa của mẩu giấy bằng một câu mỉa mai'],
+    [/Tôi khoá cửa thang máy sau lưng/gi, 'Cửa thang máy khép lại sau lưng tôi'],
+    [/bầu không khí nặng như phiên xử công khai/gi, 'Không ai ngồi xuống. Ai cũng chờ tôi giải thích'],
+    [/mặt ông ta như người đã chuẩn bị sẵn để tuyên án/gi, 'ông ta đứng chắn ở cửa, tay cầm sẵn tờ khiếu nại'],
+    [/quyền lực nhà trường với các nhà cung cấp là một tảng băng/gi, 'tôi hiểu sức nặng của một lời phàn nàn từ phụ huynh'],
+    [/nụ cười nhẵn nhụi như muốn xé rách/gi, 'bà ta cười rất nhẹ, nhưng lời nói thì không chừa đường lui'],
+    [/ánh mắt cô ấy lạnh như đã đọc xong một phán quyết/gi, 'cô ta nhìn tôi như thể mọi chuyện đã có kết luận'],
   ]
 
   return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), input)
