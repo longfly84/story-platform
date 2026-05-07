@@ -69,6 +69,81 @@ type SupabaseLike = {
   from: (table: string) => any
 }
 
+type QualityGateIssuePayload = {
+  code?: string
+  severity?: string
+  message?: string
+  sample?: string
+}
+
+type QualityGatePayload = {
+  score?: number
+  passed?: boolean
+  errors?: QualityGateIssuePayload[]
+  warnings?: QualityGateIssuePayload[]
+  metrics?: Record<string, unknown>
+}
+
+function compactErrorText(value: unknown, maxLength = 220) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim()
+  if (text.length <= maxLength) return text
+  return `${text.slice(0, maxLength).trim()}...`
+}
+
+function formatQualityGateIssue(issue: QualityGateIssuePayload, index: number) {
+  const code = issue.code ? `[${issue.code}] ` : ''
+  const sample = issue.sample ? ` Ví dụ: ${compactErrorText(issue.sample, 140)}` : ''
+  return `${index + 1}. ${code}${issue.message || 'Không rõ lỗi'}${sample}`
+}
+
+function formatQualityGateForLog(data: any) {
+  const gate = data?.qualityGate as QualityGatePayload | undefined
+  if (!gate) return ''
+
+  const errors = Array.isArray(gate.errors) ? gate.errors : []
+  const warnings = Array.isArray(gate.warnings) ? gate.warnings : []
+  const issueLines = [...errors, ...warnings]
+    .slice(0, 5)
+    .map(formatQualityGateIssue)
+
+  const metrics = gate.metrics
+    ? [
+        typeof gate.metrics.first700LikeCount === 'number'
+          ? `như/700=${gate.metrics.first700LikeCount}`
+          : '',
+        typeof gate.metrics.totalLikeCount === 'number'
+          ? `như/all=${gate.metrics.totalLikeCount}`
+          : '',
+        typeof gate.metrics.corporateDriftCount === 'number'
+          ? `drift=${gate.metrics.corporateDriftCount}`
+          : '',
+        typeof gate.metrics.powerWordCount === 'number'
+          ? `power=${gate.metrics.powerWordCount}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(', ')
+    : ''
+
+  return [
+    `Quality Gate fail${typeof gate.score === 'number' ? ` (${gate.score}/100)` : ''}.`,
+    issueLines.length ? issueLines.join(' | ') : '',
+    metrics ? `Metrics: ${metrics}.` : '',
+    data?.qualityRewriteError ? `Rewrite: ${data.qualityRewriteError}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
+function buildGenerateApiErrorMessage(response: Response, data: any) {
+  if (response.status === 422 && data?.qualityGate) {
+    return formatQualityGateForLog(data) || 'Story failed quality gate.'
+  }
+
+  return data?.error || data?.message || `OpenAI generate request failed (${response.status})`
+}
+
+
 export async function generateFactoryChapter(params: {
   config: AIFactoryConfig
   provider: AIFactoryConfig['provider']
@@ -167,7 +242,7 @@ Yêu cầu:
   const data = await response.json().catch(() => null)
 
   if (!response.ok) {
-    throw new Error(data?.error || data?.message || 'OpenAI generate request failed')
+    throw new Error(buildGenerateApiErrorMessage(response, data))
   }
 
   const text = data?.text || data?.output_text || data?.content

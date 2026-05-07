@@ -1333,7 +1333,12 @@ export async function continueExistingStoriesForFactory(params: ContinueExisting
           status: 'failed',
           error: message,
         })
-        addLog(`Viết tiếp ${storyTitle} lỗi: ${message}`, 'error')
+        addLog(
+          message.toLowerCase().includes('quality gate')
+            ? `Viết tiếp ${storyTitle} bị chặn Quality Gate: ${message}`
+            : `Viết tiếp ${storyTitle} lỗi: ${message}`,
+          'error',
+        )
       }
     }
 
