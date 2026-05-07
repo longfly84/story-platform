@@ -5,14 +5,6 @@ import { normalizePayload } from './generate-lib/payload.js'
 import { buildPrompt, buildStoryEditorPrompt } from './generate-lib/promptBuilders.js'
 import { moderateTextOrThrow } from './generate-lib/moderation.js'
 
-function normalizeGeneratedText(value: unknown) {
-  return String(value || '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\uFEFF/g, '')
-    .replace(/[\u200B-\u200D\u2060]/g, '')
-    .replace(/\n{4,}/g, '\n\n\n')
-    .trim()
-}
 
 function replaceKnownBadVietnamesePhrases(input: string) {
   const replacements: Array<[RegExp, string]> = [
@@ -29,75 +21,111 @@ function replaceKnownBadVietnamesePhrases(input: string) {
     [/Anh ta nói như trao đổi quyền lợi trước công chúng/gi, 'Anh ta nói như thể đó là một đề nghị rất công bằng'],
     [/nhưng là người chọn cứu mình, tôi không để xúc động dẫn đường/gi, 'nhưng nếu muốn tự cứu mình, tôi không được để cảm xúc dẫn đường'],
     [/Quyền lực đã tạm chuyển hướng khỏi tôi sang nhóm muốn khóa miệng tôi/gi, 'Thế trận tạm thời nghiêng về phía những người muốn buộc tôi im lặng'],
+    [/giấu cả sân khấu vào trong túi áo/gi, 'mọi thứ trong hậu trường đã nằm trong tay anh ta'],
+    [/khoảnh khắc đó lọt vào mắt tôi như một đồng minh/gi, 'chi tiết ấy khiến tôi khựng lại'],
+    [/Giọng gọi cắt ngang, đi thẳng vào tai người nghe như mũi dao/gi, 'Giọng gọi ấy cắt ngang tiếng ồn trong hành lang'],
+    [/mỗi chữ như một lưỡi dao cố gắng dán miệng tôi/gi, 'mỗi chữ đều nhằm khóa miệng tôi trước đám đông'],
+    [/Tôi gom chúng vào đường ngắm của mình như người chụp ảnh chọn điểm lấy nét/gi, 'Tôi ghi nhớ từng thứ một: miếng dán, chiếc camera, túi giao hàng còn mở'],
+    [/Kẻ dàn cảnh muốn gán cho tôi một dấu đời/gi, 'Kẻ dàn cảnh muốn biến một dấu vết cũ thành bằng chứng chống lại tôi'],
+    [/Câu nói ấy không gào thét,? chỉ đủ để làm rung một mảnh kính tưởng chừng im bặt/gi, 'Câu nói ấy không lớn, nhưng đủ khiến vài người đổi sắc mặt'],
+    [/mặt anh ta là một tấm bạt lễ nghi/gi, 'vẻ mặt anh ta lịch sự đến mức giả tạo'],
+    [/mép có sự chia phần/gi, 'khóe môi lộ vẻ tính toán'],
+    [/nhân phẩm tôi lộ ra giữa đám đông/gi, 'danh dự của tôi bị đem ra mổ xẻ trước mặt tất cả'],
+    [/Cánh cửa khép lại phía sau như một lớp da che phủ tạm thời/gi, 'Cánh cửa khép lại sau lưng, ngăn bớt tiếng thì thầm ngoài hành lang'],
   ]
 
   return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), input)
 }
 
-function getChapterHeadingRegex() {
-  return /^#?\s*Chương\s+\d+\s*(?:[—-].*)?$/gim
-}
+function cleanupReaderSection(reader: string, chapterNumber: number) {
+  let cleaned = replaceKnownBadVietnamesePhrases(reader)
+    .replace(/\uFEFF/g, '')
+    .replace(/[\u200B-\u200D\u2060]/g, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{4,}/g, '\n\n\n')
 
-function cleanupReaderOnlyText(input: string, chapterNumber: number) {
-  let body = replaceKnownBadVietnamesePhrases(normalizeGeneratedText(input))
-    .replace(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*$/gim, '')
-    .replace(/^BẢN ĐỌC CHO ĐỘC GIẢ\s*$/gim, '')
-    .replace(/^\s*(?:---\s*)+/g, '')
-    .replace(/(?:\n\s*---\s*)+$/g, '')
+  const readerHeaderMatch = cleaned.match(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*$/im)
+  let readerHeader = ''
+  let body = cleaned
 
-  const headings = [...body.matchAll(getChapterHeadingRegex())]
+  if (readerHeaderMatch && typeof readerHeaderMatch.index === 'number') {
+    readerHeader = cleaned.slice(0, readerHeaderMatch.index + readerHeaderMatch[0].length).trim()
+    body = cleaned.slice(readerHeaderMatch.index + readerHeaderMatch[0].length)
+  }
+
+  body = body
+    .replace(/^\s*(?:---\s*)+/g, '\n')
+    .replace(/\n\s*(?:---\s*)+\n(?=\s*#\s*Chương\s+\d+)/gi, '\n\n')
+
+  const chapterHeadingPattern = /^#\s*Chương\s+\d+\s*[—-].*$/gim
+  const headings = [...body.matchAll(chapterHeadingPattern)]
 
   if (headings.length > 0) {
-    const first = headings[0]
-    const firstIndex = first.index ?? 0
-    body = body.slice(firstIndex)
+    const firstHeading = headings[0]
+    const firstIndex = firstHeading.index ?? 0
 
-    let seen = false
+    if (firstIndex > 0) {
+      const beforeHeadingLines = body.slice(0, firstIndex).split('\n')
+      const usefulBeforeHeading = beforeHeadingLines
+        .map((line) => line.trim())
+        .filter((line) => line && line !== '---')
+
+      // Bỏ tên truyện / separator bị lọt trước tiêu đề chương.
+      if (usefulBeforeHeading.length <= 2) {
+        body = body.slice(firstIndex)
+      }
+    }
+
+    let seenChapterHeading = false
     body = body
       .split('\n')
       .filter((line) => {
-        const trimmed = line.trim()
-        if (!/^#?\s*Chương\s+\d+\s*(?:[—-].*)?$/i.test(trimmed)) return true
-        if (seen) return false
-        seen = true
-        return true
+        if (!/^#\s*Chương\s+\d+\s*[—-].*$/i.test(line.trim())) {
+          return true
+        }
+
+        if (!seenChapterHeading) {
+          seenChapterHeading = true
+          return true
+        }
+
+        return false
       })
       .join('\n')
   }
 
   body = body
     .replace(/^\s*(?:---\s*)+/g, '')
-    .replace(/\n\s*---\s*(?=\n\s*#?\s*Chương\s+\d+)/gi, '\n')
-    .replace(/\n\s*---\s*\n\s*---\s*/g, '\n\n')
     .replace(/(?:\n\s*---\s*)+$/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 
-  if (!/^#?\s*Chương\s+\d+/im.test(body)) {
+  if (!/^#\s*Chương\s+\d+\s*[—-]/im.test(body)) {
     body = `# Chương ${chapterNumber} — Chưa đặt tên\n\n${body}`.trim()
   }
 
-  if (!body.startsWith('#')) {
-    body = body.replace(/^Chương\s+/i, '# Chương ')
-  }
-
-  return body.trim()
+  return [readerHeader || '# BẢN ĐỌC CHO ĐỘC GIẢ', body].filter(Boolean).join('\n\n').trim()
 }
 
 function sanitizeGeneratedStoryOutput(input: string, payload: any) {
   const chapterNumber = Math.max(1, Math.floor(Number(payload?.nextChapterNumber || 1)))
-  const normalized = normalizeGeneratedText(input)
+  const normalized = String(input || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\uFEFF/g, '')
+    .replace(/[\u200B-\u200D\u2060]/g, '')
+    .trim()
+
   const technicalMatch = normalized.match(/^#\s*BẢN PHÂN TÍCH KỸ THUẬT\s*\/\s*KHÔNG ĐĂNG\s*$/im)
 
   if (!technicalMatch || typeof technicalMatch.index !== 'number') {
-    return cleanupReaderOnlyText(normalized, chapterNumber)
+    return cleanupReaderSection(normalized, chapterNumber)
   }
 
-  const readerPart = normalized.slice(0, technicalMatch.index)
+  const readerPart = normalized.slice(0, technicalMatch.index).replace(/(?:\n\s*---\s*)+$/g, '')
   const technicalPart = normalized.slice(technicalMatch.index).trim()
-  const cleanedReader = cleanupReaderOnlyText(readerPart, chapterNumber)
+  const cleanedReader = cleanupReaderSection(readerPart, chapterNumber)
 
-  return `# BẢN ĐỌC CHO ĐỘC GIẢ\n\n${cleanedReader}\n\n---\n\n${technicalPart}`.trim()
+  return `${cleanedReader}\n\n---\n\n${technicalPart}`.trim()
 }
 
 
