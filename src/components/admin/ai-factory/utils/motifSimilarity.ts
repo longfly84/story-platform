@@ -72,6 +72,26 @@ function isUsefulTag(tag: string) {
     'cho',
     'khi',
     'neu',
+    // Các tag này xuất hiện quá nhiều trong log seed nên chỉ gây reject nhầm.
+    'giay',
+    'nhuc',
+    'cong',
+    'rieng',
+    'thiet',
+    'bien',
+    'nhom',
+    'lien',
+    'dong',
+    'loat',
+    'lang',
+    'nhung',
+    'mat',
+    'ep',
+    'sai',
+    'doi',
+    'nguon',
+    'quyen',
+    'luc',
   ])
 
   return !noisyTags.has(tag)
@@ -270,7 +290,7 @@ export function shouldRejectMotif(params: {
   const hybridReject = Boolean(best && realMotifOverlap && best.hybridScore >= threshold)
 
   // Reject phụ: nếu field đã rất giống thì reject dù embedding không quá cao.
-  const strongFieldReject = Boolean(best && best.fieldScore >= 0.68 && realMotifOverlap)
+  const strongFieldReject = Boolean(best && best.fieldScore >= 0.74 && realMotifOverlap)
 
   // Embedding của các truyện cùng thể loại nữ tần rất dễ cao 0.88–0.93.
   // Vì vậy không reject chỉ vì embedding cao nữa. Phải đi kèm field overlap rõ.
@@ -287,7 +307,7 @@ export function shouldRejectMotif(params: {
   if (hybridReject) {
     reason = `hybridScore >= ${threshold} và có overlap motif lõi`
   } else if (strongFieldReject) {
-    reason = 'fieldScore >= 0.68 và có overlap motif lõi'
+    reason = 'fieldScore >= 0.74 và có overlap motif lõi'
   } else if (strongEmbeddingReject) {
     reason = 'embeddingScore >= 0.94, fieldScore >= 0.35 và có overlap motif lõi'
   } else if (softEmbeddingReject) {

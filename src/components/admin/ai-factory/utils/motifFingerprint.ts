@@ -34,6 +34,30 @@ function includesAny(text: string, keywords: string[]) {
 }
 
 function classifyPremiseFamily(text: string) {
+  if (includesAny(text, ['khach_san', 'the_phong', 'phieu_gui_do', 'resort', 'phong_vip', 'dau_quet'])) {
+    return 'hotel_private_setup_or_betrayal'
+  }
+
+  if (includesAny(text, ['truong_hoc', 'phu_huynh', 'lop_hoc', 'nhap_hoc', 'bat_nat'])) {
+    return 'school_child_pressure'
+  }
+
+  if (includesAny(text, ['co_nhi_vien', 'nhan_nuoi', 'con_nuoi', 'quyen_nuoi', 'bao_ho_tam_thoi'])) {
+    return 'adoption_or_guardianship_pressure'
+  }
+
+  if (includesAny(text, ['du_thuyen', 'gala', 'tu_thien', 'quy_ho_tro', 'gay_quy'])) {
+    return 'elite_charity_or_gala_frameup'
+  }
+
+  if (includesAny(text, ['ngan_hang', 'sao_ke', 'chuyen_khoan', 'tai_khoan'])) {
+    return 'financial_frameup'
+  }
+
+  if (includesAny(text, ['phong_tranh', 'trien_lam', 'nghe_thuat', 'nha_may', 'thiet_ke'])) {
+    return 'creative_industry_identity_or_credit_theft'
+  }
+
   if (includesAny(text, ['con_bi_trao', 'nhan_nuoi', 'giay_khai_sinh', 'ho_khau', 'quyen_nuoi_con'])) {
     return 'child_identity_or_custody'
   }
@@ -83,21 +107,30 @@ function classifyArena(text: string) {
 }
 
 function classifyEvidenceType(text: string) {
+  if (includesAny(text, ['the_phong', 'the_ra_vao', 'the_truy_cap', 'dau_quet', 'keycard'])) return 'access_card_or_room_key'
+  if (includesAny(text, ['bang_gac', 'vet_muc', 'vet_son', 'khan', 'vay', 'tem_giat_kho', 'dau_vet'])) return 'physical_trace_on_object'
+  if (includesAny(text, ['gau_bong', 'do_choi', 'hop_qua_tre_em', 'do_tre_em'])) return 'child_object_clue'
+  if (includesAny(text, ['phieu_gui_do', 'hoa_don', 'ma_don_hang', 've_su_kien', 'the_chuc_mung'])) return 'receipt_ticket_or_delivery_clue'
+  if (includesAny(text, ['vong_tay', 'nhan', 'day_chuyen', 'ma_khac'])) return 'personal_jewelry_or_token'
+  if (includesAny(text, ['polaroid', 'anh_cu', 'anh_chup', 'buc_anh', 'tranh', 'trien_lam'])) return 'photo_or_art_clue'
+  if (includesAny(text, ['bang_phan_ca', 'lich_hen', 'lich_kham', 'lich_su_dinh_vi'])) return 'schedule_or_timeline_clue'
+  if (includesAny(text, ['thu_cu', 'nhat_ky'])) return 'letter_or_diary_clue'
+  if (includesAny(text, ['ma_qr', 'qr'])) return 'qr_or_hidden_link'
   if (includesAny(text, ['giay_khai_sinh'])) return 'birth_certificate'
+  if (includesAny(text, ['ho_so_nhap_hoc', 'hoc_ba', 'truong_hoc'])) return 'school_record'
   if (includesAny(text, ['ho_khau'])) return 'household_registration'
   if (includesAny(text, ['nhan_nuoi', 'so_tiep_nhan'])) return 'adoption_or_intake_record'
   if (includesAny(text, ['adn', 'xet_nghiem'])) return 'dna_or_medical_test'
   if (includesAny(text, ['di_chuc', 'cong_chung'])) return 'will_or_notarized_document'
   if (includesAny(text, ['hop_dong', 'phu_luc'])) return 'contract_or_appendix'
   if (includesAny(text, ['camera', 'cctv', 'video'])) return 'camera_or_video'
-  if (includesAny(text, ['ghi_am', 'recording'])) return 'voice_recording'
+  if (includesAny(text, ['ghi_am', 'recording', 'voice_chat'])) return 'voice_recording'
   if (includesAny(text, ['sao_ke', 'chuyen_khoan', 'giao_dich'])) return 'transaction_log'
   if (includesAny(text, ['the_nho', 'usb'])) return 'memory_device'
   if (includesAny(text, ['tin_nhan', 'email', 'mail'])) return 'message_or_email'
   if (includesAny(text, ['ve_may_bay', 'boarding'])) return 'travel_record'
-  if (includesAny(text, ['anh_cu', 'anh_chup'])) return 'photo_evidence'
 
-  return 'document_evidence'
+  return 'contextual_life_clue'
 }
 
 function classifyVillainAttackType(text: string) {

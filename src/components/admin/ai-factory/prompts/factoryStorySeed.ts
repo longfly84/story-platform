@@ -745,7 +745,7 @@ function buildGenreSettingAtoms(atoms: string[]) {
       settings.add(`bữa tiệc gia đình hào môn nơi ${atom} khiến cả bàn im phăng phắc`);
     } else if (atomHasAny(atom, ["cà phê", "hiệu sách", "nhà hàng", "quán"])) {
       settings.add(`quán gặp riêng nơi ${atom} làm nữ chính nhận ra người nói dối`);
-      settings.add(`góc bàn cạnh cửa kính nơi ${atom} bị đặt vào tay sai người`);
+      settings.add(`góc bàn cạnh cửa kính nơi ${atom} bị biến thành cái bẫy trước mặt mọi người`);
     } else {
       settings.add(`${atom} trong một bối cảnh đô thị cụ thể, có người chứng kiến và hậu quả cảm xúc rõ`);
     }
@@ -766,7 +766,11 @@ function buildGenreEvidenceAtoms(atoms: string[]) {
     else if (atomHasAny(atom, ["camera", "ảnh", "video", "khung hình"])) evidence.add(`${atom} có chi tiết nền bị bỏ sót, không chỉ là camera/log chung`);
     else if (atomHasAny(atom, ["adn", "xét nghiệm"])) evidence.add("kết quả xét nghiệm có mã mẫu lệch với người được công bố");
     else if (atomHasAny(atom, ["di chúc", "thừa kế"])) evidence.add("trang di chúc hoặc tín vật thừa kế có dấu đổi trang");
-    else if (atomHasAny(atom, ["hợp đồng", "cổ phần", "kiểm toán", "sao kê"])) evidence.add(`${atom} có dòng phụ/điều khoản phụ làm lộ người thao túng`);
+    else if (atomHasAny(atom, ["hợp đồng", "cổ phần", "kiểm toán", "sao kê"])) {
+      evidence.add(`${atom} có một chi tiết đối chiếu không khớp với lời buộc tội`);
+      evidence.add(`một mốc thời gian trong ${atom} làm lộ người từng chạm vào hồ sơ`);
+      evidence.add(`bản sao cũ của ${atom} giữ lại dấu vết bị sửa`);
+    }
     else if (atomHasAny(atom, ["điện thoại", "tin nhắn", "ghi âm", "usb"])) evidence.add(`${atom} chứa mảnh bằng chứng bị hiểu sai cho tới khi đối chiếu với bối cảnh`);
     else if (atomHasAny(atom, ["vé", "sân bay", "chuyến bay"])) evidence.add("vé hoặc lịch trình di chuyển có thời điểm phá vỡ lời khai");
     else evidence.add(`${atom} được biến thành vật chứng riêng của thể loại này, không dùng như giấy tờ pháp lý chung`);
