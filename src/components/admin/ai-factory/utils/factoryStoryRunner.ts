@@ -179,6 +179,64 @@ Yêu cầu:
   return text
 }
 
+
+function normalizeTitleForCompare(value: string) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function slugifyFactoryStoryTitle(value: string) {
+  const base = normalizeTitleForCompare(value).replace(/\s+/g, '-').replace(/^-+|-+$/g, '')
+  return base || `factory-story-${Date.now()}`
+}
+
+function isBadParsedFactoryTitle(value: string) {
+  const normalized = normalizeTitleForCompare(value)
+
+  if (!normalized) return true
+
+  return [
+    'chua dat ten',
+    'vat chung bi dat sai cho',
+    'mon qua bi lo',
+    'dau muc tren trang cu',
+    'nguoi im lang o cuoi phong',
+    'ma qr dan toi thu muc an',
+    'dong ma tren ve su kien',
+    'tin nhan gui nham vao nhom gia dinh',
+    'vet but chi sau gio don tre',
+  ].includes(normalized)
+}
+
+function chooseFactoryStoryTitle(params: {
+  parsedTitle: string
+  parsedSlug: string
+  storySeed?: FactoryStorySeed | null
+}) {
+  const seedTitle = String(params.storySeed?.title || '').trim()
+  const parsedTitle = String(params.parsedTitle || '').trim()
+
+  if (seedTitle && isBadParsedFactoryTitle(parsedTitle) && !isBadParsedFactoryTitle(seedTitle)) {
+    return {
+      title: seedTitle,
+      slug: slugifyFactoryStoryTitle(seedTitle),
+      replaced: true,
+    }
+  }
+
+  return {
+    title: parsedTitle || seedTitle || 'Truyện Factory',
+    slug: params.parsedSlug || slugifyFactoryStoryTitle(parsedTitle || seedTitle || 'Truyện Factory'),
+    replaced: false,
+  }
+}
+
+
 export async function insertFactoryStoryDraft(params: {
   supabase: SupabaseLike
   avoidLibrary: AvoidLibrary
@@ -237,16 +295,33 @@ export async function insertFactoryStoryDraft(params: {
     company_names: [],
   }
 
+  const chosenStoryTitle = chooseFactoryStoryTitle({
+    parsedTitle: params.parsed.storyTitle,
+    parsedSlug: params.parsed.storySlug,
+    storySeed: params.storySeed,
+  })
+
+  if (chosenStoryTitle.replaced) {
+    params.addLog(
+      `Đổi title story từ "${params.parsed.storyTitle}" sang seed title "${chosenStoryTitle.title}" để tránh title fallback/generic.`,
+      'warning',
+    )
+  }
+
   const publicDescription = buildFactoryPublicStoryDescription({
-    parsed: params.parsed,
+    parsed: {
+      ...params.parsed,
+      storyTitle: chosenStoryTitle.title,
+      storySlug: chosenStoryTitle.slug,
+    },
     genreLabel: params.genre.label,
     heroineLabel: params.heroine.label,
     storySeed: params.storySeed,
   })
 
   const fullPayload = {
-    title: params.parsed.storyTitle,
-    slug: params.parsed.storySlug,
+    title: chosenStoryTitle.title,
+    slug: chosenStoryTitle.slug,
     description: publicDescription,
     author: 'Sưu Tầm',
     status: params.config.storyStatus,
@@ -267,8 +342,8 @@ export async function insertFactoryStoryDraft(params: {
     result = await params.supabase
       .from('stories')
       .insert({
-        title: params.parsed.storyTitle,
-        slug: params.parsed.storySlug,
+        title: chosenStoryTitle.title,
+        slug: chosenStoryTitle.slug,
         description: publicDescription,
         author: 'Sưu Tầm',
         status: params.config.storyStatus,

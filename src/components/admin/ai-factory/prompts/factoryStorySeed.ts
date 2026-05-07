@@ -1218,6 +1218,7 @@ const GENERIC_BAD_STORY_TITLES = [
   "Mã Số Trong Hồ Sơ Cũ",
   "Tin Nhắn Gửi Nhầm Vào Nhóm Gia Đình",
   "Vệt Bút Chì Sau Giờ Đón Trẻ",
+  "Vật Chứng Bị Đặt Sai Chỗ",
 ];
 
 function isGenericBadStoryTitle(title: string) {
@@ -1262,16 +1263,55 @@ function isSafeGeneratedStoryTitle(title: string, evidenceObject: string, avoidT
 
 
 function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
+  const normalized = normalizeForCompare(evidenceObject);
+
+  if (normalized.includes("goc anh") || normalized.includes("góc ảnh") || normalized.includes("anh cu") || normalized.includes("ảnh cũ")) {
+    return "Góc Ảnh Trên Dải Ruy-Băng";
+  }
+
+  if (normalized.includes("ruy bang") || normalized.includes("ruy-bang") || normalized.includes("ruy-băng")) {
+    return "Dải Ruy-Băng Bị Ghim Ảnh";
+  }
+
+  if (normalized.includes("phieu dat banh") || normalized.includes("phiếu đặt bánh") || normalized.includes("banh") || normalized.includes("bánh")) {
+    return "Phiếu Bánh Bị Xé Góc";
+  }
+
+  if (normalized.includes("vong tay") || normalized.includes("vòng tay")) {
+    return "Vòng Tay Sự Kiện Bị Đổi Màu";
+  }
+
+  if (normalized.includes("nhan chau") || normalized.includes("nhãn chậu") || normalized.includes("chau hoa") || normalized.includes("chậu hoa")) {
+    return "Nhãn Chậu Đặt Sai";
+  }
+
+  if (normalized.includes("nap chai") || normalized.includes("nắp chai") || normalized.includes("vet xuoc") || normalized.includes("vết xước")) {
+    return "Nắp Chai Có Vết Xước";
+  }
+
+  if (normalized.includes("mau ghi chu") || normalized.includes("mẩu ghi chú") || normalized.includes("ghi chu") || normalized.includes("ghi chú")) {
+    return "Ghi Chú Lệch Ở Sảnh Chung Cư";
+  }
+
+  if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo")) {
+    return "Sợi Chỉ Trên Khuy Áo";
+  }
+
+  if (normalized.includes("mieng dan") || normalized.includes("miếng dán")) {
+    return "Miếng Dán Bong Góc";
+  }
+
   const token = titleCaseFirst(cleanTitleToken(evidenceObject))
     .replace(/^Một\s+/i, "")
     .replace(/^Mảnh\s+nhỏ\s+/i, "Mảnh ")
+    .replace(/\s+bị\s+đặt\s+sai\s+chỗ$/i, "")
     .trim();
 
   if (token && token.length <= 32 && !isTechnicalSeedTitle(token)) {
-    return `${token} Bị Đặt Sai Chỗ`;
+    return `${token} Bị Lộ`;
   }
 
-  return "Vật Chứng Bị Đặt Sai Chỗ";
+  return "Manh Mối Ở Hiện Trường";
 }
 
 function makeEvidenceTitleVariants(evidenceObject: string) {
@@ -1279,6 +1319,23 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   const token = titleCaseFirst(cleanTitleToken(evidenceObject));
 
   const variants: string[] = [];
+
+  if (normalized.includes("goc anh") || normalized.includes("góc ảnh") || normalized.includes("anh cu") || normalized.includes("ảnh cũ")) {
+    variants.push("Góc Ảnh Trên Dải Ruy-Băng", "Mảnh Ảnh Bị Ghim Trên Bó Hoa", "Bó Hoa Có Góc Ảnh Cũ");
+  }
+
+  if (normalized.includes("ruy bang") || normalized.includes("ruy-bang") || normalized.includes("ruy-băng")) {
+    variants.push("Dải Ruy-Băng Bị Ghim Ảnh", "Góc Ảnh Trên Dải Ruy-Băng");
+  }
+
+  if (normalized.includes("phieu dat banh") || normalized.includes("phiếu đặt bánh") || normalized.includes("banh") || normalized.includes("bánh")) {
+    variants.push("Phiếu Bánh Bị Xé Góc", "Mảnh Phiếu Trong Phòng Chờ", "Góc Phiếu Bánh Bị Xé");
+  }
+
+  if (normalized.includes("vong tay") || normalized.includes("vòng tay")) {
+    variants.push("Vòng Tay Sự Kiện Bị Đổi Màu", "Chiếc Vòng Đỏ Trên Tay Đứa Trẻ", "Vòng Trắng Bị Đánh Tráo");
+  }
+
 
   if (normalized.includes("not nhac") || normalized.includes("nốt nhạc") || normalized.includes("ban nhac") || normalized.includes("bản nhạc")) {
     variants.push("Nốt Nhạc Bị Khoanh Đỏ", "Dấu Bút Đỏ Trên Bản Nhạc", "Bản Nhạc Bị Sửa Một Nốt");
@@ -1398,44 +1455,23 @@ function makeSeedAlignedTitle(params: {
 }) {
   const evidenceTitles = makeEvidenceTitleVariants(params.candidate.evidenceObject)
   const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
-  const setting = normalizeForCompare(params.candidate.setting);
-  const pressure = normalizeForCompare(params.candidate.publicPressure);
-  const hidden = normalizeForCompare(params.candidate.hiddenTruth);
 
   const options = uniqueStringsForCover(
     [
       evidenceTitle,
       ...evidenceTitles,
-      setting.includes("truong") || pressure.includes("phu huynh")
-        ? "Vệt Bút Chì Sau Giờ Đón Trẻ"
-        : "",
-      setting.includes("benh vien") || hidden.includes("benh")
-        ? "Túi Thuốc Ở Quầy Chờ"
-        : "",
-      setting.includes("ngan hang") || pressure.includes("co dong")
-        ? "Dòng Ký Tên Trước Giờ Bỏ Phiếu"
-        : "",
-      setting.includes("khach san") || setting.includes("resort")
-        ? "Nút Buộc Trên Túi Giao Hàng"
-        : "",
-      setting.includes("gia toc") || pressure.includes("gia toc") || hidden.includes("di chuc")
-        ? "Trang Di Chúc Trong Từ Đường"
-        : "",
-      params.candidate.dopamineHook.includes("màn hình")
-        ? "Màn Hình Đã Phát Sai File"
-        : "",
+      makeSafeFallbackTitleFromEvidence(params.candidate.evidenceObject),
     ],
     12,
   );
 
   const cleanOptions = options
     .map((item) => sanitizeTitleCandidate(item))
-    .filter((item) => isHumanStoryTitle(item, params.avoidTitles) && !isGenericBadStoryTitle(item));
+    .filter((item) => isSafeGeneratedStoryTitle(item, params.candidate.evidenceObject, params.avoidTitles));
 
   return (
     cleanOptions[0] ||
     evidenceTitles.find((item) => isHumanStoryTitle(item, params.avoidTitles) && !isGenericBadStoryTitle(item)) ||
-    (!isGenericBadStoryTitle(evidenceTitle) ? sanitizeTitleCandidate(evidenceTitle) : "") ||
     makeSafeFallbackTitleFromEvidence(params.candidate.evidenceObject)
   );
 }
@@ -2464,9 +2500,12 @@ export function buildMockStorySeed(params: {
     seed: params.seed,
     avoidTitles: params.avoidLibrary?.titles,
   });
+  const safeFallbackTitle = makeEvidenceTitle(candidate.evidenceObject, `${params.seed}-safe-title`);
   const title = isSafeGeneratedStoryTitle(generatedTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
     ? sanitizeTitleCandidate(generatedTitle)
-    : makeEvidenceTitle(candidate.evidenceObject, `${params.seed}-safe-title`);
+    : isSafeGeneratedStoryTitle(safeFallbackTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
+      ? sanitizeTitleCandidate(safeFallbackTitle)
+      : makeSafeFallbackTitleFromEvidence(candidate.evidenceObject);
 
   const storyPlan = buildFactoryStoryPlan({
     title,
