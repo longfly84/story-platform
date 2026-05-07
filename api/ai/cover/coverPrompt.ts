@@ -23,7 +23,7 @@ const DEFAULT_EMOTIONAL_HOOK =
   'khoảnh khắc nữ chính buộc phải đối diện sự thật hoặc chuẩn bị lật mặt một lời nói dối lớn'
 const DEFAULT_STAKES =
   'danh dự, con cái, hôn nhân, thân phận, quyền lợi hoặc tương lai của nữ chính đang bị đe dọa'
-const DEFAULT_MOOD = 'căng thẳng, cuốn hút, đau lòng, bí mật, phản công, vỡ lở'
+const DEFAULT_MOOD = 'drama cảm xúc, bí mật, phản công, màu sắc thương mại, cuốn hút, không kinh dị'
 
 function asRecord(value: unknown): JsonRecord {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -325,26 +325,26 @@ function inferStoryStage(currentChapterCount: number, targetChapters: number): C
 function inferMood(sceneType: CoverSceneType): string {
   switch (sceneType) {
     case 'mother_child_protection':
-      return 'tender but dangerous, protective, tense, emotional, maternal, dramatic'
+      return 'protective, emotional, tender but high-stakes, polished urban drama, warm cinematic light'
     case 'school_parent_conflict':
-      return 'humiliated, protective, tense, public pressure, righteous anger, dramatic'
+      return 'public pressure, righteous anger, protective emotion, clean school-drama color, commercial webnovel tension'
     case 'hospital_legal_suspense':
-      return 'cold tension, hidden truth, legal pressure, emotional suspense, modern urban drama'
+      return 'medical truth, legal pressure, clean white-and-teal hospital light, emotional suspense, not horror'
     case 'airport_secret_tension':
-      return 'departure tension, secrecy, emotional distance, night-city melancholy, truth on the move'
+      return 'departure secret, emotional distance, bright airport glass, city-light atmosphere, truth on the move'
     case 'public_reveal_confrontation':
-      return 'explosive reveal, public humiliation, power reversal, glamorous tension, high drama'
+      return 'glamorous public reveal, power reversal, banquet/media spotlight, vivid commercial drama color'
     case 'private_betrayal_confrontation':
-      return 'betrayal, heartbreak, intimate scandal, suffocating tension, elegant bitterness'
+      return 'betrayal, heartbreak, elegant hotel/apartment drama, warm interior light, emotional confrontation'
     case 'family_banquet_confrontation':
-      return 'beautiful but suffocating, wealthy family pressure, silence before explosion, emotional poison'
+      return 'wealthy family pressure, elegant banquet light, restrained conflict, polished modern drama'
     case 'boardroom_evidence_reveal':
-      return 'cold authority, power clash, corporate pressure, evidence reveal, controlled rage'
+      return 'corporate power clash, glass-and-gold boardroom light, controlled rage, evidence reveal, premium business drama'
     case 'collage_story_poster':
-      return 'layered secrets, emotional memory fragments, betrayal, obsession, hidden truth'
+      return 'layered secrets, emotional memory fragments, betrayal, hidden truth, vivid webnovel poster color'
     case 'evidence_discovery_scene':
     default:
-      return 'mysterious, intimate, tense, story-rich, emotional, truth about to surface'
+      return 'story-rich discovery, emotional truth surfacing, polished urban drama, vivid but tasteful color'
   }
 }
 
@@ -460,10 +460,11 @@ function buildPrimaryGoalBlock(): string {
 Create a premium vertical web-novel cover illustration, aspect ratio 2:3.
 
 PRIMARY GOAL:
-This cover must visually tell the actual story.
+This cover must visually tell the actual story, but it must still look attractive as a commercial web-novel cover.
 Do NOT create a generic beauty portrait.
 Do NOT create a random fashionable character image disconnected from the plot.
-The cover must clearly communicate the core conflict, emotional pressure, and most important evidence object.
+Do NOT create horror, ghost-story, crime-thriller, dirty-green, sickly-yellow, grey-black, gloomy-corridor artwork.
+The cover must clearly communicate the core conflict, emotional pressure, and most important evidence object with polished, vivid, readable colors.
 `.trim()
 }
 
@@ -526,20 +527,21 @@ function buildStyleBlock(style: CoverArtStyleKey): string {
 STYLE PRESET LOCK: MANGA_MANHWA.
 - The artwork must look like a premium Korean/Chinese manhwa webtoon cover, not realistic photography.
 - Clean line art, polished digital painting, expressive eyes, elegant dramatic poses, clear silhouette.
+- Use bright but tasteful webtoon colors: ivory skin tones, clean highlights, rose/gold/teal accents, crisp shadows.
 - More graphic, more illustrated, more panel-like than cinematic_realistic.
-- Use crisp edges, designed composition, emotional character acting, romantic-drama / revenge-drama webtoon feeling.
+- Romantic-drama / revenge-drama webtoon feeling, emotionally sharp but visually beautiful.
 - Avoid generic dark realistic poster. Avoid stock-photo realism. Avoid plain woman standing in rain.
-- Not childish, not chibi, not comedic, not western comic.
+- Not horror, not ghost story, not chibi, not comedic, not western comic.
 `.trim()
 
     case 'cinematic_realistic':
       return `
 STYLE PRESET LOCK: CINEMATIC_REALISTIC.
 - The artwork must feel like a premium Chinese urban-drama film poster or high-end TV drama key visual.
-- Semi-realistic / near-realistic illustrated faces, cinematic lens depth, believable lighting, upscale modern setting.
-- More grounded and film-like than anime_cinematic or manga_manhwa.
-- Use realistic fabric, glass, hospital light, boardroom light, hotel light, or banquet light when relevant.
-- Avoid anime eyes, webtoon line art, fantasy glow, and cartoon exaggeration.
+- Semi-realistic / near-realistic illustrated faces, cinematic lens depth, believable modern setting.
+- Use clean luxury-drama lighting: soft gold, champagne, glass reflections, white office light, warm hotel light, or elegant banquet light when relevant.
+- More grounded and film-like than anime_cinematic or manga_manhwa, but still polished and attractive.
+- Avoid anime eyes, webtoon line art, fantasy glow, cartoon exaggeration, horror color grading, dirty green/yellow shadows.
 - Still an illustration, not a raw stock photo.
 `.trim()
 
@@ -549,8 +551,9 @@ STYLE PRESET LOCK: POPULAR_WEBNOVEL_COLLAGE.
 - The artwork must be a commercial Chinese web-novel collage poster, not a single-character portrait.
 - One central heroine plus 3 to 6 surrounding story fragments / mini-scenes / symbolic clues.
 - Fragments must show different story elements: antagonist, evidence, child/family pressure, public scandal, hospital/school/business setting, or betrayal.
-- Use layered composition, dramatic diagonal layout, poster-like depth, strong readability at small thumbnail size.
-- Avoid one lone woman holding paper. Avoid a simple corridor portrait.
+- Use a vivid readable poster palette: warm gold, clean white, deep navy, soft red accents, teal glass, elegant highlights.
+- Layered composition, dramatic diagonal layout, poster-like depth, strong readability at small thumbnail size.
+- Avoid one lone woman holding paper. Avoid a simple corridor portrait. Avoid horror/thriller color grading.
 `.trim()
 
     case 'anime_cinematic':
@@ -558,13 +561,16 @@ STYLE PRESET LOCK: POPULAR_WEBNOVEL_COLLAGE.
       return `
 STYLE PRESET LOCK: ANIME_CINEMATIC.
 - The artwork must be a polished premium anime-style urban-drama cover.
-- Clearly illustrated anime faces, cinematic lighting, elegant modern East Asian characters, dramatic atmosphere.
+- Clearly illustrated anime faces, elegant modern East Asian characters, dramatic but beautiful atmosphere.
+- Use attractive cinematic anime colors: warm rim light, clean skin tones, soft gold, rose, teal, city-light highlights.
 - More stylized and beautiful than cinematic_realistic, but not childish and not flat.
 - Use cinematic anime composition with visible environment and evidence object.
 - Avoid realistic stock-photo look. Avoid generic dark corridor woman. Avoid only a close-up face.
+- Avoid horror, ghost-story, dirty yellow-green, sickly skin, heavy grey-black palette.
 `.trim()
   }
 }
+
 
 
 function buildSceneSelectionBlock(sceneType: CoverSceneType, style: CoverArtStyleKey): string {
@@ -600,7 +606,7 @@ COVER SCENE MODE: HOSPITAL_LEGAL_SUSPENSE.
 ${collageNote}
 - Show hospital, clinic, medical corridor, consultation room, or legal-pressure setting linked to a medical truth.
 - Key props can include prescription, test result folder, medical envelope, or phone showing an unreadable hospital-related image.
-- The cover should feel cold, modern, tense, and evidence-driven.
+- The cover should feel clean, modern, emotionally tense, polished, and evidence-driven — not horror.
 `.trim()
 
     case 'airport_secret_tension':
@@ -637,7 +643,7 @@ COVER SCENE MODE: FAMILY_BANQUET_CONFRONTATION.
 ${collageNote}
 - Show wealthy family dining, banquet, or villa confrontation.
 - Multiple family members can appear, but the female lead must remain the emotional center.
-- Beauty on the surface, poison underneath.
+- Elegant surface, hidden family pressure underneath; keep it polished, not rotten or horror-like.
 - Table setting, tea, dishes, and evidence object should help tell the story.
 `.trim()
 
@@ -669,7 +675,7 @@ ${collageNote}
 - Show the female lead actively holding, opening, discovering, or presenting the key evidence.
 - The surrounding environment should reveal the story context.
 - Supporting figures can be placed behind, reflected, seated, or partially visible to create pressure.
-- This must feel like the exact moment a dangerous truth begins to surface.
+- This must feel like the exact moment a hidden truth begins to surface; dramatic, not horror.
 `.trim()
   }
 }
@@ -677,11 +683,14 @@ ${collageNote}
 function buildVisualDiversityBlock(data: ReturnType<typeof buildPromptData>): string {
   return `
 VISUAL DIVERSITY LOCK — very important:
-- Do not reuse the default cover look: lone serious woman, dark rainy corridor, black coat, generic paper in hand.
+- Do not reuse the failed default cover look: lone serious woman, dark corridor, black coat, green-yellow horror grading, generic paper in hand.
+- Do not use horror / ghost story / serial-killer / crime-thriller mood.
+- Do not make the heroine look pale, sick, corpse-like, haunted, dirty, or expressionless.
 - The selected style is ${data.coverArtStyle}; make this style visibly different from the other presets.
 - The selected scene is ${data.sceneType}; make the background and props clearly match that scene.
 - The key evidence is: ${data.keyEvidence}. It must be visible, but it must not become the only story element.
 - Add at least TWO scene-specific visual anchors from this story: setting, antagonist/pressure figure, child/family/business/hospital/school/public-event cue, or emotional distance between characters.
+- Use a polished commercial palette: clean skin tones, controlled contrast, warm gold / rose / teal / navy / ivory accents, readable lighting.
 - Cover must stay readable as a thumbnail in an admin story list.
 `.trim()
 }
@@ -708,7 +717,8 @@ ANTI-TEXT RULES — absolute priority:
 - Do not render the story title.
 - Do not render Vietnamese text, English text, Chinese text, letters, words, captions, subtitles, logos, watermarks, labels, brand marks, UI, signage, chat bubbles, or typography.
 - Do not place any readable text on phones, computer screens, hospital documents, contracts, tickets, folders, books, reports, photos, ID cards, certificates, school files, prescription papers, or envelopes.
-- If a document or phone is visible, it must be blank, abstract, blurred, dark, turned away, out of focus, or unreadable.
+- If a document or phone is visible, it must be blank, abstract, blurred, turned away, out of focus, or unreadable.
+- Avoid making unreadable documents look like creepy occult papers; they should look like normal modern files, envelopes, cards, or screens.
 - If the model tries to add text, remove it completely.
 `.trim()
 }
@@ -736,9 +746,9 @@ ANTI-GENERIC RULES:
 - Do not make the cover depend only on a single face.
 - Do not hide the evidence object.
 - Do not replace story-specific clues with random decorative props.
-- Do not create a children cartoon, fantasy scene, historical costume, or unrelated sci-fi setting.
+- Do not create a children cartoon, fantasy scene, historical costume, unrelated sci-fi setting, horror poster, ghost story, zombie mood, or crime-thriller poster.
 - Do not show blood, gore, corpses, wounds, knives, guns, explicit violence, or self-harm.
-- If the story contains dangerous events, show them only through emotional tension, lighting, distance, posture, reflections, and atmosphere.
+- If the story contains dangerous events, show them only through emotional tension, lighting, distance, posture, reflections, and atmosphere; keep the image clean and commercial.
 ${sceneSpecificLines.join('\n')}
 `.trim()
 }
@@ -752,15 +762,16 @@ function buildFinalInstructionBlock(style: CoverArtStyleKey): string {
   return `
 FINAL OUTPUT INSTRUCTION:
 Create one polished final vertical 2:3 cover illustration.
-The image must feel like a commercially strong Chinese web-novel cover: dramatic, emotional, addictive, polished, and immediately understandable.
+The image must feel like a commercially strong Chinese web-novel cover: dramatic, emotional, addictive, polished, colorful enough for readers to click, and immediately understandable.
 Story content, conflict, setting, and evidence are more important than decorative prettiness.
 ${styleCompositionLine}
+Commercial color requirement: avoid muddy green/yellow horror grading, heavy grey-black, sickly skin, dirty shadows. Prefer clean skin tones, elegant contrast, warm/cool balanced lighting, and attractive web-novel poster color.
 The final result must be a finished cover artwork illustration only, with zero text inside the image.
 `.trim()
 }
 
 function buildFallbackPrompt(data: ReturnType<typeof buildPromptData>): string {
-  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Show the environment, supporting figures, and conflict clearly. Medium shot or 3/4 body framing. The character must not fill the whole frame. No blood, no wounds, no corpse, no weapons, no explicit violence.`
+  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Polished commercial webnovel color, clean skin tones, warm gold / rose / teal / navy accents, attractive readable lighting. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, blurred, turned away, or unreadable. Not a generic portrait. Show the environment, supporting figures, and conflict clearly. Medium shot or 3/4 body framing. The character must not fill the whole frame. No horror, no dirty green-yellow grading, no sickly skin, no blood, no wounds, no corpse, no weapons, no explicit violence.`
 }
 
 export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): CoverBuildResult {
@@ -783,7 +794,7 @@ export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): Cove
     prompt,
     fallbackPrompt: buildFallbackPrompt(data),
     coverConcept: {
-      version: 'cover-scene-style-router-v2-style-diversity-lock',
+      version: 'cover-bright-commercial-style-lock-v4',
       coverArtStyle: data.coverArtStyle,
       sceneType: data.sceneType,
       storyStage: data.storyStage,

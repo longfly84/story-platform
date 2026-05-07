@@ -23,10 +23,10 @@ const COVER_ART_STYLE_OPTIONS: Array<{
   label: string
 }> = [
   { value: 'auto', label: 'Tự động theo nội dung truyện' },
-  { value: 'anime_cinematic', label: 'Anime cinematic' },
-  { value: 'manga_manhwa', label: 'Manga / Manhwa' },
-  { value: 'cinematic_realistic', label: 'Cinematic realistic' },
-  { value: 'popular_webnovel_collage', label: 'Webnovel collage' },
+  { value: 'anime_cinematic', label: 'Anime cinematic — sáng, đẹp, màu webnovel' },
+  { value: 'manga_manhwa', label: 'Manga / Manhwa — nét truyện tranh, màu sạch' },
+  { value: 'cinematic_realistic', label: 'Cinematic realistic — poster phim đô thị' },
+  { value: 'popular_webnovel_collage', label: 'Webnovel collage — nhiều lớp nội dung' },
 ]
 
 type AIFactoryPanelViewProps = {
@@ -494,8 +494,7 @@ export default function AIFactoryPanelView({
                   </select>
 
                   <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                    Mục này chỉ quyết định nét vẽ. Bố cục ảnh, cảnh chính, nhân vật phụ và vật chứng
-                    sẽ tự bám theo nội dung truyện.
+                    Mục này quyết định nét vẽ. Prompt mới đã chặn màu kinh dị/xanh vàng bẩn và ép ảnh sáng, thương mại hơn; bố cục vẫn tự bám nội dung truyện.
                   </p>
                 </div>
               ) : null}
