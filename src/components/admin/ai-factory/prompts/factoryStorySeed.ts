@@ -1209,11 +1209,72 @@ function titleCaseFirst(input: string) {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
+
+const GENERIC_BAD_STORY_TITLES = [
+  "Món Quà Bị Lộ",
+  "Dấu Mực Trên Trang Cũ",
+  "Người Im Lặng Ở Cuối Phòng",
+  "Mã QR Dẫn Tới Thư Mục Ẩn",
+  "Dòng Mã Trên Vé Sự Kiện",
+  "Mã Số Trong Hồ Sơ Cũ",
+];
+
+function isGenericBadStoryTitle(title: string) {
+  const normalized = normalizeForCompare(title);
+  return GENERIC_BAD_STORY_TITLES.some((item) => normalizeForCompare(item) === normalized);
+}
+
+function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
+  const token = titleCaseFirst(cleanTitleToken(evidenceObject))
+    .replace(/^Một\s+/i, "")
+    .replace(/^Mảnh\s+nhỏ\s+/i, "Mảnh ")
+    .trim();
+
+  if (token && token.length <= 32 && !isTechnicalSeedTitle(token)) {
+    return `${token} Bị Đặt Sai Chỗ`;
+  }
+
+  return "Vật Chứng Bị Đặt Sai Chỗ";
+}
+
 function makeEvidenceTitleVariants(evidenceObject: string) {
   const normalized = normalizeForCompare(evidenceObject);
   const token = titleCaseFirst(cleanTitleToken(evidenceObject));
 
   const variants: string[] = [];
+
+  if (normalized.includes("not nhac") || normalized.includes("nốt nhạc") || normalized.includes("ban nhac") || normalized.includes("bản nhạc")) {
+    variants.push("Nốt Nhạc Bị Khoanh Đỏ", "Dấu Bút Đỏ Trên Bản Nhạc", "Bản Nhạc Bị Sửa Một Nốt");
+  }
+
+  if (normalized.includes("nhan chau") || normalized.includes("nhãn chậu") || normalized.includes("chau hoa") || normalized.includes("chậu hoa")) {
+    variants.push("Nhãn Chậu Đặt Sai", "Tấm Nhãn Trên Chậu Hoa", "Chậu Hoa Bị Đổi Tên");
+  }
+
+  if (normalized.includes("nap chai") || normalized.includes("nắp chai") || normalized.includes("vet xuoc") || normalized.includes("vết xước")) {
+    variants.push("Nắp Chai Có Vết Xước", "Vết Xước Trên Nắp Chai", "Dấu Màu Trên Nắp Chai");
+  }
+
+  if (normalized.includes("ve ghe") || normalized.includes("vé ghế") || normalized.includes("ghe 27") || normalized.includes("ghế 27")) {
+    variants.push("Vé Ghế 27 Trong Bó Hoa", "Chiếc Vé Sai Ghế", "Tờ Vé 27 Ở Tiệm Hoa");
+  }
+
+  if (normalized.includes("mau ghi chu") || normalized.includes("mẩu ghi chú") || normalized.includes("ghi chu") || normalized.includes("ghi chú")) {
+    variants.push("Mẩu Ghi Chú Bị Đổi Số", "Tờ Giấy Trước Thang Máy", "Ghi Chú Lệch Ở Sảnh Chung Cư");
+  }
+
+  if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo")) {
+    variants.push("Sợi Chỉ Trên Khuy Áo", "Sợi Chỉ Ở Tiệm Hoa", "Dấu Chỉ Khác Màu");
+  }
+
+  if (normalized.includes("mieng dan") || normalized.includes("miếng dán") || normalized.includes("do choi") || normalized.includes("đồ chơi")) {
+    variants.push("Miếng Dán Bong Góc", "Món Đồ Chơi Bị Đặt Sai", "Dấu Dán Trên Lớp Lót");
+  }
+
+  if (normalized.includes("the giat") || normalized.includes("thẻ giặt") || normalized.includes("tiem giat") || normalized.includes("tiệm giặt")) {
+    variants.push("Thẻ Giặt Còn Ghim", "Tấm Thẻ Ở Tiệm Giặt", "Dấu Vải Sau Lần Giặt");
+  }
+
 
   if (normalized.includes("quan ly khach san") || normalized.includes("so quan ly") || normalized.includes("so ra vao")) {
     variants.push(
@@ -1248,8 +1309,8 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
     variants.push("Tấm Thẻ Phòng Bị Bỏ Quên", "Thẻ Phòng Quẹt Lúc Nửa Đêm", "Dấu Quẹt Trên Thẻ Phòng");
   }
 
-  if (normalized.includes("a-7392") || normalized.includes("ma qr") || normalized.includes("ma")) {
-    variants.push("Mã QR Dẫn Tới Thư Mục Ẩn", "Dòng Mã Trên Vé Sự Kiện", "Mã Số Trong Hồ Sơ Cũ");
+  if (normalized.includes("ma qr") || normalized.includes("mã qr") || normalized.includes("qr code")) {
+    variants.push("Dấu QR Bị Chụp Lại");
   }
 
   if (normalized.includes("bang phan ca")) variants.push("Bảng Phân Ca Lúc Hai Giờ Sáng", "Dòng Mực Khác Trên Bảng Phân Ca");
@@ -1276,19 +1337,18 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
     );
   }
 
-  variants.push(
-    "Món Quà Bị Lộ",
-    "Dấu Mực Trên Trang Cũ",
-    "Người Im Lặng Ở Cuối Phòng",
-  );
+  variants.push(makeSafeFallbackTitleFromEvidence(evidenceObject));
 
-  return uniqueStringsForCover(variants.filter((item) => !isTechnicalSeedTitle(item)), 10);
+  return uniqueStringsForCover(
+    variants.filter((item) => !isTechnicalSeedTitle(item) && !isGenericBadStoryTitle(item)),
+    10,
+  );
 }
 
 function makeEvidenceTitle(evidenceObject: string, seed: string) {
   const variants = makeEvidenceTitleVariants(evidenceObject).filter((item) => isHumanStoryTitle(item));
   return pickSeedItem(
-    variants.length ? variants : ["Món Quà Bị Lộ", "Dấu Mực Trên Trang Cũ", "Người Im Lặng Ở Cuối Phòng"],
+    variants.length ? variants : [makeSafeFallbackTitleFromEvidence(evidenceObject)],
     seed,
     "evidence-title-pattern",
   );
@@ -1333,13 +1393,13 @@ function makeSeedAlignedTitle(params: {
 
   const cleanOptions = options
     .map((item) => sanitizeTitleCandidate(item))
-    .filter((item) => isHumanStoryTitle(item, params.avoidTitles));
+    .filter((item) => isHumanStoryTitle(item, params.avoidTitles) && !isGenericBadStoryTitle(item));
 
   return (
     cleanOptions[0] ||
-    evidenceTitles.find((item) => isHumanStoryTitle(item, params.avoidTitles)) ||
-    sanitizeTitleCandidate(evidenceTitle) ||
-    "Món Quà Bị Lộ"
+    evidenceTitles.find((item) => isHumanStoryTitle(item, params.avoidTitles) && !isGenericBadStoryTitle(item)) ||
+    (!isGenericBadStoryTitle(evidenceTitle) ? sanitizeTitleCandidate(evidenceTitle) : "") ||
+    makeSafeFallbackTitleFromEvidence(params.candidate.evidenceObject)
   );
 }
 
@@ -1360,9 +1420,7 @@ function makeChapterTitle(params: {
     case 1:
       return evidenceTitle;
     case 2:
-      if (normalizeForCompare(params.candidate.emotionalStake).includes("con")) return "Thẻ Truy Cập Bị Khóa";
-      if (normalizeForCompare(params.candidate.emotionalStake).includes("nguoi than") || normalizeForCompare(params.candidate.emotionalStake).includes("me")) return "Cuộc Gọi Từ Phòng Bệnh";
-      return "Cú Ép Đầu Tiên";
+      return altEvidenceTitle || titleCaseFirst(pressure.length <= 34 ? pressure : setting) || "Nhân Chứng Đầu Tiên";
     case 3:
       return titleCaseFirst(setting.length <= 34 ? setting : pressure) || "Địa Điểm Thứ Hai";
     case 4:
