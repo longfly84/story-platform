@@ -48,6 +48,16 @@ function replaceKnownBadVietnamesePhrases(input: string) {
     [/quyền lực nhà trường với các nhà cung cấp là một tảng băng/gi, 'tôi hiểu sức nặng của một lời phàn nàn từ phụ huynh'],
     [/nụ cười nhẵn nhụi như muốn xé rách/gi, 'bà ta cười rất nhẹ, nhưng lời nói thì không chừa đường lui'],
     [/ánh mắt cô ấy lạnh như đã đọc xong một phán quyết/gi, 'cô ta nhìn tôi như thể mọi chuyện đã có kết luận'],
+    [/Sảnh chung cư im ắng theo cách của những nơi có quyền lực/gi, 'Sảnh chung cư hôm đó im lạ thường'],
+    [/vẻ nghiêm trọng như chờ tuyên án/gi, 'không ai nói lớn, nhưng ai cũng nhìn tôi như đang chờ một lời giải thích'],
+    [/Lời ấy như mũi kim đâm thẳng vào vết sẹo cũ/gi, 'Câu đó chạm đúng chuyện tôi sợ nhất'],
+    [/Cái tên ['"]bên trong['"] như một mũi tên chỉ ra con đường thao túng/gi, 'Hai chữ “bên trong” đủ để mọi người hiểu chuyện này không phải do người lạ làm'],
+    [/kệ thiếu nhi như một đảo ấm giữa mùi giấy mới và trà/gi, 'kệ thiếu nhi nằm ở góc trong cùng, cạnh quầy trà'],
+    [/Bà đặt viên bi bằng lời nói xuống, và nó lăn đủ xa để dồn mọi ánh mắt vào tôi/gi, 'Bà ta chỉ nói một câu, nhưng đủ khiến mọi người quay sang nhìn tôi'],
+    [/Lời nói như muốn khoét vào da thịt/gi, 'Câu đó khó nghe, nhưng tôi ép mình không đáp trả vội'],
+    [/Phong bì trong tay ông như một mảnh ghép mới đặt lên bàn cờ/gi, 'Phong bì trong tay ông khiến cả tiệm tạm ngừng bàn tán'],
+    [/Một tiếng thì thầm lan nhanh/gi, 'Tiếng thì thầm lan ra'],
+    [/mỗi chữ đều nặng/gi, 'nói chậm rãi'],
   ]
 
   return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), input)
