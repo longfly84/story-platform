@@ -10,12 +10,85 @@ function safeCopyString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-function formatChapterForCopy(chapter: any, index: number) {
-  const chapterNumber = Number(chapter?.chapter_number || index + 1)
-  const chapterTitle = safeCopyString(chapter?.title) || `Chương ${chapterNumber}`
-  const content = safeCopyString(chapter?.content)
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
-  return [`# Chương ${chapterNumber} — ${chapterTitle}`, '', content].join('\n')
+function getChapterNumber(chapter: any, index: number) {
+  const raw =
+    chapter?.chapter_number ??
+    chapter?.chapterNumber ??
+    chapter?.number ??
+    chapter?.chapter ??
+    index + 1
+
+  const num = Number(raw)
+
+  return Number.isFinite(num) && num > 0 ? num : index + 1
+}
+
+function normalizeChapterTitle(chapter: any, chapterNumber: number) {
+  const rawTitle =
+    safeCopyString(chapter?.title) ||
+    safeCopyString(chapter?.name) ||
+    safeCopyString(chapter?.chapter_title)
+
+  if (!rawTitle) return `Chương ${chapterNumber}`
+
+  return rawTitle
+    .replace(/^#{1,6}\s*/g, '')
+    .replace(new RegExp(`^Chương\\s+${chapterNumber}\\s*[—\\-:]\\s*`, 'i'), '')
+    .trim()
+}
+
+function stripCopyArtifacts(content: string, chapterNumber: number, chapterTitle: string) {
+  let text = safeCopyString(content)
+
+  if (!text) return ''
+
+  text = text.replace(/^\uFEFF/, '').trimStart()
+
+  // Xóa separator thừa ở đầu content nếu content được lưu kèm "---".
+  text = text.replace(/^(---|\*\*\*|___)\s*(\r?\n)+/g, '').trimStart()
+
+  // Xóa heading markdown ở đầu content:
+  // # Chương 1 — Tên chương
+  // ## Chương 1 - Tên chương
+  text = text.replace(
+    new RegExp(
+      `^#{1,6}\\s*Chương\\s+${chapterNumber}\\s*(?:[—\\-:]\\s*.*)?(?:\\r?\\n)+`,
+      'i',
+    ),
+    '',
+  )
+
+  // Xóa heading không markdown ở đầu content:
+  // Chương 1 — Tên chương
+  text = text.replace(
+    new RegExp(`^Chương\\s+${chapterNumber}\\s*(?:[—\\-:]\\s*.*)?(?:\\r?\\n)+`, 'i'),
+    '',
+  )
+
+  // Xóa title trần nếu content bắt đầu bằng title.
+  if (chapterTitle) {
+    const escapedTitle = escapeRegExp(chapterTitle)
+
+    text = text.replace(new RegExp(`^#{0,6}\\s*${escapedTitle}\\s*(?:\\r?\\n)+`, 'i'), '')
+  }
+
+  // Xóa tiếp separator nếu nó nằm sau heading vừa bị xóa.
+  text = text.replace(/^\s*(---|\*\*\*|___)\s*(\r?\n)+/g, '').trimStart()
+
+  return text.trim()
+}
+
+function formatChapterForCopy(chapter: any, index: number) {
+  const chapterNumber = getChapterNumber(chapter, index)
+  const chapterTitle = normalizeChapterTitle(chapter, chapterNumber)
+  const rawContent = safeCopyString(chapter?.content)
+  const cleanContent = stripCopyArtifacts(rawContent, chapterNumber, chapterTitle)
+
+  return [`# Chương ${chapterNumber} — ${chapterTitle}`, '', cleanContent || '(Chương này chưa có nội dung.)'].join('\n')
 }
 
 async function copyTextToClipboard(text: string) {
@@ -35,7 +108,6 @@ async function copyTextToClipboard(text: string) {
   document.execCommand('copy')
   document.body.removeChild(textarea)
 }
-
 
 export default function AdminContentPage() {
   const { user, role, loading: sessionLoading } = useAdminSession()
@@ -204,11 +276,11 @@ export default function AdminContentPage() {
         return
       }
 
-      const text = [
-        `# ${storyTitle}`,
-        '',
-        ...chapters.map((chapter: any, index: number) => formatChapterForCopy(chapter, index)),
-      ].join('\n\n---\n\n')
+      const chapterBlocks = chapters.map((chapter: any, index: number) =>
+        formatChapterForCopy(chapter, index),
+      )
+
+      const text = [`# ${storyTitle}`, '', ...chapterBlocks].join('\n\n---\n\n')
 
       await copyTextToClipboard(text)
       alert(`Đã copy ${chapters.length} chương của truyện "${storyTitle}".`)
