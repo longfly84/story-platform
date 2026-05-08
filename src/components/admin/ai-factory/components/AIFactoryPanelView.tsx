@@ -26,7 +26,16 @@ const COVER_ART_STYLE_OPTIONS: Array<{
   { value: 'anime_cinematic', label: 'Anime — Chinese commercial webnovel cover' },
   { value: 'manga_manhwa', label: 'Manga — Chinese commercial webnovel cover' },
   { value: 'popular_webnovel_collage', label: 'Chinese manhua luxury collage' },
-  { value: 'cinematic_realistic', label: 'Siêu thực — urban drama premium poster' },
+  { value: 'cinematic_realistic', label: 'Urban drama premium poster illustration' },
+]
+
+const COVER_COMPOSITION_OPTIONS: Array<{
+  value: AIFactoryConfig['coverCompositionPreset']
+  label: string
+}> = [
+  { value: 'auto', label: 'Tự động theo nội dung truyện' },
+  { value: 'story_scene_offset', label: 'Bố cục ảnh 1 — nhân vật lệch khung, background rộng' },
+  { value: 'luxury_collage', label: 'Bố cục ảnh 2 — collage nhiều lớp, nhiều mảnh truyện' },
 ]
 
 type AIFactoryPanelViewProps = {
@@ -494,9 +503,37 @@ export default function AIFactoryPanelView({
                   </select>
 
                   <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                    Mục này chỉ quyết định nét vẽ. Bố cục ảnh, cảnh chính, nhân vật phụ và vật chứng
-                    sẽ tự bám theo nội dung truyện.
+                    Mục này quyết định phong cách vẽ tổng thể.
+                    4 option mới sẽ bám theo kiểu Chinese commercial webnovel cover mà mày muốn.
                   </p>
+
+                  <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
+                    <FieldLabel>Bố cục ảnh bìa</FieldLabel>
+
+                    <select
+                      disabled={isRunning}
+                      value={config.coverCompositionPreset ?? 'auto'}
+                      onChange={(event) =>
+                        updateConfig(
+                          'coverCompositionPreset',
+                          event.target.value as AIFactoryConfig['coverCompositionPreset'],
+                        )
+                      }
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                    >
+                      {COVER_COMPOSITION_OPTIONS.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                      - Ảnh 1: hợp kiểu poster cảnh chính, nữ chính lệch khung, thấy rõ không gian + nhân vật phụ.
+                      <br />
+                      - Ảnh 2: hợp kiểu collage luxury, có nhiều mảnh truyện / nhiều lớp cảnh như mẫu mày gửi.
+                    </p>
+                  </div>
                 </div>
               ) : null}
             </div>

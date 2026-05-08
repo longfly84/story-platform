@@ -1210,6 +1210,7 @@ function titleCaseFirst(input: string) {
 
 
 const GENERIC_BAD_STORY_TITLES = [
+  "Manh Mối Ở Hiện Trường",
   "Món Quà Bị Lộ",
   "Dấu Mực Trên Trang Cũ",
   "Người Im Lặng Ở Cuối Phòng",
@@ -1311,7 +1312,7 @@ function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
     return `${token} Bị Lộ`;
   }
 
-  return "Manh Mối Ở Hiện Trường";
+  return "Chi Tiết Bị Đặt Sai";
 }
 
 function makeEvidenceTitleVariants(evidenceObject: string) {
@@ -1358,7 +1359,7 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   }
 
   if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo")) {
-    variants.push("Sợi Chỉ Ở Khuy Áo", "Sợi Chỉ Còn Mắc Ở Khuy Áo", "Chiếc Khuy Áo Có Sợi Chỉ Lạ");
+    variants.push("Sợi Chỉ Trên Khuy Áo", "Sợi Chỉ Ở Tiệm Hoa", "Dấu Chỉ Khác Màu");
   }
 
   if (normalized.includes("mieng dan") || normalized.includes("miếng dán") || normalized.includes("do choi") || normalized.includes("đồ chơi")) {
@@ -1518,380 +1519,18 @@ function makeChapterTitle(params: {
   }
 }
 
-
-type EvidenceWorldProfile = {
-  genreLabel: string;
-  settings: string[];
-  conflicts: string[];
-  pressures: string[];
-  hiddenTruths: string[];
-  villainAttacks: string[];
-  heroineCounters: string[];
-  emotionalStakes: string[];
-  dopamineHooks: string[];
-  alternateEvidences: string[];
-};
-
-function pickWorldItem(items: string[], seed: string, salt: string) {
-  return pickSeedItem(items, seed, `world-lock-${salt}`) || items[0] || "";
-}
-
-function getEvidenceWorldProfile(evidenceObject: string): EvidenceWorldProfile | null {
-  const normalized = normalizeForCompare(evidenceObject);
-
-  if (normalized.includes("phieu") && normalized.includes("banh")) {
-    return {
-      genreLabel: "đời sống trường học / tiệm bánh / phụ huynh",
-      settings: [
-        "sảnh chung cư gần quầy lễ tân, nơi phụ huynh và chủ tiệm bánh đang chờ giải thích",
-        "khu nhận bánh phía sau trường, cạnh bàn giao đơn của nhà ăn",
-        "quầy bánh nhỏ trong khu dân cư, nơi đơn hàng của lớp bị đem ra đối chất",
-      ],
-      conflicts: [
-        "phiếu đặt bánh bị xé góc bị dùng để đổ lỗi dị ứng và làm nữ chính mất uy tín trước phụ huynh",
-        "một đơn bánh của trẻ bị bẻ nghĩa để ép nữ chính nhận lỗi thay người khác",
-        "người phụ trách đặt bánh cố biến vết xé và vết mực trên phiếu thành bằng chứng chống nữ chính",
-      ],
-      pressures: [
-        "nhóm phụ huynh, chủ tiệm bánh và cô phụ trách lớp gây sức ép ngay tại nơi giao bánh",
-        "chủ nhà hàng và đại diện phụ huynh yêu cầu nữ chính ký nhận lỗi trước khi kiểm tra nguồn in",
-        "tiếng bàn tán trong nhóm phụ huynh đe dọa làm nữ chính mất việc và làm đứa trẻ bị liên lụy",
-      ],
-      hiddenTruths: [
-        "người thật sự sửa phiếu là người cầm cây bút đỏ và có quyền chạm vào đơn hàng trước giờ giao",
-        "vết mực và mép xé cho thấy phiếu bị tráo sau khi rời bếp, không phải lỗi của nữ chính",
-        "đơn bánh bị đổi để che chuyện một người trong nhóm phụ huynh đã đặt sai thành phần",
-      ],
-      villainAttacks: [
-        "phản diện giơ phiếu bánh bị xé góc và gọi đó là lỗi kỹ thuật của nữ chính",
-        "đầu bếp trưởng dùng chuyện dị ứng của trẻ để buộc nữ chính nhận lỗi công khai",
-        "người phụ trách đơn hàng tung bản phiếu bị sửa trước mặt phụ huynh để ép nữ chính cúi đầu",
-      ],
-      heroineCounters: [
-        "đối chiếu mép xé, dấu mực đỏ và bản sao phiếu gốc để truy người đã cầm bút",
-        "giữ bản sao phiếu, hỏi nguồn in và buộc người giao bánh xác nhận thời điểm giao đơn",
-        "bảo vệ đứa trẻ trước đám đông rồi lần theo vết mực trên phiếu",
-      ],
-      emotionalStakes: [
-        "nếu thua, một đứa trẻ bị mang ra làm lý do và nữ chính mất uy tín trước khu dân cư",
-        "nữ chính phải bảo vệ đứa trẻ và công việc nhỏ của mình trước lời đổ lỗi công khai",
-        "cái giá không phải tiền bạc, mà là danh dự của một người yếu thế trước nhóm phụ huynh",
-      ],
-      dopamineHooks: [
-        "vết mực đỏ dưới hàng chữ đơn vị in trỏ về người đã sửa phiếu",
-        "bản sao phiếu gốc có mép xé khác hẳn tờ họ đưa ra",
-        "người giao bánh nhớ được ai đã cầm phiếu trước khi vụ việc bị làm lớn",
-      ],
-      alternateEvidences: [
-        "bản sao phiếu gốc có dấu mực xanh",
-        "hóa đơn giao bánh còn nguyên giờ nhận",
-        "túi bánh có tem thành phần chưa bị bóc",
-      ],
-    };
-  }
-
-  if (normalized.includes("nap chai") || normalized.includes("vet xuoc")) {
-    return {
-      genreLabel: "đời sống sự kiện / bãi xe / studio gia đình",
-      settings: [
-        "studio ảnh gia đình, nơi một buổi chụp chung bị biến thành cuộc đối chất",
-        "khu bãi xe sau studio, cạnh bàn nước của buổi gặp mặt gia đình",
-        "góc quầy nước trong sảnh sự kiện, nơi trẻ con và người lớn đều có mặt",
-      ],
-      conflicts: [
-        "nắp chai có vết xước bị dùng để gán cho nữ chính một hành động cô không làm",
-        "một nắp chai bị tráo vị trí khiến nữ chính bị nghi đã chạm vào đồ của đứa trẻ",
-        "vết xước trên nắp chai bị lợi dụng để dựng câu chuyện làm nữ chính mất mặt trước người thân",
-      ],
-      pressures: [
-        "người nhà, giáo viên và thợ chụp ảnh cùng nhìn nữ chính chờ lời giải thích",
-        "người tổ chức buổi chụp và phụ huynh gây sức ép trước mặt đứa trẻ",
-        "đám đông trong studio đòi nữ chính giải thích ngay khi chưa kiểm chứng vật chứng",
-      ],
-      hiddenTruths: [
-        "nắp chai được đặt lại sau khi có người dạy đứa trẻ nói theo một câu đã chuẩn bị",
-        "vết sơn nhỏ trên nắp chai cho thấy nó không phải chiếc nắp trong đoạn phim được đưa ra",
-        "người chạm vào nắp chai cuối cùng là người muốn biến đứa trẻ thành công cụ",
-      ],
-      villainAttacks: [
-        "phản diện giơ nắp chai có vết xước và ép nữ chính nhận lỗi trước mặt mọi người",
-        "người dàn cảnh dùng lời trẻ con và đoạn quay hậu trường để bẻ nghĩa nắp chai",
-        "phản diện lấy nắp chai đặt cạnh phong bì cũ rồi gọi đó là dấu vết của nữ chính",
-      ],
-      heroineCounters: [
-        "so sánh vết xước, vệt sơn và vị trí nắp chai trong ảnh gốc",
-        "yêu cầu giữ nguyên nắp chai, kiểm chứng người đã chạm vào nó và bảo vệ đứa trẻ",
-        "dùng ảnh chụp cũ để chứng minh nắp chai bị tráo sau khi rời bàn nước",
-      ],
-      emotionalStakes: [
-        "nếu thua, đứa trẻ bị kéo vào lời nói dối của người lớn và nữ chính mất uy tín trước gia đình",
-        "nữ chính phải giữ bình tĩnh để không biến đứa trẻ thành nhân chứng bị ép",
-        "cái giá là sự an toàn của đứa trẻ và danh dự của nữ chính trong buổi gặp mặt",
-      ],
-      dopamineHooks: [
-        "vệt sơn xanh xám trên nắp chai không khớp với chiếc nắp trong đoạn quay",
-        "đứa trẻ lặp lại đúng một câu được người lớn dạy trước",
-        "người giữ đạo cụ nhớ ai đã cầm nắp chai sau cùng",
-      ],
-      alternateEvidences: [
-        "ảnh chụp nắp chai trước khi bị tráo",
-        "vệt sơn xanh xám trên mép nắp",
-        "tờ ghi chú của người giữ đạo cụ",
-      ],
-    };
-  }
-
-  if (normalized.includes("goc anh") || normalized.includes("anh cu") || normalized.includes("ruy bang")) {
-    return {
-      genreLabel: "đời sống studio / bó hoa / ảnh cũ",
-      settings: [
-        "sạp hoa cạnh studio cũ, nơi một bó hoa bị đem ra làm bằng chứng",
-        "phòng chờ studio ảnh nhỏ, cạnh bàn gói hoa và cuộn ruy-băng",
-        "góc cầu thang sau studio, nơi bó hoa được đặt chờ giao",
-      ],
-      conflicts: [
-        "góc ảnh cũ bị cắt thiếu bị ghim vào bó hoa để gán nữ chính với một chuyện đã qua",
-        "một mảnh ảnh cũ trên dải ruy-băng bị dùng để ép nữ chính nhận chuyện không thuộc về mình",
-        "người dàn cảnh cắt góc ảnh rồi đặt vào bó hoa để tạo hiểu lầm trước nhân chứng",
-      ],
-      pressures: [
-        "người trong studio, khách nhận hoa và một đứa trẻ bị kéo vào cuộc đối chất",
-        "chủ sạp hoa và người nhà gây sức ép ngay trước quầy giao hoa",
-        "đám đông ở studio chờ nữ chính giải thích về mảnh ảnh bị ghim sai chỗ",
-      ],
-      hiddenTruths: [
-        "mảnh ảnh bị cắt từ một đơn hàng cũ và chỉ người trong studio mới biết góc thiếu ấy",
-        "dải ruy-băng giữ lại vết keo cho thấy bó hoa đã bị mở ra sau khi rời sạp",
-        "người thật sự ghim ảnh là người muốn dùng quá khứ của nữ chính để ép cô im lặng",
-      ],
-      villainAttacks: [
-        "phản diện đưa bó hoa có ghim mảnh ảnh cũ ra trước mặt mọi người",
-        "người dàn cảnh dùng lời của đứa trẻ để gán mảnh ảnh cho nữ chính",
-        "phản diện buộc nữ chính giải thích mảnh ảnh ngay tại nơi đông người",
-      ],
-      heroineCounters: [
-        "giữ lại dải ruy-băng, đối chiếu vết keo và hỏi người gói hoa",
-        "nhìn ra góc ảnh bị cắt thiếu rồi lần theo đơn hàng cũ của studio",
-        "bảo vệ đứa trẻ khỏi lời nói dối và truy người đã mở bó hoa",
-      ],
-      emotionalStakes: [
-        "nếu thua, quá khứ của nữ chính bị bóp méo và đứa trẻ bị dùng làm công cụ",
-        "nữ chính phải giữ danh dự của mình mà không làm tổn thương đứa trẻ bị dạy nói dối",
-        "cái giá là một lời vu oan công khai ngay tại nơi cô từng làm việc",
-      ],
-      dopamineHooks: [
-        "vết keo trên ruy-băng chứng minh bó hoa đã bị mở ra",
-        "góc ảnh bị cắt khớp với một đơn hàng cũ trong studio",
-        "người gói hoa nhớ được ai yêu cầu thay dải ruy-băng",
-      ],
-      alternateEvidences: [
-        "dải ruy-băng còn vết keo cũ",
-        "sổ giao hoa ghi sai tên người nhận",
-        "ảnh đơn hàng cũ trong máy của studio",
-      ],
-    };
-  }
-
-  if (normalized.includes("khan tay") || normalized.includes("theu")) {
-    return {
-      genreLabel: "đời sống gia đình / đồ thêu / nhà cũ",
-      settings: [
-        "phòng khách nhà cũ, nơi chiếc khăn tay bị đưa ra trước người thân",
-        "góc tủ đồ trong nhà cũ, cạnh hộp kim chỉ và túi quà chưa mở",
-        "bàn trà trong nhà cũ, nơi người làm và hàng xóm bị gọi đến làm chứng",
-      ],
-      conflicts: [
-        "chiếc khăn tay thêu chữ cái nhỏ bị dùng để kéo nữ chính vào một lời buộc tội trong nhà",
-        "mũi thêu lỗi trên khăn tay bị bẻ nghĩa thành dấu vết chống nữ chính",
-        "người trong nhà dùng chiếc khăn tay để ép nữ chính nhận lỗi trước người thân",
-      ],
-      pressures: [
-        "người thân, hàng xóm và người làm trong nhà cùng gây sức ép trước bàn trà",
-        "người lớn trong nhà yêu cầu nữ chính giải thích chiếc khăn trước mặt nhân chứng",
-        "lời đồn trong nhà cũ khiến người yếu thế sợ bị mất việc",
-      ],
-      hiddenTruths: [
-        "mũi thêu lỗi cho thấy chiếc khăn được gói lại bởi người không quen thêu",
-        "vết gấp trên khăn trùng với kiểu gói quà của một người trong nhà",
-        "người đưa khăn cho nhân chứng mới là người muốn nữ chính mất mặt",
-      ],
-      villainAttacks: [
-        "phản diện giơ chiếc khăn thêu chữ cái nhỏ và ép nữ chính giải thích",
-        "người trong nhà dùng nhân chứng yếu thế để xác nhận chiếc khăn thuộc về nữ chính",
-        "phản diện dọa đưa chuyện chiếc khăn ra nhóm hàng xóm nếu nữ chính không nhận lỗi",
-      ],
-      heroineCounters: [
-        "đối chiếu mũi thêu lỗi, nếp gấp và cách gói quà để truy người đưa khăn",
-        "giữ chiếc khăn làm chứng cứ rồi hỏi từng người đã chạm vào hộp quà",
-        "bảo vệ người làm bị ép khai và lần theo dấu chỉ thêu",
-      ],
-      emotionalStakes: [
-        "nếu thua, nữ chính mất danh dự trong nhà và một người làm bị đẩy ra chịu tội",
-        "nữ chính phải bảo vệ người yếu thế mà không để người nhà bẻ nghĩa chiếc khăn",
-        "cái giá là sự im lặng bị ép trong chính căn nhà cũ của mình",
-      ],
-      dopamineHooks: [
-        "mũi thêu thiếu ở đáy chữ cái lộ ra người thật đã sửa khăn",
-        "nếp gấp trên khăn trùng với kiểu gói quà của một người trong nhà",
-        "người làm nhớ ra ai đã nhờ bà giữ chiếc khăn",
-      ],
-      alternateEvidences: [
-        "hộp kim chỉ còn thiếu một màu chỉ",
-        "túi quà có nếp gấp lệch",
-        "ảnh chụp chiếc khăn trước khi bị gói lại",
-      ],
-    };
-  }
-
-  if (normalized.includes("hat vong") || normalized.includes("vong tay")) {
-    return {
-      genreLabel: "đời sống trường học / sự kiện trẻ em / đồ cá nhân",
-      settings: [
-        "chốt bảo vệ trước cổng trường, nơi một hạt vòng bị đem ra làm chứng cứ",
-        "khu gửi đồ của sự kiện trẻ em, cạnh bàn phát vòng tay",
-        "sảnh lớp học sau giờ đón trẻ, nơi phụ huynh đang đứng chờ",
-      ],
-      conflicts: [
-        "hạt vòng đặt sai chỗ bị dùng để đổ lỗi cho nữ chính trước phụ huynh",
-        "vòng tay của trẻ bị bẻ nghĩa để làm nữ chính mất quyền đón con",
-        "một món đồ nhỏ của trẻ bị đặt sai chỗ để tạo nghi ngờ công khai",
-      ],
-      pressures: [
-        "phụ huynh, bảo vệ và giáo viên gây sức ép ngay trước giờ đón trẻ",
-        "ban đại diện phụ huynh yêu cầu nữ chính giải thích trước đám đông",
-        "lời đồn trong nhóm lớp đe dọa làm đứa trẻ bị cô lập",
-      ],
-      hiddenTruths: [
-        "hạt vòng bị đặt vào xe sau khi trẻ rời khỏi cổng trường",
-        "vòng tay bị tháo ra để che việc người khác đã tiếp xúc với đứa trẻ",
-        "người chứng kiến bị dọa im lặng vì sợ mất việc ở trường",
-      ],
-      villainAttacks: [
-        "phản diện đưa hạt vòng ra và ép nữ chính nhận lỗi trước phụ huynh",
-        "người dàn cảnh dùng ảnh mờ và lời nhân chứng yếu để bẻ nghĩa hạt vòng",
-        "phản diện dọa báo lên nhóm lớp nếu nữ chính không ký biên bản",
-      ],
-      heroineCounters: [
-        "giữ hạt vòng trong túi nhỏ, hỏi nguồn gốc và truy người đã đặt nó vào xe",
-        "đối chiếu màu dây, vết đứt và thời điểm trẻ rời cổng",
-        "bảo vệ đứa trẻ trước khi phản công bằng lời khai của bảo vệ",
-      ],
-      emotionalStakes: [
-        "nếu thua, nữ chính mất quyền đón con và đứa trẻ bị nhìn bằng ánh mắt nghi ngờ",
-        "nữ chính phải bảo vệ đứa trẻ khỏi lời đồn trong nhóm phụ huynh",
-        "cái giá là một buổi đón trẻ biến thành nơi kết tội công khai",
-      ],
-      dopamineHooks: [
-        "vết đứt trên dây vòng không khớp với lời nhân chứng",
-        "bảo vệ nhớ ai đã đứng cạnh xe trước giờ đón trẻ",
-        "hạt vòng còn dính mùi keo của món đồ chơi khác",
-      ],
-      alternateEvidences: [
-        "sợi dây vòng bị đứt còn dính keo",
-        "sổ trực của bảo vệ cổng trường",
-        "ảnh chụp bàn phát vòng tay",
-      ],
-    };
-  }
-
-  if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo") || normalized.includes("chi con mac")) {
-    return {
-      genreLabel: "đời sống xưởng may / phòng thử đồ / áo bị sửa",
-      settings: [
-        "phòng thử đồ của xưởng may, nơi một chiếc áo còn sợi chỉ lạ bị đem ra đối chất",
-        "khu tủ đồ của câu lạc bộ thể thao, nơi áo khoác bị treo nhầm trước giờ đón trẻ",
-        "tiệm sửa đồ nhỏ trong khu dân cư, nơi chiếc áo có sợi chỉ lạ được trả lại",
-      ],
-      conflicts: [
-        "sợi chỉ còn mắc ở khuy áo bị dùng để gán nữ chính với một việc cô không làm",
-        "một sợi chỉ khác màu trên khuy áo bị bẻ nghĩa thành bằng chứng chống nữ chính",
-        "chiếc áo có sợi chỉ lạ bị đem ra trước đám đông để ép nữ chính nhận lỗi",
-      ],
-      pressures: [
-        "thợ may, người giữ tủ đồ và vài phụ huynh cùng chờ nữ chính giải thích",
-        "người trong nhà dùng chiếc áo bị sửa để ép nữ chính nhận lỗi trước mặt mọi người",
-        "đám đông ở phòng thử đồ nhìn sợi chỉ như bằng chứng đã đủ kết luận",
-      ],
-      hiddenTruths: [
-        "sợi chỉ khác màu không thuộc cuộn chỉ của xưởng may mà đến từ người đã sửa áo sau cùng",
-        "mũi chỉ ở khuy áo cho thấy áo bị tháo ra và khâu lại sau khi nữ chính rời đi",
-        "người chạm vào áo cuối cùng cố tình để lại sợi chỉ để dựng chuyện",
-      ],
-      villainAttacks: [
-        "phản diện giơ chiếc áo còn sợi chỉ lạ và ép nữ chính giải thích trước mọi người",
-        "người dàn cảnh dùng lời của một nhân chứng yếu để gán chiếc áo cho nữ chính",
-        "phản diện đem chuyện chiếc áo ra nhóm phụ huynh để nữ chính phải cúi đầu",
-      ],
-      heroineCounters: [
-        "đối chiếu màu chỉ, kiểu khâu và cuộn chỉ trong xưởng để tìm người đã sửa áo",
-        "giữ lại sợi chỉ, hỏi người trông tủ đồ và kiểm tra ai đã chạm vào áo sau cùng",
-        "bảo vệ nhân chứng yếu rồi lần theo mũi khâu lệch ở khuy áo",
-      ],
-      emotionalStakes: [
-        "nếu thua, nữ chính mất uy tín trong công việc và một đứa trẻ bị kéo vào lời nói dối",
-        "nữ chính phải bảo vệ người yếu thế trước khi chứng minh chiếc áo đã bị đụng vào",
-        "cái giá là danh dự của nữ chính trong một chuyện đời thường bị đám đông làm lớn",
-      ],
-      dopamineHooks: [
-        "màu chỉ trên khuy áo không khớp với cuộn chỉ của xưởng",
-        "mũi khâu lệch cho thấy người sửa áo thuận tay trái",
-        "người trông tủ đồ nhớ ai đã lấy chiếc áo ra trước khi vụ việc nổ ra",
-      ],
-      alternateEvidences: [
-        "cuộn chỉ còn dính đoạn chỉ cùng màu",
-        "sổ nhận sửa áo ở tiệm",
-        "móc áo có số thứ tự bị đổi",
-      ],
-    };
-  }
-
-
-  return null;
-}
-
-function applyEvidenceWorldLock(params: {
-  candidate: {
-    relationshipConflict: string;
-    setting: string;
-    evidenceObject: string;
-    publicPressure: string;
-    hiddenTruth: string;
-    villainAttack: string;
-    heroineCounter: string;
-    emotionalStake: string;
-    dopamineHook: string;
-  };
-  seed: string;
-}) {
-  const profile = getEvidenceWorldProfile(params.candidate.evidenceObject);
-
-  if (!profile) return null;
-
-  params.candidate.setting = pickWorldItem(profile.settings, params.seed, "setting");
-  params.candidate.relationshipConflict = pickWorldItem(profile.conflicts, params.seed, "conflict");
-  params.candidate.publicPressure = pickWorldItem(profile.pressures, params.seed, "pressure");
-  params.candidate.hiddenTruth = pickWorldItem(profile.hiddenTruths, params.seed, "truth");
-  params.candidate.villainAttack = pickWorldItem(profile.villainAttacks, params.seed, "attack");
-  params.candidate.heroineCounter = pickWorldItem(profile.heroineCounters, params.seed, "counter");
-  params.candidate.emotionalStake = pickWorldItem(profile.emotionalStakes, params.seed, "stake");
-  params.candidate.dopamineHook = pickWorldItem(profile.dopamineHooks, params.seed, "hook");
-
-  return profile;
-}
-
-
 function buildSeedCandidate(params: {
   genreLabel: string;
   heroineLabel: string;
   seed: string;
   lane: StoryDramaLane;
 }) {
-  let relationshipConflict = pickSeedItem(
+  const relationshipConflict = pickSeedItem(
     params.lane.conflicts,
     params.seed,
     `relationship-${params.lane.key}`,
   );
-  let setting = pickSeedItem(
+  const setting = pickSeedItem(
     params.lane.settings,
     params.seed,
     `setting-${params.lane.key}`,
@@ -1901,62 +1540,36 @@ function buildSeedCandidate(params: {
     params.seed,
     `evidence-${params.lane.key}`,
   );
-  let publicPressure = pickSeedItem(
+  const publicPressure = pickSeedItem(
     params.lane.publicPressures,
     params.seed,
     `pressure-${params.lane.key}`,
   );
-  let hiddenTruth = pickSeedItem(
+  const hiddenTruth = pickSeedItem(
     params.lane.hiddenTruths,
     params.seed,
     `truth-${params.lane.key}`,
   );
-  let villainAttack = pickSeedItem(
+  const villainAttack = pickSeedItem(
     params.lane.villainAttacks,
     params.seed,
     `villain-attack-${params.lane.key}`,
   );
-  let heroineCounter = pickSeedItem(
+  const heroineCounter = pickSeedItem(
     params.lane.heroineCounters,
     params.seed,
     `heroine-counter-${params.lane.key}`,
   );
-  let emotionalStake = pickSeedItem(
+  const emotionalStake = pickSeedItem(
     params.lane.emotionalStakes,
     params.seed,
     `emotional-stake-${params.lane.key}`,
   );
-  let dopamineHook = pickSeedItem(
+  const dopamineHook = pickSeedItem(
     params.lane.dopamineHooks,
     params.seed,
     `dopamine-hook-${params.lane.key}`,
   );
-
-  const evidenceWorldProfile = applyEvidenceWorldLock({
-    candidate: {
-      relationshipConflict,
-      setting,
-      evidenceObject,
-      publicPressure,
-      hiddenTruth,
-      villainAttack,
-      heroineCounter,
-      emotionalStake,
-      dopamineHook,
-    },
-    seed: params.seed,
-  });
-
-  if (evidenceWorldProfile) {
-    relationshipConflict = pickWorldItem(evidenceWorldProfile.conflicts, params.seed, "conflict-final");
-    setting = pickWorldItem(evidenceWorldProfile.settings, params.seed, "setting-final");
-    publicPressure = pickWorldItem(evidenceWorldProfile.pressures, params.seed, "pressure-final");
-    hiddenTruth = pickWorldItem(evidenceWorldProfile.hiddenTruths, params.seed, "truth-final");
-    villainAttack = pickWorldItem(evidenceWorldProfile.villainAttacks, params.seed, "attack-final");
-    heroineCounter = pickWorldItem(evidenceWorldProfile.heroineCounters, params.seed, "counter-final");
-    emotionalStake = pickWorldItem(evidenceWorldProfile.emotionalStakes, params.seed, "stake-final");
-    dopamineHook = pickWorldItem(evidenceWorldProfile.dopamineHooks, params.seed, "hook-final");
-  }
 
   const genreBlend = [
     params.genreLabel,
@@ -1966,8 +1579,8 @@ function buildSeedCandidate(params: {
     publicPressure,
   ].filter(Boolean);
 
-  const exactGenre = evidenceWorldProfile?.genreLabel || params.genreLabel || params.lane.label;
-  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bước vào một nữ tần đô thị drama bám đúng thế giới "${exactGenre}". Xung đột mở tại ${setting}; trọng tâm không phải hồ sơ-camera-log chung mà là ${relationshipConflict}. ${evidenceObject} là vật chứng đời sống trung tâm, buộc cô nhìn thấy ai đang dùng ${publicPressure} để ép mình cúi đầu. Không trộn thêm bối cảnh cao cấp ngoài thế giới này ở chương 1.`;
+  const exactGenre = params.genreLabel || params.lane.label;
+  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bước vào một nữ tần đô thị drama bám chặt genre "${exactGenre}". Xung đột mở tại ${setting}; trọng tâm không phải hồ sơ-camera-log chung mà là ${relationshipConflict}. ${evidenceObject} chỉ là chìa khóa riêng của genre này, buộc cô nhìn thấy ai đang dùng ${publicPressure} để ép mình cúi đầu.`;
   const openingScene = setting;
   const incitingIncident = `Tại ${setting}, ${villainAttack}. ${evidenceObject} không phải vật chứng rơi vào scene theo công thức cũ; nó được đặt trong một tình huống cụ thể của "${exactGenre}" khiến nữ chính bị hiểu sai trước người liên quan.`;
   const mainConflict = `Nữ chính phải xử lý ${relationshipConflict} bằng logic riêng của genre "${exactGenre}": cảm xúc thật, áp lực đô thị, cú nhục rõ, phản công chủ động. Không được tự kéo về chuỗi camera/log/phong tỏa/pháp lý nếu genre không đòi hỏi.`;
@@ -1975,7 +1588,7 @@ function buildSeedCandidate(params: {
   const heroineArc = `${params.heroineLabel}: chịu đau có lý do → quan sát điểm lệch trong ${evidenceObject} → bảo vệ điều quan trọng (${emotionalStake}) → phản công bằng cách riêng (${heroineCounter}) → vả mặt có cảm xúc và payoff.`;
   const emotionalHook = `${emotionalStake}. Cảm xúc phải đến từ đúng kiểu nữ chính "${params.heroineLabel}", không biến cô thành một nữ tổng tài lạnh lùng giống mọi truyện.`;
   const powerStructure = `Quyền lực đối đầu đến từ ${publicPressure} và thế lực quanh ${relationshipConflict}; nữ chính có ${evidenceObject}, sự bình tĩnh, tổn thương thật, và cách phản công riêng: ${heroineCounter}.`;
-  const shortFingerprint = `${params.lane.key} + world:${evidenceWorldProfile?.genreLabel || 'free'} + genre:${exactGenre} + setting:${setting} + evidence:${evidenceObject} + conflict:${relationshipConflict} + heroine:${params.heroineLabel}`;
+  const shortFingerprint = `${params.lane.key} + genre:${exactGenre} + setting:${setting} + evidence:${evidenceObject} + conflict:${relationshipConflict} + heroine:${params.heroineLabel}`;
   const dramaBalance = `Drama balance theo genre: attack=${villainAttack} → hurt=${emotionalStake} → counter=${heroineCounter} → payoff=${dopamineHook}.`;
 
   return {
@@ -2008,14 +1621,9 @@ function buildFactoryStoryPlan(params: {
   candidate: ReturnType<typeof buildSeedCandidate>;
 }) {
   const { candidate } = params;
-  const evidenceWorldProfile = getEvidenceWorldProfile(candidate.evidenceObject);
-  const pressurePool = evidenceWorldProfile?.pressures || FACTORY_PUBLIC_PRESSURES;
-  const evidencePool = evidenceWorldProfile?.alternateEvidences || FACTORY_SEED_EVIDENCE_OBJECTS;
-  const settingPool = evidenceWorldProfile?.settings || FACTORY_SETTING_CLUSTERS;
-
   const alternatePressure =
     pickSeedItem(
-      pressurePool.filter(
+      FACTORY_PUBLIC_PRESSURES.filter(
         (item) => item !== candidate.publicPressure,
       ),
       params.seed,
@@ -2023,7 +1631,7 @@ function buildFactoryStoryPlan(params: {
     ) || candidate.publicPressure;
   const alternateEvidence =
     pickSeedItem(
-      evidencePool.filter(
+      FACTORY_SEED_EVIDENCE_OBJECTS.filter(
         (item) => item !== candidate.evidenceObject,
       ),
       params.seed,
@@ -2031,7 +1639,7 @@ function buildFactoryStoryPlan(params: {
     ) || candidate.evidenceObject;
   const alternateSetting =
     pickSeedItem(
-      settingPool.filter((item) => item !== candidate.setting),
+      FACTORY_SETTING_CLUSTERS.filter((item) => item !== candidate.setting),
       params.seed,
       "planner-alt-setting",
     ) || candidate.setting;

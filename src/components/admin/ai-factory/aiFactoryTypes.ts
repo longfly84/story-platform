@@ -8,6 +8,11 @@ export type CoverArtStyle =
   | 'cinematic_realistic'
   | 'popular_webnovel_collage'
 
+export type CoverCompositionPreset =
+  | 'auto'
+  | 'story_scene_offset'
+  | 'luxury_collage'
+
 export type FactoryStatus =
   | 'idle'
   | 'running'
@@ -45,6 +50,7 @@ export type AIFactoryConfig = {
   delayMs: number
   generateCover: boolean
   coverArtStyle: CoverArtStyle
+  coverCompositionPreset: CoverCompositionPreset
   storyStatus: 'draft'
   chapterStatus: 'draft'
   chapterLengthLabel: string
