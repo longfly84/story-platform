@@ -230,6 +230,11 @@ function isBadFactoryStoryTitle(title: string) {
     'tu duong mo lai ho so cu',
     'dau chi khac mau',
     'tam the phong bi bo quen',
+    'chi tiet bi dat sai',
+    'mon do bi dat sai',
+    'vat chung bi lo',
+    'su that bi che giau',
+    'manh moi dau tien',
     'the phong quet luc nua dem',
     'dau quet tren the phong',
   ].includes(normalized)
@@ -238,6 +243,14 @@ function isBadFactoryStoryTitle(title: string) {
 function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getFactorySeedEvidence(storySeed)
   const clean = cleanFactoryEvidenceForTitle(evidence)
+  const normalized = normalizeFactoryTitleText(clean)
+
+  if (normalized.includes('thong cao') && (normalized.includes('soan truoc') || normalized.includes('ban nhap') || normalized.includes('gui nham') || normalized.includes('truyen thong'))) {
+    return normalized.includes('xin loi') || normalized.includes('scandal')
+      ? 'Thông Cáo Xin Lỗi Được Soạn Trước'
+      : 'Bản Nháp Thông Cáo Bị Gửi Nhầm'
+  }
+
   const title = titleCaseFactoryEvidence(clean)
 
   if (title && title.length <= 48) {
@@ -275,6 +288,116 @@ function resolvePanelStoryTitle(params: {
     changed: normalizeFactoryTitleText(chosen) !== normalizeFactoryTitleText(seedTitle || parsedTitle),
     original: seedTitle || parsedTitle,
     evidenceTitle,
+  }
+}
+
+
+function makePanelChapterTitleFromEvidence(params: {
+  storySeed?: FactoryStorySeed | null
+  chapterNumber: number
+  parsedChapterTitle: string
+  storyTitle?: string
+}) {
+  const evidence = getFactorySeedEvidence(params.storySeed)
+  const cleanEvidence = cleanFactoryEvidenceForTitle(evidence)
+  const normalizedEvidence = normalizeFactoryTitleText(cleanEvidence)
+  const normalizedParsed = normalizeFactoryTitleText(params.parsedChapterTitle)
+  const normalizedStoryTitle = normalizeFactoryTitleText(params.storyTitle)
+
+  const genericChapterTitles = new Set([
+    'chi tiet bi dat sai',
+    'mon do bi dat sai',
+    'vat chung bi dat sai',
+    'vat chung bi lo',
+    'su that bi che giau',
+    'manh moi dau tien',
+    'dau vet dau tien',
+    'cu ep dau tien',
+    'van co moi bat dau',
+    'su that dan he lo',
+  ])
+
+  if (normalizedEvidence.includes('thong cao')) {
+    return 'Bản Nháp Được Soạn Trước'
+  }
+
+  if (normalizedEvidence.includes('ghi chu') || normalizedEvidence.includes('mau ghi chu')) {
+    return 'Mẩu Ghi Chú Bị Đổi Số'
+  }
+
+  if (normalizedEvidence.includes('the so ban')) {
+    return 'Thẻ Số Bàn Bị Tráo'
+  }
+
+  if (normalizedEvidence.includes('anh mo') && normalizedEvidence.includes('may anh')) {
+    return 'Ảnh Mờ Trong Máy Ảnh Đồ Chơi'
+  }
+
+  if (normalizedEvidence.includes('not nhac')) {
+    return 'Nốt Nhạc Bị Khoanh Đỏ'
+  }
+
+  const parsed = safeString(params.parsedChapterTitle)
+  if (
+    parsed &&
+    parsed.length <= 52 &&
+    !genericChapterTitles.has(normalizedParsed) &&
+    normalizedParsed !== normalizedStoryTitle &&
+    !isBadFactoryStoryTitle(parsed)
+  ) {
+    return parsed
+  }
+
+  const evidenceTitle = makePanelTitleFromEvidence(params.storySeed)
+  if (evidenceTitle && !isBadFactoryStoryTitle(evidenceTitle)) return evidenceTitle
+
+  return parsed || `Chương ${params.chapterNumber}`
+}
+
+function replaceReaderChapterHeading(params: {
+  readerOnly: string
+  chapterNumber: number
+  chapterTitle: string
+}) {
+  const readerOnly = safeString(params.readerOnly)
+  const chapterTitle = safeString(params.chapterTitle)
+  if (!readerOnly || !chapterTitle) return readerOnly
+
+  const expectedHeading = `# Chương ${params.chapterNumber} — ${chapterTitle}`
+  const headingPattern = new RegExp(`^#\\s*Chương\\s+${params.chapterNumber}\\s*[—-].*$`, 'im')
+
+  if (headingPattern.test(readerOnly)) {
+    return readerOnly.replace(headingPattern, expectedHeading)
+  }
+
+  return `${expectedHeading}\n\n${readerOnly.replace(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*/i, '').trim()}`.trim()
+}
+
+function applyPanelChapterTitleGate(params: {
+  parsed: ParsedChapterOutput
+  storySeed?: FactoryStorySeed | null
+  chapterNumber: number
+  storyTitle?: string
+}) {
+  const chapterTitle = makePanelChapterTitleFromEvidence({
+    storySeed: params.storySeed,
+    chapterNumber: params.chapterNumber,
+    parsedChapterTitle: params.parsed.chapterTitle,
+    storyTitle: params.storyTitle || params.parsed.storyTitle,
+  })
+
+  if (normalizeFactoryTitleText(chapterTitle) === normalizeFactoryTitleText(params.parsed.chapterTitle)) {
+    return params.parsed
+  }
+
+  return {
+    ...params.parsed,
+    chapterTitle,
+    readerOnly: replaceReaderChapterHeading({
+      readerOnly: params.parsed.readerOnly,
+      chapterNumber: params.chapterNumber,
+      chapterTitle,
+    }),
   }
 }
 
@@ -1723,6 +1846,13 @@ Yêu cầu:
                 runShortId: `${storyId}-${nextChapterNumber}`,
               })
 
+              parsed = applyPanelChapterTitleGate({
+                parsed,
+                storySeed: undefined,
+                chapterNumber: nextChapterNumber,
+                storyTitle,
+              })
+
               const validation = validateChapterOutput({
                 output,
                 readerOnly: parsed.readerOnly,
@@ -2050,6 +2180,13 @@ Yêu cầu:
                 genreLabel: genre.label,
                 chapterNumber,
                 runShortId,
+              })
+
+              parsed = applyPanelChapterTitleGate({
+                parsed,
+                storySeed,
+                chapterNumber,
+                storyTitle: createdStory?.title || storySeed.title,
               })
 
               const validation = validateChapterOutput({

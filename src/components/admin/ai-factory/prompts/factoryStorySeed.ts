@@ -1870,6 +1870,9 @@ const GENERIC_BAD_STORY_TITLES = [
   "Tin Nhắn Gửi Nhầm Vào Nhóm Gia Đình",
   "Vệt Bút Chì Sau Giờ Đón Trẻ",
   "Vật Chứng Bị Đặt Sai Chỗ",
+  "Chi Tiết Bị Đặt Sai",
+  "Món Đồ Bị Đặt Sai",
+  "Vật Chứng Bị Lộ",
 ];
 
 function isGenericBadStoryTitle(title: string) {
@@ -1957,6 +1960,12 @@ function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
 
   if (normalized.includes("mau ghi chu") || normalized.includes("mẩu ghi chú") || normalized.includes("ghi chu") || normalized.includes("ghi chú")) {
     return "Ghi Chú Lệch Ở Sảnh Chung Cư";
+  }
+
+  if (normalized.includes("thong cao") || normalized.includes("thông cáo") || normalized.includes("truyen thong") || normalized.includes("truyền thông")) {
+    return normalized.includes("xin loi") || normalized.includes("xin lỗi")
+      ? "Thông Cáo Xin Lỗi Được Soạn Trước"
+      : "Bản Nháp Thông Cáo Bị Gửi Nhầm";
   }
 
   if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo")) {

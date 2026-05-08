@@ -68,10 +68,12 @@ FACTORY EVIDENCE LOCK:
 
 Rules:
 1. Main evidence is the core object. Do not replace it with a side clue.
-2. Chapter ${chapterNumber} title must name the main evidence or its direct public reveal.
+2. Chapter ${chapterNumber} title must name the main evidence, the exact action around it, or its direct public reveal.
 3. Side clues may exist, but only to explain the main evidence. They must not become the chapter title or the main investigation object.
 4. In the reading text, show the main evidence at least three times: revealed, inspected, then used to push the conflict forward.
 5. In the technical report, story_title must match the story title lock. Do not invent a new title such as contract, USB, QR code, sealed file, room card, or CCTV unless it is in the seed.
+6. Forbidden chapter titles: “Chi Tiết Bị Đặt Sai”, “Món Đồ Bị Đặt Sai”, “Vật Chứng Bị Lộ”, “Sự Thật Bị Che Giấu”, “Manh Mối Đầu Tiên”. These are placeholders, not chapter titles.
+7. If the evidence is a PR statement / media draft / press release, prefer a concrete chapter title like “Bản Nháp Được Soạn Trước” or “Lời Xin Lỗi Có Trước Scandal”, not a generic placeholder.
 `.trim()
 }
 
@@ -536,6 +538,8 @@ CHAPTER CONTINUATION RULE:
 - Không tự tạo lại một vụ hot search mở đầu mới nếu chương trước đã có hook cụ thể, trừ khi đó là hệ quả trực tiếp của chương trước.
 - Tiêu đề chương bắt buộc dùng dạng: "# Chương ${nextChapterNumber} — [tên chương ngắn, cụ thể, có hook]".
 - Tên chương phải thể hiện biến cố/vật chứng/state change chính của chương này, không được là tiêu đề chung chung hoặc giống phân tích.
+- Cấm tuyệt đối các tên chương placeholder: "Chi Tiết Bị Đặt Sai", "Món Đồ Bị Đặt Sai", "Vật Chứng Bị Lộ", "Sự Thật Bị Che Giấu", "Manh Mối Đầu Tiên".
+- Nếu vật chứng là bản nháp thông cáo / thông cáo truyền thông, tiêu đề chương nên xoáy vào twist thời gian như: "Bản Nháp Được Soạn Trước" hoặc "Lời Xin Lỗi Có Trước Scandal".
 - Nếu là Chương 1, phần kỹ thuật bắt buộc có "Tên truyện đề xuất" khác với tiêu đề chương.
 
 CONTINUITY STATE CHANGE RULE:
@@ -704,7 +708,7 @@ OUTPUT BẮT BUỘC:
 FORMAT PHẦN ĐỌC:
 # BẢN ĐỌC CHO ĐỘC GIẢ
 
-# Chương ${nextChapterNumber} — [tên chương hấp dẫn, ngắn, có hook]
+# Chương ${nextChapterNumber} — [tên chương cụ thể, bám vật chứng/biến cố; không dùng placeholder]
 
 [Viết nội dung chương bằng văn xuôi liên tục.]
 
@@ -821,7 +825,8 @@ Nhiệm vụ đặt tên trong editor pass:
 1. Nếu tiêu đề chương trong draft chung chung/kiểu phân tích/lệch nội dung, phải đổi dòng tiêu đề chương thành tên mới cụ thể hơn.
 2. Tên chương final phải phản ánh vật chứng, biến cố, địa điểm, thời hạn, cú ép, nhân vật phản bội hoặc state change chính của chương.
 3. Cấm giữ các tiêu đề kiểu: “Cú ép đầu tiên và tổn thương thật”, “Đổi sân khấu, không đổi mục tiêu”, “Cú đáp trả bất ngờ”, “Ván cờ mới bắt đầu”, “Sự thật dần hé lộ”.
-4. Nếu phần kỹ thuật có “Tên truyện đề xuất”, tên đó phải khớp nội dung thật. Nếu tên hiện tại lệch, đề xuất tên mới dựa trên vật chứng/mâu thuẫn trung tâm.
+4. Cấm giữ các placeholder: “Chi Tiết Bị Đặt Sai”, “Món Đồ Bị Đặt Sai”, “Vật Chứng Bị Lộ”, “Sự Thật Bị Che Giấu”, “Manh Mối Đầu Tiên”. Nếu draft có các tên này, phải đổi ngay.
+5. Nếu phần kỹ thuật có “Tên truyện đề xuất”, tên đó phải khớp nội dung thật. Nếu tên hiện tại lệch, đề xuất tên mới dựa trên vật chứng/mâu thuẫn trung tâm.
 5. Không đổi tên truyện trong phần BẢN ĐỌC, nhưng phần kỹ thuật phải ghi rõ nếu tên hiện tại không khớp và đề xuất tên thay thế.
 
 CONTEXT GẦN NHẤT:
