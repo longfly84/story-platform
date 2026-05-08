@@ -963,7 +963,7 @@ export default function AIFactoryPanel() {
       )
     }
 
-    const fallbackBest = bestRejected?.rejectResult.best
+    const fallbackBest = bestRejected?.rejectResult.best ?? null
     const canUseFallback = Boolean(
       bestRejected &&
         fallbackBest &&

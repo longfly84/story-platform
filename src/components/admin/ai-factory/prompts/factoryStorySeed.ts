@@ -55,6 +55,29 @@ type FactoryCoverConcept = {
   negativePrompt: string[];
 };
 
+
+type UrbanStoryFormula = {
+  key: string;
+  label: string;
+  openingMode: string;
+  attackMode: string;
+  counterMode: string;
+  powerMode: string;
+  pressureMode: string;
+  truthMode: string;
+  deadlineMode: string;
+  evidenceRole: string;
+  conflicts: string[];
+  settings: string[];
+  evidenceObjects: string[];
+  publicPressures: string[];
+  hiddenTruths: string[];
+  villainAttacks: string[];
+  heroineCounters: string[];
+  emotionalStakes: string[];
+  dopamineHooks: string[];
+};
+
 export const FACTORY_RELATIONSHIP_CONFLICTS = [
   "vợ chồng rạn nứt vì một bí mật bị giấu trong hồ sơ gia đình",
   "bạn thân phản bội nhưng chỉ là quân cờ của người đứng sau",
@@ -638,6 +661,630 @@ export const FACTORY_DRAMA_LANES: StoryDramaLane[] = [
   },
 ];
 
+
+const URBAN_STORY_FORMULAS: UrbanStoryFormula[] = [
+  {
+    key: "silent-access-lock",
+    label: "nữ tần đô thị — bị khóa quyền trong im lặng",
+    openingMode: "private_access_denial",
+    attackMode: "access_removed_without_public_trial",
+    counterMode: "trace_permission_change_and_reverse_trap",
+    powerMode: "company_or_family_system_access",
+    pressureMode: "quiet_internal_pressure",
+    truthMode: "person_with_access_changed_the_record",
+    deadlineMode: "before_permission_log_is_overwritten",
+    evidenceRole: "permission_or_key_record",
+    conflicts: [
+      "nữ chính bị âm thầm khóa quyền truy cập trước khi bước vào cuộc họp quyết định",
+      "người thân dùng quyền hệ thống để biến nữ chính thành kẻ tự ý rời bỏ trách nhiệm",
+      "đối thủ nội bộ đổi quyền ký duyệt rồi đổ lỗi nữ chính làm thất lạc dữ liệu quan trọng",
+    ],
+    settings: [
+      "phòng máy chủ nhỏ phía sau văn phòng công ty gia đình",
+      "sảnh thang máy riêng của tập đoàn trước giờ họp kín",
+      "quầy lễ tân tầng điều hành nơi thẻ ra vào bất ngờ bị từ chối",
+    ],
+    evidenceObjects: [
+      "thẻ ra vào bị ghi nhận quẹt lúc nữ chính không có mặt",
+      "mã quyền duyệt bị đổi trong lịch sử hệ thống",
+      "phiếu lấy chìa khóa phụ có chữ ký lệch nét",
+    ],
+    publicPressures: [
+      "nhóm quản lý nội bộ yêu cầu nữ chính giải thích trước khi cuộc họp bắt đầu",
+      "bảo vệ và trợ lý tầng điều hành được lệnh không cho nữ chính vào phòng họp",
+      "tin nhắn nội bộ báo nữ chính tự rút khỏi dự án lan ra trước giờ ký",
+    ],
+    hiddenTruths: [
+      "người đổi quyền không muốn lấy dữ liệu mà muốn che thời điểm họ vào phòng trước đó",
+      "lệnh khóa quyền được đặt lịch từ máy của người luôn tỏ ra đứng về phía nữ chính",
+      "mã duyệt bị đổi để che một chữ ký giả trong bản chuyển nhượng",
+    ],
+    villainAttacks: [
+      "phản diện để nữ chính bị chặn ở cửa rồi công bố cô không còn quyền điều hành",
+      "phản diện yêu cầu bảo vệ lập biên bản nữ chính gây rối vì không mở được thẻ",
+      "phản diện gửi ảnh màn hình quyền truy cập bị hủy để ép nữ chính nhận đã bỏ cuộc",
+    ],
+    heroineCounters: [
+      "nữ chính không tranh cãi ở cửa mà yêu cầu đối chiếu giờ đổi quyền với lịch thang máy",
+      "nữ chính giữ lại biên nhận thẻ phụ và hỏi ai đã dùng mã dự phòng trước cô mười phút",
+      "nữ chính giả vờ rời đi để người đổi quyền phải vào hệ thống sửa lần thứ hai",
+    ],
+    emotionalStakes: [
+      "một nhân viên cũ sẽ bị đổ lỗi nếu nữ chính không tìm ra người đã dùng quyền dự phòng",
+      "người mẹ yếu thế của nữ chính bị dọa cắt chi phí điều trị nếu cô mất quyền ký",
+      "đứa trẻ trong nhà nghe người lớn nói mẹ bị công ty đuổi và im lặng cả buổi",
+    ],
+    dopamineHooks: [
+      "log thang máy ghi một lần dừng ở tầng cấm ngay trước khi quyền của nữ chính bị xóa",
+      "mã dự phòng chỉ có ba người biết, và một người trong số đó vừa nói dối về vị trí của mình",
+      "chiếc thẻ tưởng vô dụng còn lưu vết quẹt cuối cùng ở cửa phụ",
+    ],
+  },
+  {
+    key: "contract-signing-trap",
+    label: "nữ tần đô thị — ép ký giấy trong một hạn chót",
+    openingMode: "deadline_signing_room",
+    attackMode: "forced_signature_or_admission",
+    counterMode: "read_clause_backwards_and_delay_signature",
+    powerMode: "legal_family_or_share_transfer",
+    pressureMode: "formal_witness_pressure",
+    truthMode: "clause_hides_real_transfer_target",
+    deadlineMode: "before_contract_is_signed",
+    evidenceRole: "contract_clause_or_stamp_detail",
+    conflicts: [
+      "nữ chính bị ép ký giấy nhận lỗi để cứu một người thân trước hạn chót",
+      "gia đình chồng dùng hợp đồng bồi thường để buộc nữ chính tự từ bỏ quyền lợi",
+      "đối tác đặt bẫy trong điều khoản phụ rồi biến nữ chính thành người phá hợp đồng",
+    ],
+    settings: [
+      "phòng công chứng riêng trước giờ đóng dấu cuối ngày",
+      "nhà hàng riêng nơi gia tộc gọi người ngoài đến làm chứng",
+      "phòng họp nhỏ có luật sư và hai bản hợp đồng đặt lệch trên bàn",
+    ],
+    evidenceObjects: [
+      "con dấu đỏ lệch nửa vòng trên phụ lục hợp đồng",
+      "bản hợp đồng có số trang phụ bị đánh lại bằng bút khác màu",
+      "phiếu hẹn công chứng bị đổi khung giờ",
+    ],
+    publicPressures: [
+      "luật sư gia đình và trưởng bối thúc nữ chính ký ngay trước mặt người ngoài",
+      "hai bên đối tác chờ chữ ký để kết luận nữ chính là người làm hỏng thương vụ",
+      "người thân yếu thế bị gọi tới ngồi cạnh bàn ký như một cách gây sức ép",
+    ],
+    hiddenTruths: [
+      "điều khoản phụ không nhằm bồi thường mà nhằm chuyển quyền kiểm soát sang tên khác",
+      "bản hợp đồng nữ chính được đọc không phải bản sẽ đem đi đóng dấu",
+      "người thúc ký sợ nữ chính phát hiện phụ lục đã bị thay sau khi in",
+    ],
+    villainAttacks: [
+      "phản diện đẩy bút tới trước mặt nữ chính và nói chỉ cần cô ký là mọi chuyện kết thúc",
+      "phản diện đọc lớn một điều khoản cắt nghĩa sai để biến nữ chính thành kẻ vô trách nhiệm",
+      "phản diện gọi luật sư đứng dậy làm chứng rằng nữ chính đã đồng ý từ trước",
+    ],
+    heroineCounters: [
+      "nữ chính không cầm bút mà yêu cầu đọc số hiệu phụ lục từ bản lưu của công chứng",
+      "nữ chính hỏi ngược vì sao dấu đỏ trên hai bản hợp đồng lệch đúng cùng một vị trí",
+      "nữ chính kéo dài ba phút để trợ lý lấy bản scan trước khi phản diện đổi giấy",
+    ],
+    emotionalStakes: [
+      "người thân tưởng nữ chính ích kỷ vì không chịu ký cứu họ ngay lập tức",
+      "một người già trong nhà run tay vì biết chữ ký này sẽ cắt đứt đường lui của nữ chính",
+      "nữ chính phải chịu tiếng vô tình để giữ lại cơ hội lật điều khoản bẫy",
+    ],
+    dopamineHooks: [
+      "số hiệu phụ lục trên bản công chứng không khớp với bản đang đặt trước mặt nữ chính",
+      "dấu đỏ lệch chứng minh có người đóng dấu trước khi nữ chính bước vào phòng",
+      "bản scan cũ hiện lên đúng lúc phản diện giục cô ký trang cuối",
+    ],
+  },
+  {
+    key: "media-cut-clip",
+    label: "nữ tần đô thị — video bị cắt và truyền thông bẩn",
+    openingMode: "camera_flash_or_livestream",
+    attackMode: "edited_video_or_quote_fragment",
+    counterMode: "recover_missing_seconds_or_reflection",
+    powerMode: "studio_media_or_public_relations",
+    pressureMode: "viral_public_opinion",
+    truthMode: "missing_seconds_show_the_instigator",
+    deadlineMode: "before_clip_hits_hot_search",
+    evidenceRole: "video_audio_or_reflection_detail",
+    conflicts: [
+      "nữ chính bị một đoạn clip cắt ghép biến thành kẻ bắt nạt người yếu thế",
+      "đối thủ truyền thông dùng một câu nói bị cắt để cướp dự án của nữ chính",
+      "quản lý studio dựng cảnh để ép nữ chính cúi đầu trong buổi phát sóng",
+    ],
+    settings: [
+      "phòng make-up trước buổi phát sóng trực tiếp",
+      "hậu trường studio quảng cáo với màn hình đang chạy clip nháp",
+      "sảnh sự kiện nơi phóng viên đã đứng chờ sẵn",
+    ],
+    evidenceObjects: [
+      "đoạn video 7 giây còn bóng người phản chiếu trên gương",
+      "file âm thanh bị cắt nhưng còn tiếng chuông đặc trưng",
+      "bản nháp thông cáo truyền thông gửi nhầm vào nhóm",
+    ],
+    publicPressures: [
+      "livestream bị hàng nghìn người xem",
+      "một topic ẩn danh trong diễn đàn nghề nghiệp",
+      "phóng viên và nhân viên PR chặn nữ chính ngay sau sân khấu",
+    ],
+    hiddenTruths: [
+      "người tung clip cố tình cắt mất khoảnh khắc phản diện ra hiệu trước gương",
+      "tiếng chuông trong file âm thanh chỉ xuất hiện ở phòng của người quản lý truyền thông",
+      "bản nháp thông cáo đã được chuẩn bị trước khi sự cố xảy ra",
+    ],
+    villainAttacks: [
+      "phản diện phát clip ngắn đúng lúc nữ chính vừa bước ra dưới ánh đèn flash",
+      "phản diện yêu cầu nữ chính xin lỗi công khai trước khi clip lan rộng hơn",
+      "phản diện để tài khoản ẩn đồng loạt bình luận rằng nữ chính đã lộ bản chất",
+    ],
+    heroineCounters: [
+      "nữ chính không phủ nhận clip mà yêu cầu tua lại phần bóng phản chiếu ở gương",
+      "nữ chính hỏi vì sao thông cáo xin lỗi đã có thời gian tạo trước cả sự cố",
+      "nữ chính dùng tiếng chuông trong file để xác định phòng dựng clip",
+    ],
+    emotionalStakes: [
+      "một người mẫu trẻ bị dùng làm nạn nhân giả và sợ mất hợp đồng nếu nói thật",
+      "đứa trẻ/người thân của nữ chính nhìn thấy clip bôi nhọ trước khi cô kịp giải thích",
+      "nữ chính phải chọn giữa cứu danh tiếng ngay và bảo vệ người yếu thế khỏi bị lộ mặt",
+    ],
+    dopamineHooks: [
+      "bóng phản chiếu trên gương cho thấy tay phản diện đang ra hiệu cho camera",
+      "metadata của file thông cáo cũ hơn thời điểm sự cố mười bảy phút",
+      "tiếng chuông đặc trưng vang lên trong đoạn âm thanh tưởng đã bị cắt sạch",
+    ],
+  },
+  {
+    key: "custody-child-safety",
+    label: "nữ tần đô thị — con nhỏ/người yếu thế bị kéo vào bẫy",
+    openingMode: "child_pickup_or_guardianship_pressure",
+    attackMode: "child_safety_accusation",
+    counterMode: "protect_child_first_then_trace_route",
+    powerMode: "school_guardian_or_family_authority",
+    pressureMode: "parent_circle_or_guardianship_review",
+    truthMode: "route_or_caretaker_was_changed",
+    deadlineMode: "before_child_is_moved_or_signed_over",
+    evidenceRole: "child_route_note_or_belonging",
+    conflicts: [
+      "nữ chính bị cáo buộc làm mất an toàn của đứa trẻ đúng giờ đón con",
+      "người giám hộ giả xuất hiện để tranh quyền chăm sóc người yếu thế",
+      "phản diện dùng lời của trẻ nhỏ để ép nữ chính nhận lỗi trước phụ huynh",
+    ],
+    settings: [
+      "cổng trường quốc tế lúc phụ huynh chen nhau đón con",
+      "phòng y tế nhỏ của trường nơi một đứa trẻ đang khóc",
+      "sảnh chung cư nối thẳng sang cổng trường trong giờ cao điểm",
+    ],
+    evidenceObjects: [
+      "mẩu ghi chú tuyến xe đưa đón bị đổi một chữ số",
+      "thẻ tên trên balo của đứa trẻ bị dán chồng lớp mới",
+      "ảnh mờ trong máy ảnh đồ chơi của trẻ có góc hành lang lạ",
+    ],
+    publicPressures: [
+      "nhóm chat phụ huynh lan tin trước khi nhà trường xác minh",
+      "giáo viên và phụ huynh yêu cầu nữ chính giải thích ngay tại cổng",
+      "một buổi xét duyệt quyền chăm sóc bị đẩy sớm hơn dự kiến",
+    ],
+    hiddenTruths: [
+      "tuyến đón trẻ bị đổi để che người thật sự đưa đứa trẻ rời khỏi lớp",
+      "lời trẻ nhỏ bị người lớn dạy trước bằng một câu thoại sai ngữ cảnh",
+      "người đứng ra tố cáo đang che cho con mình vì bị phản diện uy hiếp",
+    ],
+    villainAttacks: [
+      "phản diện dùng giấy đón trẻ bị sửa để nói nữ chính cố tình đưa con đi sai nơi",
+      "phản diện để phụ huynh thấy thẻ tên bị dán chồng rồi kết luận nữ chính lừa nhà trường",
+      "phản diện xúi một đứa trẻ lặp lại câu buộc tội giữa đám đông phụ huynh",
+    ],
+    heroineCounters: [
+      "nữ chính đưa con ra khỏi tâm điểm trước rồi mới đối chiếu tuyến xe và camera cổng",
+      "nữ chính hỏi đứa trẻ một chi tiết đời thường mà người dạy lời không thể biết",
+      "nữ chính giữ lại lớp nhãn bị dán chồng để lần ra người đổi thẻ tên",
+    ],
+    emotionalStakes: [
+      "đứa trẻ tin rằng mẹ sắp bị mọi người ghét và không dám khóc thành tiếng",
+      "một giáo viên trẻ có thể mất việc nếu nữ chính chỉ lo thanh minh cho mình",
+      "nữ chính phải chịu ánh mắt phụ huynh để bảo vệ trẻ khỏi bị hỏi ép trước đám đông",
+    ],
+    dopamineHooks: [
+      "lớp nhãn cũ dưới thẻ tên vẫn còn một nét chữ mà chỉ người trong lớp biết",
+      "camera cổng không thấy nữ chính đưa trẻ ra nhưng lại thấy người tố cáo cầm balo",
+      "đứa trẻ nhớ sai câu thoại vì bị dạy quá vội, để lộ tên người đứng sau",
+    ],
+  },
+  {
+    key: "inheritance-object-code",
+    label: "nữ tần đô thị — tín vật thừa kế bị đổi nghĩa",
+    openingMode: "family_will_or_memorial_room",
+    attackMode: "heirloom_reframed_as_guilt",
+    counterMode: "decode_private_mark_and_call_witness",
+    powerMode: "wealthy_family_inheritance",
+    pressureMode: "family_elder_pressure",
+    truthMode: "object_contains_old_private_mark",
+    deadlineMode: "before_will_or_assets_are_announced",
+    evidenceRole: "heirloom_mark_or_old_photo",
+    conflicts: [
+      "gia tộc dùng tín vật của người đã mất để buộc nữ chính rời khỏi quyền thừa kế",
+      "chị em bị tráo thân phận trong một gia tộc hào môn bằng món đồ cũ",
+      "một người giúp việc lâu năm bị ép nói dối về kỷ vật của nữ chính",
+    ],
+    settings: [
+      "phòng khách hào môn trong buổi đọc di chúc",
+      "phòng thờ nhỏ nơi kỷ vật của người đã mất được đặt trên bàn",
+      "buổi tiệc gia tộc có người ngoài chứng kiến",
+    ],
+    evidenceObjects: [
+      "chiếc nhẫn có mã khắc bị xoay ngược mặt trong",
+      "góc ảnh cũ được ghim sau dải ruy-băng tang lễ",
+      "hộp kỷ vật có lớp lót bị rạch một đường mảnh",
+    ],
+    publicPressures: [
+      "trưởng bối và khách mời gia tộc ép nữ chính giải thích tại chỗ",
+      "luật sư đọc di chúc bị cắt ngang bằng lời buộc tội",
+      "người thân dùng danh dự người đã mất để bắt nữ chính cúi đầu",
+    ],
+    hiddenTruths: [
+      "mã khắc trên tín vật chứng minh người được nhận thừa kế không phải người họ công bố",
+      "ảnh cũ bị giấu để che một lần tráo thân phận nhiều năm trước",
+      "người giúp việc giữ im lặng vì con của họ bị gia tộc khống chế",
+    ],
+    villainAttacks: [
+      "phản diện đặt tín vật trước mặt mọi người rồi nói nữ chính đã đánh cắp đồ của người chết",
+      "phản diện ép người giúp việc già xác nhận kỷ vật không thuộc về nữ chính",
+      "phản diện cắt ngang buổi đọc di chúc bằng một bức ảnh bị ghim sai vị trí",
+    ],
+    heroineCounters: [
+      "nữ chính không giành tín vật mà đọc đúng mã khắc chỉ người trong nhà cũ biết",
+      "nữ chính hỏi người giúp việc một thói quen của người đã mất để họ dám đổi lời",
+      "nữ chính mở lớp lót hộp kỷ vật trước mặt luật sư để lộ dấu cũ",
+    ],
+    emotionalStakes: [
+      "người đã mất là người duy nhất từng bảo vệ nữ chính khỏi bị gọi là kẻ ngoài cuộc",
+      "một người giúp việc già run tay vì sợ con mình mất việc nếu nói thật",
+      "nữ chính phải chịu tiếng bất hiếu để giữ lại sự thật về thân phận",
+    ],
+    dopamineHooks: [
+      "mã khắc bị xoay ngược đọc thành ngày sinh thật của nữ chính",
+      "góc ảnh sau ruy-băng lộ ra người đứng cạnh mẹ cô năm xưa",
+      "lớp lót hộp có vết dao giống hệt vết trong nhật ký cũ",
+    ],
+  },
+  {
+    key: "logistics-route-swap",
+    label: "nữ tần đô thị — đổi tuyến giao nhận để gài lỗi",
+    openingMode: "delivery_route_or_service_counter",
+    attackMode: "route_or_item_swap_frameup",
+    counterMode: "rebuild_timeline_from_small_receipts",
+    powerMode: "service_supply_chain_or_vendor_power",
+    pressureMode: "client_vendor_pressure",
+    truthMode: "route_change_hides_meeting_or_transfer",
+    deadlineMode: "before_package_or_record_leaves_site",
+    evidenceRole: "receipt_tag_route_or_package_mark",
+    conflicts: [
+      "đối tác dùng tuyến giao nhận bị đổi để biến nữ chính thành người làm mất hàng quan trọng",
+      "một món đồ đặt sai quầy dịch vụ làm lộ cuộc gặp mà phản diện phủ nhận",
+      "trợ lý thân tín đổi lộ trình rồi khiến nữ chính bị khách VIP đòi bồi thường",
+    ],
+    settings: [
+      "quầy dịch vụ tầng trệt của trung tâm thương mại",
+      "kho hàng nhỏ phía sau nhà hàng cao cấp",
+      "bãi xe giao nhận nơi tài xế bị giữ lại trước giờ rời cổng",
+    ],
+    evidenceObjects: [
+      "phiếu gửi đồ có số quầy bị sửa bằng bút xanh",
+      "tem kiện hàng bị dán chồng lên mã tuyến cũ",
+      "biên nhận tài xế có giờ in lệch với camera cổng",
+    ],
+    publicPressures: [
+      "khách VIP và quản lý quầy dịch vụ yêu cầu nữ chính chịu trách nhiệm ngay",
+      "nhà cung cấp dọa hủy hợp đồng nếu nữ chính không ký biên bản mất hàng",
+      "nhân viên giao nhận bị ép nhận lỗi trước mặt đại diện khách hàng",
+    ],
+    hiddenTruths: [
+      "tuyến hàng bị đổi để che cuộc gặp riêng của phản diện với người nhận thật",
+      "mã tuyến cũ chứng minh kiện hàng chưa từng đi qua tay nữ chính",
+      "người bị ép nhận lỗi chỉ là tài xế thay ca và không biết gói hàng đã bị tráo",
+    ],
+    villainAttacks: [
+      "phản diện đặt biên nhận trước mặt nữ chính rồi nói cô đã ký nhầm tuyến",
+      "phản diện ép tài xế đọc lời nhận lỗi được chuẩn bị sẵn",
+      "phản diện gọi khách VIP tới ngay quầy để nữ chính không kịp kiểm tra kho",
+    ],
+    heroineCounters: [
+      "nữ chính không ký biên bản mà yêu cầu đối chiếu giờ in biên nhận với camera cổng",
+      "nữ chính bóc lớp tem dán chồng để lộ mã tuyến cũ trước mặt khách hàng",
+      "nữ chính hỏi tài xế về một chi tiết trên đường mà người đọc lời soạn sẵn không biết",
+    ],
+    emotionalStakes: [
+      "một tài xế nghèo có thể mất việc nếu nữ chính chỉ lo cứu hợp đồng của mình",
+      "khách VIP từng tin nữ chính nay nhìn cô như người tráo hàng để trục lợi",
+      "người thân trong nhà dùng sự cố giao nhận để nói nữ chính không đủ năng lực điều hành",
+    ],
+    dopamineHooks: [
+      "lớp tem cũ bên dưới còn nguyên mã tuyến chứng minh kiện hàng bị đổi sau khi rời kho",
+      "giờ in trên biên nhận muộn hơn thời điểm phản diện tuyên bố nữ chính đã ký",
+      "camera cổng ghi tài xế bị giữ lại trong lúc kiện hàng thật đã rời bằng cửa phụ",
+    ],
+  },
+  {
+    key: "medical-identity-switch",
+    label: "nữ tần đô thị — hồ sơ thân phận/y tế bị tráo",
+    openingMode: "hospital_or_identity_counter",
+    attackMode: "identity_record_swap",
+    counterMode: "compare_sample_code_or_nurse_shift",
+    powerMode: "hospital_family_or_guardianship_power",
+    pressureMode: "quiet_medical_or_family_review",
+    truthMode: "sample_or_record_belongs_to_another_person",
+    deadlineMode: "before_record_is_archived_or_child_moved",
+    evidenceRole: "sample_code_medical_note_or_old_record",
+    conflicts: [
+      "hồ sơ thân phận bị tráo khiến nữ chính bị xem là người chen vào gia đình người khác",
+      "bản xét nghiệm bị đổi tên để cướp quyền giám hộ của một đứa trẻ",
+      "người cha ruột che giấu thân phận thật bằng một mã mẫu xét nghiệm lệch",
+    ],
+    settings: [
+      "hành lang bệnh viện tư trước phòng lưu mẫu",
+      "phòng khám xét nghiệm ADN lúc gần hết giờ làm việc",
+      "khu điều dưỡng cao cấp nơi hồ sơ cũ được chuyển đi trong đêm",
+    ],
+    evidenceObjects: [
+      "mã mẫu xét nghiệm bị in lệch một ký tự",
+      "lịch hẹn khám bị đổi tên người nhận ở dòng cuối",
+      "hồ sơ nhận con nuôi có dấu ghim mới trên trang cũ",
+    ],
+    publicPressures: [
+      "người nhà và nhân viên bệnh viện yêu cầu nữ chính rời khỏi khu lưu mẫu",
+      "phiên trao đổi quyền giám hộ bị đẩy lên trước khi hồ sơ được đối chiếu",
+      "bác sĩ trực bị ép xác nhận kết quả ngay trước mặt gia đình",
+    ],
+    hiddenTruths: [
+      "mã mẫu bị đổi vì kết quả thật trỏ tới người có quyền thừa kế khác",
+      "lịch hẹn bị sửa để che việc phản diện đã vào phòng lưu mẫu trước đó",
+      "hồ sơ cũ có dấu ghim mới vì từng bị rút ra rồi đặt lại sai thứ tự",
+    ],
+    villainAttacks: [
+      "phản diện cầm bản xét nghiệm và yêu cầu nữ chính thừa nhận mình không có tư cách ở lại",
+      "phản diện ép bác sĩ trực nói rằng tên trên hồ sơ là căn cứ duy nhất",
+      "phản diện cho người nhà yếu thế chứng kiến để nữ chính không dám tranh cãi mạnh",
+    ],
+    heroineCounters: [
+      "nữ chính không giành hồ sơ mà yêu cầu đọc mã mẫu trên ống lưu và bản in cùng lúc",
+      "nữ chính hỏi y tá đổi ca vì sao trang cũ lại có dấu ghim mới",
+      "nữ chính giữ lịch hẹn gốc và đối chiếu tên người nhận ở dòng cuối",
+    ],
+    emotionalStakes: [
+      "đứa trẻ/người yếu thế tưởng giấy tờ quyết định họ có bị bỏ rơi hay không",
+      "một y tá trẻ sợ mất việc vì đã nhìn thấy người vào phòng lưu mẫu",
+      "nữ chính phải giữ bình tĩnh khi người thân dùng thân phận của cô để đâm ngược lại cô",
+    ],
+    dopamineHooks: [
+      "mã mẫu trên ống lưu không trùng với mã trên bản xét nghiệm phản diện đưa ra",
+      "dấu ghim mới trên trang cũ lộ ra hồ sơ đã bị rút sau giờ trực",
+      "lịch hẹn gốc còn tên người nhận thật ở dòng cuối mà phản diện quên xóa",
+    ],
+  },
+  {
+    key: "creative-credit-theft",
+    label: "nữ tần đô thị — cướp công trong ngành sáng tạo",
+    openingMode: "studio_or_exhibition_before_launch",
+    attackMode: "credit_theft_or_design_swap",
+    counterMode: "prove_creation_process_with_private_mark",
+    powerMode: "studio_brand_or_sponsor_power",
+    pressureMode: "industry_audience_pressure",
+    truthMode: "draft_contains_private_creation_mark",
+    deadlineMode: "before_launch_or_award_announcement",
+    evidenceRole: "draft_photo_pattern_or_material_mark",
+    conflicts: [
+      "đối thủ trong studio cướp bản thiết kế rồi biến nữ chính thành kẻ đạo nhái",
+      "một buổi triển lãm bị dùng để công khai xóa tên nữ chính khỏi tác phẩm",
+      "chủ studio dùng hợp đồng mập mờ để cướp concept mà nữ chính tự làm",
+    ],
+    settings: [
+      "hậu trường studio chụp ảnh trước giờ khách VIP tới xem concept",
+      "phòng triển lãm nhỏ trong đêm khai mạc",
+      "xưởng may thiết kế nơi mẫu vải được treo sai hàng",
+    ],
+    evidenceObjects: [
+      "mảnh vải mẫu có đường ghim vai mang ký hiệu xưởng may",
+      "bản phác thảo bị xé góc nhưng còn dấu bút riêng",
+      "ảnh hậu trường có bóng bảng moodboard phản chiếu trong gương",
+    ],
+    publicPressures: [
+      "khách VIP và nhà tài trợ chờ nữ chính giải thích trước giờ mở màn",
+      "đồng nghiệp trong studio thì thầm rằng nữ chính ăn cắp ý tưởng",
+      "ban tổ chức triển lãm yêu cầu gỡ tên nữ chính khỏi bảng giới thiệu",
+    ],
+    hiddenTruths: [
+      "bản bị gọi là đạo nhái thật ra được tạo trước và có dấu bút riêng của nữ chính",
+      "chủ studio đã gửi concept của nữ chính cho đối thủ trước ngày ký hợp đồng",
+      "mẫu vải bị treo sai để che đường ghim chứng minh nguồn gốc thiết kế",
+    ],
+    villainAttacks: [
+      "phản diện đặt bản thiết kế giống hệt lên bàn và nói nữ chính đã sao chép",
+      "phản diện yêu cầu gỡ tên nữ chính khỏi concept ngay trước mặt khách VIP",
+      "phản diện kéo một trợ lý trẻ ra làm chứng rằng nữ chính lấy mẫu vải sau cùng",
+    ],
+    heroineCounters: [
+      "nữ chính không tranh quyền tác giả bằng miệng mà mở từng lớp bản nháp theo thứ tự thời gian",
+      "nữ chính chỉ ra ký hiệu ghim vai mà người sao chép không biết vì sao tồn tại",
+      "nữ chính dùng ảnh phản chiếu trong gương để chứng minh moodboard đã có trước",
+    ],
+    emotionalStakes: [
+      "trợ lý trẻ sẽ bị đuổi khỏi ngành nếu bị ép nhận tội thay người đứng sau",
+      "nữ chính nhìn công sức nhiều tháng bị gọi là ăn cắp ngay trước người từng tin cô",
+      "một khách hàng cũ im lặng vì sợ mất hợp đồng tài trợ",
+    ],
+    dopamineHooks: [
+      "dấu ghim vai trên mẫu vải trùng với ký hiệu chỉ xưởng cũ của nữ chính dùng",
+      "bản nháp bị xé góc còn lại đúng nét bút mà nữ chính từng ký trong video hậu trường",
+      "ảnh gương phản chiếu lộ moodboard thật treo sau lưng phản diện",
+    ],
+  },
+  {
+    key: "meal-family-interrogation",
+    label: "nữ tần đô thị — bàn ăn gia đình thành phòng thẩm vấn",
+    openingMode: "family_meal_private_interrogation",
+    attackMode: "relative_uses_half_truth_at_table",
+    counterMode: "ask_one_private_question_to_break_script",
+    powerMode: "marriage_family_elder_power",
+    pressureMode: "private_family_pressure",
+    truthMode: "witness_script_contains_private_error",
+    deadlineMode: "before_elder_makes_family_decision",
+    evidenceRole: "small_table_object_or_private_note",
+    conflicts: [
+      "bữa cơm gia đình bị biến thành buổi ép nữ chính nhận lỗi trước trưởng bối",
+      "mẹ chồng dùng nửa sự thật để buộc nữ chính rời khỏi nhà trong im lặng",
+      "người thân của chồng mượn lời một nhân chứng để gài nữ chính ngay trên bàn ăn",
+    ],
+    settings: [
+      "phòng ăn nhà chồng với một bàn đầy người nhưng không ai đứng về phía nữ chính",
+      "nhà hàng riêng của gia tộc trong một bữa cơm tưởng bình thường",
+      "phòng khách hào môn sau bữa tối khi trưởng bối chuẩn bị ra quyết định",
+    ],
+    evidenceObjects: [
+      "khăn ăn có ký hiệu bàn bị đặt lệch trước chỗ nữ chính",
+      "mảnh giấy ghi món dị ứng bị đổi tên người nhận",
+      "chiếc cốc có vết son không thuộc về người bị buộc tội",
+    ],
+    publicPressures: [
+      "trưởng bối yêu cầu nữ chính xin lỗi trước mặt cả nhà",
+      "người thân bên chồng im lặng tạo thành áp lực lạnh hơn cả đám đông",
+      "một người ngoài được mời đến làm chứng ngay trong bữa cơm",
+    ],
+    hiddenTruths: [
+      "lời nhân chứng có một chi tiết riêng tư sai vì được học thuộc quá vội",
+      "món dị ứng bị đổi để che người thật sự biết thói quen của đứa trẻ/người thân",
+      "vết son trên cốc chứng minh người bị gọi là nhân chứng đã ngồi sai vị trí",
+    ],
+    villainAttacks: [
+      "phản diện đặt vật nhỏ trước chỗ nữ chính và nói cả nhà đều thấy cô có lỗi",
+      "phản diện để nhân chứng nói nửa câu rồi ép trưởng bối đưa quyết định",
+      "phản diện dùng sự im lặng của chồng/người thân để khiến nữ chính không còn đường lui",
+    ],
+    heroineCounters: [
+      "nữ chính không cãi cả bàn mà hỏi nhân chứng một câu riêng tư họ không thể biết",
+      "nữ chính đổi vị trí hai vật trên bàn để lộ ai mới là người ngồi ở đó trước",
+      "nữ chính yêu cầu người phục vụ đọc lại ghi chú dị ứng gốc trước khi món được đổi",
+    ],
+    emotionalStakes: [
+      "nữ chính nhận ra người từng hứa bảo vệ cô đang chọn im lặng vì lợi ích gia đình",
+      "một đứa trẻ/người yếu thế trên bàn ăn cố giấu nước mắt vì sợ mình là nguyên nhân",
+      "người giúp việc già nhìn nữ chính nhưng không dám nói vì sợ bị đuổi khỏi nhà",
+    ],
+    dopamineHooks: [
+      "câu trả lời sai của nhân chứng làm cả bàn nhận ra họ được dạy lời từ trước",
+      "vết son trên chiếc cốc chứng minh người dựng chuyện đã ngồi ở vị trí khác",
+      "ghi chú dị ứng gốc còn trong tay người phục vụ mới vào làm",
+    ],
+  },
+  {
+    key: "auction-charity-betrayal",
+    label: "nữ tần đô thị — tiệc từ thiện/đấu giá bị biến thành bẫy",
+    openingMode: "elite_event_public_but_not_family",
+    attackMode: "donation_or_lot_number_frameup",
+    counterMode: "trace_bid_number_and_private_receipt",
+    powerMode: "elite_sponsor_and_charity_board",
+    pressureMode: "elite_guest_pressure",
+    truthMode: "donation_path_or_lot_number_was_swapped",
+    deadlineMode: "before_auction_lot_is_hammered",
+    evidenceRole: "bid_card_receipt_or_charity_token",
+    conflicts: [
+      "một vụ từ thiện bị dựng thành bê bối để hủy hoại nữ chính trước giới thượng lưu",
+      "thẻ đấu giá bị tráo khiến nữ chính bị nghi dùng tiền quyên góp sai mục đích",
+      "nhà tài trợ dùng số lô đấu giá để cướp dự án thiện nguyện của nữ chính",
+    ],
+    settings: [
+      "sảnh tiệc từ thiện với bàn đấu giá và khách mời thượng lưu",
+      "hậu trường nhà đấu giá nơi thẻ lô được xếp lại trước giờ lên sân khấu",
+      "phòng tiếp khách VIP của quỹ thiện nguyện trước khi công bố danh sách tài trợ",
+    ],
+    evidenceObjects: [
+      "thẻ số lô đấu giá bị tráo màu dây",
+      "biên nhận quyên góp có mã quỹ lệch một ký tự",
+      "vòng tay khách mời VIP bị đổi màu tem ở khóa cài",
+    ],
+    publicPressures: [
+      "khách mời thượng lưu và ban tổ chức nhìn nữ chính như người làm bẩn buổi tiệc",
+      "nhà tài trợ yêu cầu nữ chính giải thích trước khi lô đấu giá tiếp theo bắt đầu",
+      "một màn hình lớn chiếu nhầm tên nữ chính cạnh khoản tiền đáng ngờ",
+    ],
+    hiddenTruths: [
+      "số lô bị tráo để che người thật sự chuyển tiền sang quỹ phụ",
+      "mã quỹ lệch trỏ tới tài khoản do người thân của phản diện kiểm soát",
+      "vòng tay VIP đổi màu vì người dùng nó đã vào khu hậu trường không được phép",
+    ],
+    villainAttacks: [
+      "phản diện để MC đọc nhầm tên nữ chính trước cả hội trường rồi yêu cầu cô giải thích",
+      "phản diện đặt biên nhận lệch mã lên bàn tài trợ và nói nữ chính tự ký",
+      "phản diện kéo nhà tài trợ tới buộc nữ chính nhận lỗi trước khi búa đấu giá gõ xuống",
+    ],
+    heroineCounters: [
+      "nữ chính không tranh luận về tiền mà yêu cầu đối chiếu màu dây thẻ lô với danh sách hậu trường",
+      "nữ chính chỉ ra mã quỹ lệch một ký tự và hỏi ai có quyền tạo mã phụ",
+      "nữ chính giữ chiếc vòng tay đổi tem để chứng minh ai đã vào hậu trường",
+    ],
+    emotionalStakes: [
+      "người yếu thế nhận hỗ trợ từ quỹ có thể mất suất nếu nữ chính chỉ lo cứu danh tiếng",
+      "một tình nguyện viên trẻ bị đẩy ra nhận lỗi thay ban tổ chức",
+      "nữ chính phải chịu ánh mắt thượng lưu khinh miệt để giữ đường tiền thật không bị xóa",
+    ],
+    dopamineHooks: [
+      "màu dây trên thẻ lô chỉ dùng cho người được vào hậu trường, không phải khách thường",
+      "mã quỹ lệch một ký tự mở ra tài khoản phụ đứng tên họ hàng phản diện",
+      "tem khóa vòng tay VIP còn dính vân tay bột nhũ từ phòng hậu trường",
+    ],
+  },
+]
+
+function pickUrbanStoryFormula(params: {
+  seed: string;
+  avoidLibrary?: AvoidLibrary;
+  genreLabel?: string;
+  heroineLabel?: string;
+}) {
+  const scored = URBAN_STORY_FORMULAS.map((formula, index) => {
+    const formulaText = [
+      formula.key,
+      formula.label,
+      formula.openingMode,
+      formula.attackMode,
+      formula.counterMode,
+      formula.powerMode,
+      formula.pressureMode,
+      formula.truthMode,
+      formula.deadlineMode,
+      formula.evidenceRole,
+      ...formula.settings,
+      ...formula.evidenceObjects,
+      ...formula.villainAttacks,
+      ...formula.heroineCounters,
+    ].join(" | ");
+
+    const avoidPenalty = scoreOverlapWithAvoidLibrary(formulaText, params.avoidLibrary) * 3.5;
+    const recentFormulaPenalty = (params.avoidLibrary?.motifFingerprints ?? []).some((item) => {
+      const text = `${item.motifText || ""} ${item.fingerprint?.premiseFamily || ""} ${item.fingerprint?.fingerprint || ""}`.toLowerCase();
+      return text.includes(formula.key.toLowerCase());
+    })
+      ? 1.4
+      : 0;
+    const seedBias = Number(
+      pickSeedItem(["0.00", "0.05", "0.10", "0.15", "0.20", "0.25", "0.30"], params.seed, `formula-${formula.key}-${index}`),
+    );
+
+    return {
+      formula,
+      score: avoidPenalty + recentFormulaPenalty + seedBias,
+    };
+  });
+
+  scored.sort((a, b) => a.score - b.score);
+  const top = scored.slice(0, Math.min(4, scored.length));
+  return pickSeedItem(
+    top.map((item) => item.formula),
+    params.seed,
+    "urban-formula-pick",
+  );
+}
+
 const PROCEDURAL_TERMS = [
   "niêm phong",
   "phong tỏa",
@@ -1189,20 +1836,11 @@ function cleanTitleToken(input: string) {
     .replace(/được biến thành.*$/i, "")
     .replace(/không dùng như.*$/i, "")
     .replace(/của thể loại này.*$/i, "")
-    .replace(/\s+có một chi tiết lệch.*$/i, "")
-    .replace(/\s+co mot chi tiet lech.*$/i, "")
-    .replace(/\s+mà chỉ.*$/i, "")
-    .replace(/\s+ma chi.*$/i, "")
-    .replace(/\s+không phải.*$/i, "")
-    .replace(/\s+khong phai.*$/i, "")
-    .replace(/\s+theo công thức.*$/i, "")
-    .replace(/\s+theo cong thuc.*$/i, "")
     .replace(/^một\s+/i, "")
     .replace(/^một chiếc\s+/i, "Chiếc ")
     .replace(/^một đoạn\s+/i, "Đoạn ")
     .replace(/^một bản\s+/i, "Bản ")
     .replace(/^một tấm\s+/i, "Tấm ")
-    .replace(/^một mẩu\s+/i, "Mẩu ")
     .replace(/^một file\s+/i, "File ")
     .replace(/^hồ sơ\s+/i, "Hồ Sơ ")
     .replace(/^ảnh\s+/i, "Ảnh ")
@@ -1211,7 +1849,6 @@ function cleanTitleToken(input: string) {
     .replace(/^di chúc\s+/i, "Di Chúc ")
     .replace(/^email\s+/i, "Email ")
     .replace(/^usb\s+/i, "USB ")
-    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -1219,39 +1856,6 @@ function titleCaseFirst(input: string) {
   const clean = input.trim();
   if (!clean) return clean;
   return clean.charAt(0).toUpperCase() + clean.slice(1);
-}
-
-function titleCaseEvidence(input: string) {
-  return input
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ")
-    .map((word) => {
-      if (!word) return word;
-      if (/^(USB|QR|ADN|CEO|VIP)$/i.test(word)) return word.toUpperCase();
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    })
-    .join(" ");
-}
-
-function hasBuiltInEvidenceState(input: string) {
-  const normalized = normalizeForCompare(input);
-  return [
-    " bi ",
-    " co ",
-    " lech",
-    " sai",
-    " rach",
-    " xe ",
-    " roi",
-    " mat",
-    " bong",
-    " doi",
-    " sua",
-    " cat",
-    " quay nham",
-    " gui nham",
-  ].some((marker) => ` ${normalized} `.includes(marker));
 }
 
 
@@ -1363,19 +1967,14 @@ function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
     return "Miếng Dán Bong Góc";
   }
 
-  const token = titleCaseEvidence(cleanTitleToken(evidenceObject))
+  const token = titleCaseFirst(cleanTitleToken(evidenceObject))
     .replace(/^Một\s+/i, "")
-    .replace(/^Mảnh\s+Nhỏ\s+/i, "Mảnh ")
-    .replace(/\s+Bị\s+Đặt\s+Sai\s+Chỗ$/i, "")
+    .replace(/^Mảnh\s+nhỏ\s+/i, "Mảnh ")
+    .replace(/\s+bị\s+đặt\s+sai\s+chỗ$/i, "")
     .trim();
 
-  if (token && token.length <= 46 && !isTechnicalSeedTitle(token)) {
-    return hasBuiltInEvidenceState(token) ? token : `${token} Bị Lộ`;
-  }
-
-  const shortToken = token.split(/\s+/).slice(0, 7).join(" ").trim();
-  if (shortToken && shortToken.length >= 8 && !isTechnicalSeedTitle(shortToken)) {
-    return hasBuiltInEvidenceState(shortToken) ? shortToken : `${shortToken} Bị Lộ`;
+  if (token && token.length <= 32 && !isTechnicalSeedTitle(token)) {
+    return `${token} Bị Lộ`;
   }
 
   return "Chi Tiết Bị Đặt Sai";
@@ -1589,146 +2188,12 @@ function makeChapterTitle(params: {
   }
 }
 
-
-
-type FactoryDiversityProfile = {
-  key: string;
-  openingMode: string;
-  pressureFrame: string;
-  attackMove: string;
-  counterMove: string;
-  deadlineBeat: string;
-  emotionalCore: string;
-  evidenceRole: string;
-  powerSource: string;
-};
-
-const FACTORY_DIVERSITY_PROFILES: FactoryDiversityProfile[] = [
-  {
-    key: "quiet_private_blackmail",
-    openingMode: "mở bằng cuộc gặp riêng căng, ít người chứng kiến, áp lực nằm trong lời đe dọa thấp giọng",
-    pressureFrame: "áp lực riêng tư từ người có quyền giữ bí mật",
-    attackMove: "đe dọa tung một nửa sự thật nếu nữ chính không nhận lỗi",
-    counterMove: "giả vờ nhún nhường để đối phương tự nói lộ mốc thời gian",
-    deadlineBeat: "trước khi tin nhắn thứ hai được gửi đi",
-    emotionalCore: "nữ chính bảo vệ một người thân không thể tự thanh minh",
-    evidenceRole: "vật chứng là chìa khóa thời gian, không phải đồ vật bị đám đông nhìn thấy ngay",
-    powerSource: "quyền lực đến từ bí mật cá nhân và mối quan hệ thân cận",
-  },
-  {
-    key: "boardroom_control",
-    openingMode: "mở trong phòng họp nội bộ, không ồn ào nhưng từng ánh mắt đều có lợi ích phía sau",
-    pressureFrame: "áp lực từ quyết định nhân sự, cổ phần hoặc quyền điều hành",
-    attackMove: "dùng biên bản hoặc lời khai nội bộ để cắt quyền nữ chính",
-    counterMove: "đối chiếu quy trình nghề nghiệp và buộc người ký tên giải thích",
-    deadlineBeat: "trước khi cuộc họp biểu quyết kết thúc",
-    emotionalCore: "nữ chính giữ lại thứ mình tự gây dựng chứ không chỉ giữ danh dự",
-    evidenceRole: "vật chứng là sai lệch trong quy trình, chỉ người trong nghề nhận ra",
-    powerSource: "quyền lực đến từ hội đồng, hợp đồng hoặc người nắm quyền ký duyệt",
-  },
-  {
-    key: "family_table_pressure",
-    openingMode: "mở trong bữa cơm gia đình hoặc phòng khách hào môn, áp lực đến từ người thân nói như ban ơn",
-    pressureFrame: "áp lực từ gia tộc, hôn sự, trưởng bối và danh tiếng nhà chồng",
-    attackMove: "ép nữ chính nhận lỗi để giữ mặt mũi cho cả nhà",
-    counterMove: "hỏi ngược một câu đời thường khiến người lớn trong nhà khựng lại",
-    deadlineBeat: "trước khi khách lớn hoặc nhà thông gia bước vào",
-    emotionalCore: "nữ chính cắt đứt thói quen nhẫn nhịn trong gia đình",
-    evidenceRole: "vật chứng là thứ nhỏ trên bàn/áo/quà, bị dùng để đổi trắng thay đen",
-    powerSource: "quyền lực đến từ gia đình giàu có và quan hệ thông gia",
-  },
-  {
-    key: "livestream_media_trap",
-    openingMode: "mở bằng livestream/họp báo/đèn flash, câu nói nào cũng có thể bị cắt ghép",
-    pressureFrame: "áp lực từ truyền thông, bình luận mạng và đội PR đứng sau",
-    attackMove: "đẩy một câu chuyện nửa thật nửa giả lên trước máy quay",
-    counterMove: "không thanh minh dài mà dùng một chi tiết để bẻ góc quay",
-    deadlineBeat: "trước khi đoạn livestream bị cắt ra đăng lại",
-    emotionalCore: "nữ chính không chỉ cứu mình mà cứu người bị đem ra làm đạo cụ truyền thông",
-    evidenceRole: "vật chứng là điểm sai trong hình ảnh/âm thanh/lớp dựng cảnh",
-    powerSource: "quyền lực đến từ truyền thông, studio, quản lý hoặc dư luận",
-  },
-  {
-    key: "service_counter_audit",
-    openingMode: "mở tại quầy dịch vụ, kho hàng, bãi xe hoặc bàn lễ tân, mọi thứ có vẻ rất đời thường",
-    pressureFrame: "áp lực từ quy trình, nhân viên trực ca và khách đang chờ",
-    attackMove: "đổ lỗi nữ chính làm sai một bước trong quy trình giao nhận",
-    counterMove: "dựng lại thứ tự chạm tay, người nhận, người ký và vật chứng",
-    deadlineBeat: "trước khi ca trực đổi người hoặc món đồ bị chuyển đi",
-    emotionalCore: "nữ chính bảo vệ người lao động thấp cổ bé họng khỏi bị đẩy ra chịu tội",
-    evidenceRole: "vật chứng là dấu lệch trong giao nhận/tem/phiếu/thẻ, không phải bí mật hào môn",
-    powerSource: "quyền lực đến từ quản lý ca, quy định dịch vụ và người có quyền báo cáo",
-  },
-  {
-    key: "school_parent_circle",
-    openingMode: "mở ở trường học, sảnh chung cư hoặc cổng lớp, có trẻ nhỏ nhưng trọng tâm là người lớn thao túng",
-    pressureFrame: "áp lực từ nhóm phụ huynh, giáo viên, bảo vệ và tin truyền miệng",
-    attackMove: "mượn sự lo sợ của phụ huynh để ép nữ chính nhận trách nhiệm",
-    counterMove: "giữ đứa trẻ an toàn trước, rồi đối chiếu vật chứng bằng chi tiết đời thường",
-    deadlineBeat: "trước khi trẻ vào lớp hoặc trước khi thông báo gửi vào nhóm phụ huynh",
-    emotionalCore: "nữ chính đặt an toàn của trẻ lên trước sĩ diện của mình",
-    evidenceRole: "vật chứng là đồ vật/ghi chú/lịch nhỏ liên quan đến trẻ, không phải hồ sơ pháp lý",
-    powerSource: "quyền lực đến từ trường học, hội phụ huynh và nỗi sợ của đám đông",
-  },
-  {
-    key: "medical_record_clock",
-    openingMode: "mở trong bệnh viện/phòng khám với thời gian bị siết, người thân yếu thế nằm ngay trong cuộc",
-    pressureFrame: "áp lực từ hồ sơ, lịch hẹn, bác sĩ trực và người nhà bệnh nhân",
-    attackMove: "đổi thứ tự hồ sơ hoặc lời khai để biến nữ chính thành người trì hoãn cứu chữa",
-    counterMove: "đối chiếu thời gian nhận bệnh, dấu tay và người cầm vật chứng cuối cùng",
-    deadlineBeat: "trước khi ca trực đổi hoặc kết quả bị nhập hệ thống",
-    emotionalCore: "nữ chính vừa đau vừa phải tỉnh để giữ mạng sống/danh dự cho người thân",
-    evidenceRole: "vật chứng là mốc thời gian y tế nhỏ, không được biến thành màn kiện tụng dài",
-    powerSource: "quyền lực đến từ bệnh viện, người giữ hồ sơ và gia đình bệnh nhân",
-  },
-  {
-    key: "creative_credit_theft",
-    openingMode: "mở ở studio, phòng thử đồ, xưởng thiết kế hoặc hậu trường sự kiện",
-    pressureFrame: "áp lực từ bản quyền, sản phẩm mẫu, trưởng nhóm và khách hàng",
-    attackMove: "dùng vật chứng để nói nữ chính ăn cắp ý tưởng hoặc phá sản phẩm",
-    counterMove: "dùng thói quen nghề nghiệp, dấu tay nghề và bản nháp để lật ngược",
-    deadlineBeat: "trước khi sản phẩm được công bố hoặc bàn giao cho khách",
-    emotionalCore: "nữ chính bảo vệ năng lực nghề nghiệp tự mình tích lũy",
-    evidenceRole: "vật chứng là chi tiết tay nghề, chỉ người trong nghề nhìn ra",
-    powerSource: "quyền lực đến từ studio, khách hàng, trưởng nhóm hoặc thương hiệu",
-  },
-  {
-    key: "route_transfer_misdirection",
-    openingMode: "mở trên tuyến giao nhận, cổng khu dân cư, thang máy hoặc điểm trung chuyển",
-    pressureFrame: "áp lực từ lộ trình, người giao nhận, bảo vệ và thời gian di chuyển",
-    attackMove: "đổi lộ trình hoặc điểm nhận để biến nữ chính thành người cố ý dẫn sai",
-    counterMove: "lần ngược tuyến đường bằng một chi tiết vật lý trên vật chứng",
-    deadlineBeat: "trước khi xe rời cổng hoặc món đồ qua điểm trung chuyển tiếp theo",
-    emotionalCore: "nữ chính cứu một người bị kẹt giữa lời khai và lộ trình giả",
-    evidenceRole: "vật chứng là dấu lệch của đường đi, không phải bằng chứng đứng yên trên bàn",
-    powerSource: "quyền lực đến từ người kiểm soát cổng, xe, lịch giao nhận hoặc thang máy",
-  },
-  {
-    key: "silent_after_accident",
-    openingMode: "mở sau một sự cố vừa xảy ra, hiện trường im hơn bình thường và ai cũng sợ bị liên lụy",
-    pressureFrame: "áp lực từ việc phải tìm người chịu trách nhiệm thật nhanh",
-    attackMove: "đẩy vật chứng vào tay nữ chính để biến cô thành người gây ra sự cố",
-    counterMove: "không phản pháo ngay mà bảo toàn hiện trường và chỉ ra thứ bị di chuyển",
-    deadlineBeat: "trước khi hiện trường bị dọn hoặc người làm chứng rời đi",
-    emotionalCore: "nữ chính kiềm cơn hoảng để bảo vệ người dễ bị đổ tội nhất",
-    evidenceRole: "vật chứng là vị trí bị dịch chuyển sau sự cố, không phải lời buộc tội trực tiếp",
-    powerSource: "quyền lực đến từ người muốn kết thúc chuyện thật nhanh",
-  },
-];
-
-function pickDiversityProfile(seed: string, laneKey: string) {
-  return pickSeedItem(
-    FACTORY_DIVERSITY_PROFILES,
-    `${seed}|${laneKey}`,
-    "diversity-profile-v7",
-  );
-}
-
 function buildSeedCandidate(params: {
   genreLabel: string;
   heroineLabel: string;
   seed: string;
   lane: StoryDramaLane;
+  formula?: UrbanStoryFormula;
 }) {
   let relationshipConflict = pickSeedItem(
     params.lane.conflicts,
@@ -1776,18 +2241,26 @@ function buildSeedCandidate(params: {
     `dopamine-hook-${params.lane.key}`,
   );
 
-  const isMotifBankLane = params.lane.key.startsWith("motif-bank-");
+  const formula = params.formula ?? pickUrbanStoryFormula({
+    seed: params.seed,
+    genreLabel: params.genreLabel,
+    heroineLabel: params.heroineLabel,
+  });
 
-  const diversityProfile = pickDiversityProfile(params.seed, params.lane.key);
-
-  if (isMotifBankLane) {
-    publicPressure = `${diversityProfile.pressureFrame} tại ${setting}`;
-    relationshipConflict = `${evidenceObject} bị đặt vào ${diversityProfile.openingMode}; nữ chính bị kéo vào xung đột ${diversityProfile.emotionalCore}`;
-    hiddenTruth = `${diversityProfile.evidenceRole}; chi tiết lệch trong ${evidenceObject} chứng minh kẻ ra tay đã đổi nghĩa sự việc theo kiểu ${diversityProfile.attackMove}`;
-    villainAttack = `${diversityProfile.attackMove} bằng ${evidenceObject}, dưới sức ép của ${diversityProfile.powerSource}`;
-    heroineCounter = `${diversityProfile.counterMove}; sau đó ${heroineCounter}`;
-    emotionalStake = `${diversityProfile.emotionalCore}; nếu thua, nữ chính mất quyền tự quyết và người yếu thế trong ${setting} bị kéo ra chịu thay`;
-    dopamineHook = `${diversityProfile.evidenceRole}: chi tiết nhỏ trên ${evidenceObject} không khớp với ${diversityProfile.attackMove}`;
+  // Formula Bank v10:
+  // Giữ cùng dòng nữ tần đô thị, nhưng đổi xương sống truyện thật sự.
+  // Không chỉ thay đạo cụ/vật chứng. Mỗi formula khóa arena, kiểu tấn công,
+  // cách phản công, power structure, deadline và vai trò vật chứng khác nhau.
+  if (formula) {
+    relationshipConflict = pickSeedItem(formula.conflicts, params.seed, `formula-conflict-${formula.key}`);
+    setting = pickSeedItem(formula.settings, params.seed, `formula-setting-${formula.key}`);
+    evidenceObject = pickSeedItem(formula.evidenceObjects, params.seed, `formula-evidence-${formula.key}`);
+    publicPressure = pickSeedItem(formula.publicPressures, params.seed, `formula-pressure-${formula.key}`);
+    hiddenTruth = pickSeedItem(formula.hiddenTruths, params.seed, `formula-truth-${formula.key}`);
+    villainAttack = pickSeedItem(formula.villainAttacks, params.seed, `formula-attack-${formula.key}`);
+    heroineCounter = pickSeedItem(formula.heroineCounters, params.seed, `formula-counter-${formula.key}`);
+    emotionalStake = pickSeedItem(formula.emotionalStakes, params.seed, `formula-emotional-${formula.key}`);
+    dopamineHook = pickSeedItem(formula.dopamineHooks, params.seed, `formula-hook-${formula.key}`);
   }
 
   if (isLockerCardEvidence(evidenceObject)) {
@@ -1801,31 +2274,35 @@ function buildSeedCandidate(params: {
     dopamineHook = "vết xước trên thẻ không khớp với lần quẹt cuối ở cổng phòng tập";
   }
 
-  const exactGenre = isMotifBankLane ? params.lane.label : params.genreLabel || params.lane.label;
-  const diversityAxisText = [
-    `diversity:${diversityProfile.key}`,
-    `opening:${diversityProfile.openingMode}`,
-    `attack:${diversityProfile.attackMove}`,
-    `counter:${diversityProfile.counterMove}`,
-    `deadline:${diversityProfile.deadlineBeat}`,
-    `emotion:${diversityProfile.emotionalCore}`,
-    `evidenceRole:${diversityProfile.evidenceRole}`,
-    `power:${diversityProfile.powerSource}`,
-  ].join(" | ");
-  const genreBlend = isMotifBankLane
-    ? [params.lane.label, setting, evidenceObject, diversityProfile.key, relationshipConflict, publicPressure].filter(Boolean)
-    : [params.genreLabel, params.lane.label, relationshipConflict, setting, publicPressure, diversityProfile.key].filter(Boolean);
+  const genreBlend = [
+    params.genreLabel,
+    params.lane.label,
+    relationshipConflict,
+    setting,
+    publicPressure,
+  ].filter(Boolean);
 
-  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bước vào một nữ tần đô thị drama bám chặt một world chính: ${setting}. Xương sống riêng của truyện này: ${diversityAxisText}. Xung đột mở tại ${setting}; trọng tâm không phải hồ sơ-camera-log chung mà là ${relationshipConflict}. ${evidenceObject} là vật chứng chính, buộc cô nhìn thấy ai đang dùng ${publicPressure} để ép mình cúi đầu.`;
+  const exactGenre = params.genreLabel || params.lane.label;
+  const formulaKey = formula?.key || params.lane.key;
+  const formulaLabel = formula?.label || params.lane.label;
+  const openingMode = formula?.openingMode || "urban_opening";
+  const attackMode = formula?.attackMode || "urban_frameup";
+  const counterMode = formula?.counterMode || "evidence_countermove";
+  const powerMode = formula?.powerMode || "urban_power_structure";
+  const pressureMode = formula?.pressureMode || "social_pressure";
+  const truthMode = formula?.truthMode || "hidden_truth";
+  const deadlineMode = formula?.deadlineMode || "soft_deadline";
+  const evidenceRole = formula?.evidenceRole || "main_evidence_clue";
+  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bước vào ${formulaLabel}. Xương sống bắt buộc: opening=${openingMode}, attack=${attackMode}, counter=${counterMode}, power=${powerMode}, deadline=${deadlineMode}. Xung đột mở tại ${setting}; trọng tâm là ${relationshipConflict}. Vật chứng chính ${evidenceObject} giữ vai trò ${evidenceRole}, không chỉ là đạo cụ đổi tên.`;
   const openingScene = setting;
-  const incitingIncident = `Tại ${setting}, ${villainAttack}. ${evidenceObject} không phải vật chứng rơi vào scene theo công thức cũ; nó được đặt trong đúng world ${setting}, theo mode ${diversityProfile.key}, khiến nữ chính bị hiểu sai trước người liên quan.`;
-  const mainConflict = `Nữ chính phải xử lý ${relationshipConflict} bằng logic riêng của world ${setting}: ${diversityProfile.openingMode}; deadline ${diversityProfile.deadlineBeat}; phản công ${diversityProfile.counterMove}. Không được tự kéo sang world khác hoặc chuỗi camera/log/phong tỏa/pháp lý nếu seed không đòi hỏi.`;
-  const villainType = `Phản diện chính thao túng ${relationshipConflict} bằng đòn riêng: ${villainAttack}. Họ phải có mục tiêu cá nhân, lời nói/cử chỉ nhận diện được, không chỉ là luật sư/PR/pháp vụ vô danh.`;
-  const heroineArc = `${params.heroineLabel}: chịu đau có lý do → quan sát điểm lệch trong ${evidenceObject} → bảo vệ điều quan trọng (${emotionalStake}) → phản công bằng cách riêng (${heroineCounter}) → vả mặt có cảm xúc và payoff.`;
-  const emotionalHook = `${emotionalStake}. Cảm xúc phải đến từ đúng kiểu nữ chính "${params.heroineLabel}", không biến cô thành một nữ tổng tài lạnh lùng giống mọi truyện.`;
-  const powerStructure = `Quyền lực đối đầu đến từ ${publicPressure} và thế lực quanh ${relationshipConflict}; nữ chính có ${evidenceObject}, sự bình tĩnh, tổn thương thật, và cách phản công riêng: ${heroineCounter}.`;
-  const shortFingerprint = `${params.lane.key} + diversity:${diversityProfile.key} + genre:${exactGenre} + setting:${setting} + evidence:${evidenceObject} + conflict:${relationshipConflict} + attack:${diversityProfile.attackMove} + counter:${diversityProfile.counterMove} + deadline:${diversityProfile.deadlineBeat} + heroine:${params.heroineLabel}`;
-  const dramaBalance = `Drama balance theo genre: axis=${diversityProfile.key} → attack=${villainAttack} → hurt=${emotionalStake} → counter=${heroineCounter} → deadline=${diversityProfile.deadlineBeat} → payoff=${dopamineHook}.`;
+  const incitingIncident = `Tại ${setting}, ${villainAttack}. ${evidenceObject} phải kích hoạt đúng formula "${formulaKey}"; nó tạo vấn đề cụ thể của ${formulaLabel}, không kéo về công thức đám đông + vật chứng nhỏ + xin lỗi chung chung.`;
+  const mainConflict = `Nữ chính phải xử lý ${relationshipConflict} bằng logic của formula "${formulaKey}": quyền lực=${powerMode}, áp lực=${pressureMode}, phản công=${counterMode}. Không tự trôi về chuỗi camera/log/phong tỏa/pháp lý nếu formula không yêu cầu.`;
+  const villainType = `Phản diện chính dùng kiểu tấn công ${attackMode}: ${villainAttack}. Họ phải có mục tiêu cá nhân, lời nói/cử chỉ nhận diện được, không chỉ là luật sư/PR/pháp vụ vô danh.`;
+  const heroineArc = `${params.heroineLabel}: bị ép theo formula ${formulaKey} → nhận ra vai trò thật của ${evidenceObject} → bảo vệ điều quan trọng (${emotionalStake}) → phản công bằng ${counterMode}: ${heroineCounter} → vả mặt có cảm xúc và payoff.`;
+  const emotionalHook = `${emotionalStake}. Cảm xúc phải đến từ đúng kiểu nữ chính "${params.heroineLabel}" và đúng formula "${formulaKey}", không biến cô thành một nữ tổng tài lạnh lùng giống mọi truyện.`;
+  const powerStructure = `Quyền lực đối đầu thuộc axis ${powerMode}; áp lực đến từ ${publicPressure}; nữ chính có ${evidenceObject}, sự bình tĩnh, tổn thương thật, và cách phản công riêng: ${heroineCounter}.`;
+  const shortFingerprint = `formula:${formulaKey} + genre:${exactGenre} + opening:${openingMode} + attack:${attackMode} + counter:${counterMode} + power:${powerMode} + deadline:${deadlineMode} + setting:${setting} + evidence:${evidenceObject} + heroine:${params.heroineLabel}`;
+  const dramaBalance = `Drama balance theo formula ${formulaKey}: attack=${villainAttack} → hurt=${emotionalStake} → counter=${heroineCounter} → payoff=${dopamineHook}.`;
 
   return {
     relationshipConflict,
@@ -1837,9 +2314,6 @@ function buildSeedCandidate(params: {
     heroineCounter,
     emotionalStake,
     dopamineHook,
-    diversityProfileKey: diversityProfile.key,
-    diversityAxisText,
-    deadlineBeat: diversityProfile.deadlineBeat,
     genreBlend,
     corePremise,
     openingScene,
@@ -1851,6 +2325,16 @@ function buildSeedCandidate(params: {
     powerStructure,
     shortFingerprint,
     dramaBalance,
+    formulaKey,
+    formulaLabel,
+    openingMode,
+    attackMode,
+    counterMode,
+    powerMode,
+    pressureMode,
+    truthMode,
+    deadlineMode,
+    evidenceRole,
   };
 }
 
@@ -2377,7 +2861,7 @@ function getSeedAttempt(seed: string, attempt: number) {
 }
 
 
-const MOTIF_BANK_SAMPLE_SIZE = 720;
+const MOTIF_BANK_SAMPLE_SIZE = 360;
 
 const OVERUSED_MOTIF_TERMS = [
   "mã qr",
@@ -2500,7 +2984,7 @@ function scoreMotifBankAgainstAvoid(
     for (const field of exactFields) {
       const normalizedField = normalizeForCompare(field);
       if (normalizedField && normalizedAvoid.includes(normalizedField)) {
-        score += 0.55;
+        score += 0.22;
       }
     }
 
@@ -2516,7 +3000,7 @@ function scoreMotifBankAgainstAvoid(
     for (const label of labelFields) {
       const tags = compactTags(label);
       const repeatedTagCount = tags.filter((tag) => normalizedAvoid.includes(tag)).length;
-      score += repeatedTagCount * 0.11;
+      score += repeatedTagCount * 0.04;
     }
   }
 
@@ -2688,11 +3172,18 @@ export function buildMockStorySeed(params: {
   for (const laneItem of laneOrder) {
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const attemptSeed = `${getSeedAttempt(params.seed, attempt)}-${laneItem.lane.key}`;
+      const formula = pickUrbanStoryFormula({
+        seed: attemptSeed,
+        avoidLibrary: params.avoidLibrary,
+        genreLabel: params.genreLabel,
+        heroineLabel: params.heroineLabel,
+      });
       const candidate = buildSeedCandidate({
         genreLabel: params.genreLabel,
         heroineLabel: params.heroineLabel,
         seed: attemptSeed,
         lane: laneItem.lane,
+        formula,
       });
 
       const candidateText = [
@@ -2701,6 +3192,16 @@ export function buildMockStorySeed(params: {
         candidate.mainConflict,
         candidate.hiddenTruth,
         candidate.dramaBalance,
+        candidate.formulaKey,
+        candidate.formulaLabel,
+        candidate.openingMode,
+        candidate.attackMode,
+        candidate.counterMode,
+        candidate.powerMode,
+        candidate.pressureMode,
+        candidate.truthMode,
+        candidate.deadlineMode,
+        candidate.evidenceRole,
         candidate.publicPressure,
         candidate.villainAttack,
         candidate.heroineCounter,
@@ -2732,6 +3233,12 @@ export function buildMockStorySeed(params: {
       heroineLabel: params.heroineLabel,
       seed: params.seed,
       lane: genreExpandedLanes[0] ?? pickDramaLane(params.seed, params.avoidLibrary),
+      formula: pickUrbanStoryFormula({
+        seed: params.seed,
+        avoidLibrary: params.avoidLibrary,
+        genreLabel: params.genreLabel,
+        heroineLabel: params.heroineLabel,
+      }),
     });
 
   const generatedTitle = makeSeedAlignedTitle({
@@ -2771,50 +3278,58 @@ export function buildMockStorySeed(params: {
       ...compactTags(candidate.villainAttack),
       ...compactTags(candidate.heroineCounter),
       ...compactTags(candidate.dramaBalance),
-      ...compactTags(candidate.diversityAxisText),
+      ...compactTags(candidate.formulaKey),
+      ...compactTags(candidate.openingMode),
+      ...compactTags(candidate.attackMode),
+      ...compactTags(candidate.counterMode),
+      ...compactTags(candidate.powerMode),
+      ...compactTags(candidate.deadlineMode),
+      ...compactTags(candidate.evidenceRole),
     ]),
-  ).slice(0, 24);
+  ).slice(0, 18);
 
   const motifFingerprint = {
-    premiseFamily: `genre-lock:${params.genreLabel} | diversity:${candidate.diversityProfileKey} | relationship:${candidate.relationshipConflict}`,
-    openingArena: `opening-axis:${candidate.diversityProfileKey} | setting-specific:${candidate.setting}`,
-    incitingIncident: `incident-axis:${candidate.diversityProfileKey} | ${candidate.incitingIncident}`,
-    evidenceType: `evidence-role:${candidate.diversityProfileKey} | exact-evidence:${candidate.evidenceObject}`,
+    premiseFamily: `formula:${candidate.formulaKey}`,
+    openingArena: `opening:${candidate.openingMode}`,
+    incitingIncident: `incident:${candidate.attackMode}:${candidate.evidenceRole}`,
+    evidenceType: `evidence-role:${candidate.evidenceRole}`,
     evidenceObject: candidate.evidenceObject,
-    villainAttackType: `attack-axis:${candidate.diversityProfileKey} | exact-attack:${candidate.villainAttack}`,
-    heroineCounterType: `counter-axis:${candidate.diversityProfileKey} | heroine:${params.heroineLabel} | exact-counter:${candidate.heroineCounter}`,
-    powerStructure: `power-axis:${candidate.diversityProfileKey} | ${candidate.powerStructure}`,
-    publicPressure: `pressure-axis:${candidate.diversityProfileKey} | ${candidate.publicPressure}`,
-    emotionalWound: `emotional-axis:${candidate.diversityProfileKey} | ${candidate.emotionalStake}`,
-    hiddenTruthType: `truth-axis:${candidate.diversityProfileKey} | ${candidate.hiddenTruth}`,
-    mainArena: `main-arena:${candidate.setting}`,
-    secondaryArena: `axis:${candidate.diversityProfileKey} | pressure-arena:${candidate.publicPressure}`,
-    relationshipCore: `relationship-core:${candidate.relationshipConflict}`,
-    twistEngine: `twist-axis:${candidate.diversityProfileKey} | ${candidate.evidenceObject} -> ${candidate.hiddenTruth}`,
-    deadlineStyle: `deadline-axis:${candidate.diversityProfileKey} | ${candidate.deadlineBeat}`,
-    endingPromise: `payoff:${candidate.dopamineHook}`,
+    villainAttackType: `attack:${candidate.attackMode}`,
+    heroineCounterType: `counter:${candidate.counterMode}`,
+    powerStructure: `power:${candidate.powerMode}`,
+    publicPressure: `pressure:${candidate.pressureMode}`,
+    emotionalWound: `emotional:${candidate.emotionalStake}`,
+    hiddenTruthType: `truth:${candidate.truthMode}`,
+    mainArena: `arena:${candidate.openingMode}:${candidate.setting}`,
+    secondaryArena: `pressure-arena:${candidate.pressureMode}`,
+    relationshipCore: `relationship-core:${candidate.formulaKey}:${candidate.relationshipConflict}`,
+    twistEngine: `twist:${candidate.evidenceRole}:${candidate.truthMode}`,
+    deadlineStyle: `deadline:${candidate.deadlineMode}`,
+    endingPromise: `payoff:${candidate.formulaKey}:${candidate.dopamineHook}`,
     antiRepeatTags,
     fingerprint: [
+      `formula=${candidate.formulaKey}`,
       `genre=${params.genreLabel}`,
       `heroine=${params.heroineLabel}`,
-      `diversity=${candidate.diversityProfileKey}`,
-      `lane=${candidate.shortFingerprint}`,
-      `setting=${candidate.setting}`,
+      `opening=${candidate.openingMode}`,
+      `attack=${candidate.attackMode}`,
+      `counter=${candidate.counterMode}`,
+      `power=${candidate.powerMode}`,
+      `pressure=${candidate.pressureMode}`,
+      `truth=${candidate.truthMode}`,
+      `deadline=${candidate.deadlineMode}`,
+      `evidenceRole=${candidate.evidenceRole}`,
       `evidence=${candidate.evidenceObject}`,
-      `attack=${candidate.villainAttack}`,
-      `counter=${candidate.heroineCounter}`,
-      `truth=${candidate.hiddenTruth}`,
-      `pressure=${candidate.publicPressure}`,
+      `setting=${candidate.setting}`,
     ].join(" || "),
   };
 
   const motifText = [
     motifFingerprint.fingerprint,
-    candidate.diversityAxisText,
-    candidate.corePremise,
-    candidate.mainConflict,
-    candidate.emotionalHook,
-    candidate.dramaBalance,
+    `conflict=${candidate.relationshipConflict}`,
+    `villain=${candidate.villainAttack}`,
+    `counterMove=${candidate.heroineCounter}`,
+    `hook=${candidate.dopamineHook}`,
   ].join(" | ");
 
   return {
@@ -2843,7 +3358,7 @@ export function buildMockStorySeed(params: {
       chapterWriter: true,
       storyEditor: true,
       polishRewriter: false,
-      note: "Planner v5 motif-bank-10000: seed DNA ưu tiên motif bank lớn, cấm quay vòng QR/thư mục ẩn/hồ sơ bệnh án/phòng khách sạn VIP/khóa quyền truy cập.",
+      note: "Planner v10 formula-bank: vẫn là nữ tần đô thị nhưng đổi xương sống truyện bằng formula axis; motif bank chỉ là nguyên liệu phụ, không được kéo mọi truyện về cùng công thức.",
     },
   } as FactoryStorySeed;
 }
@@ -2899,30 +3414,6 @@ QUY TẮC THEO STORY PLANNER:
 `.trim();
 }
 
-function buildEvidenceSemanticContract(storySeed: FactoryStorySeed) {
-  const lockedTitle = makeEvidenceTitle(storySeed.evidenceObject);
-
-  return `
-EVIDENCE SEMANTIC CONTRACT - KHÓA HIỂU NGHĨA VẬT CHỨNG:
-- Evidence object gốc: ${storySeed.evidenceObject}
-- Title lock phải xuất ra trong technical report: ${lockedTitle}
-- technical report bắt buộc: story_title = ${lockedTitle}
-- technical report bắt buộc: evidence_object = ${storySeed.evidenceObject}
-- Nếu model tự nghĩ title khác title lock, output đó sai. Không được đổi title sang vật chứng khác dù nghe hấp dẫn hơn.
-- Hãy hiểu vật chứng bằng nghĩa đời sống của cụm trên, không tách chữ rời, không đoán theo một token ngắn.
-- Trước khi viết, tự trả lời ngầm 4 câu:
-  1) Vật chứng chính là đồ vật/hồ sơ/sự kiện gì trong đời sống?
-  2) Nó xuất hiện ở đâu trong bối cảnh: ${storySeed.setting} / ${storySeed.openingScene}?
-  3) Điểm lệch cụ thể của nó là gì, khiến nữ chính nhận ra có người dựng chuyện?
-  4) Nó liên quan thế nào đến hidden truth: ${storySeed.hiddenTruth}?
-- Sau khi đã khóa nghĩa, toàn bộ chương phải bám vật chứng đó. Không được đổi vật chứng sang USB, camera, mã QR, thẻ phòng khách sạn, hợp đồng, hồ sơ niêm phong, file ghi âm, sao kê, luật sư/pháp vụ nếu seed không ghi rõ.
-- Nếu seed là nốt nhạc/cúc áo/phiếu bánh/thẻ tủ đồ/đồ vật đời sống, không được tự nâng cấp thành hợp đồng, USB, hồ sơ pháp lý hoặc camera.
-- Nếu cần thêm bằng chứng phụ, bằng chứng phụ chỉ được hỗ trợ vật chứng chính; không được thay thế vật chứng chính.
-- Tên truyện, mô tả, chương 1 và technical report phải cùng nói về một vật chứng duy nhất: ${storySeed.evidenceObject}.
-- Nếu title tự nghĩ ra không chứa nghĩa vật chứng chính, title đó sai. Dùng đúng title lock: ${lockedTitle}.
-`.trim();
-}
-
 export function buildStorySeedPromptContext(
   storySeed?: FactoryStorySeed | null,
 ) {
@@ -2941,16 +3432,13 @@ export function buildStorySeedPromptContext(
   return `
 STORY SEED / STORY DNA BẮT BUỘC:
 - Tên truyện định hướng: ${storySeed.title}
-- Tên truyện khóa theo vật chứng: ${makeEvidenceTitle(storySeed.evidenceObject)}
 - CẤM để tên truyện hoặc tên chương giống seed kỹ thuật. Không dùng cụm: "được biến thành", "của thể loại này", "không dùng như", "Đổi Nghĩa", "motif", "genre", "fingerprint".
 - Genre blend: ${storySeed.genreBlend.join(" | ")}
 - Core premise: ${storySeed.corePremise}
+- Formula axis lock: ${(storySeed as any).motifFingerprint?.premiseFamily || (storySeed as any).formulaKey || "urban-formula"} / ${(storySeed as any).motifFingerprint?.villainAttackType || "attack-axis"} / ${(storySeed as any).motifFingerprint?.heroineCounterType || "counter-axis"}
 - Opening scene bắt buộc: ${storySeed.openingScene}
 - Inciting incident bắt buộc: ${storySeed.incitingIncident}
 - Evidence object bắt buộc: ${storySeed.evidenceObject}
-
-${buildEvidenceSemanticContract(storySeed)}
-
 - Main conflict: ${storySeed.mainConflict}
 - Hidden truth: ${storySeed.hiddenTruth}
 - Setting: ${storySeed.setting}
@@ -2965,21 +3453,10 @@ ${storyPlanBlock}
 
 ${coverConceptBlock}
 
-QUY TẮC GIỌNG VĂN TỰ NHIÊN:
-- Viết như truyện mạng tiếng Việt do người thật viết, không giống văn dịch hoặc văn mẫu AI.
-- Cảnh căng phải có câu ngắn, lời thoại đời, phản ứng đám đông cụ thể.
-- Tránh giải thích tâm lý quá lộ. Đừng viết kiểu "Cái chỗ vụng về trong câu chuyện hiện ra"; hãy để chi tiết tự lộ qua hành động, nét bút, ánh mắt, vật chứng, lời nói mâu thuẫn.
-- Giảm ẩn dụ sân khấu và cụm sáo: "quyền lực rời khỏi mình", "bản cáo trạng", "con dấu", "ván cờ", "khán đài", "áp lực dồn lên".
-- Nữ chính nói gọn, sắc, đời thường. Phụ huynh/đám đông khi giận phải nói như người thật, không nói quá lịch sự như biên bản.
-- Mỗi cảnh phải có chi tiết đời thường cụ thể để người Việt đọc thấy thật: tiếng điện thoại, tay run, bút đỏ, vết bẩn, tiếng người chen ngang, ánh mắt né tránh.
-
 QUY TẮC BẮT BUỘC THEO STORY SEED:
-- WORLD LOCK: chỉ dùng một world chính đã khóa ở Setting/Opening scene. Không trộn thêm world khác từ genre label nếu nó không phục vụ trực tiếp cho evidence object.
-- Nếu Setting là xưởng may/phòng thử đồ thì chương phải xoay quanh xưởng may/phòng thử đồ; không tự kéo sang nhà kính, bệnh viện, phòng chủ tịch, khách sạn, luật sư nếu seed không ghi rõ.
-- Nếu evidence object là vật nhỏ đời sống, mọi manh mối phụ phải giải thích vật nhỏ đó, không mở thêm tuyến hồ sơ/camera/log/pháp lý làm trục chính.
-- Tên truyện khi xuất ra trong technical report phải dùng đúng “Tên truyện khóa theo vật chứng”. Không tự đổi sang vật chứng khác dù nghe kịch tính hơn.
+- Tên truyện khi xuất ra phải giữ tinh thần của tên định hướng và bám vật chứng chính / bối cảnh cụ thể.
 - Không tự đổi tên truyện sang kiểu trừu tượng chung chung như “Người Cuối Cùng Nhìn Thấy Sự Thật”, “Sự Thật...”, “Bí Mật...”, “...Không Nên Xuất Hiện”, “...Không Thuộc Về Tôi” nếu tên đó không chứa vật chứng cụ thể của seed.
-- Công thức hiểu tên truyện: vật chứng chính + trạng thái bất thường / thời điểm sai / dấu vết bị cắt / nơi xuất hiện sai.
+- Công thức tên truyện ưu tiên: vật chứng chính + trạng thái bất thường / thời điểm sai / dấu vết bị cắt / nơi xuất hiện sai.
 - Chương 1 phải mở theo opening scene trên.
 - Biến cố chính phải dùng inciting incident trên.
 - Vật chứng quan trọng phải là evidence object trên.
