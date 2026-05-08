@@ -52,22 +52,97 @@ function normalizeCoverArtStyle(value: unknown): CoverArtStyle {
 function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
   switch (normalizeCoverArtStyle(style)) {
     case 'anime_cinematic':
-      return 'anime cinematic webnovel cover, dramatic lighting, expressive characters, modern East Asian urban drama'
+      return 'Anime — Chinese commercial webnovel cover, glossy mature anime-inspired Chinese webnovel beauty, luxury urban drama color'
     case 'manga_manhwa':
-      return 'manga manhwa webtoon cover style, clean line art, dramatic composition, emotional character acting'
-    case 'cinematic_realistic':
-      return 'cinematic realistic drama poster, premium film still lighting, modern East Asian urban suspense'
+      return 'Manga — Chinese commercial webnovel cover, polished manga/manhua-inspired line art, luxury full-color rendering'
     case 'popular_webnovel_collage':
-      return 'popular webnovel collage poster, multiple character composition, evidence object, dramatic layered story poster'
+      return 'Chinese manhua luxury collage, layered storytelling, 3 to 7 story fragments, glossy premium Chinese webnovel cover'
+    case 'cinematic_realistic':
+      return 'Siêu thực — ultra-realistic Chinese urban drama premium poster illustration, luxury cinematic realism'
     case 'auto':
     default:
-      return 'style automatically chosen from story content, premium modern East Asian webnovel cover'
+      return 'premium Chinese commercial webnovel cover, automatically matched to story content'
   }
 }
 
 type SupabaseLike = {
   from: (table: string) => any
 }
+
+type QualityGateIssuePayload = {
+  code?: string
+  severity?: string
+  message?: string
+  sample?: string
+}
+
+type QualityGatePayload = {
+  score?: number
+  passed?: boolean
+  errors?: QualityGateIssuePayload[]
+  warnings?: QualityGateIssuePayload[]
+  metrics?: Record<string, unknown>
+}
+
+function compactErrorText(value: unknown, maxLength = 220) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim()
+  if (text.length <= maxLength) return text
+  return `${text.slice(0, maxLength).trim()}...`
+}
+
+function formatQualityGateIssue(issue: QualityGateIssuePayload, index: number) {
+  const code = issue.code ? `[${issue.code}] ` : ''
+  const sample = issue.sample ? ` Ví dụ: ${compactErrorText(issue.sample, 140)}` : ''
+  return `${index + 1}. ${code}${issue.message || 'Không rõ lỗi'}${sample}`
+}
+
+function formatQualityGateForLog(data: any) {
+  const gate = data?.qualityGate as QualityGatePayload | undefined
+  if (!gate) return ''
+
+  const errors = Array.isArray(gate.errors) ? gate.errors : []
+  const warnings = Array.isArray(gate.warnings) ? gate.warnings : []
+  const issueLines = [...errors, ...warnings]
+    .slice(0, 5)
+    .map(formatQualityGateIssue)
+
+  const metrics = gate.metrics
+    ? [
+        typeof gate.metrics.first700LikeCount === 'number'
+          ? `như/700=${gate.metrics.first700LikeCount}`
+          : '',
+        typeof gate.metrics.totalLikeCount === 'number'
+          ? `như/all=${gate.metrics.totalLikeCount}`
+          : '',
+        typeof gate.metrics.corporateDriftCount === 'number'
+          ? `drift=${gate.metrics.corporateDriftCount}`
+          : '',
+        typeof gate.metrics.powerWordCount === 'number'
+          ? `power=${gate.metrics.powerWordCount}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(', ')
+    : ''
+
+  return [
+    `Quality Gate fail${typeof gate.score === 'number' ? ` (${gate.score}/100)` : ''}.`,
+    issueLines.length ? issueLines.join(' | ') : '',
+    metrics ? `Metrics: ${metrics}.` : '',
+    data?.qualityRewriteError ? `Rewrite: ${data.qualityRewriteError}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
+function buildGenerateApiErrorMessage(response: Response, data: any) {
+  if (response.status === 422 && data?.qualityGate) {
+    return formatQualityGateForLog(data) || 'Story failed quality gate.'
+  }
+
+  return data?.error || data?.message || `OpenAI generate request failed (${response.status})`
+}
+
 
 export async function generateFactoryChapter(params: {
   config: AIFactoryConfig
@@ -167,7 +242,7 @@ Yêu cầu:
   const data = await response.json().catch(() => null)
 
   if (!response.ok) {
-    throw new Error(data?.error || data?.message || 'OpenAI generate request failed')
+    throw new Error(buildGenerateApiErrorMessage(response, data))
   }
 
   const text = data?.text || data?.output_text || data?.content
@@ -186,8 +261,7 @@ function normalizeTitleForCompare(value: string) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd')
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
     .trim()
 }
 
@@ -197,31 +271,47 @@ function slugifyFactoryStoryTitle(value: string) {
 }
 
 function makeFactoryStorySlugUnique(baseSlug: string, factoryRunId: string, storyIndex: number) {
-  const cleanBase = String(baseSlug || '').replace(/^-+|-+$/g, '').trim()
-  const runPart = normalizeTitleForCompare(factoryRunId || '').replace(/\s+/g, '').slice(0, 8)
+  const cleanBase = String(baseSlug || '')
+    .replace(/^-+|-+$/g, '')
+    .trim()
+
+  const runPart = normalizeTitleForCompare(factoryRunId || '')
+    .replace(/\s+/g, '')
+    .slice(0, 8)
+
   const suffix = [runPart, `s${storyIndex}`].filter(Boolean).join('-')
-  return [cleanBase || 'factory-story', suffix].filter(Boolean).join('-').replace(/-+/g, '-').replace(/^-+|-+$/g, '')
+  const uniqueSlug = [cleanBase || 'factory-story', suffix].filter(Boolean).join('-')
+
+  return uniqueSlug.replace(/-+/g, '-').replace(/^-+|-+$/g, '')
 }
 
-function isBadFactoryStoryTitle(value: string) {
+function isBadParsedFactoryTitle(value: string) {
   const normalized = normalizeTitleForCompare(value)
+
   if (!normalized) return true
 
   return [
     'chua dat ten',
     'vat chung bi dat sai cho',
-    'manh moi o hien truong',
     'mon qua bi lo',
     'dau muc tren trang cu',
+    'nguoi im lang o cuoi phong',
     'ma qr dan toi thu muc an',
-    'dong ma trong ho so cu',
     'dong ma tren ve su kien',
+    'tin nhan gui nham vao nhom gia dinh',
+    'vet but chi sau gio don tre',
+    'manh moi o hien truong',
+    'dau chi khac mau',
+    'mon do choi trong phong hop',
+    'mon do choi bi dat sai',
+    'hoa don hoa gui sai ten',
     'khung hinh bi cat khoi camera',
-    'cuoc goi tu so may la',
     'tam ve mot chieu trong ngan keo',
-    'truyen moi tu ai writer khong phu hop voi noi dung',
-  ].includes(normalized)
+      'dau do tren ban hop dong',
+    'truyen moi tu ai writer phu hop voi vat chung trung tam',
+].includes(normalized)
 }
+
 
 function compactTitleTags(value: string) {
   return normalizeTitleForCompare(value)
@@ -243,17 +333,11 @@ function compactTitleTags(value: string) {
           'duoi',
           'goc',
           'cu',
+          'bi',
           'cua',
           'voi',
           'sau',
           'truoc',
-          'khong',
-          'phai',
-          'co',
-          'mot',
-          'chi',
-          'tiet',
-          'lech',
         ].includes(tag),
     )
 }
@@ -280,28 +364,20 @@ function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getSeedEvidenceObject(storySeed)
   const normalized = normalizeTitleForCompare(evidence)
 
-  if ((normalized.includes('ve') || normalized.includes('phieu')) && (normalized.includes('an') || normalized.includes('so ghe') || normalized.includes('ghe'))) {
-    return 'Vé Ăn Số Ghế Lệch'
+  if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
+    return 'Bức Vẽ Lệch Khung'
   }
 
-  if (normalized.includes('nhan chau') || normalized.includes('chau cay') || normalized.includes('chau hoa') || normalized.includes('tem kim loai')) {
-    return 'Chậu Cây Bị Cắm Sai Nhãn'
+  if (normalized.includes('anh mo') || normalized.includes('may anh do choi')) {
+    return 'Ảnh Mờ Trong Máy Ảnh Đồ Chơi'
   }
 
-  if (normalized.includes('phieu') && normalized.includes('banh')) {
-    return 'Phiếu Bánh Bị Xé Góc'
+  if (normalized.includes('mieng dan')) {
+    return 'Miếng Dán Bong Góc'
   }
 
   if (normalized.includes('nap chai') || normalized.includes('vet xuoc')) {
     return 'Nắp Chai Có Vết Xước'
-  }
-
-  if (normalized.includes('the giat')) {
-    return 'Thẻ Giặt Còn Ghim'
-  }
-
-  if (normalized.includes('goc anh') || normalized.includes('anh cu') || normalized.includes('ruy bang')) {
-    return 'Góc Ảnh Trên Dải Ruy-Băng'
   }
 
   if (normalized.includes('hat vong')) {
@@ -312,8 +388,20 @@ function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
     return 'Vòng Tay Sự Kiện Bị Đổi Màu'
   }
 
-  if (normalized.includes('mieng dan')) {
-    return 'Miếng Dán Bong Góc'
+  if (normalized.includes('nhan chau') || normalized.includes('chau hoa')) {
+    return 'Chậu Cây Bị Cắm Sai Nhãn'
+  }
+
+  if (normalized.includes('soi chi') || normalized.includes('khuy ao') || normalized.includes('chi con mac') || normalized.includes('chi lech')) {
+    return 'Sợi Chỉ Ở Khuy Áo'
+  }
+
+  if (normalized.includes('to giay') || normalized.includes('mau giay') || normalized.includes('ghi chu')) {
+    return 'Tờ Giấy Trước Thang Máy'
+  }
+
+  if (normalized.includes('phieu') && normalized.includes('banh')) {
+    return 'Phiếu Bánh Bị Xé Góc'
   }
 
   if (evidence) {
@@ -323,7 +411,6 @@ function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
       .replace(/^một tấm\s+/i, 'Tấm ')
       .replace(/^một mẩu\s+/i, 'Mẩu ')
       .replace(/\s+không phải.*$/i, '')
-      .replace(/\s+có một chi tiết.*$/i, '')
       .replace(/\s+bị đặt sai chỗ$/i, '')
       .trim()
 
@@ -336,9 +423,10 @@ function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
 }
 
 function isAcceptableFactoryStoryTitle(title: string, storySeed?: FactoryStorySeed | null) {
-  if (!title || isBadFactoryStoryTitle(title)) return false
+  if (!title || isBadParsedFactoryTitle(title)) return false
   return titleMatchesSeedEvidence(title, storySeed)
 }
+
 
 function chooseFactoryStoryTitle(params: {
   parsedTitle: string
@@ -351,6 +439,11 @@ function chooseFactoryStoryTitle(params: {
   const parsedChapterTitle = String(params.parsedChapterTitle || '').trim()
   const evidenceTitle = makeFactoryTitleFromEvidence(params.storySeed)
 
+  // V20 hard rule:
+  // Story title saved to DB must be evidence-first. Parsed title from AI is only used
+  // if it matches the seed evidence and is not generic. Seed title is only fallback
+  // when it also passes the evidence gate. This prevents old seed/generic titles
+  // like "Manh Mối Ở Hiện Trường" from being inserted.
   const candidates = [evidenceTitle, parsedChapterTitle, parsedTitle, seedTitle]
   const chosen =
     candidates.find((title) => isAcceptableFactoryStoryTitle(title, params.storySeed)) ||
@@ -372,6 +465,7 @@ function chooseFactoryStoryTitle(params: {
   }
 }
 
+
 function assertFactoryTitleGatePassed(title: string, storySeed?: FactoryStorySeed | null) {
   if (!isAcceptableFactoryStoryTitle(title, storySeed)) {
     const evidenceTitle = makeFactoryTitleFromEvidence(storySeed)
@@ -380,6 +474,7 @@ function assertFactoryTitleGatePassed(title: string, storySeed?: FactoryStorySee
     )
   }
 }
+
 
 export async function insertFactoryStoryDraft(params: {
   supabase: SupabaseLike

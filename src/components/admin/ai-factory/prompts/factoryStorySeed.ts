@@ -3,7 +3,6 @@ import {
   FACTORY_MOTIF_BANK_10000,
   type FactoryMotifBankItem,
 } from "./factoryMotifBank10000";
-import { buildUniqueFactoryTitle } from "./factoryPromptShared";
 
 type StoryDramaLane = {
   key: string;
@@ -1217,6 +1216,9 @@ const GENERIC_BAD_STORY_TITLES = [
   "Mã QR Dẫn Tới Thư Mục Ẩn",
   "Dòng Mã Trên Vé Sự Kiện",
   "Mã Số Trong Hồ Sơ Cũ",
+  "Tin Nhắn Gửi Nhầm Vào Nhóm Gia Đình",
+  "Vệt Bút Chì Sau Giờ Đón Trẻ",
+  "Vật Chứng Bị Đặt Sai Chỗ",
 ];
 
 function isGenericBadStoryTitle(title: string) {
@@ -1224,17 +1226,92 @@ function isGenericBadStoryTitle(title: string) {
   return GENERIC_BAD_STORY_TITLES.some((item) => normalizeForCompare(item) === normalized);
 }
 
+function titleMatchesEvidenceObject(title: string, evidenceObject: string) {
+  const titleTags = new Set(compactTags(title));
+  const evidenceTags = compactTags(evidenceObject).filter(
+    (tag) =>
+      tag.length >= 3 &&
+      ![
+        "mot",
+        "mau",
+        "dau",
+        "noi",
+        "ben",
+        "sai",
+        "dat",
+        "cho",
+        "trong",
+        "tren",
+        "duoi",
+        "goc",
+        "cu",
+        "bi",
+      ].includes(tag),
+  );
+
+  if (!evidenceTags.length) return true;
+
+  return evidenceTags.some((tag) => titleTags.has(tag));
+}
+
+function isSafeGeneratedStoryTitle(title: string, evidenceObject: string, avoidTitles?: string[]) {
+  if (!isHumanStoryTitle(title, avoidTitles)) return false;
+  if (isGenericBadStoryTitle(title)) return false;
+  if (!titleMatchesEvidenceObject(title, evidenceObject)) return false;
+  return true;
+}
+
+
 function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
+  const normalized = normalizeForCompare(evidenceObject);
+
+  if (normalized.includes("goc anh") || normalized.includes("góc ảnh") || normalized.includes("anh cu") || normalized.includes("ảnh cũ")) {
+    return "Góc Ảnh Trên Dải Ruy-Băng";
+  }
+
+  if (normalized.includes("ruy bang") || normalized.includes("ruy-bang") || normalized.includes("ruy-băng")) {
+    return "Dải Ruy-Băng Bị Ghim Ảnh";
+  }
+
+  if (normalized.includes("phieu dat banh") || normalized.includes("phiếu đặt bánh") || normalized.includes("banh") || normalized.includes("bánh")) {
+    return "Phiếu Bánh Bị Xé Góc";
+  }
+
+  if (normalized.includes("vong tay") || normalized.includes("vòng tay")) {
+    return "Vòng Tay Sự Kiện Bị Đổi Màu";
+  }
+
+  if (normalized.includes("nhan chau") || normalized.includes("nhãn chậu") || normalized.includes("chau hoa") || normalized.includes("chậu hoa")) {
+    return "Nhãn Chậu Đặt Sai";
+  }
+
+  if (normalized.includes("nap chai") || normalized.includes("nắp chai") || normalized.includes("vet xuoc") || normalized.includes("vết xước")) {
+    return "Nắp Chai Có Vết Xước";
+  }
+
+  if (normalized.includes("mau ghi chu") || normalized.includes("mẩu ghi chú") || normalized.includes("ghi chu") || normalized.includes("ghi chú")) {
+    return "Ghi Chú Lệch Ở Sảnh Chung Cư";
+  }
+
+  if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo")) {
+    return "Sợi Chỉ Trên Khuy Áo";
+  }
+
+  if (normalized.includes("mieng dan") || normalized.includes("miếng dán")) {
+    return "Miếng Dán Bong Góc";
+  }
+
   const token = titleCaseFirst(cleanTitleToken(evidenceObject))
     .replace(/^Một\s+/i, "")
     .replace(/^Mảnh\s+nhỏ\s+/i, "Mảnh ")
+    .replace(/\s+bị\s+đặt\s+sai\s+chỗ$/i, "")
     .trim();
 
   if (token && token.length <= 32 && !isTechnicalSeedTitle(token)) {
-    return `${token} Bị Đặt Sai Chỗ`;
+    return `${token} Bị Lộ`;
   }
 
-  return "Vật Chứng Bị Đặt Sai Chỗ";
+  return "Manh Mối Ở Hiện Trường";
 }
 
 function makeEvidenceTitleVariants(evidenceObject: string) {
@@ -1242,6 +1319,23 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   const token = titleCaseFirst(cleanTitleToken(evidenceObject));
 
   const variants: string[] = [];
+
+  if (normalized.includes("goc anh") || normalized.includes("góc ảnh") || normalized.includes("anh cu") || normalized.includes("ảnh cũ")) {
+    variants.push("Góc Ảnh Trên Dải Ruy-Băng", "Mảnh Ảnh Bị Ghim Trên Bó Hoa", "Bó Hoa Có Góc Ảnh Cũ");
+  }
+
+  if (normalized.includes("ruy bang") || normalized.includes("ruy-bang") || normalized.includes("ruy-băng")) {
+    variants.push("Dải Ruy-Băng Bị Ghim Ảnh", "Góc Ảnh Trên Dải Ruy-Băng");
+  }
+
+  if (normalized.includes("phieu dat banh") || normalized.includes("phiếu đặt bánh") || normalized.includes("banh") || normalized.includes("bánh")) {
+    variants.push("Phiếu Bánh Bị Xé Góc", "Mảnh Phiếu Trong Phòng Chờ", "Góc Phiếu Bánh Bị Xé");
+  }
+
+  if (normalized.includes("vong tay") || normalized.includes("vòng tay")) {
+    variants.push("Vòng Tay Sự Kiện Bị Đổi Màu", "Chiếc Vòng Đỏ Trên Tay Đứa Trẻ", "Vòng Trắng Bị Đánh Tráo");
+  }
+
 
   if (normalized.includes("not nhac") || normalized.includes("nốt nhạc") || normalized.includes("ban nhac") || normalized.includes("bản nhạc")) {
     variants.push("Nốt Nhạc Bị Khoanh Đỏ", "Dấu Bút Đỏ Trên Bản Nhạc", "Bản Nhạc Bị Sửa Một Nốt");
@@ -1255,10 +1349,6 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
     variants.push("Nắp Chai Có Vết Xước", "Vết Xước Trên Nắp Chai", "Dấu Màu Trên Nắp Chai");
   }
 
-  if ((normalized.includes("ve") || normalized.includes("vé") || normalized.includes("phieu") || normalized.includes("phiếu")) && (normalized.includes("an") || normalized.includes("ăn") || normalized.includes("so ghe") || normalized.includes("số ghế") || normalized.includes("ghe") || normalized.includes("ghế"))) {
-    variants.push("Vé Ăn Số Ghế Lệch", "Tấm Vé Ăn Bị Đổi Số", "Dấu Mực Trên Vé Ăn");
-  }
-
   if (normalized.includes("ve ghe") || normalized.includes("vé ghế") || normalized.includes("ghe 27") || normalized.includes("ghế 27")) {
     variants.push("Vé Ghế 27 Trong Bó Hoa", "Chiếc Vé Sai Ghế", "Tờ Vé 27 Ở Tiệm Hoa");
   }
@@ -1268,7 +1358,7 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   }
 
   if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo")) {
-    variants.push("Sợi Chỉ Trên Khuy Áo", "Sợi Chỉ Ở Tiệm Hoa", "Dấu Chỉ Khác Màu");
+    variants.push("Sợi Chỉ Ở Khuy Áo", "Sợi Chỉ Còn Mắc Ở Khuy Áo", "Chiếc Khuy Áo Có Sợi Chỉ Lạ");
   }
 
   if (normalized.includes("mieng dan") || normalized.includes("miếng dán") || normalized.includes("do choi") || normalized.includes("đồ chơi")) {
@@ -1349,13 +1439,12 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   );
 }
 
-function makeEvidenceTitle(evidenceObject: string, seed: string) {
-  const variants = makeEvidenceTitleVariants(evidenceObject).filter((item) => isHumanStoryTitle(item));
-  return pickSeedItem(
-    variants.length ? variants : [makeSafeFallbackTitleFromEvidence(evidenceObject)],
-    seed,
-    "evidence-title-pattern",
+function makeEvidenceTitle(evidenceObject: string) {
+  const variants = makeEvidenceTitleVariants(evidenceObject).filter(
+    (item) => isHumanStoryTitle(item) && !isGenericBadStoryTitle(item),
   );
+
+  return variants[0] || makeSafeFallbackTitleFromEvidence(evidenceObject);
 }
 
 function makeSeedAlignedTitle(params: {
@@ -1364,45 +1453,24 @@ function makeSeedAlignedTitle(params: {
   avoidTitles?: string[];
 }) {
   const evidenceTitles = makeEvidenceTitleVariants(params.candidate.evidenceObject)
-  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
-  const setting = normalizeForCompare(params.candidate.setting);
-  const pressure = normalizeForCompare(params.candidate.publicPressure);
-  const hidden = normalizeForCompare(params.candidate.hiddenTruth);
+  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject);
 
   const options = uniqueStringsForCover(
     [
       evidenceTitle,
       ...evidenceTitles,
-      setting.includes("truong") || pressure.includes("phu huynh")
-        ? "Vệt Bút Chì Sau Giờ Đón Trẻ"
-        : "",
-      setting.includes("benh vien") || hidden.includes("benh")
-        ? "Túi Thuốc Ở Quầy Chờ"
-        : "",
-      setting.includes("ngan hang") || pressure.includes("co dong")
-        ? "Dòng Ký Tên Trước Giờ Bỏ Phiếu"
-        : "",
-      setting.includes("khach san") || setting.includes("resort")
-        ? "Nút Buộc Trên Túi Giao Hàng"
-        : "",
-      setting.includes("gia toc") || pressure.includes("gia toc") || hidden.includes("di chuc")
-        ? "Trang Di Chúc Trong Từ Đường"
-        : "",
-      params.candidate.dopamineHook.includes("màn hình")
-        ? "Màn Hình Đã Phát Sai File"
-        : "",
+      makeSafeFallbackTitleFromEvidence(params.candidate.evidenceObject),
     ],
     12,
   );
 
   const cleanOptions = options
     .map((item) => sanitizeTitleCandidate(item))
-    .filter((item) => isHumanStoryTitle(item, params.avoidTitles) && !isGenericBadStoryTitle(item));
+    .filter((item) => isSafeGeneratedStoryTitle(item, params.candidate.evidenceObject, params.avoidTitles));
 
   return (
     cleanOptions[0] ||
     evidenceTitles.find((item) => isHumanStoryTitle(item, params.avoidTitles) && !isGenericBadStoryTitle(item)) ||
-    (!isGenericBadStoryTitle(evidenceTitle) ? sanitizeTitleCandidate(evidenceTitle) : "") ||
     makeSafeFallbackTitleFromEvidence(params.candidate.evidenceObject)
   );
 }
@@ -1415,8 +1483,8 @@ function makeChapterTitle(params: {
   alternatePressure: string;
   seed: string;
 }) {
-  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
-  const altEvidenceTitle = makeEvidenceTitle(params.alternateEvidence, `${params.seed}-alt`);
+  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject);
+  const altEvidenceTitle = makeEvidenceTitle(params.alternateEvidence);
   const setting = params.alternateSetting.replace(/^một\s+/i, "").trim();
   const pressure = params.alternatePressure.replace(/^một\s+/i, "").trim();
 
@@ -1471,107 +1539,312 @@ function pickWorldItem(items: string[], seed: string, salt: string) {
 function getEvidenceWorldProfile(evidenceObject: string): EvidenceWorldProfile | null {
   const normalized = normalizeForCompare(evidenceObject);
 
-  if ((normalized.includes("ve") || normalized.includes("phieu")) && (normalized.includes("an") || normalized.includes("ghe") || normalized.includes("so ghe"))) {
+  if (normalized.includes("phieu") && normalized.includes("banh")) {
     return {
-      genreLabel: "đời sống trường học / nhà ăn / phụ huynh",
+      genreLabel: "đời sống trường học / tiệm bánh / phụ huynh",
       settings: [
-        "khu nhà ăn của trường, nơi phụ huynh và giáo viên đang kiểm tra phiếu ăn",
-        "chốt bảo vệ cạnh nhà ăn, nơi tờ vé số ghế bị đem ra đối chất",
-        "quầy phát phiếu ăn sau giờ học, nơi số ghế trên vé bị phát hiện lệch",
+        "sảnh chung cư gần quầy lễ tân, nơi phụ huynh và chủ tiệm bánh đang chờ giải thích",
+        "khu nhận bánh phía sau trường, cạnh bàn giao đơn của nhà ăn",
+        "quầy bánh nhỏ trong khu dân cư, nơi đơn hàng của lớp bị đem ra đối chất",
       ],
       conflicts: [
-        "vé ăn có số ghế bị lệch bị dùng để đổ lỗi cho nữ chính trước phụ huynh",
-        "một tờ phiếu ăn bị sửa số ghế khiến nữ chính bị nghi đã tráo chỗ của đứa trẻ",
-        "người phát vé cố biến số ghế lệch trên phiếu ăn thành bằng chứng chống nữ chính",
+        "phiếu đặt bánh bị xé góc bị dùng để đổ lỗi dị ứng và làm nữ chính mất uy tín trước phụ huynh",
+        "một đơn bánh của trẻ bị bẻ nghĩa để ép nữ chính nhận lỗi thay người khác",
+        "người phụ trách đặt bánh cố biến vết xé và vết mực trên phiếu thành bằng chứng chống nữ chính",
       ],
       pressures: [
-        "phụ huynh, giáo viên trực và bảo vệ nhà ăn gây sức ép ngay tại quầy phát phiếu",
-        "ban đại diện phụ huynh yêu cầu nữ chính giải thích trước khi chuyện lan vào nhóm lớp",
-        "một giáo viên yếu thế bị ép nói lại chuyện phát vé trước đám đông phụ huynh",
+        "nhóm phụ huynh, chủ tiệm bánh và cô phụ trách lớp gây sức ép ngay tại nơi giao bánh",
+        "chủ nhà hàng và đại diện phụ huynh yêu cầu nữ chính ký nhận lỗi trước khi kiểm tra nguồn in",
+        "tiếng bàn tán trong nhóm phụ huynh đe dọa làm nữ chính mất việc và làm đứa trẻ bị liên lụy",
       ],
       hiddenTruths: [
-        "số ghế trên vé bị sửa sau khi rời quầy phát phiếu, không phải lỗi của nữ chính",
-        "vết mực ở số ghế cho thấy tờ vé bị viết lại bằng bút khác",
-        "người đổi vé là người có quyền chạm vào xấp phiếu trước giờ ăn trưa",
+        "người thật sự sửa phiếu là người cầm cây bút đỏ và có quyền chạm vào đơn hàng trước giờ giao",
+        "vết mực và mép xé cho thấy phiếu bị tráo sau khi rời bếp, không phải lỗi của nữ chính",
+        "đơn bánh bị đổi để che chuyện một người trong nhóm phụ huynh đã đặt sai thành phần",
       ],
       villainAttacks: [
-        "phản diện giơ tờ vé ăn có số ghế lệch và ép nữ chính nhận lỗi trước phụ huynh",
-        "người dàn cảnh dùng lời của giáo viên trực để bẻ nghĩa tờ vé ăn",
-        "phản diện tung ảnh tờ vé vào nhóm lớp rồi yêu cầu nữ chính ký biên bản",
+        "phản diện giơ phiếu bánh bị xé góc và gọi đó là lỗi kỹ thuật của nữ chính",
+        "đầu bếp trưởng dùng chuyện dị ứng của trẻ để buộc nữ chính nhận lỗi công khai",
+        "người phụ trách đơn hàng tung bản phiếu bị sửa trước mặt phụ huynh để ép nữ chính cúi đầu",
       ],
       heroineCounters: [
-        "đối chiếu số ghế, vết mực và danh sách phát phiếu để truy người đã sửa vé",
-        "giữ lại tờ vé gốc, hỏi người phát phiếu và kiểm tra thứ tự ghế trong nhà ăn",
-        "bảo vệ đứa trẻ trước đám đông rồi lần theo vết mực trên số ghế",
+        "đối chiếu mép xé, dấu mực đỏ và bản sao phiếu gốc để truy người đã cầm bút",
+        "giữ bản sao phiếu, hỏi nguồn in và buộc người giao bánh xác nhận thời điểm giao đơn",
+        "bảo vệ đứa trẻ trước đám đông rồi lần theo vết mực trên phiếu",
       ],
       emotionalStakes: [
-        "nếu thua, đứa trẻ bị kéo vào lời đồn trong nhóm phụ huynh và nữ chính mất uy tín ở trường",
-        "nữ chính phải bảo vệ một đứa trẻ đang bị người lớn biến thành lý do kết tội",
-        "cái giá là danh dự của nữ chính và sự an toàn của đứa trẻ trước giờ ăn trưa",
+        "nếu thua, một đứa trẻ bị mang ra làm lý do và nữ chính mất uy tín trước khu dân cư",
+        "nữ chính phải bảo vệ đứa trẻ và công việc nhỏ của mình trước lời đổ lỗi công khai",
+        "cái giá không phải tiền bạc, mà là danh dự của một người yếu thế trước nhóm phụ huynh",
       ],
       dopamineHooks: [
-        "vết mực ở số ghế không khớp với bút của quầy phát phiếu",
-        "danh sách nhà ăn ghi số ghế khác với tờ vé đang bị đưa ra",
-        "bảo vệ nhớ ai đã cầm xấp vé ngay trước giờ ăn",
+        "vết mực đỏ dưới hàng chữ đơn vị in trỏ về người đã sửa phiếu",
+        "bản sao phiếu gốc có mép xé khác hẳn tờ họ đưa ra",
+        "người giao bánh nhớ được ai đã cầm phiếu trước khi vụ việc bị làm lớn",
       ],
       alternateEvidences: [
-        "danh sách phát phiếu của nhà ăn",
-        "vết mực khác màu trên số ghế",
-        "sổ trực của giáo viên ở quầy phát vé",
+        "bản sao phiếu gốc có dấu mực xanh",
+        "hóa đơn giao bánh còn nguyên giờ nhận",
+        "túi bánh có tem thành phần chưa bị bóc",
       ],
     };
   }
 
-  if (normalized.includes("nhan chau") || normalized.includes("chau cay") || normalized.includes("chau hoa") || normalized.includes("tem kim loai")) {
+  if (normalized.includes("nap chai") || normalized.includes("vet xuoc")) {
     return {
-      genreLabel: "đời sống nhà trẻ / chậu cây / phụ huynh",
+      genreLabel: "đời sống sự kiện / bãi xe / studio gia đình",
       settings: [
-        "cổng nhà trẻ, nơi các chậu cây tặng lớp đang được giao",
-        "khu nhận quà của nhà trẻ, cạnh bàn ghi tên học sinh",
-        "cửa hàng cây nhỏ gần trường, nơi nhãn chậu được in và cắm vào đất",
+        "studio ảnh gia đình, nơi một buổi chụp chung bị biến thành cuộc đối chất",
+        "khu bãi xe sau studio, cạnh bàn nước của buổi gặp mặt gia đình",
+        "góc quầy nước trong sảnh sự kiện, nơi trẻ con và người lớn đều có mặt",
       ],
       conflicts: [
-        "nhãn chậu cây bị cắm nhầm bị dùng để vu nữ chính trước phụ huynh",
-        "một tem kim loại trên chậu cây bị đổi khiến nữ chính bị nghi gài tên người khác",
-        "người giao chậu bị lợi dụng để biến chiếc nhãn sai thành bằng chứng chống nữ chính",
+        "nắp chai có vết xước bị dùng để gán cho nữ chính một hành động cô không làm",
+        "một nắp chai bị tráo vị trí khiến nữ chính bị nghi đã chạm vào đồ của đứa trẻ",
+        "vết xước trên nắp chai bị lợi dụng để dựng câu chuyện làm nữ chính mất mặt trước người thân",
       ],
       pressures: [
-        "phụ huynh, cô giáo và người giao chậu gây sức ép ngay tại cổng nhà trẻ",
-        "ban đại diện lớp yêu cầu nữ chính giải thích trước khi ảnh chậu cây lan vào nhóm phụ huynh",
-        "một cô giáo yếu thế bị ép xác nhận chuyện nhận chậu trước mặt mọi người",
+        "người nhà, giáo viên và thợ chụp ảnh cùng nhìn nữ chính chờ lời giải thích",
+        "người tổ chức buổi chụp và phụ huynh gây sức ép trước mặt đứa trẻ",
+        "đám đông trong studio đòi nữ chính giải thích ngay khi chưa kiểm chứng vật chứng",
       ],
       hiddenTruths: [
-        "nhãn chậu bị đổi sau khi rời cửa hàng cây, không phải trong đơn đặt ban đầu",
-        "vết keo mới trên tem cho thấy có người vừa dán lại nhãn trước khi giao",
-        "người đổi nhãn là người có mặt ở khu nhận quà trước giờ đón trẻ",
+        "nắp chai được đặt lại sau khi có người dạy đứa trẻ nói theo một câu đã chuẩn bị",
+        "vết sơn nhỏ trên nắp chai cho thấy nó không phải chiếc nắp trong đoạn phim được đưa ra",
+        "người chạm vào nắp chai cuối cùng là người muốn biến đứa trẻ thành công cụ",
       ],
       villainAttacks: [
-        "phản diện giơ chậu cây có nhãn sai và ép nữ chính nhận lỗi trước phụ huynh",
-        "người dàn cảnh dùng lời của cô giáo để bẻ nghĩa chiếc nhãn trên chậu",
-        "phản diện tung ảnh nhãn chậu vào nhóm lớp rồi đòi nữ chính viết giải trình",
+        "phản diện giơ nắp chai có vết xước và ép nữ chính nhận lỗi trước mặt mọi người",
+        "người dàn cảnh dùng lời trẻ con và đoạn quay hậu trường để bẻ nghĩa nắp chai",
+        "phản diện lấy nắp chai đặt cạnh phong bì cũ rồi gọi đó là dấu vết của nữ chính",
       ],
       heroineCounters: [
-        "đối chiếu đơn đặt chậu, vết keo trên nhãn và lời người giao hàng",
-        "giữ lại tem kim loại, hỏi cửa hàng cây và kiểm tra người ký nhận chậu",
-        "bảo vệ cô giáo bị ép nói rồi lần theo vết keo mới trên nhãn chậu",
+        "so sánh vết xước, vệt sơn và vị trí nắp chai trong ảnh gốc",
+        "yêu cầu giữ nguyên nắp chai, kiểm chứng người đã chạm vào nó và bảo vệ đứa trẻ",
+        "dùng ảnh chụp cũ để chứng minh nắp chai bị tráo sau khi rời bàn nước",
       ],
       emotionalStakes: [
-        "nếu thua, một đứa trẻ bị kéo vào lời đồn và nữ chính mất uy tín trước phụ huynh",
-        "nữ chính phải bảo vệ đứa trẻ lẫn cô giáo yếu thế trước đám đông vội kết luận",
-        "cái giá là sự yên ổn của lớp học và danh dự của nữ chính trong nhóm phụ huynh",
+        "nếu thua, đứa trẻ bị kéo vào lời nói dối của người lớn và nữ chính mất uy tín trước gia đình",
+        "nữ chính phải giữ bình tĩnh để không biến đứa trẻ thành nhân chứng bị ép",
+        "cái giá là sự an toàn của đứa trẻ và danh dự của nữ chính trong buổi gặp mặt",
       ],
       dopamineHooks: [
-        "vết keo mới trên nhãn không khớp với cách cửa hàng cây thường cắm thẻ",
-        "đơn đặt chậu ghi mẫu cơ bản, không có tem kim loại",
-        "người giao chậu nhớ ai đã yêu cầu đổi nhãn trước khi mang đến trường",
+        "vệt sơn xanh xám trên nắp chai không khớp với chiếc nắp trong đoạn quay",
+        "đứa trẻ lặp lại đúng một câu được người lớn dạy trước",
+        "người giữ đạo cụ nhớ ai đã cầm nắp chai sau cùng",
       ],
       alternateEvidences: [
-        "đơn đặt chậu của cửa hàng cây",
-        "vết keo mới trên tem kim loại",
-        "sổ ký nhận chậu ở cổng nhà trẻ",
+        "ảnh chụp nắp chai trước khi bị tráo",
+        "vệt sơn xanh xám trên mép nắp",
+        "tờ ghi chú của người giữ đạo cụ",
       ],
     };
   }
+
+  if (normalized.includes("goc anh") || normalized.includes("anh cu") || normalized.includes("ruy bang")) {
+    return {
+      genreLabel: "đời sống studio / bó hoa / ảnh cũ",
+      settings: [
+        "sạp hoa cạnh studio cũ, nơi một bó hoa bị đem ra làm bằng chứng",
+        "phòng chờ studio ảnh nhỏ, cạnh bàn gói hoa và cuộn ruy-băng",
+        "góc cầu thang sau studio, nơi bó hoa được đặt chờ giao",
+      ],
+      conflicts: [
+        "góc ảnh cũ bị cắt thiếu bị ghim vào bó hoa để gán nữ chính với một chuyện đã qua",
+        "một mảnh ảnh cũ trên dải ruy-băng bị dùng để ép nữ chính nhận chuyện không thuộc về mình",
+        "người dàn cảnh cắt góc ảnh rồi đặt vào bó hoa để tạo hiểu lầm trước nhân chứng",
+      ],
+      pressures: [
+        "người trong studio, khách nhận hoa và một đứa trẻ bị kéo vào cuộc đối chất",
+        "chủ sạp hoa và người nhà gây sức ép ngay trước quầy giao hoa",
+        "đám đông ở studio chờ nữ chính giải thích về mảnh ảnh bị ghim sai chỗ",
+      ],
+      hiddenTruths: [
+        "mảnh ảnh bị cắt từ một đơn hàng cũ và chỉ người trong studio mới biết góc thiếu ấy",
+        "dải ruy-băng giữ lại vết keo cho thấy bó hoa đã bị mở ra sau khi rời sạp",
+        "người thật sự ghim ảnh là người muốn dùng quá khứ của nữ chính để ép cô im lặng",
+      ],
+      villainAttacks: [
+        "phản diện đưa bó hoa có ghim mảnh ảnh cũ ra trước mặt mọi người",
+        "người dàn cảnh dùng lời của đứa trẻ để gán mảnh ảnh cho nữ chính",
+        "phản diện buộc nữ chính giải thích mảnh ảnh ngay tại nơi đông người",
+      ],
+      heroineCounters: [
+        "giữ lại dải ruy-băng, đối chiếu vết keo và hỏi người gói hoa",
+        "nhìn ra góc ảnh bị cắt thiếu rồi lần theo đơn hàng cũ của studio",
+        "bảo vệ đứa trẻ khỏi lời nói dối và truy người đã mở bó hoa",
+      ],
+      emotionalStakes: [
+        "nếu thua, quá khứ của nữ chính bị bóp méo và đứa trẻ bị dùng làm công cụ",
+        "nữ chính phải giữ danh dự của mình mà không làm tổn thương đứa trẻ bị dạy nói dối",
+        "cái giá là một lời vu oan công khai ngay tại nơi cô từng làm việc",
+      ],
+      dopamineHooks: [
+        "vết keo trên ruy-băng chứng minh bó hoa đã bị mở ra",
+        "góc ảnh bị cắt khớp với một đơn hàng cũ trong studio",
+        "người gói hoa nhớ được ai yêu cầu thay dải ruy-băng",
+      ],
+      alternateEvidences: [
+        "dải ruy-băng còn vết keo cũ",
+        "sổ giao hoa ghi sai tên người nhận",
+        "ảnh đơn hàng cũ trong máy của studio",
+      ],
+    };
+  }
+
+  if (normalized.includes("khan tay") || normalized.includes("theu")) {
+    return {
+      genreLabel: "đời sống gia đình / đồ thêu / nhà cũ",
+      settings: [
+        "phòng khách nhà cũ, nơi chiếc khăn tay bị đưa ra trước người thân",
+        "góc tủ đồ trong nhà cũ, cạnh hộp kim chỉ và túi quà chưa mở",
+        "bàn trà trong nhà cũ, nơi người làm và hàng xóm bị gọi đến làm chứng",
+      ],
+      conflicts: [
+        "chiếc khăn tay thêu chữ cái nhỏ bị dùng để kéo nữ chính vào một lời buộc tội trong nhà",
+        "mũi thêu lỗi trên khăn tay bị bẻ nghĩa thành dấu vết chống nữ chính",
+        "người trong nhà dùng chiếc khăn tay để ép nữ chính nhận lỗi trước người thân",
+      ],
+      pressures: [
+        "người thân, hàng xóm và người làm trong nhà cùng gây sức ép trước bàn trà",
+        "người lớn trong nhà yêu cầu nữ chính giải thích chiếc khăn trước mặt nhân chứng",
+        "lời đồn trong nhà cũ khiến người yếu thế sợ bị mất việc",
+      ],
+      hiddenTruths: [
+        "mũi thêu lỗi cho thấy chiếc khăn được gói lại bởi người không quen thêu",
+        "vết gấp trên khăn trùng với kiểu gói quà của một người trong nhà",
+        "người đưa khăn cho nhân chứng mới là người muốn nữ chính mất mặt",
+      ],
+      villainAttacks: [
+        "phản diện giơ chiếc khăn thêu chữ cái nhỏ và ép nữ chính giải thích",
+        "người trong nhà dùng nhân chứng yếu thế để xác nhận chiếc khăn thuộc về nữ chính",
+        "phản diện dọa đưa chuyện chiếc khăn ra nhóm hàng xóm nếu nữ chính không nhận lỗi",
+      ],
+      heroineCounters: [
+        "đối chiếu mũi thêu lỗi, nếp gấp và cách gói quà để truy người đưa khăn",
+        "giữ chiếc khăn làm chứng cứ rồi hỏi từng người đã chạm vào hộp quà",
+        "bảo vệ người làm bị ép khai và lần theo dấu chỉ thêu",
+      ],
+      emotionalStakes: [
+        "nếu thua, nữ chính mất danh dự trong nhà và một người làm bị đẩy ra chịu tội",
+        "nữ chính phải bảo vệ người yếu thế mà không để người nhà bẻ nghĩa chiếc khăn",
+        "cái giá là sự im lặng bị ép trong chính căn nhà cũ của mình",
+      ],
+      dopamineHooks: [
+        "mũi thêu thiếu ở đáy chữ cái lộ ra người thật đã sửa khăn",
+        "nếp gấp trên khăn trùng với kiểu gói quà của một người trong nhà",
+        "người làm nhớ ra ai đã nhờ bà giữ chiếc khăn",
+      ],
+      alternateEvidences: [
+        "hộp kim chỉ còn thiếu một màu chỉ",
+        "túi quà có nếp gấp lệch",
+        "ảnh chụp chiếc khăn trước khi bị gói lại",
+      ],
+    };
+  }
+
+  if (normalized.includes("hat vong") || normalized.includes("vong tay")) {
+    return {
+      genreLabel: "đời sống trường học / sự kiện trẻ em / đồ cá nhân",
+      settings: [
+        "chốt bảo vệ trước cổng trường, nơi một hạt vòng bị đem ra làm chứng cứ",
+        "khu gửi đồ của sự kiện trẻ em, cạnh bàn phát vòng tay",
+        "sảnh lớp học sau giờ đón trẻ, nơi phụ huynh đang đứng chờ",
+      ],
+      conflicts: [
+        "hạt vòng đặt sai chỗ bị dùng để đổ lỗi cho nữ chính trước phụ huynh",
+        "vòng tay của trẻ bị bẻ nghĩa để làm nữ chính mất quyền đón con",
+        "một món đồ nhỏ của trẻ bị đặt sai chỗ để tạo nghi ngờ công khai",
+      ],
+      pressures: [
+        "phụ huynh, bảo vệ và giáo viên gây sức ép ngay trước giờ đón trẻ",
+        "ban đại diện phụ huynh yêu cầu nữ chính giải thích trước đám đông",
+        "lời đồn trong nhóm lớp đe dọa làm đứa trẻ bị cô lập",
+      ],
+      hiddenTruths: [
+        "hạt vòng bị đặt vào xe sau khi trẻ rời khỏi cổng trường",
+        "vòng tay bị tháo ra để che việc người khác đã tiếp xúc với đứa trẻ",
+        "người chứng kiến bị dọa im lặng vì sợ mất việc ở trường",
+      ],
+      villainAttacks: [
+        "phản diện đưa hạt vòng ra và ép nữ chính nhận lỗi trước phụ huynh",
+        "người dàn cảnh dùng ảnh mờ và lời nhân chứng yếu để bẻ nghĩa hạt vòng",
+        "phản diện dọa báo lên nhóm lớp nếu nữ chính không ký biên bản",
+      ],
+      heroineCounters: [
+        "giữ hạt vòng trong túi nhỏ, hỏi nguồn gốc và truy người đã đặt nó vào xe",
+        "đối chiếu màu dây, vết đứt và thời điểm trẻ rời cổng",
+        "bảo vệ đứa trẻ trước khi phản công bằng lời khai của bảo vệ",
+      ],
+      emotionalStakes: [
+        "nếu thua, nữ chính mất quyền đón con và đứa trẻ bị nhìn bằng ánh mắt nghi ngờ",
+        "nữ chính phải bảo vệ đứa trẻ khỏi lời đồn trong nhóm phụ huynh",
+        "cái giá là một buổi đón trẻ biến thành nơi kết tội công khai",
+      ],
+      dopamineHooks: [
+        "vết đứt trên dây vòng không khớp với lời nhân chứng",
+        "bảo vệ nhớ ai đã đứng cạnh xe trước giờ đón trẻ",
+        "hạt vòng còn dính mùi keo của món đồ chơi khác",
+      ],
+      alternateEvidences: [
+        "sợi dây vòng bị đứt còn dính keo",
+        "sổ trực của bảo vệ cổng trường",
+        "ảnh chụp bàn phát vòng tay",
+      ],
+    };
+  }
+
+  if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo") || normalized.includes("chi con mac")) {
+    return {
+      genreLabel: "đời sống xưởng may / phòng thử đồ / áo bị sửa",
+      settings: [
+        "phòng thử đồ của xưởng may, nơi một chiếc áo còn sợi chỉ lạ bị đem ra đối chất",
+        "khu tủ đồ của câu lạc bộ thể thao, nơi áo khoác bị treo nhầm trước giờ đón trẻ",
+        "tiệm sửa đồ nhỏ trong khu dân cư, nơi chiếc áo có sợi chỉ lạ được trả lại",
+      ],
+      conflicts: [
+        "sợi chỉ còn mắc ở khuy áo bị dùng để gán nữ chính với một việc cô không làm",
+        "một sợi chỉ khác màu trên khuy áo bị bẻ nghĩa thành bằng chứng chống nữ chính",
+        "chiếc áo có sợi chỉ lạ bị đem ra trước đám đông để ép nữ chính nhận lỗi",
+      ],
+      pressures: [
+        "thợ may, người giữ tủ đồ và vài phụ huynh cùng chờ nữ chính giải thích",
+        "người trong nhà dùng chiếc áo bị sửa để ép nữ chính nhận lỗi trước mặt mọi người",
+        "đám đông ở phòng thử đồ nhìn sợi chỉ như bằng chứng đã đủ kết luận",
+      ],
+      hiddenTruths: [
+        "sợi chỉ khác màu không thuộc cuộn chỉ của xưởng may mà đến từ người đã sửa áo sau cùng",
+        "mũi chỉ ở khuy áo cho thấy áo bị tháo ra và khâu lại sau khi nữ chính rời đi",
+        "người chạm vào áo cuối cùng cố tình để lại sợi chỉ để dựng chuyện",
+      ],
+      villainAttacks: [
+        "phản diện giơ chiếc áo còn sợi chỉ lạ và ép nữ chính giải thích trước mọi người",
+        "người dàn cảnh dùng lời của một nhân chứng yếu để gán chiếc áo cho nữ chính",
+        "phản diện đem chuyện chiếc áo ra nhóm phụ huynh để nữ chính phải cúi đầu",
+      ],
+      heroineCounters: [
+        "đối chiếu màu chỉ, kiểu khâu và cuộn chỉ trong xưởng để tìm người đã sửa áo",
+        "giữ lại sợi chỉ, hỏi người trông tủ đồ và kiểm tra ai đã chạm vào áo sau cùng",
+        "bảo vệ nhân chứng yếu rồi lần theo mũi khâu lệch ở khuy áo",
+      ],
+      emotionalStakes: [
+        "nếu thua, nữ chính mất uy tín trong công việc và một đứa trẻ bị kéo vào lời nói dối",
+        "nữ chính phải bảo vệ người yếu thế trước khi chứng minh chiếc áo đã bị đụng vào",
+        "cái giá là danh dự của nữ chính trong một chuyện đời thường bị đám đông làm lớn",
+      ],
+      dopamineHooks: [
+        "màu chỉ trên khuy áo không khớp với cuộn chỉ của xưởng",
+        "mũi khâu lệch cho thấy người sửa áo thuận tay trái",
+        "người trông tủ đồ nhớ ai đã lấy chiếc áo ra trước khi vụ việc nổ ra",
+      ],
+      alternateEvidences: [
+        "cuộn chỉ còn dính đoạn chỉ cùng màu",
+        "sổ nhận sửa áo ở tiệm",
+        "móc áo có số thứ tự bị đổi",
+      ],
+    };
+  }
+
 
   return null;
 }
@@ -1591,6 +1864,7 @@ function applyEvidenceWorldLock(params: {
   seed: string;
 }) {
   const profile = getEvidenceWorldProfile(params.candidate.evidenceObject);
+
   if (!profile) return null;
 
   params.candidate.setting = pickWorldItem(profile.settings, params.seed, "setting");
@@ -1604,6 +1878,7 @@ function applyEvidenceWorldLock(params: {
 
   return profile;
 }
+
 
 function buildSeedCandidate(params: {
   genreLabel: string;
@@ -1692,7 +1967,7 @@ function buildSeedCandidate(params: {
   ].filter(Boolean);
 
   const exactGenre = evidenceWorldProfile?.genreLabel || params.genreLabel || params.lane.label;
-  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bước vào một nữ tần đô thị drama bám chặt genre "${exactGenre}". Xung đột mở tại ${setting}; trọng tâm không phải hồ sơ-camera-log chung mà là ${relationshipConflict}. ${evidenceObject} chỉ là chìa khóa riêng của genre này, buộc cô nhìn thấy ai đang dùng ${publicPressure} để ép mình cúi đầu.`;
+  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bước vào một nữ tần đô thị drama bám đúng thế giới "${exactGenre}". Xung đột mở tại ${setting}; trọng tâm không phải hồ sơ-camera-log chung mà là ${relationshipConflict}. ${evidenceObject} là vật chứng đời sống trung tâm, buộc cô nhìn thấy ai đang dùng ${publicPressure} để ép mình cúi đầu. Không trộn thêm bối cảnh cao cấp ngoài thế giới này ở chương 1.`;
   const openingScene = setting;
   const incitingIncident = `Tại ${setting}, ${villainAttack}. ${evidenceObject} không phải vật chứng rơi vào scene theo công thức cũ; nó được đặt trong một tình huống cụ thể của "${exactGenre}" khiến nữ chính bị hiểu sai trước người liên quan.`;
   const mainConflict = `Nữ chính phải xử lý ${relationshipConflict} bằng logic riêng của genre "${exactGenre}": cảm xúc thật, áp lực đô thị, cú nhục rõ, phản công chủ động. Không được tự kéo về chuỗi camera/log/phong tỏa/pháp lý nếu genre không đòi hỏi.`;
@@ -1700,7 +1975,7 @@ function buildSeedCandidate(params: {
   const heroineArc = `${params.heroineLabel}: chịu đau có lý do → quan sát điểm lệch trong ${evidenceObject} → bảo vệ điều quan trọng (${emotionalStake}) → phản công bằng cách riêng (${heroineCounter}) → vả mặt có cảm xúc và payoff.`;
   const emotionalHook = `${emotionalStake}. Cảm xúc phải đến từ đúng kiểu nữ chính "${params.heroineLabel}", không biến cô thành một nữ tổng tài lạnh lùng giống mọi truyện.`;
   const powerStructure = `Quyền lực đối đầu đến từ ${publicPressure} và thế lực quanh ${relationshipConflict}; nữ chính có ${evidenceObject}, sự bình tĩnh, tổn thương thật, và cách phản công riêng: ${heroineCounter}.`;
-  const shortFingerprint = `${params.lane.key} + world:${evidenceWorldProfile?.genreLabel || "free"} + genre:${exactGenre} + setting:${setting} + evidence:${evidenceObject} + conflict:${relationshipConflict} + heroine:${params.heroineLabel}`;
+  const shortFingerprint = `${params.lane.key} + world:${evidenceWorldProfile?.genreLabel || 'free'} + genre:${exactGenre} + setting:${setting} + evidence:${evidenceObject} + conflict:${relationshipConflict} + heroine:${params.heroineLabel}`;
   const dramaBalance = `Drama balance theo genre: attack=${villainAttack} → hurt=${emotionalStake} → counter=${heroineCounter} → payoff=${dopamineHook}.`;
 
   return {
@@ -2617,16 +2892,12 @@ export function buildMockStorySeed(params: {
     seed: params.seed,
     avoidTitles: params.avoidLibrary?.titles,
   });
-  const fallbackTitle = buildUniqueFactoryTitle({
-    genreLabel: params.genreLabel,
-    seed: params.seed,
-    avoidTitles: params.avoidLibrary?.titles,
-  });
-  const title = isHumanStoryTitle(generatedTitle, params.avoidLibrary?.titles)
+  const safeFallbackTitle = makeEvidenceTitle(candidate.evidenceObject);
+  const title = isSafeGeneratedStoryTitle(generatedTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
     ? sanitizeTitleCandidate(generatedTitle)
-    : isHumanStoryTitle(fallbackTitle, params.avoidLibrary?.titles)
-      ? sanitizeTitleCandidate(fallbackTitle)
-      : makeEvidenceTitle(candidate.evidenceObject, `${params.seed}-safe-title`);
+    : isSafeGeneratedStoryTitle(safeFallbackTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
+      ? sanitizeTitleCandidate(safeFallbackTitle)
+      : makeSafeFallbackTitleFromEvidence(candidate.evidenceObject);
 
   const storyPlan = buildFactoryStoryPlan({
     title,
