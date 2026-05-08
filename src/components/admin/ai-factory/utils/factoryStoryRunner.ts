@@ -291,7 +291,9 @@ function isBadParsedFactoryTitle(value: string) {
     'hoa don hoa gui sai ten',
     'khung hinh bi cat khoi camera',
     'tam ve mot chieu trong ngan keo',
-  ].includes(normalized)
+      'dau do tren ban hop dong',
+    'truyen moi tu ai writer phu hop voi vat chung trung tam',
+].includes(normalized)
 }
 
 
@@ -417,18 +419,39 @@ function chooseFactoryStoryTitle(params: {
   const parsedChapterTitle = String(params.parsedChapterTitle || '').trim()
   const evidenceTitle = makeFactoryTitleFromEvidence(params.storySeed)
 
-  const candidates = [parsedTitle, parsedChapterTitle, seedTitle, evidenceTitle]
+  // V20 hard rule:
+  // Story title saved to DB must be evidence-first. Parsed title from AI is only used
+  // if it matches the seed evidence and is not generic. Seed title is only fallback
+  // when it also passes the evidence gate. This prevents old seed/generic titles
+  // like "Manh Mối Ở Hiện Trường" from being inserted.
+  const candidates = [evidenceTitle, parsedChapterTitle, parsedTitle, seedTitle]
   const chosen =
     candidates.find((title) => isAcceptableFactoryStoryTitle(title, params.storySeed)) ||
-    evidenceTitle
+    evidenceTitle ||
+    'Chi Tiết Bị Đặt Sai'
 
-  const original = parsedTitle || seedTitle || parsedChapterTitle
+  const original = seedTitle || parsedTitle || parsedChapterTitle
   const replaced = normalizeTitleForCompare(chosen) !== normalizeTitleForCompare(original)
 
   return {
     title: chosen,
     slug: slugifyFactoryStoryTitle(chosen),
     replaced,
+    original,
+    evidenceTitle,
+    parsedTitle,
+    parsedChapterTitle,
+    seedTitle,
+  }
+}
+
+
+function assertFactoryTitleGatePassed(title: string, storySeed?: FactoryStorySeed | null) {
+  if (!isAcceptableFactoryStoryTitle(title, storySeed)) {
+    const evidenceTitle = makeFactoryTitleFromEvidence(storySeed)
+    throw new Error(
+      `Factory title gate failed before insert. title="${title}", evidenceTitle="${evidenceTitle}", evidence="${getSeedEvidenceObject(storySeed)}"`,
+    )
   }
 }
 
@@ -498,12 +521,19 @@ export async function insertFactoryStoryDraft(params: {
     storySeed: params.storySeed,
   })
 
+  params.addLog(
+    `Title gate final: "${chosenStoryTitle.title}" | seed="${chosenStoryTitle.seedTitle}" | parsed="${chosenStoryTitle.parsedTitle}" | chapter="${chosenStoryTitle.parsedChapterTitle}" | evidence="${chosenStoryTitle.evidenceTitle}"`,
+    chosenStoryTitle.replaced ? 'warning' : 'info',
+  )
+
   if (chosenStoryTitle.replaced) {
     params.addLog(
-      `Đổi title story từ "${params.parsed.storyTitle}" sang seed title "${chosenStoryTitle.title}" để tránh title fallback/generic.`,
+      `Title gate changed: "${chosenStoryTitle.original}" → "${chosenStoryTitle.title}"`,
       'warning',
     )
   }
+
+  assertFactoryTitleGatePassed(chosenStoryTitle.title, params.storySeed)
 
   const publicDescription = buildFactoryPublicStoryDescription({
     parsed: {
