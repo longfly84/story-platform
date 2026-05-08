@@ -276,6 +276,7 @@ Yêu cầu:
 
   const payload = {
     mode: 'chapter',
+    storyEditorPassEnabled: Boolean(params.config.storyEditorPassEnabled),
     provider: params.provider,
     modelKey: params.modelKey,
     moduleId: 'female-urban-viral',

@@ -49,6 +49,7 @@ export type AIFactoryConfig = {
   autoCompleteByTarget: boolean
   delayMs: number
   generateCover: boolean
+  storyEditorPassEnabled: boolean
   coverArtStyle: CoverArtStyle
   coverCompositionPreset: CoverCompositionPreset
   storyStatus: 'draft'

@@ -69,6 +69,7 @@ const defaultConfig: AIFactoryConfig = {
   maxTargetChapters: 20,
   delayMs: 2000,
   generateCover: false,
+  storyEditorPassEnabled: true,
   coverArtStyle: 'auto',
   coverCompositionPreset: 'auto',
   autoCompleteByTarget: false,
@@ -769,8 +770,9 @@ export default function AIFactoryPanel() {
     factoryMode === 'create-new'
       ? createNewTextRequests
       : selectedContinueStoryCount * Math.max(1, continueChaptersPerStory)
+  const totalEditorRequests = config.storyEditorPassEnabled && config.provider === 'openai' ? totalTextRequests : 0
   const totalCoverRequests = factoryMode === 'create-new' && config.generateCover ? config.storyCount : 0
-  const totalRequests = totalTextRequests + totalCoverRequests
+  const totalRequests = totalTextRequests + totalEditorRequests + totalCoverRequests
   const totalBatches = Math.ceil(config.storyCount / safeBatchSize)
   const expensiveModelRequiresConfirmation =
     config.provider === 'openai' && (config.modelKey === 'premium' || config.modelKey === 'auto')
@@ -804,6 +806,7 @@ export default function AIFactoryPanel() {
             (snapshot.config as any).coverCompositionPreset,
           ),
           autoCompleteByTarget: Boolean((snapshot.config as any).autoCompleteByTarget),
+          storyEditorPassEnabled: (snapshot.config as any).storyEditorPassEnabled !== false,
         })
       }
       if (Array.isArray(snapshot.jobs)) setJobs(snapshot.jobs)
@@ -1299,6 +1302,7 @@ Yêu cầu:
 
     const payload = {
       mode: 'chapter',
+      storyEditorPassEnabled: Boolean(config.storyEditorPassEnabled),
       provider: params.provider,
       modelKey: params.modelKey,
       moduleId: 'female-urban-viral',
@@ -1347,6 +1351,18 @@ Yêu cầu:
 
     if (!text || typeof text !== 'string') {
       throw new Error('API không trả về text hợp lệ.')
+    }
+
+    if (params.provider === 'openai') {
+      if (!config.storyEditorPassEnabled) {
+        addLog('Story editor pass: disabled', 'info')
+      } else if (data?.editorPassUsed) {
+        addLog('Story editor pass: success', 'success')
+      } else if (data?.editorPassFailed) {
+        addLog(`Story editor pass: fallback bản thô (${data?.editorError || 'không rõ lỗi'})`, 'warning')
+      } else {
+        addLog('Story editor pass: enabled nhưng API không báo đã sửa', 'warning')
+      }
     }
 
     return text
@@ -2533,6 +2549,7 @@ Yêu cầu:
       setExpensiveModelConfirmed={setExpensiveModelConfirmed}
       totalBatches={totalBatches}
       totalTextRequests={totalTextRequests}
+      totalEditorRequests={totalEditorRequests}
       totalCoverRequests={totalCoverRequests}
       totalRequests={totalRequests}
       canStart={canStart}

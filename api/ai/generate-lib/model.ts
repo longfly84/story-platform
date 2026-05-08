@@ -164,6 +164,7 @@ export function getTextModel(payload: NormalizedGeneratePayload) {
 
 export function getStoryEditorPassEnabled(payload: NormalizedGeneratePayload) {
   if (payload.mode !== 'chapter') return false
+  if (payload.storyEditorPassEnabled === false) return false
 
   const disabled = process.env.DISABLE_STORY_EDITOR_PASS
   if (disabled === 'true' || disabled === '1') return false

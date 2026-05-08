@@ -87,5 +87,6 @@ export function normalizePayload(body: GeneratePayload): NormalizedGeneratePaylo
     factoryRunId: safeText(body.factoryRunId, ''),
     storyIndex: Math.max(0, Math.floor(safeNumber(body.storyIndex, 0))),
     storySeed: normalizeStorySeed(body.storySeed),
+    storyEditorPassEnabled: body.storyEditorPassEnabled !== false,
   }
 }

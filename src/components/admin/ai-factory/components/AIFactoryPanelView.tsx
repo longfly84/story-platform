@@ -67,6 +67,7 @@ type AIFactoryPanelViewProps = {
   openaiConfirmed: boolean
   totalBatches: number
   totalTextRequests: number
+  totalEditorRequests: number
   totalCoverRequests: number
   totalRequests: number
   canStart: boolean
@@ -113,6 +114,7 @@ export default function AIFactoryPanelView({
   setExpensiveModelConfirmed,
   totalBatches,
   totalTextRequests,
+  totalEditorRequests,
   totalCoverRequests,
   totalRequests,
   canStart,
@@ -466,22 +468,39 @@ export default function AIFactoryPanelView({
                 </label>
               </div>
 
-              <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-200">
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200">
                   <input
                     type="checkbox"
                     disabled={isRunning}
                     checked={config.generateCover}
                     onChange={(event) => updateConfig('generateCover', event.target.checked)}
-                    className="h-4 w-4 accent-yellow-300"
+                    className="mt-0.5 h-4 w-4 accent-yellow-300"
                   />
-                  Generate cover
+                  <span>
+                    <span className="block font-medium text-slate-100">Generate cover</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-slate-500">
+                      Mock skip, OpenAI tạo ảnh thật + upload public.
+                    </span>
+                  </span>
                 </label>
-                <span className="ml-2 text-xs text-slate-500">
-                  Mock sẽ skip, OpenAI sẽ tạo ảnh thật + upload public
-                </span>
-              </div>
 
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-sm text-slate-200">
+                  <input
+                    type="checkbox"
+                    disabled={isRunning}
+                    checked={config.storyEditorPassEnabled}
+                    onChange={(event) => updateConfig('storyEditorPassEnabled', event.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-emerald-300"
+                  />
+                  <span>
+                    <span className="block font-medium text-emerald-100">Biên tập tiếng Việt sau khi viết</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-emerald-100/70">
+                      Áp dụng cho cả tạo truyện mới và viết tiếp. Tốn thêm 1 text request/chương.
+                    </span>
+                  </span>
+                </label>
+              </div>
 
               {config.generateCover ? (
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -678,7 +697,8 @@ export default function AIFactoryPanelView({
                           : `Viết tiếp tối đa ${continueChaptersPerStory} chương/truyện`}
                     </div>
                     <div>Số chương thật sự sẽ tạo: {totalTextRequests}</div>
-                    <div>Text request: {totalTextRequests}</div>
+                    <div>Text request writer: {totalTextRequests}</div>
+                    <div>Editor request: {totalEditorRequests}</div>
                     <div>Cover request: {totalCoverRequests}</div>
                     <div>Tổng request dự kiến: {totalRequests}</div>
                   </div>

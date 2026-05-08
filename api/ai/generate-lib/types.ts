@@ -106,6 +106,7 @@ export type GeneratePayload = {
   factoryRunId?: string
   storyIndex?: number
   storySeed?: FactoryStorySeed | null
+  storyEditorPassEnabled?: boolean
 }
 
 export type NormalizedGeneratePayload = {
@@ -141,4 +142,5 @@ export type NormalizedGeneratePayload = {
   factoryRunId: string
   storyIndex: number
   storySeed: FactoryStorySeed | null
+  storyEditorPassEnabled: boolean
 }
