@@ -291,30 +291,24 @@ export function buildMotifTextFromFingerprint(
   fingerprint: StoryMotifFingerprint,
   seed?: Partial<FactoryStorySeed>,
 ) {
-  // Embedding text v7: ưu tiên trục khác biệt thật, giảm câu văn chung của nữ tần đô thị.
-  // Nếu nhét corePremise dài vào đây, embedding thường luôn 0.88–0.92 vì cùng vibe
-  // "bị vu oan + vật chứng + phản công". Text này cố tình ngắn, nhiều axis riêng.
   const parts = [
-    `axis_premise=${fingerprint.premiseFamily || 'unknown'}`,
-    `axis_opening=${fingerprint.openingArena || 'unknown'}`,
-    `axis_incident=${fingerprint.incitingIncident || seed?.incitingIncident || 'unknown'}`,
-    `axis_evidence_role=${fingerprint.evidenceType || 'unknown'}`,
-    `axis_evidence_object=${fingerprint.evidenceObject || seed?.evidenceObject || 'unknown'}`,
-    `axis_attack=${fingerprint.villainAttackType || 'unknown'}`,
-    `axis_counter=${fingerprint.heroineCounterType || 'unknown'}`,
-    `axis_power=${fingerprint.powerStructure || 'unknown'}`,
-    `axis_pressure=${fingerprint.publicPressure || 'unknown'}`,
-    `axis_truth=${fingerprint.hiddenTruthType || 'unknown'}`,
-    `axis_arena=${fingerprint.mainArena || 'unknown'}`,
-    `axis_deadline=${fingerprint.deadlineStyle || 'unknown'}`,
-    `axis_relationship=${fingerprint.relationshipCore || 'unknown'}`,
-    `axis_twist=${fingerprint.twistEngine || 'unknown'}`,
-    `axis_tags=${(fingerprint.antiRepeatTags || []).join(', ') || 'none'}`,
+    `premiseFamily: ${fingerprint.premiseFamily || 'unknown'}`,
+    `openingArena: ${fingerprint.openingArena || 'unknown'}`,
+    `incitingIncident: ${fingerprint.incitingIncident || seed?.incitingIncident || 'unknown'}`,
+    `evidenceType: ${fingerprint.evidenceType || 'unknown'}`,
+    `evidenceObject: ${fingerprint.evidenceObject || seed?.evidenceObject || 'unknown'}`,
+    `villainAttackType: ${fingerprint.villainAttackType || 'unknown'}`,
+    `heroineCounterType: ${fingerprint.heroineCounterType || 'unknown'}`,
+    `powerStructure: ${fingerprint.powerStructure || 'unknown'}`,
+    `publicPressure: ${fingerprint.publicPressure || 'unknown'}`,
+    `hiddenTruthType: ${fingerprint.hiddenTruthType || 'unknown'}`,
+    `mainArena: ${fingerprint.mainArena || 'unknown'}`,
+    `deadlineStyle: ${fingerprint.deadlineStyle || 'unknown'}`,
+    `antiRepeatTags: ${(fingerprint.antiRepeatTags || []).join(', ') || 'none'}`,
   ]
 
-  if (seed?.evidenceObject) parts.push(`seed_evidence=${seed.evidenceObject}`)
-  if (seed?.setting) parts.push(`seed_setting=${seed.setting}`)
-  if (seed?.publicPressure) parts.push(`seed_pressure=${seed.publicPressure}`)
+  if (seed?.corePremise) parts.push(`corePremise: ${seed.corePremise}`)
+  if (seed?.hiddenTruth) parts.push(`hiddenTruth: ${seed.hiddenTruth}`)
 
   return parts.join('\n')
 }
@@ -371,8 +365,8 @@ export function extractMotifRegistryItemFromStory(story: ExistingStory): StoryMo
       storyId: story.id,
       title: story.title || undefined,
       fingerprint,
-      motifText: buildMotifTextFromFingerprint(fingerprint),
-      embedding: undefined,
+      motifText: rawMotifText || buildMotifTextFromFingerprint(fingerprint),
+      embedding: Array.isArray(storyDna?.motifEmbedding) ? storyDna.motifEmbedding : undefined,
       source: 'story_dna',
     }
   }
