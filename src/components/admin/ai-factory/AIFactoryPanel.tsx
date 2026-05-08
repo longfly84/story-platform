@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import type {
   AIFactoryConfig,
@@ -53,7 +53,6 @@ import {
 } from './utils/motifSimilarity'
 import { buildFactoryPublicStoryDescription } from './utils/factoryPublicDescription'
 
-import { buildFactoryEvidenceContextText, resolveFactoryEvidenceSemantics } from './utils/factoryEvidenceSemantics'
 function safeString(value: unknown): string {
   if (typeof value === 'string') return value.trim()
   if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim()
@@ -165,6 +164,20 @@ function getFactorySeedEvidence(storySeed?: FactoryStorySeed | null) {
   return safeString((storySeed as any)?.evidenceObject || (storySeed as any)?.motifFingerprint?.evidenceObject)
 }
 
+function isLockerCardEvidenceText(value: string) {
+  const normalized = normalizeFactoryTitleText(value)
+
+  return (
+    normalized.includes('the tu do') ||
+    normalized.includes('tu do') ||
+    normalized.includes('locker') ||
+    normalized.includes('phong tap') ||
+    normalized.includes('cau lac bo the thao') ||
+    normalized.includes('the ra vao') ||
+    normalized.includes('so thanh vien')
+  )
+}
+
 function isBadFactoryStoryTitle(title: string) {
   const normalized = normalizeFactoryTitleText(title)
 
@@ -185,19 +198,67 @@ function isBadFactoryStoryTitle(title: string) {
 }
 
 function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
-  const semantic = resolveFactoryEvidenceSemantics({
-    evidenceText: getFactorySeedEvidence(storySeed),
-    contextText: buildFactoryEvidenceContextText(storySeed),
-  })
+  const evidence = getFactorySeedEvidence(storySeed)
+  const normalized = normalizeFactoryTitleText(evidence)
 
-  return semantic.title
-}
+  if (isLockerCardEvidenceText(evidence)) {
+    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
+  }
 
-function getPanelEvidenceSemanticForLog(storySeed?: FactoryStorySeed | null) {
-  return resolveFactoryEvidenceSemantics({
-    evidenceText: getFactorySeedEvidence(storySeed),
-    contextText: buildFactoryEvidenceContextText(storySeed),
-  })
+  if ((normalized.includes('ve') || normalized.includes('phieu')) && (normalized.includes('an') || normalized.includes('so ghe') || normalized.includes('ghe'))) {
+    return 'Vé Ăn Số Ghế Lệch'
+  }
+
+  if (normalized.includes('hat vong')) {
+    return 'Hạt Vòng Sai Chỗ'
+  }
+
+  if (normalized.includes('vong tay')) {
+    return 'Vòng Tay Sự Kiện Bị Đổi Màu'
+  }
+
+  if (normalized.includes('soi chi') || normalized.includes('khuy ao') || normalized.includes('chi con mac') || normalized.includes('chi lech')) {
+    return 'Sợi Chỉ Ở Khuy Áo'
+  }
+
+  if (normalized.includes('nhan chau') || normalized.includes('chau cay') || normalized.includes('chau hoa') || normalized.includes('tem kim loai')) {
+    return 'Chậu Cây Bị Cắm Sai Nhãn'
+  }
+
+  if (normalized.includes('nap chai') || normalized.includes('vet xuoc')) {
+    return 'Nắp Chai Có Vết Xước'
+  }
+
+  if (normalized.includes('phieu') && normalized.includes('banh')) {
+    return 'Phiếu Bánh Bị Xé Góc'
+  }
+
+  if (normalized.includes('the giat') || normalized.includes('tiem giat') || (normalized.includes('ao') && normalized.includes('ghim'))) {
+    return 'Thẻ Giặt Còn Ghim'
+  }
+
+  if (normalized.includes('khan tay') || normalized.includes('theu')) {
+    return 'Chiếc Khăn Tay Thêu Chữ Nhỏ'
+  }
+
+  if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
+    return 'Bức Vẽ Lệch Khung'
+  }
+
+  const clean = evidence
+    .replace(/^một\s+/i, '')
+    .replace(/^một chiếc\s+/i, 'Chiếc ')
+    .replace(/^một tấm\s+/i, 'Tấm ')
+    .replace(/\s+có một chi tiết lệch.*$/i, '')
+    .replace(/\s+không phải.*$/i, '')
+    .replace(/\s+bị đặt sai chỗ$/i, '')
+    .trim()
+
+  if (clean && clean.length <= 34) {
+    return clean.charAt(0).toUpperCase() + clean.slice(1)
+  }
+
+  return 'Chi Tiết Bị Đặt Sai'
 }
 
 function resolvePanelStoryTitle(params: {
@@ -1938,12 +1999,6 @@ Yêu cầu:
                 storySeed,
                 parsedTitle: parsed.storyTitle,
               })
-              const evidenceSemantic = getPanelEvidenceSemanticForLog(storySeed)
-
-              addLog(
-                `Evidence semantic: ${evidenceSemantic.semanticType} -> ${evidenceSemantic.title} | world=${evidenceSemantic.worldLabel} | reason=${evidenceSemantic.reason}`,
-                evidenceSemantic.confidence >= 0.85 ? 'success' : 'warning',
-              )
 
               addLog(
                 `Panel title gate final: "${panelStoryTitle.title}" | seed="${storySeed.title || ''}" | parsed="${parsed.storyTitle}" | evidence="${panelStoryTitle.evidenceTitle}"`,
@@ -2261,4 +2316,3 @@ Yêu cầu:
   )
 
 }
-

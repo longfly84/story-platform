@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   AIFactoryConfig,
   AvoidLibrary,
   CoverArtStyle,
@@ -24,7 +24,6 @@ import {
 } from './factoryCoverStorage'
 import { buildFactoryPublicStoryDescription } from './factoryPublicDescription'
 
-import { buildFactoryEvidenceContextText, resolveFactoryEvidenceSemantics } from './factoryEvidenceSemantics'
 type AddLog = (message: string, type?: FactoryLog['type']) => void
 
 function normalizeCoverArtStyle(value: unknown): CoverArtStyle {
@@ -365,14 +364,86 @@ function titleMatchesSeedEvidence(title: string, storySeed?: FactoryStorySeed | 
 }
 
 
-function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
-  const semantic = resolveFactoryEvidenceSemantics({
-    evidenceText: (storySeed as any)?.evidenceObject,
-    contextText: buildFactoryEvidenceContextText(storySeed),
-  })
+function isLockerCardEvidenceTitleText(value: string) {
+  const normalized = normalizeTitleForCompare(value)
 
-  return semantic.title
+  return (
+    normalized.includes('the tu do') ||
+    normalized.includes('tu do') ||
+    normalized.includes('locker') ||
+    normalized.includes('phong tap') ||
+    normalized.includes('cau lac bo the thao') ||
+    normalized.includes('the ra vao') ||
+    normalized.includes('so thanh vien')
+  )
 }
+
+function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
+  const evidence = getSeedEvidenceObject(storySeed)
+  const normalized = normalizeTitleForCompare(evidence)
+
+  if (isLockerCardEvidenceTitleText(evidence)) {
+    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
+  }
+
+  if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
+    return 'Bức Vẽ Lệch Khung'
+  }
+
+  if (normalized.includes('anh mo') || normalized.includes('may anh do choi')) {
+    return 'Ảnh Mờ Trong Máy Ảnh Đồ Chơi'
+  }
+
+  if (normalized.includes('mieng dan')) {
+    return 'Miếng Dán Bong Góc'
+  }
+
+  if (normalized.includes('nap chai') || normalized.includes('vet xuoc')) {
+    return 'Nắp Chai Có Vết Xước'
+  }
+
+  if (normalized.includes('hat vong')) {
+    return 'Hạt Vòng Sai Chỗ'
+  }
+
+  if (normalized.includes('vong tay')) {
+    return 'Vòng Tay Sự Kiện Bị Đổi Màu'
+  }
+
+  if (normalized.includes('nhan chau') || normalized.includes('chau hoa')) {
+    return 'Chậu Cây Bị Cắm Sai Nhãn'
+  }
+
+  if (normalized.includes('soi chi') || normalized.includes('khuy ao') || normalized.includes('chi con mac') || normalized.includes('chi lech')) {
+    return 'Sợi Chỉ Ở Khuy Áo'
+  }
+
+  if (normalized.includes('to giay') || normalized.includes('mau giay') || normalized.includes('ghi chu')) {
+    return 'Tờ Giấy Trước Thang Máy'
+  }
+
+  if (normalized.includes('phieu') && normalized.includes('banh')) {
+    return 'Phiếu Bánh Bị Xé Góc'
+  }
+
+  if (evidence) {
+    const clean = evidence
+      .replace(/^một\s+/i, '')
+      .replace(/^một chiếc\s+/i, 'Chiếc ')
+      .replace(/^một tấm\s+/i, 'Tấm ')
+      .replace(/^một mẩu\s+/i, 'Mẩu ')
+      .replace(/\s+không phải.*$/i, '')
+      .replace(/\s+bị đặt sai chỗ$/i, '')
+      .trim()
+
+    if (clean && clean.length <= 34) {
+      return clean.charAt(0).toUpperCase() + clean.slice(1)
+    }
+  }
+
+  return 'Chi Tiết Bị Đặt Sai'
+}
+
 function isAcceptableFactoryStoryTitle(title: string, storySeed?: FactoryStorySeed | null) {
   if (!title || isBadParsedFactoryTitle(title)) return false
   return titleMatchesSeedEvidence(title, storySeed)
