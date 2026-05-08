@@ -1980,12 +1980,56 @@ function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
       : "Bản Nháp Thông Cáo Bị Gửi Nhầm";
   }
 
+  if (normalized.includes("the ra vao") && (normalized.includes("quet") || normalized.includes("ghi nhan"))) {
+    return "Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt";
+  }
+
+  if (normalized.includes("ban phac thao") || normalized.includes("bản phác thảo") || normalized.includes("phac thao")) {
+    return "Bản Phác Thảo Bị Xé Góc";
+  }
+
+  if (normalized.includes("tem kien hang") || normalized.includes("tem kiện hàng") || (normalized.includes("tem") && normalized.includes("ma tuyen"))) {
+    return "Tem Kiện Hàng Dán Chồng Mã Cũ";
+  }
+
+  if (normalized.includes("con dau") && normalized.includes("phu luc")) {
+    return "Con Dấu Lệch Trên Phụ Lục";
+  }
+
+  if ((normalized.includes("the so lo") || normalized.includes("the dau gia") || normalized.includes("lo dau gia")) && normalized.includes("day")) {
+    return "Thẻ Đấu Giá Bị Tráo Dây";
+  }
+
   if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo")) {
     return "Sợi Chỉ Trên Khuy Áo";
   }
 
   if (normalized.includes("mieng dan") || normalized.includes("miếng dán")) {
     return "Miếng Dán Bong Góc";
+  }
+
+  if (normalized.includes("the ra vao") && (normalized.includes("quet") || normalized.includes("ghi nhan"))) {
+    return normalized.includes("khong co mat") || normalized.includes("vang mat")
+      ? "Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt"
+      : "Lượt Quẹt Thẻ Bất Thường";
+  }
+
+  if (normalized.includes("ban phac thao") || normalized.includes("bản phác thảo") || normalized.includes("phac thao")) {
+    return normalized.includes("xe goc") || normalized.includes("xé góc")
+      ? "Bản Phác Thảo Bị Xé Góc"
+      : "Dấu Bút Trên Bản Phác Thảo";
+  }
+
+  if (normalized.includes("tem kien hang") || normalized.includes("tem kiện hàng") || (normalized.includes("tem") && normalized.includes("ma tuyen"))) {
+    return "Tem Kiện Hàng Dán Chồng Mã Cũ";
+  }
+
+  if (normalized.includes("con dau") && normalized.includes("phu luc")) {
+    return "Con Dấu Lệch Trên Phụ Lục";
+  }
+
+  if ((normalized.includes("the so lo") || normalized.includes("the dau gia") || normalized.includes("lo dau gia")) && normalized.includes("day")) {
+    return "Thẻ Đấu Giá Bị Tráo Dây";
   }
 
   const token = titleCaseFirst(cleanTitleToken(evidenceObject))
@@ -2057,7 +2101,11 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   }
 
   if (isLockerCardEvidence(evidenceObject)) {
-    variants.push("Tấm Thẻ Tủ Đồ Bị Đặt Sai", "Chiếc Thẻ Ở Locker Của Đậu", "Tấm Thẻ Ở Tủ Đồ Phòng Tập");
+    if (normalized.includes("the ra vao") || normalized.includes("quẹt") || normalized.includes("quet")) {
+      variants.push("Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt", "Lượt Quẹt Thẻ Bất Thường", "Thẻ Ra Vào Lúc Tôi Vắng Mặt");
+    } else {
+      variants.push("Tấm Thẻ Tủ Đồ Bị Đặt Sai", "Chiếc Thẻ Ở Locker Của Đậu", "Tấm Thẻ Ở Tủ Đồ Phòng Tập");
+    }
   }
 
 

@@ -402,7 +402,30 @@ Mục tiêu: BẢN ĐỌC phải thuận tai với độc giả Việt đọc tr
 - Không để nhân vật độc thoại giải thích quá sạch. Người thật thường né, cắt ngang, hỏi ngược, hoặc nói một câu ngắn có gai.
 - Không viết câu kết luận dài kiểu “đây không chỉ là..., đây là...” nếu có thể chia thành 2–3 câu ngắn hơn.
 
-8) READ-ALOUD FINAL CHECK:
+
+8) LINE EDIT v16 — KHÔNG ĐỂ LỘ DẤU PROMPT / CHECKLIST / CÂU TỔNG KẾT KIỂU AI:
+- Editor phải sửa toàn bộ câu nghe như AI đang giải thích quy tắc viết, không chỉ sửa vài cụm bị cấm.
+- Cấm để phần đọc lộ cơ chế “vật chứng xuất hiện lần một/lần hai/lần ba”.
+  + Sai: “Đây là lần hai tờ giấy xuất hiện...”
+  + Đúng: “Tôi để cô chụp thật rõ góc xé và vệt mực. Nếu tờ giấy bị ai động vào, ít nhất chúng tôi vẫn còn bản lưu.”
+- Cấm câu meta kiểu: “tôi phải dùng nó làm cứ điểm”, “chuyển cuộc chơi từ cảm xúc sang lý lẽ”, “sự thật sẽ nói thay tôi”, “trả đũa bằng sự thật”, “thế đứng của tôi lung lay”, “một cột mốc nghiêm trọng”.
+  + Sửa thành hành động cụ thể: hỏi nguồn gửi, giữ bản sao, chụp file gốc, yêu cầu đối chiếu camera, ghi lại giờ, giữ mẩu tem, nhắn cho người phụ trách.
+- Cấm cụm sai tai mới phát hiện: “một mảnh hé của chuỗi sự việc”, “ngòi nắm”, “đứng tay chốc lát”, “mắt xích quan sát”, “không để tiếng đó hiện trên mặt”, “ánh mắt quét về”, “bằng chứng sống”.
+  + “một mảnh hé...” → “Chỉ một câu ấy cũng đủ làm lời buộc tội bớt chắc chắn.”
+  + “ngòi nắm” → “một chỗ để bám vào” hoặc “một đầu mối”.
+  + “đứng tay chốc lát” → “dừng trước dãy locker vài giây”.
+  + “mắt xích quan sát” → “ai ra vào cũng phải đi ngang qua đó”.
+  + “không để tiếng đó hiện trên mặt” → “cố giữ mặt bình thản”.
+  + “ánh mắt quét về” → “mọi người cùng nhìn xuống”.
+  + “bằng chứng sống” → “thứ duy nhất tôi đang giữ được”.
+- Khi có nhân vật phụ/trẻ nhỏ/người yếu thế, phải giới thiệu vai trò thật tự nhiên trong cùng câu hoặc bỏ bớt nếu họ chỉ là token cảm xúc.
+  + Sai: “Lâm Lâm, đứa trẻ mà tôi giữ liên hệ để hỗ trợ buổi trình diễn...”
+  + Đúng: “Lâm Lâm, cậu bé mẫu nhí của buổi chụp, nép sau giá váy.”
+- Không dùng câu mở quá văn chương kiểu “cả căn phòng đang cố gắng kịp một cái hẹn”. Câu mở ưu tiên sự việc cụ thể: đèn sáng, người chạy, khách sắp tới, vật chứng nằm ở đâu.
+- Nếu một đoạn có câu tổng kết tâm lý, hãy đổi thành cử chỉ hoặc lời thoại. Người đọc phải tự cảm thấy áp lực qua cảnh, không bị tác giả giảng.
+- Nếu editor thấy một câu “đẹp” nhưng người Việt đọc truyện mạng sẽ thấy gượng, phải đổi thành câu bình thường hơn. Mục tiêu là đọc trôi, không phải văn hoa.
+
+9) READ-ALOUD FINAL CHECK:
 - Trước khi trả output, tự đọc thầm 5 đoạn đầu và 3 đoạn cuối như người Việt đọc truyện trên điện thoại.
 - Câu nào làm người đọc vấp vì cụm từ lạ, sửa ngay.
 - Câu nào nghe như bản dịch, sửa ngay.
@@ -921,6 +944,7 @@ Bạn là biên tập viên truyện tiếng Việt. Ưu tiên làm văn tự nh
 
 NHIỆM VỤ:
 Đọc bản nháp chương bên dưới và rewrite thành bản final đăng được, nhưng không làm nó kịch hơn bản nháp.
+Quan trọng: không chỉ “soát lỗi chính tả”. Phải line-edit thật sự từng đoạn để xóa câu văn máy, câu meta/checklist, câu ẩn dụ gượng và câu tổng kết thay cho hành động.
 Đây là bước biên tập sau Chapter Writer, không phải viết truyện mới từ đầu.
 
 THÔNG TIN TRUYỆN:
@@ -1032,6 +1056,9 @@ EDITOR CHECKLIST BẮT BUỘC:
 10. Tên chương phải bám vật chứng/cảnh chính, nhưng không cần cố quá bí hiểm.
 11. BẢN PHÂN TÍCH KỸ THUẬT vẫn giữ để admin debug, nhưng phải cập nhật đúng sau khi rewrite.
 12. Trước khi trả output, tự đọc 5 đoạn đầu. Nếu nghe giống AI đang dựng sân khấu, rewrite lại bằng câu đời hơn.
+13. Nếu thấy câu lộ kỹ thuật prompt như “lần một/lần hai vật chứng xuất hiện”, “dùng nó làm cứ điểm”, “chuyển cuộc chơi”, “trả đũa bằng sự thật”, phải rewrite ngay thành hành động cụ thể trong scene.
+14. Nếu thấy câu sai tai như “ngòi nắm”, “mảnh hé”, “đứng tay chốc lát”, “không để tiếng đó hiện trên mặt”, phải sửa ngay, không được giữ vì đúng ý.
+15. Nếu có trẻ nhỏ/người yếu thế xuất hiện chỉ để tăng cảm xúc, phải thêm vai trò cụ thể trong 1 câu hoặc cắt bớt để tránh cảm giác token AI.
 
 
 CẤM:

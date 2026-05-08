@@ -238,6 +238,9 @@ function isBadFactoryStoryTitle(title: string) {
     'manh moi dau tien',
     'the phong quet luc nua dem',
     'dau quet tren the phong',
+    'tam the tu do bi dat sai',
+    'the ra vao bi ghi nhan quet',
+    'chi tiet dau tien',
   ].includes(normalized)
 }
 
@@ -250,6 +253,30 @@ function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
     return normalized.includes('xin loi') || normalized.includes('scandal')
       ? 'Thông Cáo Xin Lỗi Được Soạn Trước'
       : 'Bản Nháp Thông Cáo Bị Gửi Nhầm'
+  }
+
+  if (normalized.includes('the ra vao') && (normalized.includes('quet') || normalized.includes('ghi nhan'))) {
+    return normalized.includes('khong co mat') || normalized.includes('vang mat')
+      ? 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt'
+      : 'Lượt Quẹt Thẻ Bất Thường'
+  }
+
+  if (normalized.includes('ban phac thao') || normalized.includes('phac thao')) {
+    return normalized.includes('xe goc') || normalized.includes('xé góc')
+      ? 'Bản Phác Thảo Bị Xé Góc'
+      : 'Dấu Bút Trên Bản Phác Thảo'
+  }
+
+  if (normalized.includes('tem kien hang') || (normalized.includes('tem') && normalized.includes('ma tuyen'))) {
+    return 'Tem Kiện Hàng Dán Chồng Mã Cũ'
+  }
+
+  if (normalized.includes('con dau') && normalized.includes('phu luc')) {
+    return 'Con Dấu Lệch Trên Phụ Lục'
+  }
+
+  if ((normalized.includes('the so lo') || normalized.includes('the dau gia') || normalized.includes('lo dau gia')) && normalized.includes('day')) {
+    return 'Thẻ Đấu Giá Bị Tráo Dây'
   }
 
   const title = titleCaseFactoryEvidence(clean)
@@ -316,10 +343,35 @@ function makePanelChapterTitleFromEvidence(params: {
     'cu ep dau tien',
     'van co moi bat dau',
     'su that dan he lo',
+    'tam the tu do bi dat sai',
+    'the ra vao bi ghi nhan quet',
+    'chi tiet dau tien',
   ])
 
   if (normalizedEvidence.includes('thong cao')) {
     return 'Bản Nháp Được Soạn Trước'
+  }
+
+  if (normalizedEvidence.includes('the ra vao') && (normalizedEvidence.includes('quet') || normalizedEvidence.includes('ghi nhan'))) {
+    return normalizedEvidence.includes('18 42')
+      ? 'Lượt Quẹt Thẻ Lúc 18:42'
+      : 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt'
+  }
+
+  if (normalizedEvidence.includes('ban phac thao') || normalizedEvidence.includes('phac thao')) {
+    return 'Bản Phác Thảo Bị Xé Góc'
+  }
+
+  if (normalizedEvidence.includes('tem kien hang') || (normalizedEvidence.includes('tem') && normalizedEvidence.includes('ma tuyen'))) {
+    return 'Tem Dán Chồng Lên Mã Cũ'
+  }
+
+  if (normalizedEvidence.includes('con dau') && normalizedEvidence.includes('phu luc')) {
+    return 'Con Dấu Lệch Nửa Vòng'
+  }
+
+  if ((normalizedEvidence.includes('the so lo') || normalizedEvidence.includes('the dau gia') || normalizedEvidence.includes('lo dau gia')) && normalizedEvidence.includes('day')) {
+    return 'Thẻ Đấu Giá Bị Tráo Dây'
   }
 
   if (normalizedEvidence.includes('ghi chu') || normalizedEvidence.includes('mau ghi chu')) {
