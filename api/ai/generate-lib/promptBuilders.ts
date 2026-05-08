@@ -1077,6 +1077,54 @@ CẤM:
 - Không giữ cụm sáo/gượng trong 5 đoạn đầu: “phông nền trắng bóng”, “ánh đèn lạnh”, “giọng khô như thép”, “giải thích sao được”, “ống kính như lưỡi dao”.
 - Không lặp heading chương trong BẢN ĐỌC.
 
+
+FINAL HUMAN LINE-EDIT AUDIT — BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
+Hãy đọc lại BẢN ĐỌC như một biên tập viên người Việt khó tính, không như một người viết prompt.
+Nếu gặp một câu thuộc các nhóm dưới đây, phải sửa ngay trong bản final:
+
+1. Câu lộ kỹ thuật viết truyện:
+- “đây là lần một/lần hai/lần ba vật chứng xuất hiện”
+- “dùng nó làm cứ điểm”
+- “chuyển cuộc chơi từ cảm xúc sang lý lẽ”
+- “câu chuyện chuyển từ cáo buộc sang so sánh manh mối”
+Sửa thành hành động cụ thể: chụp ảnh, giữ giấy, hỏi người gửi, khóa điện thoại, đối chiếu giờ, giữ file gốc.
+
+2. Câu tổng kết/slogan:
+- “trả đũa bằng sự thật”
+- “sự thật sẽ nói thay tôi”
+- “trò chơi đã bắt đầu”
+- “ván cờ mới mở”
+- “khúc dạo đầu”
+Sửa thành một hook cụ thể: một cuộc gọi, một người bước vào, một dòng tin nhắn, một dấu mực, một hóa đơn, một camera cần kiểm tra.
+
+3. Cụm sai tai người Việt:
+- “mảnh hé”, “ngòi nắm”, “đứng tay chốc lát”, “bằng chứng tĩnh người”, “che nhoài”, “không để tiếng đó hiện trên mặt”, “mắt xích quan sát”.
+Sửa bằng tiếng Việt đời thường: “manh mối”, “chỗ bám”, “dừng lại vài giây”, “thứ có thể lưu lại”, “che đi”, “không để lộ ra”, “vị trí ai ra vào cũng phải đi ngang qua”.
+
+4. Ẩn dụ gượng:
+- “mọi âm thanh dồn về…”, “mọi ánh mắt dồn vào…”, “tiếng hỏi như mũi dao”, “lời nói như con dấu”, “nỗi sợ ló dạng ở tay…”.
+Sửa thành cảnh nhìn thấy được: “cả phòng quay sang”, “mấy người đứng gần cúi xuống nhìn”, “anh ta hỏi đủ lớn”, “câu đó khiến mọi người im vài giây”, “bàn tay bà run”.
+
+5. Giải thích tâm lý quá rõ:
+- Không viết kiểu “tôi hiểu ngay: ...” quá nhiều.
+- Không phân tích hộ nhân vật phụ bằng đoạn dài.
+- Để cử chỉ tự nói: siết giấy, tránh mắt, ngập ngừng, nhìn về cửa, khóa điện thoại, xóa tin nhắn.
+
+6. Đoạn mở:
+- Không mở bằng câu bê nguyên title/evidence dài vào câu đầu.
+- Vào thẳng cảnh: địa điểm, người, vật, âm thanh, hành động.
+- 5 đoạn đầu phải đọc như truyện thật, không như bản dựng cảnh của AI.
+
+7. Đứa trẻ/người yếu thế:
+- Nếu xuất hiện, phải có vai trò rõ trong tình huống hiện tại.
+- Không đưa vào chỉ để tăng cảm xúc rồi bỏ đó.
+
+8. Kết chương:
+- Kết bằng một hành động/một dữ kiện cần kiểm tra.
+- Không kết bằng tuyên ngôn.
+
+Nếu phải chọn giữa câu “đẹp” và câu “thật”, chọn câu thật.
+
 OUTPUT BẮT BUỘC:
 Giữ đúng 2 phần:
 1. # BẢN ĐỌC CHO ĐỘC GIẢ
@@ -1085,5 +1133,55 @@ Hai phần cách nhau bằng dòng "---".
 
 BẢN NHÁP CẦN BIÊN TẬP:
 ${compactText(draftText, 12000)}
+`.trim()
+}
+
+
+export function buildStoryEditorValidationPrompt(
+  payload: NormalizedGeneratePayload,
+  editedText: string,
+  redFlags: string[],
+) {
+  const chapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
+  const storySeed = payload.storySeed
+  const chapterMinChars = Math.max(1000, Math.floor(Number(payload.chapterMinChars || 3500)))
+  const chapterMaxChars = Math.max(chapterMinChars, Math.floor(Number(payload.chapterMaxChars || 4500)))
+  const evidenceObject = safeText(storySeed?.evidenceObject, '')
+  const flags = redFlags.length > 0 ? redFlags.join('; ') : 'câu văn còn khả năng gượng hoặc sai tai'
+
+  return `
+Bạn là biên tập viên line-edit tiếng Việt vòng cuối. Đây là bước kiểm định sau editor pass.
+Không viết truyện mới. Chỉ sửa các câu còn gượng, sai tai, meta, slogan hoặc lộ kỹ thuật viết.
+
+THÔNG TIN KHÓA:
+- Tên truyện: ${payload.title}
+- Chương: ${chapterNumber}
+- Vật chứng trung tâm: ${evidenceObject || 'Không có'}
+- Bối cảnh/seed: ${storySeed?.setting || payload.genreLabel || 'Không có'}
+- Mâu thuẫn chính: ${storySeed?.mainConflict || payload.promptIdea || 'Không có'}
+- Khoảng ký tự cần giữ: ${chapterMinChars}–${chapterMaxChars} ký tự tiếng Việt cho phần đọc.
+
+CÁC LỖI VỪA BỊ PHÁT HIỆN:
+${flags}
+
+NHIỆM VỤ:
+1. Giữ nguyên plot, tên nhân vật, vật chứng, giờ, mã, số, quan hệ và kết quả cảnh.
+2. Sửa mạnh những câu người Việt đọc sẽ thấy lạ, ví dụ:
+   - “mảnh hé”, “ngòi nắm”, “đứng tay chốc lát”, “bằng chứng tĩnh người”, “che nhoài”.
+   - “lần một/lần hai vật chứng xuất hiện”.
+   - “chuyển cuộc chơi”, “trả đũa bằng sự thật”, “trò chơi bắt đầu”, “khúc dạo đầu”.
+   - “mọi âm thanh dồn về”, “mọi ánh mắt dồn vào”, “tiếng hỏi như mũi dao”.
+3. Không thay bằng câu văn hoa hơn. Thay bằng câu Việt bình thường, cụ thể, có hành động.
+4. Nếu một đoạn đang giải thích tâm lý quá nhiều, rút gọn và chuyển thành cử chỉ/thao tác.
+5. Nếu title chương quá dài hoặc placeholder, đổi title chương cho gọn nhưng vẫn bám vật chứng/cảnh chính.
+6. Giữ đúng format 2 phần:
+   # BẢN ĐỌC CHO ĐỘC GIẢ
+   ---
+   # BẢN PHÂN TÍCH KỸ THUẬT / KHÔNG ĐĂNG
+
+TRẢ VỀ TOÀN BỘ CHƯƠNG ĐÃ SỬA, KHÔNG GIẢI THÍCH NGOÀI OUTPUT.
+
+BẢN CẦN KIỂM ĐỊNH:
+${compactText(editedText, 14000)}
 `.trim()
 }

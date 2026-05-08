@@ -1410,6 +1410,11 @@ Yêu cầu:
         addLog('Story editor pass: disabled', 'info')
       } else if (data?.editorPassUsed) {
         addLog('Story editor pass: success', 'success')
+        if (data?.editorAuditUsed) {
+          addLog('Story editor audit: đã sửa thêm câu gượng/sai tai', 'success')
+        } else if (data?.editorAuditFailed) {
+          addLog('Story editor audit: fallback bản editor pass', 'warning')
+        }
       } else if (data?.editorPassFailed) {
         addLog(`Story editor pass: fallback bản thô (${data?.editorError || 'không rõ lỗi'})`, 'warning')
       } else {
