@@ -270,6 +270,21 @@ function slugifyFactoryStoryTitle(value: string) {
   return base || `factory-story-${Date.now()}`
 }
 
+function makeFactoryStorySlugUnique(baseSlug: string, factoryRunId: string, storyIndex: number) {
+  const cleanBase = String(baseSlug || '')
+    .replace(/^-+|-+$/g, '')
+    .trim()
+
+  const runPart = normalizeTitleForCompare(factoryRunId || '')
+    .replace(/\s+/g, '')
+    .slice(0, 8)
+
+  const suffix = [runPart, `s${storyIndex}`].filter(Boolean).join('-')
+  const uniqueSlug = [cleanBase || 'factory-story', suffix].filter(Boolean).join('-')
+
+  return uniqueSlug.replace(/-+/g, '-').replace(/^-+|-+$/g, '')
+}
+
 function isBadParsedFactoryTitle(value: string) {
   const normalized = normalizeTitleForCompare(value)
 
@@ -535,11 +550,24 @@ export async function insertFactoryStoryDraft(params: {
 
   assertFactoryTitleGatePassed(chosenStoryTitle.title, params.storySeed)
 
+  const finalStorySlug = makeFactoryStorySlugUnique(
+    chosenStoryTitle.slug,
+    params.factoryRunId,
+    params.storyIndex,
+  )
+
+  if (finalStorySlug !== chosenStoryTitle.slug) {
+    params.addLog(
+      `Slug gate changed: "${chosenStoryTitle.slug}" → "${finalStorySlug}" để tránh trùng slug Supabase.`,
+      'warning',
+    )
+  }
+
   const publicDescription = buildFactoryPublicStoryDescription({
     parsed: {
       ...params.parsed,
       storyTitle: chosenStoryTitle.title,
-      storySlug: chosenStoryTitle.slug,
+      storySlug: finalStorySlug,
     },
     genreLabel: params.genre.label,
     heroineLabel: params.heroine.label,
@@ -548,7 +576,7 @@ export async function insertFactoryStoryDraft(params: {
 
   const fullPayload = {
     title: chosenStoryTitle.title,
-    slug: chosenStoryTitle.slug,
+    slug: finalStorySlug,
     description: publicDescription,
     author: 'Sưu Tầm',
     status: params.config.storyStatus,
@@ -570,7 +598,7 @@ export async function insertFactoryStoryDraft(params: {
       .from('stories')
       .insert({
         title: chosenStoryTitle.title,
-        slug: chosenStoryTitle.slug,
+        slug: finalStorySlug,
         description: publicDescription,
         author: 'Sưu Tầm',
         status: params.config.storyStatus,
