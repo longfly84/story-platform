@@ -154,17 +154,20 @@ export function getMotifFieldSimilarity(
   // Bản này ưu tiên các field thật sự định danh motif: premise, inciting, evidence,
   // hidden truth. Các field chung vẫn tính nhưng nhẹ hơn.
   const weightedFields: Array<[keyof StoryMotifFingerprint, number]> = [
-    ['premiseFamily', 5],
-    ['incitingIncident', 4],
-    ['evidenceType', 4],
-    ['hiddenTruthType', 4],
-    ['villainAttackType', 5],
-    ['heroineCounterType', 5],
-    ['publicPressure', 3],
-    ['openingArena', 4],
-    ['mainArena', 2],
-    ['powerStructure', 3],
-    ['deadlineStyle', 4],
+    // V9: chỉ các trục định danh motif thật mới nặng.
+    // Các trục như attack/counter/pressure thường cùng công thức nữ tần đô thị,
+    // nên chỉ dùng để cảnh báo, không để bóp nghẹt Factory.
+    ['premiseFamily', 3],
+    ['incitingIncident', 5],
+    ['evidenceType', 6],
+    ['hiddenTruthType', 5],
+    ['villainAttackType', 2],
+    ['heroineCounterType', 2],
+    ['publicPressure', 1],
+    ['openingArena', 1],
+    ['mainArena', 1],
+    ['powerStructure', 1],
+    ['deadlineStyle', 1],
   ]
 
   for (const [field, weight] of weightedFields) {
@@ -217,9 +220,10 @@ function hasRealMotifOverlap(result: StoryMotifSimilarityResult | null) {
   const coreMatches = countMatchedFields(result, coreFields)
   const tacticalMatches = countMatchedFields(result, tacticalFields)
 
-  // Trùng nhiều field chung như openingArena/mainArena/deadlineStyle chưa đủ để gọi là trùng motif.
-  // Phải có overlap ở lõi sự kiện/vật chứng/bí mật hoặc combo chiến thuật rất giống.
-  return coreMatches >= 2 || (coreMatches >= 1 && tacticalMatches >= 2) || tacticalMatches >= 3
+  // V9: tactical overlap không đủ để reject nữa.
+  // Các truyện nữ tần đô thị thường cùng kiểu bị ép/đối chiếu/phản công.
+  // Chỉ coi là trùng motif thật khi trùng đủ lõi: premise/inciting/evidence/hidden truth.
+  return coreMatches >= 3 || (coreMatches >= 2 && tacticalMatches >= 2)
 }
 
 export function getHybridMotifSimilarity(params: {
@@ -301,12 +305,12 @@ export function shouldRejectMotif(params: {
 
   const realMotifOverlap = hasRealMotifOverlap(best)
 
-  // Strong Diversity v7:
-  // Vẫn giữ nữ tần đô thị, nhưng không cho cùng một xương sống lặp lại.
-  // Mục tiêu pass thực tế: hybrid khoảng 25–45%, embedding khoảng 45–65%.
-  // Nếu embedding vẫn cao vì cùng vibe nữ tần, chỉ reject khi field cũng còn nhiều trục giống.
-  const enoughFieldOverlapForReject = Boolean(best && best.fieldScore >= 0.42)
-  const strongFieldReject = Boolean(best && best.fieldScore >= 0.58 && realMotifOverlap)
+  // V9:
+  // Không reject chỉ vì cùng vibe nữ tần đô thị. Embedding 0.75–0.85 vẫn có thể xảy ra
+  // khi cùng kiểu truyện đô thị/đối đầu/đảo chiều. Chỉ reject nếu vừa trùng lõi thật,
+  // vừa vượt ngưỡng hybrid/field rõ ràng.
+  const enoughFieldOverlapForReject = Boolean(best && best.fieldScore >= 0.56)
+  const strongFieldReject = Boolean(best && best.fieldScore >= 0.72 && realMotifOverlap)
 
   const hybridReject = Boolean(
     best &&
@@ -318,19 +322,19 @@ export function shouldRejectMotif(params: {
   const strongEmbeddingReject = Boolean(
     best &&
       realMotifOverlap &&
-      best.embeddingScore >= 0.78 &&
-      best.fieldScore >= 0.46,
+      best.embeddingScore >= 0.9 &&
+      best.fieldScore >= 0.6,
   )
 
   const reject = hybridReject || strongFieldReject || strongEmbeddingReject
 
   let reason = ''
   if (strongFieldReject) {
-    reason = 'fieldScore >= 0.58 và có overlap motif lõi'
+    reason = 'fieldScore >= 0.72 và trùng lõi motif thật'
   } else if (hybridReject) {
-    reason = `hybridScore >= ${threshold} với fieldScore >= 0.42 và có overlap motif lõi`
+    reason = `hybridScore >= ${threshold} với fieldScore >= 0.56 và trùng lõi motif thật`
   } else if (strongEmbeddingReject) {
-    reason = 'embeddingScore >= 0.78, fieldScore >= 0.46 và có overlap motif lõi'
+    reason = 'embeddingScore >= 0.90, fieldScore >= 0.60 và trùng lõi motif thật'
   }
 
   return {

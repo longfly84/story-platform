@@ -868,7 +868,7 @@ export default function AIFactoryPanel() {
     const rejectResult = shouldRejectMotif({
       candidate,
       existing: comparisonPool,
-      threshold: 0.45,
+      threshold: 0.58,
     })
 
     enrichedSeed.motifSimilarity = rejectResult.best
@@ -891,6 +891,7 @@ export default function AIFactoryPanel() {
   }) {
     const existingMotifs = params.avoidLibrary.motifFingerprints || []
     let lastRejected: Awaited<ReturnType<typeof evaluateStorySeedMotif>> | null = null
+    let bestRejected: Awaited<ReturnType<typeof evaluateStorySeedMotif>> | null = null
     const rejectedHints: string[] = []
 
     for (let attempt = 1; attempt <= STORY_SEED_MAX_ATTEMPTS; attempt += 1) {
@@ -925,6 +926,13 @@ export default function AIFactoryPanel() {
       }
 
       lastRejected = evaluated
+      if (
+        !bestRejected ||
+        (evaluated.rejectResult.best?.hybridScore ?? Number.POSITIVE_INFINITY) <
+          (bestRejected.rejectResult.best?.hybridScore ?? Number.POSITIVE_INFINITY)
+      ) {
+        bestRejected = evaluated
+      }
 
       const best = evaluated.rejectResult.best
       const fingerprint = evaluated.seed.motifFingerprint
@@ -953,6 +961,25 @@ export default function AIFactoryPanel() {
         )}`,
         'warning',
       )
+    }
+
+    const fallbackBest = bestRejected?.rejectResult.best
+    const canUseFallback = Boolean(
+      bestRejected &&
+        fallbackBest &&
+        fallbackBest.hybridScore <= 0.58 &&
+        fallbackBest.fieldScore <= 0.56 &&
+        fallbackBest.embeddingScore <= 0.84,
+    )
+
+    if (canUseFallback && bestRejected) {
+      addLog(
+        `Diversity fallback: dùng seed ít giống nhất sau ${STORY_SEED_MAX_ATTEMPTS} lần: ${formatMotifSimilarityForLog(
+          fallbackBest,
+        )}`,
+        'warning',
+      )
+      return bestRejected.seed
     }
 
     throw new Error(
