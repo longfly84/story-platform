@@ -83,16 +83,16 @@ function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'
   const raw = String(value || '').trim()
 
   if (
-    raw === 'auto' ||
     raw === 'anime_cinematic' ||
     raw === 'manga_manhwa' ||
     raw === 'cinematic_realistic' ||
-    raw === 'popular_webnovel_collage'
+    raw === 'popular_webnovel_collage' ||
+    raw === 'auto'
   ) {
-    return raw as AIFactoryConfig['coverArtStyle']
+    return raw
   }
 
-  // Map key cũ trong localStorage / config cũ sang key mới.
+  // Map key cũ trong localStorage/config cũ sang key mới.
   if (raw === 'anime-cinematic') return 'anime_cinematic'
   if (raw === 'modern-manhwa') return 'manga_manhwa'
   if (raw === 'manga-drama') return 'manga_manhwa'
@@ -105,18 +105,19 @@ function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'
 function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
   switch (normalizeCoverArtStyle(style)) {
     case 'anime_cinematic':
-      return 'Anime — Chinese commercial webnovel cover, glossy mature anime-inspired Chinese webnovel beauty, luxury urban drama color'
+      return 'premium anime cinematic webnovel cover, polished modern East Asian urban drama, warm gold and teal city-light palette, attractive commercial colors, not horror'
     case 'manga_manhwa':
-      return 'Manga — Chinese commercial webnovel cover, polished manga/manhua-inspired line art, luxury full-color rendering'
-    case 'popular_webnovel_collage':
-      return 'Chinese manhua luxury collage, layered storytelling, 3 to 7 story fragments, glossy premium Chinese webnovel cover'
+      return 'premium manga manhwa webtoon cover, clean line art, expressive character acting, crisp rose gold teal palette, bright commercial webnovel style, not horror'
     case 'cinematic_realistic':
-      return 'Siêu thực — ultra-realistic Chinese urban drama premium poster illustration, luxury cinematic realism'
+      return 'cinematic realistic premium urban drama poster illustration, elegant commercial webnovel cover, wide background, layered story clues, not horror'
+    case 'popular_webnovel_collage':
+      return 'Chinese commercial webnovel luxury collage cover, multiple layered story elements, heroine plus supporting figures, rich warm gold rose teal palette, premium poster, not Japanese horror'
     case 'auto':
     default:
-      return 'premium Chinese commercial webnovel cover, automatically matched to story content'
+      return 'premium Chinese commercial webnovel cover, luxury layered poster composition, attractive commercial colors, wide story background, not horror'
   }
 }
+
 
 function normalizeDescriptionForCheck(input: string) {
   return input
@@ -215,6 +216,124 @@ function buildFactoryStorySlug(title: string, suffix: string) {
       .slice(0, 18) || makeId().slice(0, 6)
 
   return `${base}-${cleanSuffix}`
+}
+
+
+function normalizeFactoryTitleText(value: unknown) {
+  return safeString(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function getFactorySeedEvidence(storySeed?: FactoryStorySeed | null) {
+  return safeString((storySeed as any)?.evidenceObject)
+}
+
+function isBadFactoryStoryTitle(title: string) {
+  const normalized = normalizeFactoryTitleText(title)
+
+  return [
+    'manh moi o hien truong',
+    'chua dat ten',
+    'vat chung bi dat sai cho',
+    'mon qua bi lo',
+    'ma qr dan toi thu muc an',
+    'dong ma trong ho so cu',
+    'cuoc goi tu so may la',
+    'tu duong mo lai ho so cu',
+    'dau chi khac mau',
+  ].includes(normalized)
+}
+
+function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
+  const evidence = getFactorySeedEvidence(storySeed)
+  const normalized = normalizeFactoryTitleText(evidence)
+
+  if ((normalized.includes('ve') || normalized.includes('phieu')) && (normalized.includes('an') || normalized.includes('so ghe') || normalized.includes('ghe'))) {
+    return 'Vé Ăn Số Ghế Lệch'
+  }
+
+  if (normalized.includes('hat vong')) {
+    return 'Hạt Vòng Sai Chỗ'
+  }
+
+  if (normalized.includes('vong tay')) {
+    return 'Vòng Tay Sự Kiện Bị Đổi Màu'
+  }
+
+  if (normalized.includes('soi chi') || normalized.includes('khuy ao') || normalized.includes('chi con mac') || normalized.includes('chi lech')) {
+    return 'Sợi Chỉ Ở Khuy Áo'
+  }
+
+  if (normalized.includes('nhan chau') || normalized.includes('chau cay') || normalized.includes('chau hoa') || normalized.includes('tem kim loai')) {
+    return 'Chậu Cây Bị Cắm Sai Nhãn'
+  }
+
+  if (normalized.includes('nap chai') || normalized.includes('vet xuoc')) {
+    return 'Nắp Chai Có Vết Xước'
+  }
+
+  if (normalized.includes('phieu') && normalized.includes('banh')) {
+    return 'Phiếu Bánh Bị Xé Góc'
+  }
+
+  if (normalized.includes('the giat') || normalized.includes('tiem giat') || (normalized.includes('ao') && normalized.includes('ghim'))) {
+    return 'Thẻ Giặt Còn Ghim'
+  }
+
+  if (normalized.includes('khan tay') || normalized.includes('theu')) {
+    return 'Chiếc Khăn Tay Thêu Chữ Nhỏ'
+  }
+
+  if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
+    return 'Bức Vẽ Lệch Khung'
+  }
+
+  const clean = evidence
+    .replace(/^một\s+/i, '')
+    .replace(/^một chiếc\s+/i, 'Chiếc ')
+    .replace(/^một tấm\s+/i, 'Tấm ')
+    .replace(/\s+có một chi tiết lệch.*$/i, '')
+    .replace(/\s+không phải.*$/i, '')
+    .replace(/\s+bị đặt sai chỗ$/i, '')
+    .trim()
+
+  if (clean && clean.length <= 34) {
+    return clean.charAt(0).toUpperCase() + clean.slice(1)
+  }
+
+  return 'Chi Tiết Bị Đặt Sai'
+}
+
+function resolvePanelStoryTitle(params: {
+  storySeed?: FactoryStorySeed | null
+  parsedTitle: string
+}) {
+  const seedTitle = safeString(params.storySeed?.title)
+  const parsedTitle = safeString(params.parsedTitle)
+  const evidenceTitle = makePanelTitleFromEvidence(params.storySeed)
+
+  const chosen =
+    !isBadFactoryStoryTitle(evidenceTitle) && evidenceTitle
+      ? evidenceTitle
+      : !isBadFactoryStoryTitle(seedTitle)
+        ? seedTitle
+        : !isBadFactoryStoryTitle(parsedTitle)
+          ? parsedTitle
+          : evidenceTitle || 'Chi Tiết Bị Đặt Sai'
+
+  return {
+    title: chosen,
+    changed:
+      normalizeFactoryTitleText(chosen) !== normalizeFactoryTitleText(seedTitle || parsedTitle),
+    original: seedTitle || parsedTitle,
+    evidenceTitle,
+  }
 }
 
 function normalizeCategoryText(input: string) {
@@ -1166,9 +1285,9 @@ Yêu cầu:
               }
             : null,
         },
-        cover_art_style: normalizeCoverArtStyle(config.coverArtStyle),
-        visual_style: normalizeCoverArtStyle(config.coverArtStyle),
-        style: normalizeCoverArtStyle(config.coverArtStyle),
+        cover_art_style: config.coverArtStyle,
+        visual_style: config.coverArtStyle,
+        style: config.coverArtStyle,
         styleLabel: getCoverArtStyleLabel(config.coverArtStyle),
         aspectRatio: '2:3',
       }),
@@ -1807,12 +1926,30 @@ Yêu cầu:
 
             if (chapterNumber === 1) {
               addLog(`Parse title: ${parsed.storyTitle}`, 'success')
-              setCurrentAction(`Insert story draft: ${parsed.storyTitle}`)
+
+              const panelStoryTitle = resolvePanelStoryTitle({
+                storySeed,
+                parsedTitle: parsed.storyTitle,
+              })
+
+              addLog(
+                `Panel title gate final: "${panelStoryTitle.title}" | seed="${storySeed.title || ''}" | parsed="${parsed.storyTitle}" | evidence="${panelStoryTitle.evidenceTitle}"`,
+                panelStoryTitle.changed ? 'warning' : 'success',
+              )
+
+              if (panelStoryTitle.changed) {
+                addLog(
+                  `Panel title gate changed: "${panelStoryTitle.original}" → "${panelStoryTitle.title}"`,
+                  'warning',
+                )
+              }
+
+              setCurrentAction(`Insert story draft: ${panelStoryTitle.title}`)
 
               const publicStoryDescription = buildFactoryPublicStoryDescription({
                 parsed: {
                   ...parsed,
-                  storyTitle: storySeed.title || parsed.storyTitle,
+                  storyTitle: panelStoryTitle.title,
                 },
                 genreLabel: genre.label,
                 heroineLabel: heroine.label,
@@ -1827,7 +1964,7 @@ Yêu cầu:
               createdStory = await insertStoryDraft({
                 parsed: {
                   ...parsed,
-                  storyTitle: storySeed.title || parsed.storyTitle,
+                  storyTitle: panelStoryTitle.title,
                   storyDescription: cleanStoryDescription,
                 },
                 genre,
