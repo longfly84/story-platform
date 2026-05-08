@@ -176,65 +176,8 @@ function normalizeFactoryTitleText(value: unknown) {
     .trim()
 }
 
-function isGenericFactoryEvidenceText(value: string) {
-  const normalized = normalizeFactoryTitleText(value)
-
-  return (
-    !normalized ||
-    normalized === 'chi tiet bi dat sai' ||
-    normalized === 'vat chung bi dat sai cho' ||
-    normalized === 'mon do bi dat sai' ||
-    normalized === 'mon do choi bi dat sai' ||
-    normalized === 'vat chung bi lo' ||
-    normalized === 'manh moi dau tien'
-  )
-}
-
-function extractFactoryEvidenceFromText(value: unknown) {
-  const text = safeString(value)
-  if (!text) return ''
-
-  const patterns = [
-    /(?:^|[+|\n])\s*evidence\s*[:=]\s*([^+|\n]+)/i,
-    /(?:vật chứng chính|vat chung chinh)\s*[:：]?\s*([^.;\n|]+)/i,
-    /(?:trọng tâm là|trong tam la)\s+([^.;\n|]+)/i,
-  ]
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern)
-    const value = safeString(match?.[1])
-      .replace(/\s+\+\s+.*$/g, '')
-      .replace(/\s+không chỉ.*$/i, '')
-      .replace(/\s+khong chi.*$/i, '')
-      .trim()
-
-    if (value && !isGenericFactoryEvidenceText(value)) {
-      return value
-    }
-  }
-
-  return ''
-}
-
 function getFactorySeedEvidence(storySeed?: FactoryStorySeed | null) {
-  const seed = storySeed as any
-  const candidates = [
-    seed?.evidenceObject,
-    seed?.motifFingerprint?.evidenceObject,
-    extractFactoryEvidenceFromText(seed?.shortFingerprint),
-    extractFactoryEvidenceFromText(seed?.motifText),
-    extractFactoryEvidenceFromText(seed?.corePremise),
-    extractFactoryEvidenceFromText(seed?.incitingIncident),
-  ]
-
-  for (const candidate of candidates) {
-    const clean = safeString(candidate)
-    if (clean && !isGenericFactoryEvidenceText(clean)) {
-      return clean
-    }
-  }
-
-  return ''
+  return safeString((storySeed as any)?.evidenceObject || (storySeed as any)?.motifFingerprint?.evidenceObject)
 }
 
 function isLockerCardEvidenceText(value: string) {
@@ -257,12 +200,7 @@ function isBadFactoryStoryTitle(title: string) {
   return [
     'manh moi o hien truong',
     'chua dat ten',
-    'chi tiet bi dat sai',
     'vat chung bi dat sai cho',
-    'mon do bi dat sai',
-    'mon do choi bi dat sai',
-    'vat chung bi lo',
-    'manh moi dau tien',
     'mon qua bi lo',
     'ma qr dan toi thu muc an',
     'dong ma trong ho so cu',
@@ -279,44 +217,8 @@ function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getFactorySeedEvidence(storySeed)
   const normalized = normalizeFactoryTitleText(evidence)
 
-  if (!evidence || isGenericFactoryEvidenceText(evidence)) {
-    return ''
-  }
-
-  if (normalized.includes('coc') && normalized.includes('son')) {
-    return 'Vết Son Trên Chiếc Cốc'
-  }
-
-  if (normalized.includes('ho so') && (normalized.includes('nhan con nuoi') || normalized.includes('con nuoi')) && normalized.includes('ghim')) {
-    return 'Dấu Ghim Mới Trên Hồ Sơ Cũ'
-  }
-
-  if (normalized.includes('goc anh') || normalized.includes('anh cu') || normalized.includes('ruy bang')) {
-    return 'Tấm Ảnh Sau Dải Ruy-Băng'
-  }
-
-  if (normalized.includes('the ra vao') && (normalized.includes('quet') || normalized.includes('ghi nhan') || normalized.includes('khong co mat') || normalized.includes('vang mat'))) {
-    return 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt'
-  }
-
-  if (normalized.includes('ban phac thao') || normalized.includes('phac thao')) {
-    return 'Bản Phác Thảo Bị Xé Góc'
-  }
-
-  if (normalized.includes('tem') && (normalized.includes('kien hang') || normalized.includes('ma tuyen') || normalized.includes('ma cu'))) {
-    return 'Tem Dán Chồng Lên Mã Cũ'
-  }
-
-  if (normalized.includes('con dau') && normalized.includes('phu luc')) {
-    return 'Con Dấu Lệch Trên Phụ Lục'
-  }
-
-  if ((normalized.includes('the so lo') || normalized.includes('the dau gia') || normalized.includes('lo dau gia')) && (normalized.includes('day') || normalized.includes('mau'))) {
-    return 'Thẻ Đấu Giá Bị Tráo Dây'
-  }
-
   if (isLockerCardEvidenceText(evidence)) {
-    return normalized.includes('the ra vao') ? 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt' : 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
+    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
   }
 
   if ((normalized.includes('ve') || normalized.includes('phieu')) && (normalized.includes('an') || normalized.includes('so ghe') || normalized.includes('ghe'))) {
@@ -363,21 +265,18 @@ function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
     .replace(/^một\s+/i, '')
     .replace(/^một chiếc\s+/i, 'Chiếc ')
     .replace(/^một tấm\s+/i, 'Tấm ')
-    .replace(/^chiếc\s+/i, 'Chiếc ')
     .replace(/\s+có một chi tiết lệch.*$/i, '')
-    .replace(/\s+không thuộc.*$/i, '')
     .replace(/\s+không phải.*$/i, '')
     .replace(/\s+bị đặt sai chỗ$/i, '')
-    .replace(/\s+lúc nữ chính.*$/i, '')
-    .replace(/\s+của trẻ.*$/i, '')
     .trim()
 
-  if (clean && clean.length <= 52 && !isGenericFactoryEvidenceText(clean)) {
+  if (clean && clean.length <= 34) {
     return clean.charAt(0).toUpperCase() + clean.slice(1)
   }
 
-  return ''
+  return 'Chi Tiết Bị Đặt Sai'
 }
+
 function resolvePanelStoryTitle(params: {
   storySeed?: FactoryStorySeed | null
   parsedTitle: string
@@ -393,7 +292,7 @@ function resolvePanelStoryTitle(params: {
         ? seedTitle
         : parsedTitle && !isBadFactoryStoryTitle(parsedTitle)
           ? parsedTitle
-          : evidenceTitle || seedTitle || parsedTitle || 'Truyện Chưa Đặt Tên'
+          : evidenceTitle || 'Chi Tiết Bị Đặt Sai'
 
   return {
     title: chosen,
