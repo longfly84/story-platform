@@ -285,29 +285,150 @@ function isBadParsedFactoryTitle(value: string) {
     'dong ma tren ve su kien',
     'tin nhan gui nham vao nhom gia dinh',
     'vet but chi sau gio don tre',
+    'manh moi o hien truong',
+    'mon do choi trong phong hop',
+    'mon do choi bi dat sai',
+    'hoa don hoa gui sai ten',
+    'khung hinh bi cat khoi camera',
+    'tam ve mot chieu trong ngan keo',
   ].includes(normalized)
 }
+
+
+function compactTitleTags(value: string) {
+  return normalizeTitleForCompare(value)
+    .split(/\s+/)
+    .filter(
+      (tag) =>
+        tag.length >= 3 &&
+        ![
+          'mot',
+          'mau',
+          'dau',
+          'noi',
+          'ben',
+          'sai',
+          'dat',
+          'cho',
+          'trong',
+          'tren',
+          'duoi',
+          'goc',
+          'cu',
+          'bi',
+          'cua',
+          'voi',
+          'sau',
+          'truoc',
+        ].includes(tag),
+    )
+}
+
+function getSeedEvidenceObject(storySeed?: FactoryStorySeed | null) {
+  return String(
+    storySeed?.evidenceObject ||
+      storySeed?.motifFingerprint?.evidenceObject ||
+      '',
+  ).trim()
+}
+
+function titleMatchesSeedEvidence(title: string, storySeed?: FactoryStorySeed | null) {
+  const evidence = getSeedEvidenceObject(storySeed)
+  const titleTags = new Set(compactTitleTags(title))
+  const evidenceTags = compactTitleTags(evidence)
+
+  if (!evidenceTags.length || !titleTags.size) return false
+
+  return evidenceTags.some((tag) => titleTags.has(tag))
+}
+
+function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
+  const evidence = getSeedEvidenceObject(storySeed)
+  const normalized = normalizeTitleForCompare(evidence)
+
+  if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
+    return 'Bức Vẽ Lệch Khung'
+  }
+
+  if (normalized.includes('anh mo') || normalized.includes('may anh do choi')) {
+    return 'Ảnh Mờ Trong Máy Ảnh Đồ Chơi'
+  }
+
+  if (normalized.includes('mieng dan')) {
+    return 'Miếng Dán Bong Góc'
+  }
+
+  if (normalized.includes('nap chai') || normalized.includes('vet xuoc')) {
+    return 'Nắp Chai Có Vết Xước'
+  }
+
+  if (normalized.includes('hat vong')) {
+    return 'Hạt Vòng Sai Chỗ'
+  }
+
+  if (normalized.includes('vong tay')) {
+    return 'Vòng Tay Sự Kiện Bị Đổi Màu'
+  }
+
+  if (normalized.includes('nhan chau') || normalized.includes('chau hoa')) {
+    return 'Nhãn Chậu Đặt Sai'
+  }
+
+  if (normalized.includes('to giay') || normalized.includes('mau giay') || normalized.includes('ghi chu')) {
+    return 'Tờ Giấy Trước Thang Máy'
+  }
+
+  if (normalized.includes('phieu') && normalized.includes('banh')) {
+    return 'Phiếu Bánh Bị Xé Góc'
+  }
+
+  if (evidence) {
+    const clean = evidence
+      .replace(/^một\s+/i, '')
+      .replace(/^một chiếc\s+/i, 'Chiếc ')
+      .replace(/^một tấm\s+/i, 'Tấm ')
+      .replace(/^một mẩu\s+/i, 'Mẩu ')
+      .replace(/\s+không phải.*$/i, '')
+      .replace(/\s+bị đặt sai chỗ$/i, '')
+      .trim()
+
+    if (clean && clean.length <= 34) {
+      return clean.charAt(0).toUpperCase() + clean.slice(1)
+    }
+  }
+
+  return 'Chi Tiết Bị Đặt Sai'
+}
+
+function isAcceptableFactoryStoryTitle(title: string, storySeed?: FactoryStorySeed | null) {
+  if (!title || isBadParsedFactoryTitle(title)) return false
+  return titleMatchesSeedEvidence(title, storySeed)
+}
+
 
 function chooseFactoryStoryTitle(params: {
   parsedTitle: string
   parsedSlug: string
+  parsedChapterTitle?: string
   storySeed?: FactoryStorySeed | null
 }) {
   const seedTitle = String(params.storySeed?.title || '').trim()
   const parsedTitle = String(params.parsedTitle || '').trim()
+  const parsedChapterTitle = String(params.parsedChapterTitle || '').trim()
+  const evidenceTitle = makeFactoryTitleFromEvidence(params.storySeed)
 
-  if (seedTitle && isBadParsedFactoryTitle(parsedTitle) && !isBadParsedFactoryTitle(seedTitle)) {
-    return {
-      title: seedTitle,
-      slug: slugifyFactoryStoryTitle(seedTitle),
-      replaced: true,
-    }
-  }
+  const candidates = [parsedTitle, parsedChapterTitle, seedTitle, evidenceTitle]
+  const chosen =
+    candidates.find((title) => isAcceptableFactoryStoryTitle(title, params.storySeed)) ||
+    evidenceTitle
+
+  const original = parsedTitle || seedTitle || parsedChapterTitle
+  const replaced = normalizeTitleForCompare(chosen) !== normalizeTitleForCompare(original)
 
   return {
-    title: parsedTitle || seedTitle || 'Truyện Factory',
-    slug: params.parsedSlug || slugifyFactoryStoryTitle(parsedTitle || seedTitle || 'Truyện Factory'),
-    replaced: false,
+    title: chosen,
+    slug: slugifyFactoryStoryTitle(chosen),
+    replaced,
   }
 }
 
@@ -373,6 +494,7 @@ export async function insertFactoryStoryDraft(params: {
   const chosenStoryTitle = chooseFactoryStoryTitle({
     parsedTitle: params.parsed.storyTitle,
     parsedSlug: params.parsed.storySlug,
+    parsedChapterTitle: params.parsed.chapterTitle,
     storySeed: params.storySeed,
   })
 

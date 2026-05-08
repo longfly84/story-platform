@@ -1439,13 +1439,12 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   );
 }
 
-function makeEvidenceTitle(evidenceObject: string, seed: string) {
-  const variants = makeEvidenceTitleVariants(evidenceObject).filter((item) => isHumanStoryTitle(item));
-  return pickSeedItem(
-    variants.length ? variants : [makeSafeFallbackTitleFromEvidence(evidenceObject)],
-    seed,
-    "evidence-title-pattern",
+function makeEvidenceTitle(evidenceObject: string) {
+  const variants = makeEvidenceTitleVariants(evidenceObject).filter(
+    (item) => isHumanStoryTitle(item) && !isGenericBadStoryTitle(item),
   );
+
+  return variants[0] || makeSafeFallbackTitleFromEvidence(evidenceObject);
 }
 
 function makeSeedAlignedTitle(params: {
@@ -1454,7 +1453,7 @@ function makeSeedAlignedTitle(params: {
   avoidTitles?: string[];
 }) {
   const evidenceTitles = makeEvidenceTitleVariants(params.candidate.evidenceObject)
-  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
+  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject);
 
   const options = uniqueStringsForCover(
     [
@@ -1484,8 +1483,8 @@ function makeChapterTitle(params: {
   alternatePressure: string;
   seed: string;
 }) {
-  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
-  const altEvidenceTitle = makeEvidenceTitle(params.alternateEvidence, `${params.seed}-alt`);
+  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject);
+  const altEvidenceTitle = makeEvidenceTitle(params.alternateEvidence);
   const setting = params.alternateSetting.replace(/^một\s+/i, "").trim();
   const pressure = params.alternatePressure.replace(/^một\s+/i, "").trim();
 
@@ -2500,7 +2499,7 @@ export function buildMockStorySeed(params: {
     seed: params.seed,
     avoidTitles: params.avoidLibrary?.titles,
   });
-  const safeFallbackTitle = makeEvidenceTitle(candidate.evidenceObject, `${params.seed}-safe-title`);
+  const safeFallbackTitle = makeEvidenceTitle(candidate.evidenceObject);
   const title = isSafeGeneratedStoryTitle(generatedTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
     ? sanitizeTitleCandidate(generatedTitle)
     : isSafeGeneratedStoryTitle(safeFallbackTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
