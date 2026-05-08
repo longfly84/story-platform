@@ -339,45 +339,70 @@ CÁC LỖI PHẢI SỬA NGAY NẾU THẤY:
 
 function getVietnameseLineEditV14Instruction() {
   return `
-NATURAL VIETNAMESE LINE EDIT v14 — SOÁT CÂU NHƯ BIÊN TẬP VIÊN NGƯỜI VIỆT:
-Mục tiêu: BẢN ĐỌC phải qua được mắt độc giả Việt đọc truyện trên điện thoại. Không chỉ đúng plot; từng câu phải thuận tai, đúng vai, không có mùi AI, không có cụm dịch máy, không có câu kết kiểu poster.
+NATURAL VIETNAMESE LINE EDIT v15 — BIÊN TẬP NHƯ NGƯỜI VIỆT SOÁT BẢN ĐĂNG WEB:
+Mục tiêu: BẢN ĐỌC phải thuận tai với độc giả Việt đọc truyện trên điện thoại. Ưu tiên câu rõ, đời, có hành động cụ thể. Không dùng cụm nghe như AI đang cố viết hay.
 
 1) CẤM CÁC CỤM / KIỂU CÂU ĐÃ BỊ PHÁT HIỆN LỘ AI:
-- Cấm: “tôi nhìn ngay và không kìm được”. Sửa thành: “tôi khựng lại”, “tôi vừa liếc qua đã thấy không ổn”.
-- Cấm: “ánh mắt anh ta cố ép vào tôi”. Sửa thành: “anh ta nhìn tôi chằm chằm”, “ánh mắt anh ta ghim thẳng vào tôi”.
-- Cấm: “mắt thẳm”. Sửa thành: “ánh mắt nặng trĩu”, “mắt đỏ nhưng vẫn cố nén”, “mắt bà cụp xuống”.
+- Cấm: “tôi nhìn ngay và không kìm được”. Sửa: “tôi khựng lại”, “tôi vừa liếc qua đã thấy không ổn”.
+- Cấm: “ánh mắt anh ta cố ép vào tôi”. Sửa: “anh ta nhìn tôi chằm chằm”, “ánh mắt anh ta ghim thẳng vào tôi”.
+- Cấm: “mắt thẳm”. Sửa: “ánh mắt nặng trĩu”, “mắt đỏ nhưng vẫn cố nén”.
 - Cấm: “cả phòng chựng lại”. Ưu tiên: “cả phòng khựng lại một nhịp”.
-- Cấm: “nói khoan”. Sửa thành: “tôi nói chậm”, “tôi ngắt lời”, “tôi giữ giọng thật bình tĩnh”.
-- Cấm: “mọi âm thanh dồn về màn hình nhỏ ấy”. Sửa thành: “cả phòng lập tức nhìn về màn hình điện thoại”.
+- Cấm: “nói khoan”. Sửa: “tôi nói chậm”, “tôi ngắt lời”, “tôi giữ giọng thật bình tĩnh”.
+- Cấm: “mọi âm thanh dồn về màn hình nhỏ ấy”. Sửa: “cả phòng lập tức nhìn về màn hình điện thoại”.
 - Cấm: “trò chơi đã bắt đầu”, “ván cờ bắt đầu”, “khúc dạo đầu”, “một màn lớn hơn vừa mở ra”. Sửa bằng hành động/hook cụ thể.
 - Cấm: “lời cô như một mảnh ghém vào câu chuyện”, “vị gắt của cay”, “khinh nhờn” khi tả ánh mắt người thường.
 
-2) KHÔNG MỞ CHƯƠNG BẰNG CÁCH NHẮC LẠI TITLE MỘT CÁCH MÁY MÓC:
+2) CẤM CỤM SAI TAI / ẨN DỤ GƯỢNG TRONG ĐỜI SỐNG:
+- Cấm: “hôi lên mùi”. Sửa: “ám mùi”, “nồng mùi”, “thoang thoảng mùi” tùy cảnh.
+- Cấm: “đèn huỳnh quang kêu ròn”. Sửa: “đèn huỳnh quang rè rè”, “đèn trên trần nhấp nháy”.
+- Cấm: “dáng đi như người chờ được khiển trách”. Sửa: “mặt cúi gằm như chuẩn bị nhận lỗi”, “dáng khép nép như sắp bị mắng”.
+- Cấm: “nụ cười được chuẩn bị sẵn để bóp nghẹt lời giải thích”. Sửa: “anh ta cười rất nhẹ, kiểu cười của người đã chuẩn bị sẵn câu kết tội”.
+- Cấm: “giọng như đóng án”. Sửa: “giọng như đã kết luận xong”.
+- Cấm: “keo chưa lì”. Sửa: “lớp keo còn mới”, “mép tem còn cong, keo chưa bám chặt”.
+- Cấm: “mùi keo và bụi bột thùng gỗ vỗ vào mũi”. Sửa: “mùi keo và bụi gỗ xộc lên”.
+- Cấm: “giọng ấy như dao cứa vào tai”. Sửa: “câu nhận lỗi ấy làm tôi khó chịu hơn cả ánh mắt soi mói của khách”.
+- Cấm: “lời nhẹ mà nhọn”. Sửa: “bà nói rất khẽ, nhưng câu nào cũng nhằm vào tôi”.
+- Cấm: “mọi ánh mắt dồn vào điểm nhỏ ấy”. Sửa: “mấy người đứng gần lập tức cúi xuống nhìn”, “khách cũng nghiêng người nhìn kỹ hơn”.
+
+3) KHÔNG MỞ CHƯƠNG BẰNG CÁCH NHẮC LẠI TITLE MỘT CÁCH MÁY MÓC:
 - Nếu title/vật chứng dài, không được bê nguyên title vào câu đầu theo kiểu báo cáo.
 - Sai: “Con dấu đỏ lệch nửa vòng trên phụ lục hợp đồng nằm giữa bàn...”
 - Tốt hơn: “Tôi nhìn thấy con dấu ngay khi bước vào phòng họp.” Sau đó mới mô tả: “Nó lệch hẳn nửa vòng, mực đỏ dồn về một bên.”
+- Sai: “Tem kiện hàng bị dán chồng lên mã tuyến cũ nằm trên thùng...”
+- Tốt hơn: “Tôi vừa nhìn mặt thùng đã thấy lớp tem mới không khớp.” Sau đó mới nói mã cũ/mã mới.
 - Câu mở phải giống người kể chuyện đang nhìn thấy sự vật, không giống AI đang cố gài keyword.
 
-3) LINE EDIT MẪU CHO CẢNH HỢP ĐỒNG / PHÁP LÝ:
+4) LINE EDIT MẪU CHO CẢNH HỢP ĐỒNG / PHÁP LÝ:
 - Thay “Điều khoản phụ này ghi rõ...” bằng câu ngắn hơn nếu nhân vật đang ép ký: “Điều khoản phụ ghi rõ rồi. Cô ký đi.”
 - Thay “Anh giải thích rõ giúp tôi...” bằng: “Vậy nói rõ đi. Người được chỉ định nhận quyền là ai?”
-- Không để luật sư nói như sách giáo khoa quá dài. Luật sư/MC/quản lý chỉ nói đủ để tạo áp lực, phần còn lại để hành động và phản ứng tự cho độc giả hiểu.
-- Không dùng “bên A/bên B” quá nhiều trong văn đọc. Nếu phải dùng, dùng một lần rồi chuyển sang cách nói đời hơn: “người ký”, “người nhận quyền”, “bên được chuyển giao”.
+- Không để luật sư nói như sách giáo khoa quá dài. Luật sư/quản lý chỉ nói đủ để tạo áp lực; phần còn lại để hành động và phản ứng tự cho độc giả hiểu.
+- Không dùng “bên A/bên B” quá nhiều trong văn đọc. Nếu phải dùng, dùng một lần rồi chuyển sang: “người ký”, “người nhận quyền”, “bên được chuyển giao”.
 
-4) KẾT CHƯƠNG BẮT BUỘC BẰNG HÀNH ĐỘNG / BẰNG CHỨNG / TIN NHẮN / CÂU THOẠI, KHÔNG BẰNG KHẨU HIỆU:
+5) LINE EDIT MẪU CHO CẢNH KHO HÀNG / GIAO NHẬN / DỊCH VỤ:
+- Viết đời thường, có mùi, tiếng, hành động cụ thể; không làm câu quá văn chương.
+- Tốt: “Kho sau nhà hàng nồng mùi nước sốt, hộp giấy và thức ăn vừa đóng gói.”
+- Tốt: “Đèn huỳnh quang trên trần rè rè. Ai cũng hiểu chuyện này phải xong trước khi khách kéo đến.”
+- Tốt: “Anh ta đẩy kiện hàng vào, mặt cúi gằm như chuẩn bị nhận lỗi.”
+- Tốt: “Mép tem mới còn cong. Lớp keo chưa bám chặt, bên dưới lộ ra dãy mã cũ bắt đầu bằng X8.”
+- Tốt: “Mùi keo và bụi gỗ xộc lên khi tôi cạy mép tem.”
+- Không dùng từ quá dân dã nếu bối cảnh nữ tần đô thị Trung Quốc: thay “ăn thua miệng lưỡi” bằng “hơn thua bằng vài câu nói”.
+
+6) KẾT CHƯƠNG BẮT BUỘC BẰNG HÀNH ĐỘNG / BẰNG CHỨNG / TIN NHẮN / CÂU THOẠI, KHÔNG BẰNG KHẨU HIỆU:
 - Sai: “Tôi không ký, nhưng trò chơi đã bắt đầu.”
 - Đúng: “Tôi không ký. Và từ ánh mắt của người phụ nữ cầm phong bì, tôi biết họ vẫn còn một bước ép khác.”
 - Sai: “Đây mới chỉ là khúc dạo đầu.”
 - Đúng: “Phong bì đặt xuống bàn, mép niêm phong còn nguyên. Chu Cảnh Nghiêu nhìn nó trước khi nhìn tôi.”
+- Với cảnh kho hàng, kết bằng vật cụ thể: mẩu tem trong phong bì, biên nhận, camera cửa kho, tài xế đứng giữa hai phe, cuộc gọi từ khách VIP.
 - Cuối chương phải có một thứ cụ thể khiến độc giả muốn đọc tiếp: phong bì, tin nhắn, người xuất hiện, dấu vết mới, deadline mới, câu đe dọa mới.
 
-5) ĐỘ TỰ NHIÊN CỦA TIẾNG VIỆT:
+7) ĐỘ TỰ NHIÊN CỦA TIẾNG VIỆT:
 - Ưu tiên câu ngắn, rõ chủ thể. Mỗi câu chỉ nên gánh một ý chính khi cảnh đang căng.
 - Không cố làm câu “sang” bằng ẩn dụ. Nếu một cụm nghe đẹp nhưng không giống người Việt viết truyện mạng, đổi thành câu bình thường.
 - Không dùng Hán-Việt nặng nếu từ phổ thông đủ tốt: “khinh miệt” thay cho “khinh nhờn”; “khựng lại” thay cho “chựng lại” trong văn phổ thông; “cổ họng khô rát” thay cho hình ảnh lạ.
 - Không để nhân vật độc thoại giải thích quá sạch. Người thật thường né, cắt ngang, hỏi ngược, hoặc nói một câu ngắn có gai.
+- Không viết câu kết luận dài kiểu “đây không chỉ là..., đây là...” nếu có thể chia thành 2–3 câu ngắn hơn.
 
-6) READ-ALOUD FINAL CHECK:
+8) READ-ALOUD FINAL CHECK:
 - Trước khi trả output, tự đọc thầm 5 đoạn đầu và 3 đoạn cuối như người Việt đọc truyện trên điện thoại.
 - Câu nào làm người đọc vấp vì cụm từ lạ, sửa ngay.
 - Câu nào nghe như bản dịch, sửa ngay.
