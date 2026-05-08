@@ -46,6 +46,127 @@ function getUrbanFemaleScaleLockInstruction(payload: NormalizedGeneratePayload) 
 
 
 
+
+function getFactoryEvidenceAnchorInstruction(payload: NormalizedGeneratePayload) {
+  const storySeed = payload.storySeed
+  const chapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
+  const titleLock = safeText(storySeed?.title || payload.title, payload.title)
+  const evidenceObject = safeText(storySeed?.evidenceObject, '')
+  const setting = safeText(storySeed?.setting, '')
+  const mainConflict = safeText(storySeed?.mainConflict, '')
+
+  if (!titleLock && !evidenceObject) {
+    return ''
+  }
+
+  return `
+FACTORY EVIDENCE LOCK:
+- Story title lock: ${titleLock || evidenceObject}
+- Main evidence lock: ${evidenceObject || titleLock}
+- Setting lock: ${setting || 'none'}
+- Conflict lock: ${mainConflict || 'none'}
+
+Rules:
+1. Main evidence is the core object. Do not replace it with a side clue.
+2. Chapter ${chapterNumber} title must name the main evidence, the exact action around it, or its direct public reveal.
+3. Side clues may exist, but only to explain the main evidence. They must not become the chapter title or the main investigation object.
+4. In the reading text, show the main evidence at least three times: revealed, inspected, then used to push the conflict forward.
+5. In the technical report, story_title must match the story title lock. Do not invent a new title such as contract, USB, QR code, sealed file, room card, or CCTV unless it is in the seed.
+6. Forbidden chapter titles: “Chi Tiết Bị Đặt Sai”, “Món Đồ Bị Đặt Sai”, “Vật Chứng Bị Lộ”, “Sự Thật Bị Che Giấu”, “Manh Mối Đầu Tiên”. These are placeholders, not chapter titles.
+7. If the evidence is a PR statement / media draft / press release, prefer a concrete chapter title like “Bản Nháp Được Soạn Trước” or “Lời Xin Lỗi Có Trước Scandal”, not a generic placeholder.
+`.trim()
+}
+
+
+function getFactoryReportTitleLockInstruction(payload: NormalizedGeneratePayload) {
+  const storySeed = payload.storySeed
+  const titleLock = safeText(storySeed?.title || payload.title, payload.title)
+  const evidenceObject = safeText(storySeed?.evidenceObject, '')
+
+  if (!titleLock && !evidenceObject) return ''
+
+  const lockedTitle = titleLock || evidenceObject
+  const lockedEvidence = evidenceObject || lockedTitle
+
+  return `
+FACTORY TECHNICAL REPORT TITLE LOCK:
+- EXACT_STORY_TITLE_FOR_REPORT: ${lockedTitle}
+- EXACT_EVIDENCE_OBJECT_FOR_REPORT: ${lockedEvidence}
+
+BẮT BUỘC KHI VIẾT PHẦN "=== THÔNG TIN TRUYỆN ĐỀ XUẤT ===":
+- Dòng "- Tên truyện đề xuất:" phải ghi đúng: ${lockedTitle}
+- Không được tự đặt tên khác trong technical report.
+- Không được đổi sang vé, hợp đồng, USB, camera, ngăn kéo, mã QR, thẻ phòng, hồ sơ, bản ghi âm nếu không nằm trong EXACT_EVIDENCE_OBJECT_FOR_REPORT.
+- Nếu phần đọc đã có tiêu đề chương khác, vẫn giữ "Tên truyện đề xuất" đúng theo EXACT_STORY_TITLE_FOR_REPORT.
+- Dòng "- Lý do tên truyện đề xuất..." phải giải thích dựa trên vật chứng chính: ${lockedEvidence}.
+`.trim()
+}
+
+
+function getFactoryCharacterNameLockInstruction(payload: NormalizedGeneratePayload) {
+  const storySeed = payload.storySeed as any
+  const nameSet = storySeed?.characterNameSet as
+    | {
+        femaleLead?: string
+        child?: string
+        assistant?: string
+        teacher?: string
+        antagonist?: string
+        witness?: string
+        authority?: string
+        relative?: string
+        forbiddenNames?: string[]
+      }
+    | undefined
+
+  const forbidden = [
+    'Hạ Vân',
+    'Tạ Như',
+    'Hứa Thanh',
+    'Giang Thục',
+    'Ôn Kha',
+    'Tống Huy',
+    'Phó Lan',
+    'Mei Lạc',
+    'Lưu Vỹ',
+    'Viên Tĩnh',
+    'Tim',
+    'Tần Nhã',
+    'Phó Khải',
+    ...(Array.isArray(nameSet?.forbiddenNames) ? nameSet?.forbiddenNames || [] : []),
+  ]
+  const uniqueForbidden = Array.from(new Set(forbidden.filter(Boolean)))
+
+  if (nameSet?.femaleLead) {
+    return `
+FACTORY CHARACTER NAME LOCK — BẮT BUỘC:
+- Nữ chính: ${nameSet.femaleLead}
+- Trẻ nhỏ / người yếu thế nếu cần: ${nameSet.child || 'không bắt buộc'}
+- Trợ lý / người hỗ trợ: ${nameSet.assistant || 'không bắt buộc'}
+- Giáo viên / nhân viên chuyên môn nếu cần: ${nameSet.teacher || 'không bắt buộc'}
+- Phản diện chính / người gây áp lực: ${nameSet.antagonist || 'không bắt buộc'}
+- Nhân chứng / người đứng giữa: ${nameSet.witness || 'không bắt buộc'}
+- Người có quyền / bảo vệ / quản lý / đại diện tổ chức: ${nameSet.authority || 'không bắt buộc'}
+- Người thân / phụ huynh / đối tượng gây sức ép phụ: ${nameSet.relative || 'không bắt buộc'}
+
+Luật tên nhân vật:
+1. Nếu vai xuất hiện trong chương, phải dùng đúng tên đã khóa ở trên.
+2. Không tự thay nữ chính thành Hạ Vân/Tống Vân/Tần Nhã hoặc tên cũ.
+3. Không dùng lại các tên đã xuất hiện gần đây: ${uniqueForbidden.join(', ')}.
+4. Không dùng tên Tây như Tim, John, Anna trong bối cảnh nữ tần đô thị Trung Quốc hiện đại. Trẻ nhỏ dùng tên như Tiểu Dữu, An An, Đậu Đậu, Du Du...
+5. Trong cùng truyện phải giữ tên nhất quán qua các chương. Nếu chương trước đã có tên khác trong STORY CONTEXT, ưu tiên continuity của truyện hiện tại; nếu là chương 1 thì dùng name lock này.
+`.trim()
+  }
+
+  return `
+FACTORY CHARACTER NAME DIVERSITY HARD LOCK:
+- Mỗi truyện mới phải có dàn tên mới, không tái dùng dàn tên của truyện vừa tạo.
+- Cấm dùng lại các tên gần đây: ${uniqueForbidden.join(', ')}.
+- Không dùng tên Tây như Tim, John, Anna nếu bối cảnh là Trung Quốc hiện đại/nữ tần đô thị.
+- Tạo tên Trung Quốc hiện đại, dễ đọc với độc giả Việt; nhất quán trong cùng truyện.
+`.trim()
+}
+
 function getVietnameseProseHardGateInstruction() {
   return `
 VIETNAMESE PROSE HARD GATE — CỔNG CHẶN VĂN RÁC / DỊCH MÁY:
@@ -91,29 +212,6 @@ Ví dụ:
 - Khi nói “người gửi đã xóa ngay sau khi gửi”, phải làm rõ gửi cái gì, gửi cho ai, ai chụp lại, vì sao nữ chính biết.
 - Khi có bằng chứng kỹ thuật, phải đặt vào hành động cụ thể: ai mở, ai gửi bản sao, ai xác nhận, bản sao đến từ đâu.
 - Không được viết kiểu “một ảnh hiện lên rồi mất: Đã xóa” nếu thiếu mạch. Hãy viết rõ hơn: “bức ảnh chỉ hiện lên trong tích tắc trước khi ứng dụng báo tin đã bị thu hồi/xóa”.
-
-
-
-7) BỘ LỌC CÂU NGHE NHƯ AI / KHÔNG THUẬN MIỆNG NGƯỜI VIỆT:
-- Trước khi trả output, soi từng câu bằng tiêu chí: người Việt nói/viết truyện có dùng cách kết hợp từ này không?
-- Cấm giữ các cụm nghe lạ dù đúng ý. Nếu một cụm nghe “đẹp” nhưng khó hiểu, phải đổi thành câu thường.
-- Cấm hoặc bắt buộc viết lại các kiểu sau:
-  + “bàn đấu giá như một đường thẳng giữa những cuộc trò chuyện” → “bàn đấu giá đặt giữa sảnh, kéo ánh mắt khách mời về cùng một chỗ”.
-  + “giọng được tập luyện cho cử chỉ long trọng” → “giọng trau chuốt, long trọng quá mức” hoặc “giọng như đã tập đi tập lại”.
-  + “không chỉ là thẫm hay nhạt” → “không chỉ là khác màu” hoặc “không phải do ánh đèn làm màu dây đậm hơn”.
-  + “một mảnh ghém vào câu chuyện” → “câu nói ấy khiến vài ánh mắt quay về phía hậu trường”.
-  + “khinh nhờn” khi tả ánh mắt người thường → “khinh miệt”, “coi thường”, hoặc “nhìn tôi như thể tôi đang phá hỏng buổi tiệc”.
-  + “vị gắt của cay” → “cổ họng khô rát”, “cổ họng nghẹn lại, đắng ngắt”.
-  + “mọi thứ co rúm lại” → “cả sảnh khựng lại”, “không khí trong sảnh căng cứng”.
-  + “tôi biết mình đang mất thế” → “tôi biết lúc này nói gì cũng bất lợi”, “càng giải thích, họ càng có cớ quay thêm”.
-- Không dùng từ Hán-Việt nặng chỉ để làm câu sang hơn. Chọn từ đời thường nếu không làm mất sắc thái.
-- Ẩn dụ chỉ được giữ nếu người đọc hiểu ngay trong lần đọc đầu tiên. Không dùng ẩn dụ mơ hồ như vật thể rơi vào câu chuyện, quyền lực đổi màu, không khí có hình dạng.
-
-8) BẢN FINAL PHẢI QUA BÀI TEST ĐỘC GIẢ VIỆT:
-- Đọc 5 đoạn đầu thành tiếng trong đầu. Nếu vấp ở một cụm từ, phải sửa cụm đó.
-- Đối thoại phải đúng vai: MC/trợ lý/khách mời/giáo viên/bảo vệ nói như người thật trong bối cảnh đó, không nói như bản báo cáo.
-- Câu kể phải ưu tiên hành động cụ thể: ai giơ thẻ, ai nhìn, ai im, ai rút điện thoại, ai bước tới, giấy nằm ở đâu, dây màu gì, mã nào lệch.
-- Không kết đoạn bằng câu tổng kết triết lý nếu có thể kết bằng một hành động hoặc chi tiết cụ thể.
 
 6) ĐOẠN MỞ ĐẦU LÀ CỔNG GIỮ ĐỘC GIẢ:
 - 5 đoạn đầu của chương phải được soi kỹ nhất.
@@ -226,22 +324,6 @@ BẮT BUỘC LÀM TRƯỚC KHI TRẢ OUTPUT:
 6. Không chỉ sửa plot. Nhiệm vụ chính của editor pass này là làm văn mượt, rõ nghĩa, tự nhiên, đọc như truyện người thật viết.
 7. Không được giữ các câu chỉ đúng ý nhưng sai tiếng Việt. Đúng ý chưa đủ; câu phải đọc thuận miệng.
 
-
-
-CỤM TỪ PHẢI SOI VÀ SỬA NGAY TRONG EDITOR PASS:
-- Nếu thấy cụm đẹp nhưng lạ tai, ưu tiên câu bình thường hơn.
-- Sửa bắt buộc các lỗi kết hợp từ/cụm AI thường gặp:
-  + “một đường thẳng giữa những cuộc trò chuyện” → “đặt giữa sảnh, kéo ánh mắt mọi người về cùng một chỗ”.
-  + “giọng được tập luyện cho cử chỉ long trọng” → “giọng trau chuốt, long trọng quá mức”.
-  + “một mảnh ghém vào câu chuyện” → “câu nói ấy khiến vài ánh mắt quay về phía...”.
-  + “khinh nhờn” khi tả người nhìn nhau → “khinh miệt/coi thường”.
-  + “vị gắt của cay” → “cổ họng khô rát/đắng ngắt”.
-  + “mọi thứ co rúm lại” → “cả phòng khựng lại/không khí căng cứng”.
-  + “tôi biết mình đang mất thế” → “tôi biết lúc này nói gì cũng bất lợi”.
-- Không giữ câu chỉ vì nó có vẻ văn chương. Câu phải đúng tiếng Việt trước, hay sau.
-- Nếu một câu có chủ thể mơ hồ, sửa lại để biết rõ ai làm gì.
-- Nếu một câu mô tả cảm giác bằng ẩn dụ lạ, đổi thành phản ứng cơ thể/cử chỉ/đối thoại.
-
 CÁC LỖI PHẢI SỬA NGAY NẾU THẤY:
 - “Trợ lý tôi” → “Trợ lý của tôi”.
 - “mắt cô ấy thâm quầng” → “đôi mắt cô ấy thâm quầng” hoặc “quầng mắt cô ấy sẫm lại”.
@@ -255,6 +337,54 @@ CÁC LỖI PHẢI SỬA NGAY NẾU THẤY:
 }
 
 
+function getVietnameseLineEditV14Instruction() {
+  return `
+NATURAL VIETNAMESE LINE EDIT v14 — SOÁT CÂU NHƯ BIÊN TẬP VIÊN NGƯỜI VIỆT:
+Mục tiêu: BẢN ĐỌC phải qua được mắt độc giả Việt đọc truyện trên điện thoại. Không chỉ đúng plot; từng câu phải thuận tai, đúng vai, không có mùi AI, không có cụm dịch máy, không có câu kết kiểu poster.
+
+1) CẤM CÁC CỤM / KIỂU CÂU ĐÃ BỊ PHÁT HIỆN LỘ AI:
+- Cấm: “tôi nhìn ngay và không kìm được”. Sửa thành: “tôi khựng lại”, “tôi vừa liếc qua đã thấy không ổn”.
+- Cấm: “ánh mắt anh ta cố ép vào tôi”. Sửa thành: “anh ta nhìn tôi chằm chằm”, “ánh mắt anh ta ghim thẳng vào tôi”.
+- Cấm: “mắt thẳm”. Sửa thành: “ánh mắt nặng trĩu”, “mắt đỏ nhưng vẫn cố nén”, “mắt bà cụp xuống”.
+- Cấm: “cả phòng chựng lại”. Ưu tiên: “cả phòng khựng lại một nhịp”.
+- Cấm: “nói khoan”. Sửa thành: “tôi nói chậm”, “tôi ngắt lời”, “tôi giữ giọng thật bình tĩnh”.
+- Cấm: “mọi âm thanh dồn về màn hình nhỏ ấy”. Sửa thành: “cả phòng lập tức nhìn về màn hình điện thoại”.
+- Cấm: “trò chơi đã bắt đầu”, “ván cờ bắt đầu”, “khúc dạo đầu”, “một màn lớn hơn vừa mở ra”. Sửa bằng hành động/hook cụ thể.
+- Cấm: “lời cô như một mảnh ghém vào câu chuyện”, “vị gắt của cay”, “khinh nhờn” khi tả ánh mắt người thường.
+
+2) KHÔNG MỞ CHƯƠNG BẰNG CÁCH NHẮC LẠI TITLE MỘT CÁCH MÁY MÓC:
+- Nếu title/vật chứng dài, không được bê nguyên title vào câu đầu theo kiểu báo cáo.
+- Sai: “Con dấu đỏ lệch nửa vòng trên phụ lục hợp đồng nằm giữa bàn...”
+- Tốt hơn: “Tôi nhìn thấy con dấu ngay khi bước vào phòng họp.” Sau đó mới mô tả: “Nó lệch hẳn nửa vòng, mực đỏ dồn về một bên.”
+- Câu mở phải giống người kể chuyện đang nhìn thấy sự vật, không giống AI đang cố gài keyword.
+
+3) LINE EDIT MẪU CHO CẢNH HỢP ĐỒNG / PHÁP LÝ:
+- Thay “Điều khoản phụ này ghi rõ...” bằng câu ngắn hơn nếu nhân vật đang ép ký: “Điều khoản phụ ghi rõ rồi. Cô ký đi.”
+- Thay “Anh giải thích rõ giúp tôi...” bằng: “Vậy nói rõ đi. Người được chỉ định nhận quyền là ai?”
+- Không để luật sư nói như sách giáo khoa quá dài. Luật sư/MC/quản lý chỉ nói đủ để tạo áp lực, phần còn lại để hành động và phản ứng tự cho độc giả hiểu.
+- Không dùng “bên A/bên B” quá nhiều trong văn đọc. Nếu phải dùng, dùng một lần rồi chuyển sang cách nói đời hơn: “người ký”, “người nhận quyền”, “bên được chuyển giao”.
+
+4) KẾT CHƯƠNG BẮT BUỘC BẰNG HÀNH ĐỘNG / BẰNG CHỨNG / TIN NHẮN / CÂU THOẠI, KHÔNG BẰNG KHẨU HIỆU:
+- Sai: “Tôi không ký, nhưng trò chơi đã bắt đầu.”
+- Đúng: “Tôi không ký. Và từ ánh mắt của người phụ nữ cầm phong bì, tôi biết họ vẫn còn một bước ép khác.”
+- Sai: “Đây mới chỉ là khúc dạo đầu.”
+- Đúng: “Phong bì đặt xuống bàn, mép niêm phong còn nguyên. Chu Cảnh Nghiêu nhìn nó trước khi nhìn tôi.”
+- Cuối chương phải có một thứ cụ thể khiến độc giả muốn đọc tiếp: phong bì, tin nhắn, người xuất hiện, dấu vết mới, deadline mới, câu đe dọa mới.
+
+5) ĐỘ TỰ NHIÊN CỦA TIẾNG VIỆT:
+- Ưu tiên câu ngắn, rõ chủ thể. Mỗi câu chỉ nên gánh một ý chính khi cảnh đang căng.
+- Không cố làm câu “sang” bằng ẩn dụ. Nếu một cụm nghe đẹp nhưng không giống người Việt viết truyện mạng, đổi thành câu bình thường.
+- Không dùng Hán-Việt nặng nếu từ phổ thông đủ tốt: “khinh miệt” thay cho “khinh nhờn”; “khựng lại” thay cho “chựng lại” trong văn phổ thông; “cổ họng khô rát” thay cho hình ảnh lạ.
+- Không để nhân vật độc thoại giải thích quá sạch. Người thật thường né, cắt ngang, hỏi ngược, hoặc nói một câu ngắn có gai.
+
+6) READ-ALOUD FINAL CHECK:
+- Trước khi trả output, tự đọc thầm 5 đoạn đầu và 3 đoạn cuối như người Việt đọc truyện trên điện thoại.
+- Câu nào làm người đọc vấp vì cụm từ lạ, sửa ngay.
+- Câu nào nghe như bản dịch, sửa ngay.
+- Câu nào kết luận triết lý mà có thể thay bằng hành động, thay bằng hành động.
+`.trim()
+}
+
 export function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const moduleInstruction = getModuleInstruction(payload.moduleId)
   const genreInstruction = getGenreInstruction(payload.genreLabel)
@@ -264,9 +394,11 @@ export function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const motifUniquenessInstruction = getGlobalMotifUniquenessInstruction(payload)
   const antiRepeatInstruction = getOpenAIAntiRepeatInstruction(payload)
   const nameDiversityInstruction = getNameDiversityInstruction(payload)
+  const factoryCharacterNameLockInstruction = getFactoryCharacterNameLockInstruction(payload)
   const titleNamingInstruction = getTitleNamingInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
+  const evidenceAnchorInstruction = getFactoryEvidenceAnchorInstruction(payload)
   const cliffhangerRule = getCliffhangerRule(payload)
 
   return `
@@ -306,11 +438,15 @@ ${antiRepeatInstruction}
 
 ${nameDiversityInstruction}
 
+${factoryCharacterNameLockInstruction}
+
 ${titleNamingInstruction}
 
 ${heroineInstruction}
 
 ${urbanFemaleScaleLockInstruction}
+
+${evidenceAnchorInstruction}
 
 ${cliffhangerRule}
 
@@ -422,9 +558,12 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const storySeedInstruction = getStorySeedInstruction(payload)
   const antiRepeatInstruction = getOpenAIAntiRepeatInstruction(payload)
   const nameDiversityInstruction = getNameDiversityInstruction(payload)
+  const factoryCharacterNameLockInstruction = getFactoryCharacterNameLockInstruction(payload)
   const titleNamingInstruction = getTitleNamingInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
+  const evidenceAnchorInstruction = getFactoryEvidenceAnchorInstruction(payload)
+  const reportTitleLockInstruction = getFactoryReportTitleLockInstruction(payload)
   const storyContext = buildStoryContext(payload)
   const technicalReport = getTechnicalReportInstruction()
   const cliffhangerRule = getCliffhangerRule(payload)
@@ -436,6 +575,7 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const humanCostInstruction = getHumanCostInstruction()
   const vietnameseProseHardGateInstruction = getVietnameseProseHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
+  const vietnameseLineEditV14Instruction = getVietnameseLineEditV14Instruction()
   const nextChapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
   const isContinuation = nextChapterNumber > 1
 
@@ -481,11 +621,17 @@ ${antiRepeatInstruction}
 
 ${nameDiversityInstruction}
 
+${factoryCharacterNameLockInstruction}
+
 ${titleNamingInstruction}
 
 ${heroineInstruction}
 
 ${urbanFemaleScaleLockInstruction}
+
+${evidenceAnchorInstruction}
+
+${reportTitleLockInstruction}
 
 ${storyContext}
 
@@ -512,6 +658,8 @@ CHAPTER CONTINUATION RULE:
 - Không tự tạo lại một vụ hot search mở đầu mới nếu chương trước đã có hook cụ thể, trừ khi đó là hệ quả trực tiếp của chương trước.
 - Tiêu đề chương bắt buộc dùng dạng: "# Chương ${nextChapterNumber} — [tên chương ngắn, cụ thể, có hook]".
 - Tên chương phải thể hiện biến cố/vật chứng/state change chính của chương này, không được là tiêu đề chung chung hoặc giống phân tích.
+- Cấm tuyệt đối các tên chương placeholder: "Chi Tiết Bị Đặt Sai", "Món Đồ Bị Đặt Sai", "Vật Chứng Bị Lộ", "Sự Thật Bị Che Giấu", "Manh Mối Đầu Tiên".
+- Nếu vật chứng là bản nháp thông cáo / thông cáo truyền thông, tiêu đề chương nên xoáy vào twist thời gian như: "Bản Nháp Được Soạn Trước" hoặc "Lời Xin Lỗi Có Trước Scandal".
 - Nếu là Chương 1, phần kỹ thuật bắt buộc có "Tên truyện đề xuất" khác với tiêu đề chương.
 
 CONTINUITY STATE CHANGE RULE:
@@ -593,15 +741,6 @@ WORDING NATURALNESS RULE:
 - Ưu tiên phản ứng cụ thể: ngón tay khựng lại, cổ họng nghẹn, màn hình nhòe đi, lưng lạnh đi.
 - Nếu nam phản diện/chồng/CEO còn trẻ hoặc cùng thế hệ nữ chính, không gọi là "ông ta". Ưu tiên "anh ta", "hắn", hoặc gọi tên riêng.
 
-
-
-NATIVE VIETNAMESE COLLOCATION FILTER:
-- Trước khi final, sửa mọi cụm kết hợp từ không tự nhiên. Người Việt đọc truyện phải thấy thuận miệng ngay.
-- Không viết câu “đẹp” nhưng mơ hồ. Nếu phải chọn, chọn câu cụ thể, đời thường.
-- Cấm giữ các cụm: “một đường thẳng giữa những cuộc trò chuyện”, “giọng được tập luyện cho cử chỉ”, “mảnh ghém vào câu chuyện”, “vị gắt của cay”, “mọi thứ co rúm lại”.
-- Với cảnh đấu giá/sự kiện, viết cụ thể: thẻ nằm trên bục, dây màu gì, mã nào lệch, ai giơ thẻ, ai yêu cầu kiểm tra, ai im đi.
-- Với ánh mắt/đám đông, không dùng từ quá nặng sai sắc thái như “khinh nhờn”; dùng “khinh miệt”, “nghi ngờ”, “coi thường”, “nhìn tôi như thể...”.
-
 CHARACTER CONSISTENCY RULE:
 - Nếu STORY CONTEXT hoặc chương tham chiếu đã có tên nhân vật, bắt buộc giữ nguyên tên đó.
 - Không đổi họ/tên nữ chính, nam phản diện, người thứ ba, mẹ chồng/bà nội chồng giữa các chương.
@@ -631,6 +770,8 @@ HUMAN PROSE RULE:
 ${vietnameseProseHardGateInstruction}
 
 ${vietnameseSemanticLogicGateInstruction}
+
+${vietnameseLineEditV14Instruction}
 
 SELF-REVISION PASS BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
 Trước khi xuất kết quả cuối cùng, hãy tự đọc lại bản chương như một biên tập viên và tự sửa trong im lặng theo checklist này:
@@ -689,11 +830,18 @@ OUTPUT BẮT BUỘC:
 FORMAT PHẦN ĐỌC:
 # BẢN ĐỌC CHO ĐỘC GIẢ
 
-# Chương ${nextChapterNumber} — [tên chương hấp dẫn, ngắn, có hook]
+# Chương ${nextChapterNumber} — [tên chương cụ thể, bám vật chứng/biến cố; không dùng placeholder]
 
 [Viết nội dung chương bằng văn xuôi liên tục.]
 
-Sau phần đọc, thêm dòng "---", rồi viết phần kỹ thuật theo mẫu sau:
+Sau phần đọc, thêm dòng "---", rồi viết phần kỹ thuật theo mẫu sau.
+
+KHÓA PARSE TITLE CHO ADMIN:
+- Ở phần kỹ thuật, dòng "- Tên truyện đề xuất:" PHẢI dùng đúng EXACT_STORY_TITLE_FOR_REPORT ở trên.
+- Không được dùng title khác chỉ vì nghe kịch tính hơn.
+- Không được dùng title từ motif cũ hoặc title tưởng tượng không có trong vật chứng chính.
+- Dòng "- Tiêu đề chương hiện tại:" mới là nơi ghi tiêu đề chương.
+- Tuyệt đối không nhập nhằng tên truyện và tên chương.
 
 ${technicalReport}
 `.trim()
@@ -726,8 +874,12 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
     (chapter) => chapter.chapterNumber === chapterNumber + 1,
   )
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
+  const evidenceAnchorInstruction = getFactoryEvidenceAnchorInstruction(payload)
+  const reportTitleLockInstruction = getFactoryReportTitleLockInstruction(payload)
+  const factoryCharacterNameLockInstruction = getFactoryCharacterNameLockInstruction(payload)
   const vietnameseEditorHardGateInstruction = getVietnameseEditorHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
+  const vietnameseLineEditV14Instruction = getVietnameseLineEditV14Instruction()
 
   const recentContext = payload.recentChapters
     .slice(0, 3)
@@ -764,9 +916,17 @@ THÔNG TIN TRUYỆN:
 
 ${urbanFemaleScaleLockInstruction}
 
+${evidenceAnchorInstruction}
+
+${reportTitleLockInstruction}
+
+${factoryCharacterNameLockInstruction}
+
 ${vietnameseEditorHardGateInstruction}
 
 ${vietnameseSemanticLogicGateInstruction}
+
+${vietnameseLineEditV14Instruction}
 
 CHAPTER PLAN HIỆN TẠI:
 - Mission: ${currentPlan?.mission || 'Không có'}
@@ -793,7 +953,8 @@ Nhiệm vụ đặt tên trong editor pass:
 1. Nếu tiêu đề chương trong draft chung chung/kiểu phân tích/lệch nội dung, phải đổi dòng tiêu đề chương thành tên mới cụ thể hơn.
 2. Tên chương final phải phản ánh vật chứng, biến cố, địa điểm, thời hạn, cú ép, nhân vật phản bội hoặc state change chính của chương.
 3. Cấm giữ các tiêu đề kiểu: “Cú ép đầu tiên và tổn thương thật”, “Đổi sân khấu, không đổi mục tiêu”, “Cú đáp trả bất ngờ”, “Ván cờ mới bắt đầu”, “Sự thật dần hé lộ”.
-4. Nếu phần kỹ thuật có “Tên truyện đề xuất”, tên đó phải khớp nội dung thật. Nếu tên hiện tại lệch, đề xuất tên mới dựa trên vật chứng/mâu thuẫn trung tâm.
+4. Cấm giữ các placeholder: “Chi Tiết Bị Đặt Sai”, “Món Đồ Bị Đặt Sai”, “Vật Chứng Bị Lộ”, “Sự Thật Bị Che Giấu”, “Manh Mối Đầu Tiên”. Nếu draft có các tên này, phải đổi ngay.
+5. Nếu phần kỹ thuật có “Tên truyện đề xuất”, tên đó phải khớp nội dung thật. Nếu tên hiện tại lệch, đề xuất tên mới dựa trên vật chứng/mâu thuẫn trung tâm.
 5. Không đổi tên truyện trong phần BẢN ĐỌC, nhưng phần kỹ thuật phải ghi rõ nếu tên hiện tại không khớp và đề xuất tên thay thế.
 
 CONTEXT GẦN NHẤT:
@@ -824,14 +985,6 @@ Ví dụ sửa:
 - Sai: “Lời anh ta như một con dấu.”
   Đúng: “Câu đó khiến mọi người im đi vài giây.”
 
-
-
-BỘ LỌC CÂU TỰ NHIÊN KIỂU NGƯỜI VIỆT:
-- Sau khi rewrite, rà lại các câu có ẩn dụ hoặc từ ngữ trang trọng. Nếu không thuận miệng, đổi thành câu đời hơn.
-- Không giữ các cụm lạ tai như: “một mảnh ghém vào câu chuyện”, “vị gắt của cay”, “một đường thẳng giữa những cuộc trò chuyện”, “mọi thứ co rúm lại”.
-- Nếu cảnh có MC/khách mời/trợ lý, lời thoại phải đúng vai và đủ kính ngữ. Trợ lý nói với nữ chính dùng “chị/em/dạ” tự nhiên, không nói trống không.
-- Một đoạn văn tốt nên có vật thể/cử chỉ cụ thể: phong bì, thẻ, mã quỹ, dây cột, màn hình, bước chân, ánh mắt. Không chỉ nói “áp lực”, “quyền lực”, “cục diện”.
-
 EDITOR CONTINUITY CHECK:
 - Nếu chương mới giống đang viết lại một chương cũ, hãy sửa.
 - Nếu chương chỉ lặp lại cảnh họp/tố cáo/niêm phong mà không có bằng chứng mới hoặc hậu quả mới, hãy sửa.
@@ -854,7 +1007,6 @@ EDITOR CHECKLIST BẮT BUỘC:
 10. Tên chương phải bám vật chứng/cảnh chính, nhưng không cần cố quá bí hiểm.
 11. BẢN PHÂN TÍCH KỸ THUẬT vẫn giữ để admin debug, nhưng phải cập nhật đúng sau khi rewrite.
 12. Trước khi trả output, tự đọc 5 đoạn đầu. Nếu nghe giống AI đang dựng sân khấu, rewrite lại bằng câu đời hơn.
-13. Trước khi trả output, tự tìm và sửa các cụm sai tai người Việt như: mảnh ghém, vị gắt của cay, khinh nhờn, giọng được tập luyện cho cử chỉ, đường thẳng giữa những cuộc trò chuyện.
 
 
 CẤM:
