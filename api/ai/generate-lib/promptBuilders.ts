@@ -75,6 +75,31 @@ Rules:
 `.trim()
 }
 
+
+function getFactoryReportTitleLockInstruction(payload: NormalizedGeneratePayload) {
+  const storySeed = payload.storySeed
+  const titleLock = safeText(storySeed?.title || payload.title, payload.title)
+  const evidenceObject = safeText(storySeed?.evidenceObject, '')
+
+  if (!titleLock && !evidenceObject) return ''
+
+  const lockedTitle = titleLock || evidenceObject
+  const lockedEvidence = evidenceObject || lockedTitle
+
+  return `
+FACTORY TECHNICAL REPORT TITLE LOCK:
+- EXACT_STORY_TITLE_FOR_REPORT: ${lockedTitle}
+- EXACT_EVIDENCE_OBJECT_FOR_REPORT: ${lockedEvidence}
+
+BẮT BUỘC KHI VIẾT PHẦN "=== THÔNG TIN TRUYỆN ĐỀ XUẤT ===":
+- Dòng "- Tên truyện đề xuất:" phải ghi đúng: ${lockedTitle}
+- Không được tự đặt tên khác trong technical report.
+- Không được đổi sang vé, hợp đồng, USB, camera, ngăn kéo, mã QR, thẻ phòng, hồ sơ, bản ghi âm nếu không nằm trong EXACT_EVIDENCE_OBJECT_FOR_REPORT.
+- Nếu phần đọc đã có tiêu đề chương khác, vẫn giữ "Tên truyện đề xuất" đúng theo EXACT_STORY_TITLE_FOR_REPORT.
+- Dòng "- Lý do tên truyện đề xuất..." phải giải thích dựa trên vật chứng chính: ${lockedEvidence}.
+`.trim()
+}
+
 function getVietnameseProseHardGateInstruction() {
   return `
 VIETNAMESE PROSE HARD GATE — CỔNG CHẶN VĂN RÁC / DỊCH MÁY:
@@ -419,6 +444,7 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
   const evidenceAnchorInstruction = getFactoryEvidenceAnchorInstruction(payload)
+  const reportTitleLockInstruction = getFactoryReportTitleLockInstruction(payload)
   const storyContext = buildStoryContext(payload)
   const technicalReport = getTechnicalReportInstruction()
   const cliffhangerRule = getCliffhangerRule(payload)
@@ -482,6 +508,8 @@ ${heroineInstruction}
 ${urbanFemaleScaleLockInstruction}
 
 ${evidenceAnchorInstruction}
+
+${reportTitleLockInstruction}
 
 ${storyContext}
 
@@ -680,7 +708,14 @@ FORMAT PHẦN ĐỌC:
 
 [Viết nội dung chương bằng văn xuôi liên tục.]
 
-Sau phần đọc, thêm dòng "---", rồi viết phần kỹ thuật theo mẫu sau. Phần story_title phải bám Story title lock / Main evidence lock nếu có:
+Sau phần đọc, thêm dòng "---", rồi viết phần kỹ thuật theo mẫu sau.
+
+KHÓA PARSE TITLE CHO ADMIN:
+- Ở phần kỹ thuật, dòng "- Tên truyện đề xuất:" PHẢI dùng đúng EXACT_STORY_TITLE_FOR_REPORT ở trên.
+- Không được dùng title khác chỉ vì nghe kịch tính hơn.
+- Không được dùng title từ motif cũ hoặc title tưởng tượng không có trong vật chứng chính.
+- Dòng "- Tiêu đề chương hiện tại:" mới là nơi ghi tiêu đề chương.
+- Tuyệt đối không nhập nhằng tên truyện và tên chương.
 
 ${technicalReport}
 `.trim()
@@ -714,6 +749,7 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
   )
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
   const evidenceAnchorInstruction = getFactoryEvidenceAnchorInstruction(payload)
+  const reportTitleLockInstruction = getFactoryReportTitleLockInstruction(payload)
   const vietnameseEditorHardGateInstruction = getVietnameseEditorHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
 
@@ -753,6 +789,8 @@ THÔNG TIN TRUYỆN:
 ${urbanFemaleScaleLockInstruction}
 
 ${evidenceAnchorInstruction}
+
+${reportTitleLockInstruction}
 
 ${vietnameseEditorHardGateInstruction}
 

@@ -2048,15 +2048,21 @@ Yêu cầu:
             }
 
             if (chapterNumber === 1) {
-              addLog(`Parse title: ${parsed.storyTitle}`, 'success')
-
+              const rawParsedStoryTitle = parsed.storyTitle
               const panelStoryTitle = resolvePanelStoryTitle({
                 storySeed,
-                parsedTitle: parsed.storyTitle,
+                parsedTitle: rawParsedStoryTitle,
               })
 
+              parsed = {
+                ...parsed,
+                storyTitle: panelStoryTitle.title,
+              }
+
+              addLog(`Parse title: ${parsed.storyTitle}`, 'success')
+
               addLog(
-                `Panel title gate final: "${panelStoryTitle.title}" | seed="${storySeed.title || ''}" | parsed="${parsed.storyTitle}" | evidence="${panelStoryTitle.evidenceTitle}"`,
+                `Panel title gate final: "${panelStoryTitle.title}" | seed="${storySeed.title || ''}" | parsed_raw="${rawParsedStoryTitle}" | evidence="${panelStoryTitle.evidenceTitle}"`,
                 panelStoryTitle.changed ? 'warning' : 'success',
               )
 

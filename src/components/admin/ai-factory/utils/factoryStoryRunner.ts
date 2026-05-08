@@ -629,6 +629,11 @@ export async function insertFactoryStoryDraft(params: {
     storySeed: params.storySeed,
   })
 
+  params.parsed = {
+    ...params.parsed,
+    storyTitle: chosenStoryTitle.title,
+  }
+
   params.addLog(
     `Title gate final: "${chosenStoryTitle.title}" | seed="${chosenStoryTitle.seedTitle}" | parsed="${chosenStoryTitle.parsedTitle}" | chapter="${chosenStoryTitle.parsedChapterTitle}" | evidence="${chosenStoryTitle.evidenceTitle}"`,
     chosenStoryTitle.replaced ? 'warning' : 'info',

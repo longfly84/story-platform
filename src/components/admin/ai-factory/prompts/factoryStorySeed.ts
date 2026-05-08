@@ -1641,6 +1641,17 @@ function buildSeedCandidate(params: {
     `dopamine-hook-${params.lane.key}`,
   );
 
+  const isMotifBankLane = params.lane.key.startsWith("motif-bank-");
+
+  if (isMotifBankLane) {
+    relationshipConflict = `${evidenceObject} bị dùng để vu oan nữ chính ngay tại ${setting}`;
+    hiddenTruth = `chi tiết lệch trong ${evidenceObject} chứng minh có người trong ${setting} đã tráo hoặc đặt nó sai chỗ`;
+    villainAttack = `phản diện lợi dụng ${evidenceObject} để ép nữ chính nhận lỗi trước những người có mặt tại ${setting}`;
+    heroineCounter = `nữ chính bám vào chi tiết lệch của ${evidenceObject}, hỏi đúng người từng chạm vào nó và lần ngược người đã tráo`;
+    emotionalStake = `nếu thua, nữ chính không chỉ mất danh dự mà còn khiến một người yếu thế trong ${setting} bị kéo ra làm bia đỡ đạn`;
+    dopamineHook = `chi tiết nhỏ trên ${evidenceObject} không khớp với lời phản diện vừa nói`;
+  }
+
   if (isLockerCardEvidence(evidenceObject)) {
     setting = "khu tủ đồ câu lạc bộ thể thao, cạnh dãy locker và bàn quản lý thẻ thành viên";
     relationshipConflict = "thẻ tủ đồ bị đặt sai chỗ khiến nữ chính bị nghi cố ý tiếp cận trẻ trong câu lạc bộ";
@@ -1652,19 +1663,15 @@ function buildSeedCandidate(params: {
     dopamineHook = "vết xước trên thẻ không khớp với lần quẹt cuối ở cổng phòng tập";
   }
 
-  const genreBlend = [
-    params.genreLabel,
-    params.lane.label,
-    relationshipConflict,
-    setting,
-    publicPressure,
-  ].filter(Boolean);
+  const exactGenre = isMotifBankLane ? params.lane.label : params.genreLabel || params.lane.label;
+  const genreBlend = isMotifBankLane
+    ? [params.lane.label, setting, evidenceObject, relationshipConflict, publicPressure].filter(Boolean)
+    : [params.genreLabel, params.lane.label, relationshipConflict, setting, publicPressure].filter(Boolean);
 
-  const exactGenre = params.genreLabel || params.lane.label;
-  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bước vào một nữ tần đô thị drama bám chặt genre "${exactGenre}". Xung đột mở tại ${setting}; trọng tâm không phải hồ sơ-camera-log chung mà là ${relationshipConflict}. ${evidenceObject} chỉ là chìa khóa riêng của genre này, buộc cô nhìn thấy ai đang dùng ${publicPressure} để ép mình cúi đầu.`;
+  const corePremise = `Nữ chính thuộc kiểu ${params.heroineLabel} bước vào một nữ tần đô thị drama bám chặt một world chính: ${setting}. Xung đột mở tại ${setting}; trọng tâm không phải hồ sơ-camera-log chung mà là ${relationshipConflict}. ${evidenceObject} là vật chứng chính, buộc cô nhìn thấy ai đang dùng ${publicPressure} để ép mình cúi đầu.`;
   const openingScene = setting;
-  const incitingIncident = `Tại ${setting}, ${villainAttack}. ${evidenceObject} không phải vật chứng rơi vào scene theo công thức cũ; nó được đặt trong một tình huống cụ thể của "${exactGenre}" khiến nữ chính bị hiểu sai trước người liên quan.`;
-  const mainConflict = `Nữ chính phải xử lý ${relationshipConflict} bằng logic riêng của genre "${exactGenre}": cảm xúc thật, áp lực đô thị, cú nhục rõ, phản công chủ động. Không được tự kéo về chuỗi camera/log/phong tỏa/pháp lý nếu genre không đòi hỏi.`;
+  const incitingIncident = `Tại ${setting}, ${villainAttack}. ${evidenceObject} không phải vật chứng rơi vào scene theo công thức cũ; nó được đặt trong đúng world ${setting}, khiến nữ chính bị hiểu sai trước người liên quan.`;
+  const mainConflict = `Nữ chính phải xử lý ${relationshipConflict} bằng logic riêng của world ${setting}: cảm xúc thật, áp lực đô thị, cú nhục rõ, phản công chủ động. Không được tự kéo sang world khác hoặc chuỗi camera/log/phong tỏa/pháp lý nếu seed không đòi hỏi.`;
   const villainType = `Phản diện chính thao túng ${relationshipConflict} bằng đòn riêng: ${villainAttack}. Họ phải có mục tiêu cá nhân, lời nói/cử chỉ nhận diện được, không chỉ là luật sư/PR/pháp vụ vô danh.`;
   const heroineArc = `${params.heroineLabel}: chịu đau có lý do → quan sát điểm lệch trong ${evidenceObject} → bảo vệ điều quan trọng (${emotionalStake}) → phản công bằng cách riêng (${heroineCounter}) → vả mặt có cảm xúc và payoff.`;
   const emotionalHook = `${emotionalStake}. Cảm xúc phải đến từ đúng kiểu nữ chính "${params.heroineLabel}", không biến cô thành một nữ tổng tài lạnh lùng giống mọi truyện.`;
@@ -2813,6 +2820,9 @@ QUY TẮC GIỌNG VĂN TỰ NHIÊN:
 - Mỗi cảnh phải có chi tiết đời thường cụ thể để người Việt đọc thấy thật: tiếng điện thoại, tay run, bút đỏ, vết bẩn, tiếng người chen ngang, ánh mắt né tránh.
 
 QUY TẮC BẮT BUỘC THEO STORY SEED:
+- WORLD LOCK: chỉ dùng một world chính đã khóa ở Setting/Opening scene. Không trộn thêm world khác từ genre label nếu nó không phục vụ trực tiếp cho evidence object.
+- Nếu Setting là xưởng may/phòng thử đồ thì chương phải xoay quanh xưởng may/phòng thử đồ; không tự kéo sang nhà kính, bệnh viện, phòng chủ tịch, khách sạn, luật sư nếu seed không ghi rõ.
+- Nếu evidence object là vật nhỏ đời sống, mọi manh mối phụ phải giải thích vật nhỏ đó, không mở thêm tuyến hồ sơ/camera/log/pháp lý làm trục chính.
 - Tên truyện khi xuất ra trong technical report phải dùng đúng “Tên truyện khóa theo vật chứng”. Không tự đổi sang vật chứng khác dù nghe kịch tính hơn.
 - Không tự đổi tên truyện sang kiểu trừu tượng chung chung như “Người Cuối Cùng Nhìn Thấy Sự Thật”, “Sự Thật...”, “Bí Mật...”, “...Không Nên Xuất Hiện”, “...Không Thuộc Về Tôi” nếu tên đó không chứa vật chứng cụ thể của seed.
 - Công thức hiểu tên truyện: vật chứng chính + trạng thái bất thường / thời điểm sai / dấu vết bị cắt / nơi xuất hiện sai.
