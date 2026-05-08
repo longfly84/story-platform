@@ -69,7 +69,7 @@ const defaultConfig: AIFactoryConfig = {
   maxTargetChapters: 20,
   delayMs: 2000,
   generateCover: false,
-  storyEditorPassEnabled: true,
+  storyEditorMode: 'standard',
   coverArtStyle: 'auto',
   coverCompositionPreset: 'auto',
   autoCompleteByTarget: false,
@@ -101,6 +101,21 @@ function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'
   if (raw === 'movie-poster') return 'popular_webnovel_collage'
 
   return 'auto'
+}
+
+
+function normalizeStoryEditorMode(value: unknown): AIFactoryConfig['storyEditorMode'] {
+  const raw = String(value || '').trim()
+
+  if (raw === 'off' || raw === 'standard' || raw === 'careful') {
+    return raw as AIFactoryConfig['storyEditorMode']
+  }
+
+  // Tương thích config cũ dạng checkbox.
+  if (value === false) return 'off'
+  if (value === true) return 'standard'
+
+  return 'standard'
 }
 
 function normalizeCoverCompositionPreset(value: unknown): AIFactoryConfig['coverCompositionPreset'] {
@@ -165,56 +180,18 @@ function getFactorySeedEvidence(storySeed?: FactoryStorySeed | null) {
   return safeString((storySeed as any)?.evidenceObject || (storySeed as any)?.motifFingerprint?.evidenceObject)
 }
 
-function titleCaseFactoryEvidence(input: string) {
-  return input
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .map((word) => {
-      if (!word) return word
-      if (/^(USB|QR|ADN|CEO|VIP)$/i.test(word)) return word.toUpperCase()
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    })
-    .join(' ')
-}
+function isLockerCardEvidenceText(value: string) {
+  const normalized = normalizeFactoryTitleText(value)
 
-function hasFactoryEvidenceState(input: string) {
-  const normalized = ` ${normalizeFactoryTitleText(input)} `
-  return [
-    ' bi ',
-    ' co ',
-    ' lech',
-    ' sai',
-    ' rach',
-    ' xe ',
-    ' roi',
-    ' mat',
-    ' bong',
-    ' doi',
-    ' sua',
-    ' cat',
-    ' gui nham',
-    ' quay nham',
-  ].some((marker) => normalized.includes(marker))
-}
-
-function cleanFactoryEvidenceForTitle(input: string) {
-  return safeString(input)
-    .replace(/^một\s+/i, '')
-    .replace(/^một chiếc\s+/i, 'Chiếc ')
-    .replace(/^một tấm\s+/i, 'Tấm ')
-    .replace(/^một mẩu\s+/i, 'Mẩu ')
-    .replace(/\s+có một chi tiết lệch.*$/i, '')
-    .replace(/\s+co mot chi tiet lech.*$/i, '')
-    .replace(/\s+mà chỉ.*$/i, '')
-    .replace(/\s+ma chi.*$/i, '')
-    .replace(/\s+không phải.*$/i, '')
-    .replace(/\s+khong phai.*$/i, '')
-    .replace(/\s+theo công thức.*$/i, '')
-    .replace(/\s+theo cong thuc.*$/i, '')
-    .replace(/\s+bị đặt sai chỗ$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return (
+    normalized.includes('the tu do') ||
+    normalized.includes('tu do') ||
+    normalized.includes('locker') ||
+    normalized.includes('phong tap') ||
+    normalized.includes('cau lac bo the thao') ||
+    normalized.includes('the ra vao') ||
+    normalized.includes('so thanh vien')
+  )
 }
 
 function isBadFactoryStoryTitle(title: string) {
@@ -231,68 +208,74 @@ function isBadFactoryStoryTitle(title: string) {
     'tu duong mo lai ho so cu',
     'dau chi khac mau',
     'tam the phong bi bo quen',
-    'chi tiet bi dat sai',
-    'mon do bi dat sai',
-    'vat chung bi lo',
-    'su that bi che giau',
-    'manh moi dau tien',
     'the phong quet luc nua dem',
     'dau quet tren the phong',
-    'tam the tu do bi dat sai',
-    'the ra vao bi ghi nhan quet',
-    'chi tiet dau tien',
   ].includes(normalized)
 }
 
 function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getFactorySeedEvidence(storySeed)
-  const clean = cleanFactoryEvidenceForTitle(evidence)
-  const normalized = normalizeFactoryTitleText(clean)
+  const normalized = normalizeFactoryTitleText(evidence)
 
-  if (normalized.includes('thong cao') && (normalized.includes('soan truoc') || normalized.includes('ban nhap') || normalized.includes('gui nham') || normalized.includes('truyen thong'))) {
-    return normalized.includes('xin loi') || normalized.includes('scandal')
-      ? 'Thông Cáo Xin Lỗi Được Soạn Trước'
-      : 'Bản Nháp Thông Cáo Bị Gửi Nhầm'
+  if (isLockerCardEvidenceText(evidence)) {
+    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
   }
 
-  if (normalized.includes('the ra vao') && (normalized.includes('quet') || normalized.includes('ghi nhan'))) {
-    return normalized.includes('khong co mat') || normalized.includes('vang mat')
-      ? 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt'
-      : 'Lượt Quẹt Thẻ Bất Thường'
+  if ((normalized.includes('ve') || normalized.includes('phieu')) && (normalized.includes('an') || normalized.includes('so ghe') || normalized.includes('ghe'))) {
+    return 'Vé Ăn Số Ghế Lệch'
   }
 
-  if (normalized.includes('ban phac thao') || normalized.includes('phac thao')) {
-    return normalized.includes('xe goc') || normalized.includes('xé góc')
-      ? 'Bản Phác Thảo Bị Xé Góc'
-      : 'Dấu Bút Trên Bản Phác Thảo'
+  if (normalized.includes('hat vong')) {
+    return 'Hạt Vòng Sai Chỗ'
   }
 
-  if (normalized.includes('tem kien hang') || (normalized.includes('tem') && normalized.includes('ma tuyen'))) {
-    return 'Tem Kiện Hàng Dán Chồng Mã Cũ'
+  if (normalized.includes('vong tay')) {
+    return 'Vòng Tay Sự Kiện Bị Đổi Màu'
   }
 
-  if (normalized.includes('con dau') && normalized.includes('phu luc')) {
-    return 'Con Dấu Lệch Trên Phụ Lục'
+  if (normalized.includes('soi chi') || normalized.includes('khuy ao') || normalized.includes('chi con mac') || normalized.includes('chi lech')) {
+    return 'Sợi Chỉ Ở Khuy Áo'
   }
 
-  if ((normalized.includes('the so lo') || normalized.includes('the dau gia') || normalized.includes('lo dau gia')) && normalized.includes('day')) {
-    return 'Thẻ Đấu Giá Bị Tráo Dây'
+  if (normalized.includes('nhan chau') || normalized.includes('chau cay') || normalized.includes('chau hoa') || normalized.includes('tem kim loai')) {
+    return 'Chậu Cây Bị Cắm Sai Nhãn'
   }
 
-  const title = titleCaseFactoryEvidence(clean)
-
-  if (title && title.length <= 48) {
-    return hasFactoryEvidenceState(title) ? title : `${title} Bị Lộ`
+  if (normalized.includes('nap chai') || normalized.includes('vet xuoc')) {
+    return 'Nắp Chai Có Vết Xước'
   }
 
-  const shortTitle = title.split(/\s+/).slice(0, 7).join(' ').trim()
-  if (shortTitle && shortTitle.length >= 8) {
-    return hasFactoryEvidenceState(shortTitle) ? shortTitle : `${shortTitle} Bị Lộ`
+  if (normalized.includes('phieu') && normalized.includes('banh')) {
+    return 'Phiếu Bánh Bị Xé Góc'
+  }
+
+  if (normalized.includes('the giat') || normalized.includes('tiem giat') || (normalized.includes('ao') && normalized.includes('ghim'))) {
+    return 'Thẻ Giặt Còn Ghim'
+  }
+
+  if (normalized.includes('khan tay') || normalized.includes('theu')) {
+    return 'Chiếc Khăn Tay Thêu Chữ Nhỏ'
+  }
+
+  if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
+    return 'Bức Vẽ Lệch Khung'
+  }
+
+  const clean = evidence
+    .replace(/^một\s+/i, '')
+    .replace(/^một chiếc\s+/i, 'Chiếc ')
+    .replace(/^một tấm\s+/i, 'Tấm ')
+    .replace(/\s+có một chi tiết lệch.*$/i, '')
+    .replace(/\s+không phải.*$/i, '')
+    .replace(/\s+bị đặt sai chỗ$/i, '')
+    .trim()
+
+  if (clean && clean.length <= 34) {
+    return clean.charAt(0).toUpperCase() + clean.slice(1)
   }
 
   return 'Chi Tiết Bị Đặt Sai'
 }
-
 
 function resolvePanelStoryTitle(params: {
   storySeed?: FactoryStorySeed | null
@@ -316,141 +299,6 @@ function resolvePanelStoryTitle(params: {
     changed: normalizeFactoryTitleText(chosen) !== normalizeFactoryTitleText(seedTitle || parsedTitle),
     original: seedTitle || parsedTitle,
     evidenceTitle,
-  }
-}
-
-
-function makePanelChapterTitleFromEvidence(params: {
-  storySeed?: FactoryStorySeed | null
-  chapterNumber: number
-  parsedChapterTitle: string
-  storyTitle?: string
-}) {
-  const evidence = getFactorySeedEvidence(params.storySeed)
-  const cleanEvidence = cleanFactoryEvidenceForTitle(evidence)
-  const normalizedEvidence = normalizeFactoryTitleText(cleanEvidence)
-  const normalizedParsed = normalizeFactoryTitleText(params.parsedChapterTitle)
-  const normalizedStoryTitle = normalizeFactoryTitleText(params.storyTitle)
-
-  const genericChapterTitles = new Set([
-    'chi tiet bi dat sai',
-    'mon do bi dat sai',
-    'vat chung bi dat sai',
-    'vat chung bi lo',
-    'su that bi che giau',
-    'manh moi dau tien',
-    'dau vet dau tien',
-    'cu ep dau tien',
-    'van co moi bat dau',
-    'su that dan he lo',
-    'tam the tu do bi dat sai',
-    'the ra vao bi ghi nhan quet',
-    'chi tiet dau tien',
-  ])
-
-  if (normalizedEvidence.includes('thong cao')) {
-    return 'Bản Nháp Được Soạn Trước'
-  }
-
-  if (normalizedEvidence.includes('the ra vao') && (normalizedEvidence.includes('quet') || normalizedEvidence.includes('ghi nhan'))) {
-    return normalizedEvidence.includes('18 42')
-      ? 'Lượt Quẹt Thẻ Lúc 18:42'
-      : 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt'
-  }
-
-  if (normalizedEvidence.includes('ban phac thao') || normalizedEvidence.includes('phac thao')) {
-    return 'Bản Phác Thảo Bị Xé Góc'
-  }
-
-  if (normalizedEvidence.includes('tem kien hang') || (normalizedEvidence.includes('tem') && normalizedEvidence.includes('ma tuyen'))) {
-    return 'Tem Dán Chồng Lên Mã Cũ'
-  }
-
-  if (normalizedEvidence.includes('con dau') && normalizedEvidence.includes('phu luc')) {
-    return 'Con Dấu Lệch Nửa Vòng'
-  }
-
-  if ((normalizedEvidence.includes('the so lo') || normalizedEvidence.includes('the dau gia') || normalizedEvidence.includes('lo dau gia')) && normalizedEvidence.includes('day')) {
-    return 'Thẻ Đấu Giá Bị Tráo Dây'
-  }
-
-  if (normalizedEvidence.includes('ghi chu') || normalizedEvidence.includes('mau ghi chu')) {
-    return 'Mẩu Ghi Chú Bị Đổi Số'
-  }
-
-  if (normalizedEvidence.includes('the so ban')) {
-    return 'Thẻ Số Bàn Bị Tráo'
-  }
-
-  if (normalizedEvidence.includes('anh mo') && normalizedEvidence.includes('may anh')) {
-    return 'Ảnh Mờ Trong Máy Ảnh Đồ Chơi'
-  }
-
-  if (normalizedEvidence.includes('not nhac')) {
-    return 'Nốt Nhạc Bị Khoanh Đỏ'
-  }
-
-  const parsed = safeString(params.parsedChapterTitle)
-  if (
-    parsed &&
-    parsed.length <= 52 &&
-    !genericChapterTitles.has(normalizedParsed) &&
-    normalizedParsed !== normalizedStoryTitle &&
-    !isBadFactoryStoryTitle(parsed)
-  ) {
-    return parsed
-  }
-
-  const evidenceTitle = makePanelTitleFromEvidence(params.storySeed)
-  if (evidenceTitle && !isBadFactoryStoryTitle(evidenceTitle)) return evidenceTitle
-
-  return parsed || `Chương ${params.chapterNumber}`
-}
-
-function replaceReaderChapterHeading(params: {
-  readerOnly: string
-  chapterNumber: number
-  chapterTitle: string
-}) {
-  const readerOnly = safeString(params.readerOnly)
-  const chapterTitle = safeString(params.chapterTitle)
-  if (!readerOnly || !chapterTitle) return readerOnly
-
-  const expectedHeading = `# Chương ${params.chapterNumber} — ${chapterTitle}`
-  const headingPattern = new RegExp(`^#\\s*Chương\\s+${params.chapterNumber}\\s*[—-].*$`, 'im')
-
-  if (headingPattern.test(readerOnly)) {
-    return readerOnly.replace(headingPattern, expectedHeading)
-  }
-
-  return `${expectedHeading}\n\n${readerOnly.replace(/^#\s*BẢN ĐỌC CHO ĐỘC GIẢ\s*/i, '').trim()}`.trim()
-}
-
-function applyPanelChapterTitleGate(params: {
-  parsed: ParsedChapterOutput
-  storySeed?: FactoryStorySeed | null
-  chapterNumber: number
-  storyTitle?: string
-}) {
-  const chapterTitle = makePanelChapterTitleFromEvidence({
-    storySeed: params.storySeed,
-    chapterNumber: params.chapterNumber,
-    parsedChapterTitle: params.parsed.chapterTitle,
-    storyTitle: params.storyTitle || params.parsed.storyTitle,
-  })
-
-  if (normalizeFactoryTitleText(chapterTitle) === normalizeFactoryTitleText(params.parsed.chapterTitle)) {
-    return params.parsed
-  }
-
-  return {
-    ...params.parsed,
-    chapterTitle,
-    readerOnly: replaceReaderChapterHeading({
-      readerOnly: params.parsed.readerOnly,
-      chapterNumber: params.chapterNumber,
-      chapterTitle,
-    }),
   }
 }
 
@@ -822,9 +670,8 @@ export default function AIFactoryPanel() {
     factoryMode === 'create-new'
       ? createNewTextRequests
       : selectedContinueStoryCount * Math.max(1, continueChaptersPerStory)
-  const totalEditorRequests = config.storyEditorPassEnabled && config.provider === 'openai' ? totalTextRequests : 0
   const totalCoverRequests = factoryMode === 'create-new' && config.generateCover ? config.storyCount : 0
-  const totalRequests = totalTextRequests + totalEditorRequests + totalCoverRequests
+  const totalRequests = totalTextRequests + totalCoverRequests
   const totalBatches = Math.ceil(config.storyCount / safeBatchSize)
   const expensiveModelRequiresConfirmation =
     config.provider === 'openai' && (config.modelKey === 'premium' || config.modelKey === 'auto')
@@ -858,7 +705,9 @@ export default function AIFactoryPanel() {
             (snapshot.config as any).coverCompositionPreset,
           ),
           autoCompleteByTarget: Boolean((snapshot.config as any).autoCompleteByTarget),
-          storyEditorPassEnabled: (snapshot.config as any).storyEditorPassEnabled !== false,
+          storyEditorMode: normalizeStoryEditorMode(
+            (snapshot.config as any).storyEditorMode ?? (snapshot.config as any).storyEditorPassEnabled,
+          ),
         })
       }
       if (Array.isArray(snapshot.jobs)) setJobs(snapshot.jobs)
@@ -1016,7 +865,7 @@ export default function AIFactoryPanel() {
       source: 'generated',
     }
 
-    const comparisonPool = params.existingMotifs.slice(0, 80)
+    const comparisonPool = params.existingMotifs.slice(0, 40)
 
     if (params.provider === 'openai' && comparisonPool.length > 0) {
       try {
@@ -1030,8 +879,7 @@ export default function AIFactoryPanel() {
         candidate.embedding = embeddings[0]
 
         comparisonPool.forEach((item, index) => {
-          if (embeddings[index + 1]) {
-            // Re-embed theo motifText v7, không dùng lại embedding cũ đã lưu từ prompt cũ.
+          if (!item.embedding && embeddings[index + 1]) {
             item.embedding = embeddings[index + 1]
           }
         })
@@ -1046,7 +894,7 @@ export default function AIFactoryPanel() {
     const rejectResult = shouldRejectMotif({
       candidate,
       existing: comparisonPool,
-      threshold: 0.58,
+      threshold: 0.62,
     })
 
     enrichedSeed.motifSimilarity = rejectResult.best
@@ -1069,7 +917,6 @@ export default function AIFactoryPanel() {
   }) {
     const existingMotifs = params.avoidLibrary.motifFingerprints || []
     let lastRejected: Awaited<ReturnType<typeof evaluateStorySeedMotif>> | null = null
-    let bestRejected: Awaited<ReturnType<typeof evaluateStorySeedMotif>> | null = null
     const rejectedHints: string[] = []
 
     for (let attempt = 1; attempt <= STORY_SEED_MAX_ATTEMPTS; attempt += 1) {
@@ -1104,29 +951,18 @@ export default function AIFactoryPanel() {
       }
 
       lastRejected = evaluated
-      if (
-        !bestRejected ||
-        (evaluated.rejectResult.best?.hybridScore ?? Number.POSITIVE_INFINITY) <
-          (bestRejected.rejectResult.best?.hybridScore ?? Number.POSITIVE_INFINITY)
-      ) {
-        bestRejected = evaluated
-      }
 
       const best = evaluated.rejectResult.best
       const fingerprint = evaluated.seed.motifFingerprint
       rejectedHints.push(
         [
           best?.item?.title || 'unknown-title',
-          fingerprint?.premiseFamily,
           fingerprint?.openingArena,
           fingerprint?.mainArena,
-          fingerprint?.evidenceType,
-          fingerprint?.evidenceObject,
           fingerprint?.villainAttackType,
           fingerprint?.heroineCounterType,
           fingerprint?.powerStructure,
           fingerprint?.publicPressure,
-          fingerprint?.hiddenTruthType,
           fingerprint?.deadlineStyle,
         ]
           .filter(Boolean)
@@ -1139,25 +975,6 @@ export default function AIFactoryPanel() {
         )}`,
         'warning',
       )
-    }
-
-    const fallbackBest = bestRejected?.rejectResult.best ?? null
-    const canUseFallback = Boolean(
-      bestRejected &&
-        fallbackBest &&
-        fallbackBest.hybridScore <= 0.58 &&
-        fallbackBest.fieldScore <= 0.56 &&
-        fallbackBest.embeddingScore <= 0.84,
-    )
-
-    if (canUseFallback && bestRejected) {
-      addLog(
-        `Diversity fallback: dùng seed ít giống nhất sau ${STORY_SEED_MAX_ATTEMPTS} lần: ${formatMotifSimilarityForLog(
-          fallbackBest,
-        )}`,
-        'warning',
-      )
-      return bestRejected.seed
     }
 
     throw new Error(
@@ -1237,64 +1054,6 @@ export default function AIFactoryPanel() {
     return { stories, avoid }
   }
 
-
-
-function buildPanelChapterSeedLockInstruction(params: {
-  storyTitle: string
-  storySeed?: FactoryStorySeed | null
-}) {
-  const storySeed = params.storySeed
-  const evidenceObject = getFactorySeedEvidence(storySeed)
-  const lockedTitle = safeString(params.storyTitle || makePanelTitleFromEvidence(storySeed) || storySeed?.title || evidenceObject)
-
-  if (!storySeed && !lockedTitle && !evidenceObject) return ''
-
-  return `
-FACTORY STORY LOCK - KHÓA NGHĨA TRƯỚC KHI VIẾT:
-- STORY_TITLE_LOCK: ${lockedTitle}
-- EVIDENCE_OBJECT_LOCK: ${evidenceObject || lockedTitle}
-- SETTING_LOCK: ${storySeed?.setting || storySeed?.openingScene || ''}
-- OPENING_SCENE_LOCK: ${storySeed?.openingScene || storySeed?.setting || ''}
-- CONFLICT_LOCK: ${storySeed?.mainConflict || storySeed?.corePremise || ''}
-- HIDDEN_TRUTH_LOCK: ${storySeed?.hiddenTruth || ''}
-
-QUY TẮC CỨNG CHO OPENAI:
-1. Trước khi viết chương, phải tự hiểu EVIDENCE_OBJECT_LOCK là vật chứng chính. Không được tách chữ rời, không được đoán theo một token ngắn.
-2. story_title trong technical report PHẢI ĐÚNG Y HỆT STORY_TITLE_LOCK. Không được tự đặt lại thành hợp đồng, USB, camera, mã QR, thẻ phòng, hồ sơ niêm phong, ghi âm, sao kê nếu EVIDENCE_OBJECT_LOCK không ghi rõ.
-3. Chương 1 phải mở bằng tình huống làm EVIDENCE_OBJECT_LOCK xuất hiện sai/ lệch/ bất thường trong SETTING_LOCK. Vật chứng này phải là trung tâm cảnh, không phải chi tiết trang trí.
-4. Bằng chứng phụ chỉ được hỗ trợ vật chứng chính. Cấm thay vật chứng chính bằng vật chứng khác hấp dẫn hơn.
-5. Nếu muốn dùng hợp đồng, USB, camera, hồ sơ, luật sư, pháp vụ, sao kê, chỉ được dùng khi chúng đã có trong seed. Nếu không có trong seed thì cấm dùng làm trục truyện hoặc title.
-6. Mỗi đoạn quan trọng phải trả lời ngầm: ai nhìn thấy vật chứng, nó lệch ở đâu, vì sao nữ chính nhận ra, và nó dẫn tới HIDDEN_TRUTH_LOCK thế nào.
-7. Output technical report bắt buộc dùng:
-   story_title = ${lockedTitle}
-   evidence_object = ${evidenceObject || lockedTitle}
-`.trim()
-}
-
-function buildNaturalVietnameseProseInstruction() {
-  return `
-NATURAL VIETNAMESE PROSE LOCK - GIỌNG VĂN NGƯỜI VIỆT:
-Mục tiêu: đọc như truyện mạng tiếng Việt do người thật viết, không giống bản dịch máy hoặc văn mẫu AI.
-
-Bắt buộc khi viết chương:
-1. Cảnh căng phải dùng câu ngắn hơn. Ưu tiên hành động, ánh mắt, cử chỉ, lời thoại và phản ứng đám đông thay vì giải thích tâm lý dài.
-2. Đối thoại phải đời thường, có va chạm. Nhân vật đang tức giận/hoang mang không nói quá lịch sự, quá tròn câu hoặc như đang đọc biên bản.
-3. Giảm câu trừu tượng kiểu: "quyền lực rời khỏi mình", "bản cáo trạng", "con dấu", "ván cờ", "sân khấu", "khán đài", "áp lực dồn lên". Nếu cần, thay bằng câu cụ thể hơn: "Tôi biết mình đang mất thế", "Đám đông không còn nghe tôi nữa".
-4. Không giảng logic cho độc giả bằng câu phân tích lộ liễu như "Cái chỗ vụng về trong câu chuyện hiện ra". Hãy để nhân vật nhận ra qua chi tiết: nét bút, vị trí vật chứng, lời nói mâu thuẫn, camera, nhân chứng.
-5. Mỗi đoạn 2-4 câu là chính. Tránh đoạn văn quá đều, quá sạch, quá giống AI.
-6. Mỗi cảnh phải có ít nhất một chi tiết đời thường cụ thể: âm thanh, vật nhỏ, thao tác tay, ánh mắt, điện thoại, mùi, vết bẩn, tiếng người chen vào.
-7. Nữ chính bình tĩnh nhưng không nói như luật sư trong mọi cảnh. Khi bị ép trước đám đông, lời nói phải gọn, có lực, dễ hiểu.
-8. Không dùng nhiều mỹ từ. Không cố làm văn. Ưu tiên rõ, sắc, tự nhiên, có nhịp truyện.
-
-Ví dụ chuyển giọng:
-- Không viết: "Tôi cảm thấy quyền lực rời khỏi mình."
-- Nên viết: "Tôi biết mình đang mất thế. Đám đông đã ngả về phía họ."
-- Không viết: "Chúng tôi không có nhiều thời gian. Chúng tôi cần biết con mình an toàn."
-- Nên viết: "Cô nói thẳng đi. Con tôi có an toàn không?"
-`.trim()
-}
-
-
   async function generateChapter(params: {
     provider: AIFactoryConfig['provider']
     modelKey: AIFactoryConfig['modelKey']
@@ -1354,18 +1113,12 @@ Yêu cầu:
 
     const payload = {
       mode: 'chapter',
-      storyEditorPassEnabled: Boolean(config.storyEditorPassEnabled),
       provider: params.provider,
       modelKey: params.modelKey,
       moduleId: 'female-urban-viral',
       title: params.storyTitle,
       storySummary: params.storyDescription,
       promptIdea: [
-        buildPanelChapterSeedLockInstruction({
-          storyTitle: params.storyTitle,
-          storySeed: params.storySeed,
-        }),
-        buildNaturalVietnameseProseInstruction(),
         params.chapterNumber === 1 ? params.factoryPromptIdea : '',
         params.isFinalChapter ? finalChapterInstruction : '',
       ]
@@ -1381,6 +1134,8 @@ Yêu cầu:
       targetChapters: params.targetChapters,
       isFinalChapter: Boolean(params.isFinalChapter),
       storySeed: params.storySeed ?? null,
+      storyEditorMode: config.storyEditorMode,
+      storyEditorPassEnabled: config.storyEditorMode !== 'off',
       recentChapters: params.recentChapters,
       storyMemory: [params.storyMemory, finalChapterInstruction].filter(Boolean).join('\n\n---\n\n'),
     }
@@ -1406,14 +1161,26 @@ Yêu cầu:
     }
 
     if (params.provider === 'openai') {
-      if (!config.storyEditorPassEnabled) {
+      const editorMode = data?.storyEditorMode || config.storyEditorMode
+
+      if (editorMode === 'off') {
         addLog('Story editor pass: disabled', 'info')
       } else if (data?.editorPassUsed) {
-        addLog('Story editor pass: success', 'success')
-        if (data?.editorAuditUsed) {
-          addLog('Story editor audit: đã sửa thêm câu gượng/sai tai', 'success')
-        } else if (data?.editorAuditFailed) {
-          addLog('Story editor audit: fallback bản editor pass', 'warning')
+        addLog(
+          editorMode === 'careful'
+            ? 'Story editor pass: success (kỹ chọn lọc)'
+            : 'Story editor pass: success (tiêu chuẩn)',
+          'success',
+        )
+
+        if (data?.editorRepairUsed) {
+          addLog('Vietnamese repair pass: success', 'success')
+        } else if (Array.isArray(data?.editorAuditFlags) && data.editorAuditFlags.length > 0) {
+          addLog(`Vietnamese audit: còn ${data.editorAuditFlags.length} dấu hiệu cần soi thủ công`, 'warning')
+        }
+
+        if (data?.editorRepairFailed) {
+          addLog(`Vietnamese repair pass: fallback (${data?.editorRepairError || 'không rõ lỗi'})`, 'warning')
         }
       } else if (data?.editorPassFailed) {
         addLog(`Story editor pass: fallback bản thô (${data?.editorError || 'không rõ lỗi'})`, 'warning')
@@ -1919,13 +1686,6 @@ Yêu cầu:
                 runShortId: `${storyId}-${nextChapterNumber}`,
               })
 
-              parsed = applyPanelChapterTitleGate({
-                parsed,
-                storySeed: undefined,
-                chapterNumber: nextChapterNumber,
-                storyTitle,
-              })
-
               const validation = validateChapterOutput({
                 output,
                 readerOnly: parsed.readerOnly,
@@ -2255,13 +2015,6 @@ Yêu cầu:
                 runShortId,
               })
 
-              parsed = applyPanelChapterTitleGate({
-                parsed,
-                storySeed,
-                chapterNumber,
-                storyTitle: createdStory?.title || storySeed.title,
-              })
-
               const validation = validateChapterOutput({
                 output,
                 readerOnly: parsed.readerOnly,
@@ -2290,21 +2043,15 @@ Yêu cầu:
             }
 
             if (chapterNumber === 1) {
-              const rawParsedStoryTitle = parsed.storyTitle
-              const panelStoryTitle = resolvePanelStoryTitle({
-                storySeed,
-                parsedTitle: rawParsedStoryTitle,
-              })
-
-              parsed = {
-                ...parsed,
-                storyTitle: panelStoryTitle.title,
-              }
-
               addLog(`Parse title: ${parsed.storyTitle}`, 'success')
 
+              const panelStoryTitle = resolvePanelStoryTitle({
+                storySeed,
+                parsedTitle: parsed.storyTitle,
+              })
+
               addLog(
-                `Panel title gate final: "${panelStoryTitle.title}" | seed="${storySeed.title || ''}" | parsed_raw="${rawParsedStoryTitle}" | evidence="${panelStoryTitle.evidenceTitle}"`,
+                `Panel title gate final: "${panelStoryTitle.title}" | seed="${storySeed.title || ''}" | parsed="${parsed.storyTitle}" | evidence="${panelStoryTitle.evidenceTitle}"`,
                 panelStoryTitle.changed ? 'warning' : 'success',
               )
 
@@ -2606,7 +2353,6 @@ Yêu cầu:
       setExpensiveModelConfirmed={setExpensiveModelConfirmed}
       totalBatches={totalBatches}
       totalTextRequests={totalTextRequests}
-      totalEditorRequests={totalEditorRequests}
       totalCoverRequests={totalCoverRequests}
       totalRequests={totalRequests}
       canStart={canStart}

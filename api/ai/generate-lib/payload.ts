@@ -1,4 +1,4 @@
-import type { GeneratePayload, ModelKey, NormalizedGeneratePayload } from './types.js'
+import type { GeneratePayload, ModelKey, NormalizedGeneratePayload, StoryEditorMode } from './types.js'
 import { safeNumber, safeStringArray, safeText } from './textUtils.js'
 import { normalizeMotifFingerprintArray, normalizeStorySeed } from './storyPlanUtils.js'
 
@@ -38,6 +38,19 @@ export function createNameSeed() {
   }
 
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+
+function normalizeStoryEditorMode(body: GeneratePayload): StoryEditorMode {
+  if (body.storyEditorMode === 'off' || body.storyEditorMode === 'standard' || body.storyEditorMode === 'careful') {
+    return body.storyEditorMode
+  }
+
+  // Tương thích cấu hình cũ dạng checkbox.
+  if (body.storyEditorPassEnabled === false) return 'off'
+  if (body.storyEditorPassEnabled === true) return 'standard'
+
+  return 'standard'
 }
 
 export function normalizeModelKey(body: GeneratePayload): ModelKey {
@@ -87,6 +100,6 @@ export function normalizePayload(body: GeneratePayload): NormalizedGeneratePaylo
     factoryRunId: safeText(body.factoryRunId, ''),
     storyIndex: Math.max(0, Math.floor(safeNumber(body.storyIndex, 0))),
     storySeed: normalizeStorySeed(body.storySeed),
-    storyEditorPassEnabled: body.storyEditorPassEnabled !== false,
+    storyEditorMode: normalizeStoryEditorMode(body),
   }
 }

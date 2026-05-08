@@ -1,8 +1,8 @@
 import type { GeneratePayload } from './generate-lib/types.js'
-import { getLengthRule, getStoryEditorPassEnabled, getTextModel } from './generate-lib/model.js'
+import { getLengthRule, getStoryEditorMode, getStoryEditorPassEnabled, getStoryEditorRepairEnabled, getTextModel } from './generate-lib/model.js'
 import { callOpenAIText } from './generate-lib/openaiClient.js'
 import { normalizePayload } from './generate-lib/payload.js'
-import { buildPrompt, buildStoryEditorPrompt, buildStoryEditorValidationPrompt } from './generate-lib/promptBuilders.js'
+import { buildPrompt, buildStoryEditorPrompt, buildStoryEditorRepairPrompt } from './generate-lib/promptBuilders.js'
 import { moderateTextOrThrow } from './generate-lib/moderation.js'
 
 
@@ -30,81 +30,51 @@ function softenAIDramaPhrases(input: string) {
   return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), input)
 }
 
-
-function polishVietnameseLineEditText(input: string) {
-  const replacements: Array<[RegExp, string]> = [
-    [/Hậu trường sáng lên khác thường, như thể cả căn phòng đang cố gắng kịp một cái hẹn\.?/gi, 'Hậu trường sáng đèn từ sớm.'],
-    [/mọi thứ xô bồ trước giờ VIP vào xem concept/gi, 'cả phòng rối lên trước giờ khách VIP tới xem concept'],
-    [/bước vào như muốn chiếm luôn không gian/gi, 'bước thẳng vào giữa phòng'],
-    [/ánh mắt quét về/gi, 'cùng nhìn về'],
-    [/thế đứng của tôi vừa lung lay/gi, 'tôi vừa bị đẩy vào thế khó'],
-    [/không để tiếng đó hiện trên mặt/gi, 'không để lộ ra trên mặt'],
-    [/Câu hỏi như đặt tôi lên bàn cân\.?/gi, 'Câu hỏi ấy đủ để cả phòng quay sang chờ tôi trả lời.'],
-    [/Đây là lần hai ([^.\n]+?) xuất hiện:[^.\n]*\.?/gi, 'Tôi bảo cô ấy chụp lại thật rõ, phòng khi có người động vào bằng chứng.'],
-    [/Đó là bằng chứng sống/gi, 'Đó là thứ duy nhất tôi đang giữ được'],
-    [/Lời anh như ép tôi phải cúi đầu/gi, 'Anh nói rất khẽ, nhưng từng chữ đều là đe dọa'],
-    [/những từ ấy châm vào da tôi như kim/gi, 'mỗi tiếng lọt vào tai tôi đều khó chịu'],
-    [/chuyển cuộc chơi từ cảm xúc sang lý lẽ/gi, 'ngừng tranh cãi và hỏi thẳng vào việc cần kiểm tra'],
-    [/chộp lấy manh mối/gi, 'ghi nhớ ngay chi tiết đó'],
-    [/trả đũa bằng sự thật/gi, 'không để họ bắt tôi cúi đầu'],
-    [/một mảnh hé của chuỗi sự việc/gi, 'một chi tiết khiến câu chuyện bớt chắc chắn'],
-    [/mảnh hé/gi, 'manh mối'],
-    [/ngòi nắm/gi, 'chỗ bám'],
-    [/đứng tay chốc lát/gi, 'dừng lại một lúc'],
-    [/mắt xích quan sát/gi, 'vị trí ai ra vào cũng phải đi ngang qua'],
-    [/bằng chứng tĩnh người/gi, 'thứ có thể lưu lại'],
-    [/lời nói lung lay/gi, 'vài câu nói có thể bị bẻ cong'],
-    [/nỗi sợ hãi ló dạng ở tay ([^,.\n]+)/gi, 'bàn tay run của $1'],
-    [/che nhoài/gi, 'che đi'],
-    [/Trận đấu vừa được mở bằng ([^.\n]+?)\s*—\s*([^.\n]+?)\s*—\s*/gi, 'Tôi nhìn lại $1. '],
-    [/trận đấu vừa được mở/gi, 'chuyện này vừa bắt đầu'],
-    [/Tiếng hỏi như mũi dao\.?/gi, 'Anh ta hỏi đủ lớn để mọi người nghe rõ.'],
-    [/mắt thẳm/gi, 'ánh mắt nặng trĩu'],
-    [/nói khoan/gi, 'nói chậm'],
-    [/mọi âm thanh dồn về ([^.\n]+?)\.?/gi, 'Cả phòng lập tức nhìn về $1.'],
-    [/hôi lên mùi/gi, 'ám mùi'],
-    [/kêu ròn/gi, 'rè rè'],
-    [/như người chờ được khiển trách/gi, 'như đã biết mình sắp bị mắng'],
-    [/bóp nghẹt lời giải thích/gi, 'chặn mọi lời giải thích'],
-    [/giọng như đóng án/gi, 'giọng như đã kết luận xong'],
-    [/keo chưa lì/gi, 'lớp keo chưa bám chặt'],
-    [/Mùi keo và bụi bột thùng gỗ vỗ vào mũi\.?/gi, 'Mùi keo và bụi gỗ xộc lên.'],
-    [/dao cứa vào tai tôi/gi, 'làm tôi khó chịu'],
-    [/lời nhẹ mà nhọn/gi, 'nói rất khẽ, nhưng câu nào cũng nhằm vào tôi'],
-    [/Mọi ánh mắt dồn vào ([^.\n]+?)\.?/gi, 'Mấy người đứng gần lập tức nhìn về $1.'],
-    [/mọi ánh mắt lại hướng về/gi, 'mọi người quay sang nhìn'],
-    [/như một đường thẳng giữa những cuộc trò chuyện/gi, 'đặt giữa sảnh, kéo ánh mắt khách mời về cùng một chỗ'],
-    [/mảnh ghém vào câu chuyện/gi, 'chi tiết khiến vài người quay sang nhìn nhau'],
-    [/vị gắt của cay/gi, 'cổ họng khô rát'],
-    [/khinh nhờn/gi, 'khinh miệt'],
+function auditVietnameseLineEdit(input: string) {
+  const flags: string[] = []
+  const checks: Array<[RegExp, string]> = [
+    [/vách\s+ấm/gi, 'Cụm “vách ấm” sai tai, cần đổi thành vách gỗ/vách tường/sát vách.'],
+    [/mùi\s+keo\s+còn\s+ấm/gi, '“Mùi keo còn ấm” sai collocation, cần đổi thành lớp keo còn mới hoặc mùi keo còn hắc.'],
+    [/phập\s+phồng(?!\s+(ngực|lồng ngực|hơi thở))/gi, 'Từ “phập phồng” thiếu chủ thể tự nhiên.'],
+    [/con\s+đường\s+cần\s+câu\s+trả\s+lời/gi, 'Câu “con đường cần câu trả lời” là văn máy.'],
+    [/câu\s+trả\s+lời\s+đã\s+bắt\s+đầu\s+hé/gi, 'Câu “câu trả lời bắt đầu hé” là meta/slogan.'],
+    [/một\s+vài\s+câu\s+trả\s+lời\s+đã\s+bắt\s+đầu\s+hé/gi, 'Câu kết trừu tượng “một vài câu trả lời...” cần đổi thành hành động cụ thể.'],
+    [/bằng\s+chứng\s+tĩnh\s+người/gi, '“Bằng chứng tĩnh người” sai nghĩa/sai tai.'],
+    [/che\s+nhoài/gi, '“Che nhoài” không phải cách nói tự nhiên.'],
+    [/ngòi\s+nắm/gi, '“Ngòi nắm” sai từ, cần đổi thành đầu mối/chỗ bám.'],
+    [/mảnh\s+hé/gi, '“Mảnh hé” sai tai, cần đổi thành manh mối/khe hở.'],
+    [/đứng\s+tay\s+chốc\s+lát/gi, '“Đứng tay chốc lát” sai câu, cần đổi thành dừng lại vài giây.'],
+    [/mọi\s+ánh\s+mắt\s+dồn\s+vào/gi, 'Cụm “mọi ánh mắt dồn vào” lặp văn AI, cần đổi thành hành động cụ thể.'],
+    [/mọi\s+âm\s+thanh\s+dồn\s+về/gi, 'Cụm “mọi âm thanh dồn về” là văn máy.'],
+    [/tiếng\s+hỏi\s+như\s+mũi\s+dao/gi, 'Ẩn dụ “tiếng hỏi như mũi dao” sáo và sân khấu.'],
+    [/chuyển\s+cuộc\s+chơi/gi, 'Cụm “chuyển cuộc chơi” là meta, cần đổi thành hành động cụ thể.'],
+    [/trả\s+đũa\s+bằng\s+sự\s+thật/gi, 'Slogan “trả đũa bằng sự thật” cần đổi thành câu hành động.'],
+    [/sự\s+thật\s+sẽ\s+nói\s+thay/gi, 'Slogan “sự thật sẽ nói thay” cần đổi thành hành động chứng minh.'],
+    [/lần\s+(một|hai|ba)\s+[^\n.]{0,60}(vật chứng|tờ giấy|tấm thẻ|hồ sơ|bản phác thảo|con dấu)/gi, 'Câu lộ rule đếm số lần vật chứng xuất hiện.'],
+    [/như\s+người\s+dò\s+lỗi/gi, '“Như người dò lỗi” nghe kỹ thuật, cần đổi thành nhìn kỹ từng chi tiết.'],
+    [/mắt\s+thẳm/gi, '“Mắt thẳm” là văn dịch.'],
+    [/nói\s+khoan/gi, '“Nói khoan” sai tai.'],
   ]
 
-  let text = input
-  for (const [pattern, replacement] of replacements) {
-    text = text.replace(pattern, replacement)
+  for (const [pattern, message] of checks) {
+    if (pattern.test(input)) flags.push(message)
   }
 
-  return text
-}
+  const readerPart = input.split('# BẢN PHÂN TÍCH KỸ THUẬT')[0] || input
+  const longAbstractSentences = readerPart
+    .split(/(?<=[.!?。])\s+/)
+    .filter((sentence) => {
+      const text = sentence.trim()
+      if (text.length < 150) return false
+      return /(tôi biết|tôi hiểu|trong lòng tôi|rõ ràng|câu trả lời|sự thật|quyền lực|áp lực|cục diện|manh mối)/i.test(text)
+    })
 
-function findVietnameseLineEditRedFlags(input: string) {
-  const checks: Array<[RegExp, string]> = [
-    [/lần một|lần hai|lần ba|xuất hiện lần thứ|Đây là lần/gi, 'lộ rule vật chứng xuất hiện nhiều lần'],
-    [/chuyển cuộc chơi|trả đũa bằng sự thật|sự thật sẽ nói thay tôi|khúc dạo đầu|ván cờ|trò chơi đã bắt đầu|trận đấu vừa/gi, 'câu meta/slogan/sân khấu hóa'],
-    [/mảnh hé|ngòi nắm|đứng tay|mắt xích quan sát|bằng chứng tĩnh người|che nhoài|tiếng đó hiện trên mặt/gi, 'cụm sai tai tiếng Việt'],
-    [/mọi ánh mắt dồn vào|mọi âm thanh dồn về|ánh mắt quét về|như mũi dao|như con dao|như một con dấu/gi, 'ẩn dụ/câu máy'],
-    [/hôi lên mùi|kêu ròn|keo chưa lì|bụi bột thùng gỗ vỗ vào mũi|vị gắt của cay/gi, 'động từ/cụm cảm giác sai tai'],
-    [/Tôi hiểu ngay:\s*[^\n.]{0,120}|Trong lòng tôi rõ ràng:\s*[^\n.]{0,120}/gi, 'giải thích tâm lý quá trực diện'],
-  ]
-
-  const flags: string[] = []
-  for (const [pattern, label] of checks) {
-    if (pattern.test(input)) flags.push(label)
+  if (longAbstractSentences.length >= 2) {
+    flags.push('Có nhiều câu dài giải thích/tổng kết trừu tượng trong BẢN ĐỌC, cần cắt thành hành động cụ thể.')
   }
 
   return Array.from(new Set(flags)).slice(0, 8)
 }
-
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -126,13 +96,13 @@ export default async function handler(req: any, res: any) {
     const payload = normalizePayload((req.body || {}) as GeneratePayload)
 
     const moderationInput = [
-      payload.storyTitle,
+      payload.title,
       payload.promptIdea,
-      payload.genre,
-      payload.writingStyle,
-      payload.chapterTitle,
-      payload.previousChapterSummary,
-      payload.userInstruction,
+      payload.genreLabel,
+      payload.mainCharacterStyleLabel,
+      payload.chapterLengthLabel,
+      payload.storySummary,
+      payload.storyMemory,
     ]
       .filter(Boolean)
       .join('\n\n')
@@ -178,9 +148,12 @@ export default async function handler(req: any, res: any) {
     let editorPassFailed = false
     let editorUsage = null
     let editorError = ''
-    let editorAuditUsed = false
-    let editorAuditFailed = false
+    let editorRepairUsed = false
+    let editorRepairFailed = false
+    let editorRepairError = ''
+    let editorRepairUsage = null
     let editorAuditFlags: string[] = []
+    const storyEditorMode = getStoryEditorMode(payload)
 
     if (getStoryEditorPassEnabled(payload)) {
       try {
@@ -212,38 +185,42 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    finalText = polishVietnameseLineEditText(finalText)
+    finalText = softenAIDramaPhrases(finalText)
 
-    if (getStoryEditorPassEnabled(payload) && editorPassUsed) {
-      editorAuditFlags = findVietnameseLineEditRedFlags(finalText)
+    if (editorPassUsed && getStoryEditorRepairEnabled(payload)) {
+      editorAuditFlags = auditVietnameseLineEdit(finalText)
 
       if (editorAuditFlags.length > 0) {
         try {
-          const validationPrompt = buildStoryEditorValidationPrompt(payload, finalText, editorAuditFlags)
+          const repairPrompt = buildStoryEditorRepairPrompt(payload, finalText, editorAuditFlags)
 
-          await moderateTextOrThrow(validationPrompt, 'story editor validation input')
+          await moderateTextOrThrow(repairPrompt, 'story editor repair input')
 
-          const validationPass = await callOpenAIText({
+          const repairPass = await callOpenAIText({
             apiKey,
             model,
-            prompt: validationPrompt,
+            prompt: repairPrompt,
             maxOutputTokens: lengthRule.maxOutputTokens,
           })
 
-          if (validationPass.response.ok && !validationPass.data?.__nonJson && validationPass.text) {
-            finalText = validationPass.text
-            editorAuditUsed = true
-            editorUsage = validationPass.data?.usage || editorUsage
+          if (repairPass.response.ok && !repairPass.data?.__nonJson && repairPass.text) {
+            finalText = softenAIDramaPhrases(repairPass.text)
+            editorRepairUsed = true
+            editorRepairUsage = repairPass.data?.usage || null
+            editorAuditFlags = auditVietnameseLineEdit(finalText)
           } else {
-            editorAuditFailed = true
+            editorRepairFailed = true
+            editorRepairError =
+              repairPass.data?.error?.message ||
+              repairPass.data?.preview ||
+              `Story editor repair failed with status ${repairPass.response.status}`
           }
-        } catch {
-          editorAuditFailed = true
+        } catch (repairErrorRaw: any) {
+          editorRepairFailed = true
+          editorRepairError = repairErrorRaw?.message || 'Story editor repair failed'
         }
       }
     }
-
-    finalText = softenAIDramaPhrases(polishVietnameseLineEditText(finalText))
 
     await moderateTextOrThrow(finalText, 'story generation output')
 
@@ -252,20 +229,25 @@ export default async function handler(req: any, res: any) {
       draftText: editorPassUsed ? draftText : undefined,
       model,
       modelKey: payload.modelKey,
+      storyEditorMode,
       editorPassUsed,
       editorPassFailed,
-      editorAuditUsed,
-      editorAuditFailed,
-      editorAuditFlags,
       editorError: editorPassFailed ? editorError : undefined,
+      editorRepairUsed,
+      editorRepairFailed,
+      editorRepairError: editorRepairFailed ? editorRepairError : undefined,
+      editorAuditFlags,
+      editorAuditFlagCount: editorAuditFlags.length,
       moderation: {
         inputChecked: true,
         outputChecked: true,
         editorInputChecked: getStoryEditorPassEnabled(payload),
+        editorMode: storyEditorMode,
         model: process.env.OPENAI_MODERATION_MODEL || 'omni-moderation-latest',
       },
       usage: firstPass.data?.usage || null,
       editorUsage,
+      editorRepairUsage,
     })
   } catch (error: any) {
     return res.status(500).json({

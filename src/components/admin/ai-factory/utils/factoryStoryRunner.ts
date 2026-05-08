@@ -144,73 +144,6 @@ function buildGenerateApiErrorMessage(response: Response, data: any) {
 }
 
 
-
-function getSeedEvidenceForPrompt(storySeed?: FactoryStorySeed | null) {
-  return String(
-    storySeed?.evidenceObject ||
-      (storySeed as any)?.motifFingerprint?.evidenceObject ||
-      '',
-  ).trim()
-}
-
-function buildChapterSeedLockInstruction(params: {
-  storyTitle: string
-  storySeed?: FactoryStorySeed | null
-}) {
-  const storySeed = params.storySeed
-  const evidenceObject = getSeedEvidenceForPrompt(storySeed)
-  const lockedTitle = String(params.storyTitle || storySeed?.title || evidenceObject || '').trim()
-
-  if (!storySeed && !lockedTitle && !evidenceObject) return ''
-
-  return `
-FACTORY STORY LOCK - KHÓA NGHĨA TRƯỚC KHI VIẾT:
-- STORY_TITLE_LOCK: ${lockedTitle}
-- EVIDENCE_OBJECT_LOCK: ${evidenceObject || lockedTitle}
-- SETTING_LOCK: ${storySeed?.setting || storySeed?.openingScene || ''}
-- OPENING_SCENE_LOCK: ${storySeed?.openingScene || storySeed?.setting || ''}
-- CONFLICT_LOCK: ${storySeed?.mainConflict || storySeed?.corePremise || ''}
-- HIDDEN_TRUTH_LOCK: ${storySeed?.hiddenTruth || ''}
-
-QUY TẮC CỨNG CHO OPENAI:
-1. Trước khi viết chương, phải tự hiểu EVIDENCE_OBJECT_LOCK là vật chứng chính. Không được tách chữ rời, không được đoán theo một token ngắn.
-2. story_title trong technical report PHẢI ĐÚNG Y HỆT STORY_TITLE_LOCK. Không được tự đặt lại thành hợp đồng, USB, camera, mã QR, thẻ phòng, hồ sơ niêm phong, ghi âm, sao kê nếu EVIDENCE_OBJECT_LOCK không ghi rõ.
-3. Chương 1 phải mở bằng tình huống làm EVIDENCE_OBJECT_LOCK xuất hiện sai/ lệch/ bất thường trong SETTING_LOCK. Vật chứng này phải là trung tâm cảnh, không phải chi tiết trang trí.
-4. Bằng chứng phụ chỉ được hỗ trợ vật chứng chính. Cấm thay vật chứng chính bằng vật chứng khác hấp dẫn hơn.
-5. Nếu muốn dùng hợp đồng, USB, camera, hồ sơ, luật sư, pháp vụ, sao kê, chỉ được dùng khi chúng đã có trong seed. Nếu không có trong seed thì cấm dùng làm trục truyện hoặc title.
-6. Mỗi đoạn quan trọng phải trả lời ngầm: ai nhìn thấy vật chứng, nó lệch ở đâu, vì sao nữ chính nhận ra, và nó dẫn tới HIDDEN_TRUTH_LOCK thế nào.
-7. Output technical report bắt buộc dùng:
-   story_title = ${lockedTitle}
-   evidence_object = ${evidenceObject || lockedTitle}
-`.trim()
-}
-
-
-
-function buildNaturalVietnameseProseInstruction() {
-  return `
-NATURAL VIETNAMESE PROSE LOCK - GIỌNG VĂN NGƯỜI VIỆT:
-Mục tiêu: đọc như truyện mạng tiếng Việt do người thật viết, không giống bản dịch máy hoặc văn mẫu AI.
-
-Bắt buộc khi viết chương:
-1. Cảnh căng phải dùng câu ngắn hơn. Ưu tiên hành động, ánh mắt, cử chỉ, lời thoại và phản ứng đám đông thay vì giải thích tâm lý dài.
-2. Đối thoại phải đời thường, có va chạm. Nhân vật đang tức giận/hoang mang không nói quá lịch sự, quá tròn câu hoặc như đang đọc biên bản.
-3. Giảm câu trừu tượng kiểu: "quyền lực rời khỏi mình", "bản cáo trạng", "con dấu", "ván cờ", "sân khấu", "khán đài", "áp lực dồn lên". Nếu cần, thay bằng câu cụ thể hơn: "Tôi biết mình đang mất thế", "Đám đông không còn nghe tôi nữa".
-4. Không giảng logic cho độc giả bằng câu phân tích lộ liễu như "Cái chỗ vụng về trong câu chuyện hiện ra". Hãy để nhân vật nhận ra qua chi tiết: nét bút, vị trí vật chứng, lời nói mâu thuẫn, camera, nhân chứng.
-5. Mỗi đoạn 2-4 câu là chính. Tránh đoạn văn quá đều, quá sạch, quá giống AI.
-6. Mỗi cảnh phải có ít nhất một chi tiết đời thường cụ thể: âm thanh, vật nhỏ, thao tác tay, ánh mắt, điện thoại, mùi, vết bẩn, tiếng người chen vào.
-7. Nữ chính bình tĩnh nhưng không nói như luật sư trong mọi cảnh. Khi bị ép trước đám đông, lời nói phải gọn, có lực, dễ hiểu.
-8. Không dùng nhiều mỹ từ. Không cố làm văn. Ưu tiên rõ, sắc, tự nhiên, có nhịp truyện.
-
-Ví dụ chuyển giọng:
-- Không viết: "Tôi cảm thấy quyền lực rời khỏi mình."
-- Nên viết: "Tôi biết mình đang mất thế. Đám đông đã ngả về phía họ."
-- Không viết: "Chúng tôi không có nhiều thời gian. Chúng tôi cần biết con mình an toàn."
-- Nên viết: "Cô nói thẳng đi. Con tôi có an toàn không?"
-`.trim()
-}
-
-
 export async function generateFactoryChapter(params: {
   config: AIFactoryConfig
   provider: AIFactoryConfig['provider']
@@ -269,22 +202,14 @@ Yêu cầu:
 - Trong bản kỹ thuật ghi completion_status = ongoing.
 `
 
-  const storyLockInstruction = buildChapterSeedLockInstruction({
-    storyTitle: params.storyTitle,
-    storySeed: params.storySeed,
-  })
-
   const payload = {
     mode: 'chapter',
-    storyEditorPassEnabled: Boolean(params.config.storyEditorPassEnabled),
     provider: params.provider,
     modelKey: params.modelKey,
     moduleId: 'female-urban-viral',
     title: params.storyTitle,
     storySummary: params.storyDescription,
     promptIdea: [
-      storyLockInstruction,
-      buildNaturalVietnameseProseInstruction(),
       params.chapterNumber === 1 ? params.factoryPromptIdea : '',
       params.isFinalChapter ? finalChapterInstruction : '',
     ]
@@ -302,6 +227,8 @@ Yêu cầu:
     targetChapters: params.targetChapters,
     isFinalChapter: Boolean(params.isFinalChapter),
     storySeed: params.storySeed ?? null,
+    storyEditorMode: params.config.storyEditorMode,
+    storyEditorPassEnabled: params.config.storyEditorMode !== 'off',
     recentChapters: params.recentChapters,
     storyMemory: [params.storyMemory, finalChapterInstruction].filter(Boolean).join('\n\n---\n\n'),
   }
@@ -428,60 +355,6 @@ function getSeedEvidenceObject(storySeed?: FactoryStorySeed | null) {
   ).trim()
 }
 
-function titleCaseFactoryEvidence(input: string) {
-  return input
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .map((word) => {
-      if (!word) return word
-      if (/^(USB|QR|ADN|CEO|VIP)$/i.test(word)) return word.toUpperCase()
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    })
-    .join(' ')
-}
-
-function hasFactoryEvidenceState(input: string) {
-  const normalized = ` ${normalizeTitleForCompare(input)} `
-  return [
-    ' bi ',
-    ' co ',
-    ' lech',
-    ' sai',
-    ' rach',
-    ' xe ',
-    ' roi',
-    ' mat',
-    ' bong',
-    ' doi',
-    ' sua',
-    ' cat',
-    ' gui nham',
-    ' quay nham',
-  ].some((marker) => normalized.includes(marker))
-}
-
-function cleanFactoryEvidenceForTitle(input: string) {
-  return String(input || '')
-    .trim()
-    .replace(/^một\s+/i, '')
-    .replace(/^một chiếc\s+/i, 'Chiếc ')
-    .replace(/^một tấm\s+/i, 'Tấm ')
-    .replace(/^một mẩu\s+/i, 'Mẩu ')
-    .replace(/\s+có một chi tiết lệch.*$/i, '')
-    .replace(/\s+co mot chi tiet lech.*$/i, '')
-    .replace(/\s+mà chỉ.*$/i, '')
-    .replace(/\s+ma chi.*$/i, '')
-    .replace(/\s+không phải.*$/i, '')
-    .replace(/\s+khong phai.*$/i, '')
-    .replace(/\s+theo công thức.*$/i, '')
-    .replace(/\s+theo cong thuc.*$/i, '')
-    .replace(/\s+bị đặt sai chỗ$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-
 function titleMatchesSeedEvidence(title: string, storySeed?: FactoryStorySeed | null) {
   const evidence = getSeedEvidenceObject(storySeed)
   const titleTags = new Set(compactTitleTags(title))
@@ -493,23 +366,85 @@ function titleMatchesSeedEvidence(title: string, storySeed?: FactoryStorySeed | 
 }
 
 
+function isLockerCardEvidenceTitleText(value: string) {
+  const normalized = normalizeTitleForCompare(value)
+
+  return (
+    normalized.includes('the tu do') ||
+    normalized.includes('tu do') ||
+    normalized.includes('locker') ||
+    normalized.includes('phong tap') ||
+    normalized.includes('cau lac bo the thao') ||
+    normalized.includes('the ra vao') ||
+    normalized.includes('so thanh vien')
+  )
+}
+
 function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getSeedEvidenceObject(storySeed)
-  const clean = cleanFactoryEvidenceForTitle(evidence)
-  const title = titleCaseFactoryEvidence(clean)
+  const normalized = normalizeTitleForCompare(evidence)
 
-  if (title && title.length <= 48) {
-    return hasFactoryEvidenceState(title) ? title : `${title} Bị Lộ`
+  if (isLockerCardEvidenceTitleText(evidence)) {
+    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
   }
 
-  const shortTitle = title.split(/\s+/).slice(0, 7).join(' ').trim()
-  if (shortTitle && shortTitle.length >= 8) {
-    return hasFactoryEvidenceState(shortTitle) ? shortTitle : `${shortTitle} Bị Lộ`
+  if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
+    return 'Bức Vẽ Lệch Khung'
+  }
+
+  if (normalized.includes('anh mo') || normalized.includes('may anh do choi')) {
+    return 'Ảnh Mờ Trong Máy Ảnh Đồ Chơi'
+  }
+
+  if (normalized.includes('mieng dan')) {
+    return 'Miếng Dán Bong Góc'
+  }
+
+  if (normalized.includes('nap chai') || normalized.includes('vet xuoc')) {
+    return 'Nắp Chai Có Vết Xước'
+  }
+
+  if (normalized.includes('hat vong')) {
+    return 'Hạt Vòng Sai Chỗ'
+  }
+
+  if (normalized.includes('vong tay')) {
+    return 'Vòng Tay Sự Kiện Bị Đổi Màu'
+  }
+
+  if (normalized.includes('nhan chau') || normalized.includes('chau hoa')) {
+    return 'Chậu Cây Bị Cắm Sai Nhãn'
+  }
+
+  if (normalized.includes('soi chi') || normalized.includes('khuy ao') || normalized.includes('chi con mac') || normalized.includes('chi lech')) {
+    return 'Sợi Chỉ Ở Khuy Áo'
+  }
+
+  if (normalized.includes('to giay') || normalized.includes('mau giay') || normalized.includes('ghi chu')) {
+    return 'Tờ Giấy Trước Thang Máy'
+  }
+
+  if (normalized.includes('phieu') && normalized.includes('banh')) {
+    return 'Phiếu Bánh Bị Xé Góc'
+  }
+
+  if (evidence) {
+    const clean = evidence
+      .replace(/^một\s+/i, '')
+      .replace(/^một chiếc\s+/i, 'Chiếc ')
+      .replace(/^một tấm\s+/i, 'Tấm ')
+      .replace(/^một mẩu\s+/i, 'Mẩu ')
+      .replace(/\s+không phải.*$/i, '')
+      .replace(/\s+bị đặt sai chỗ$/i, '')
+      .trim()
+
+    if (clean && clean.length <= 34) {
+      return clean.charAt(0).toUpperCase() + clean.slice(1)
+    }
   }
 
   return 'Chi Tiết Bị Đặt Sai'
 }
-
 
 function isAcceptableFactoryStoryTitle(title: string, storySeed?: FactoryStorySeed | null) {
   if (!title || isBadParsedFactoryTitle(title)) return false
@@ -629,11 +564,6 @@ export async function insertFactoryStoryDraft(params: {
     parsedChapterTitle: params.parsed.chapterTitle,
     storySeed: params.storySeed,
   })
-
-  params.parsed = {
-    ...params.parsed,
-    storyTitle: chosenStoryTitle.title,
-  }
 
   params.addLog(
     `Title gate final: "${chosenStoryTitle.title}" | seed="${chosenStoryTitle.seedTitle}" | parsed="${chosenStoryTitle.parsedTitle}" | chapter="${chosenStoryTitle.parsedChapterTitle}" | evidence="${chosenStoryTitle.evidenceTitle}"`,

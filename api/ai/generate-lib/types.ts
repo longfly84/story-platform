@@ -1,6 +1,7 @@
 export type GenerateMode = 'chapter' | 'story-plan'
 export type ModelKey = 'economy' | 'premium' | 'auto'
 export type LegacyModelTier = 'draft' | 'premium' | 'auto'
+export type StoryEditorMode = 'off' | 'standard' | 'careful'
 
 export type StoryMotifFingerprint = {
   premiseFamily?: string
@@ -106,6 +107,7 @@ export type GeneratePayload = {
   factoryRunId?: string
   storyIndex?: number
   storySeed?: FactoryStorySeed | null
+  storyEditorMode?: StoryEditorMode
   storyEditorPassEnabled?: boolean
 }
 
@@ -142,5 +144,5 @@ export type NormalizedGeneratePayload = {
   factoryRunId: string
   storyIndex: number
   storySeed: FactoryStorySeed | null
-  storyEditorPassEnabled: boolean
+  storyEditorMode: StoryEditorMode
 }

@@ -162,12 +162,23 @@ export function getTextModel(payload: NormalizedGeneratePayload) {
   return economyModel
 }
 
-export function getStoryEditorPassEnabled(payload: NormalizedGeneratePayload) {
-  if (payload.mode !== 'chapter') return false
-  if (payload.storyEditorPassEnabled === false) return false
+export function getStoryEditorMode(payload: NormalizedGeneratePayload) {
+  if (payload.mode !== 'chapter') return 'off'
 
   const disabled = process.env.DISABLE_STORY_EDITOR_PASS
-  if (disabled === 'true' || disabled === '1') return false
+  if (disabled === 'true' || disabled === '1') return 'off'
 
-  return true
+  if (payload.storyEditorMode === 'off' || payload.storyEditorMode === 'standard' || payload.storyEditorMode === 'careful') {
+    return payload.storyEditorMode
+  }
+
+  return 'standard'
+}
+
+export function getStoryEditorPassEnabled(payload: NormalizedGeneratePayload) {
+  return getStoryEditorMode(payload) !== 'off'
+}
+
+export function getStoryEditorRepairEnabled(payload: NormalizedGeneratePayload) {
+  return getStoryEditorMode(payload) === 'careful'
 }
