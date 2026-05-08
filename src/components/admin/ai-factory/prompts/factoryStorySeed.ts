@@ -1946,12 +1946,24 @@ function isLockerCardEvidence(value: string) {
 function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
   const normalized = normalizeForCompare(evidenceObject);
 
+  if (normalized.includes("coc") && normalized.includes("son")) {
+    return "Vết Son Trên Chiếc Cốc";
+  }
+
+  if (normalized.includes("ho so") && (normalized.includes("nhan con nuoi") || normalized.includes("con nuoi")) && normalized.includes("ghim")) {
+    return "Dấu Ghim Mới Trên Hồ Sơ Cũ";
+  }
+
+  if (normalized.includes("goc anh") || normalized.includes("anh cu") || normalized.includes("ruy bang") || normalized.includes("ruy-bang")) {
+    return "Tấm Ảnh Sau Dải Ruy-Băng";
+  }
+
   if (normalized.includes("goc anh") || normalized.includes("góc ảnh") || normalized.includes("anh cu") || normalized.includes("ảnh cũ")) {
-    return "Góc Ảnh Trên Dải Ruy-Băng";
+    return "Tấm Ảnh Sau Dải Ruy-Băng";
   }
 
   if (normalized.includes("ruy bang") || normalized.includes("ruy-bang") || normalized.includes("ruy-băng")) {
-    return "Dải Ruy-Băng Bị Ghim Ảnh";
+    return "Tấm Ảnh Sau Dải Ruy-Băng";
   }
 
   if (normalized.includes("phieu dat banh") || normalized.includes("phiếu đặt bánh") || normalized.includes("banh") || normalized.includes("bánh")) {
@@ -2035,14 +2047,18 @@ function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
   const token = titleCaseFirst(cleanTitleToken(evidenceObject))
     .replace(/^Một\s+/i, "")
     .replace(/^Mảnh\s+nhỏ\s+/i, "Mảnh ")
+    .replace(/\s+có\s+một\s+chi\s+tiết\s+lệch.*$/i, "")
+    .replace(/\s+không\s+thuộc.*$/i, "")
+    .replace(/\s+không\s+phải.*$/i, "")
     .replace(/\s+bị\s+đặt\s+sai\s+chỗ$/i, "")
+    .replace(/\s+lúc\s+nữ\s+chính.*$/i, "")
     .trim();
 
-  if (token && token.length <= 32 && !isTechnicalSeedTitle(token)) {
-    return `${token} Bị Lộ`;
+  if (token && token.length <= 48 && !isTechnicalSeedTitle(token) && !isGenericBadStoryTitle(token)) {
+    return token;
   }
 
-  return "Chi Tiết Bị Đặt Sai";
+  return "Vật Chứng Bị Lộ";
 }
 
 function makeEvidenceTitleVariants(evidenceObject: string) {
@@ -2051,12 +2067,24 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
 
   const variants: string[] = [];
 
+  if (normalized.includes("coc") && normalized.includes("son")) {
+    variants.push("Vết Son Trên Chiếc Cốc", "Chiếc Cốc Có Vết Son Lạ", "Vết Son Lạ Trên Bàn Khách");
+  }
+
+  if (normalized.includes("ho so") && (normalized.includes("nhan con nuoi") || normalized.includes("con nuoi")) && normalized.includes("ghim")) {
+    variants.push("Dấu Ghim Mới Trên Hồ Sơ Cũ", "Hồ Sơ Nhận Con Nuôi Có Dấu Ghim", "Trang Cũ Có Dấu Ghim Mới");
+  }
+
+  if (normalized.includes("goc anh") || normalized.includes("anh cu") || normalized.includes("ruy bang") || normalized.includes("ruy-bang")) {
+    variants.push("Tấm Ảnh Sau Dải Ruy-Băng", "Góc Ảnh Sau Dải Ruy-Băng", "Tấm Ảnh Bị Che Sau Dải Tang");
+  }
+
   if (normalized.includes("goc anh") || normalized.includes("góc ảnh") || normalized.includes("anh cu") || normalized.includes("ảnh cũ")) {
-    variants.push("Góc Ảnh Trên Dải Ruy-Băng", "Mảnh Ảnh Bị Ghim Trên Bó Hoa", "Bó Hoa Có Góc Ảnh Cũ");
+    variants.push("Tấm Ảnh Sau Dải Ruy-Băng", "Góc Ảnh Sau Dải Ruy-Băng", "Tấm Ảnh Bị Che Sau Dải Tang");
   }
 
   if (normalized.includes("ruy bang") || normalized.includes("ruy-bang") || normalized.includes("ruy-băng")) {
-    variants.push("Dải Ruy-Băng Bị Ghim Ảnh", "Góc Ảnh Trên Dải Ruy-Băng");
+    variants.push("Tấm Ảnh Sau Dải Ruy-Băng", "Góc Ảnh Sau Dải Ruy-Băng");
   }
 
   if (normalized.includes("phieu dat banh") || normalized.includes("phiếu đặt bánh") || normalized.includes("banh") || normalized.includes("bánh")) {
