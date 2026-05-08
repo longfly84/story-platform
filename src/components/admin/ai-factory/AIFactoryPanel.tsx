@@ -217,19 +217,7 @@ function cleanFactoryEvidenceForTitle(input: string) {
 }
 
 
-function isLockerCardEvidenceText(value: string) {
-  const normalized = normalizeFactoryTitleText(value)
 
-  return (
-    normalized.includes('the tu do') ||
-    normalized.includes('tu do') ||
-    normalized.includes('locker') ||
-    normalized.includes('phong tap') ||
-    normalized.includes('cau lac bo the thao') ||
-    normalized.includes('the ra vao') ||
-    normalized.includes('so thanh vien')
-  )
-}
 
 function isBadFactoryStoryTitle(title: string) {
   const normalized = normalizeFactoryTitleText(title)
