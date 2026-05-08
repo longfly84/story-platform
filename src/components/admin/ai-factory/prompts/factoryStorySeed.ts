@@ -1,8 +1,5 @@
 import type { AvoidLibrary, FactoryStorySeed } from "../aiFactoryTypes";
-import {
-  FACTORY_MOTIF_BANK_10000,
-  type FactoryMotifBankItem,
-} from "./factoryMotifBank10000";
+import { buildUniqueFactoryTitle } from "./factoryPromptShared";
 
 type StoryDramaLane = {
   key: string;
@@ -748,7 +745,7 @@ function buildGenreSettingAtoms(atoms: string[]) {
       settings.add(`bữa tiệc gia đình hào môn nơi ${atom} khiến cả bàn im phăng phắc`);
     } else if (atomHasAny(atom, ["cà phê", "hiệu sách", "nhà hàng", "quán"])) {
       settings.add(`quán gặp riêng nơi ${atom} làm nữ chính nhận ra người nói dối`);
-      settings.add(`góc bàn cạnh cửa kính nơi ${atom} bị biến thành cái bẫy trước mặt mọi người`);
+      settings.add(`góc bàn cạnh cửa kính nơi ${atom} bị đặt vào tay sai người`);
     } else {
       settings.add(`${atom} trong một bối cảnh đô thị cụ thể, có người chứng kiến và hậu quả cảm xúc rõ`);
     }
@@ -766,25 +763,13 @@ function buildGenreEvidenceAtoms(atoms: string[]) {
     else if (atomHasAny(atom, ["băng gạc"])) evidence.add("băng gạc có dấu vết lạ và thời điểm sử dụng không khớp");
     else if (atomHasAny(atom, ["thư cũ"])) evidence.add("thư cũ mở khóa bí mật bị giấu trong lớp bìa kép");
     else if (atomHasAny(atom, ["gấu bông"])) evidence.add("con gấu bông chứa vật nhỏ chứng minh đứa trẻ từng ở nơi bị phủ nhận");
-    else if (atomHasAny(atom, ["quản lý khách sạn", "sổ quản lý", "sổ ra vào", "khách sạn"])) {
-      evidence.add("sổ quản lý khách sạn có dòng ra vào bị ghi sai giờ");
-      evidence.add("phiếu bàn giao phòng VIP có chữ ký lệch nét");
-      evidence.add("chuông cửa phòng VIP phát ra hai nốt không thuộc hệ thống khách sạn");
-    }
     else if (atomHasAny(atom, ["camera", "ảnh", "video", "khung hình"])) evidence.add(`${atom} có chi tiết nền bị bỏ sót, không chỉ là camera/log chung`);
     else if (atomHasAny(atom, ["adn", "xét nghiệm"])) evidence.add("kết quả xét nghiệm có mã mẫu lệch với người được công bố");
     else if (atomHasAny(atom, ["di chúc", "thừa kế"])) evidence.add("trang di chúc hoặc tín vật thừa kế có dấu đổi trang");
-    else if (atomHasAny(atom, ["hợp đồng", "cổ phần", "kiểm toán", "sao kê"])) {
-      evidence.add(`${atom} có một chi tiết đối chiếu không khớp với lời buộc tội`);
-      evidence.add(`một mốc thời gian trong ${atom} làm lộ người từng chạm vào hồ sơ`);
-      evidence.add(`bản sao cũ của ${atom} giữ lại dấu vết bị sửa`);
-    }
+    else if (atomHasAny(atom, ["hợp đồng", "cổ phần", "kiểm toán", "sao kê"])) evidence.add(`${atom} có dòng phụ/điều khoản phụ làm lộ người thao túng`);
     else if (atomHasAny(atom, ["điện thoại", "tin nhắn", "ghi âm", "usb"])) evidence.add(`${atom} chứa mảnh bằng chứng bị hiểu sai cho tới khi đối chiếu với bối cảnh`);
     else if (atomHasAny(atom, ["vé", "sân bay", "chuyến bay"])) evidence.add("vé hoặc lịch trình di chuyển có thời điểm phá vỡ lời khai");
-    else {
-      evidence.add(`một dấu vết đời sống gắn với ${atom} khiến lời buộc tội tự mâu thuẫn`);
-      evidence.add(`một vật nhỏ liên quan tới ${atom} bị đặt sai chỗ và làm lộ người sắp bẫy`);
-    }
+    else evidence.add(`${atom} được biến thành vật chứng riêng của thể loại này, không dùng như giấy tờ pháp lý chung`);
   }
 
   return Array.from(evidence).slice(0, 8);
@@ -1042,55 +1027,8 @@ function isGenericAbstractTitle(title: string) {
   return !hasConcreteTitleAnchor(title);
 }
 
-const TECHNICAL_TITLE_PATTERNS = [
-  "duoc bien thanh",
-  "cua the loai nay",
-  "khong dung nhu",
-  "giay to phap ly chung",
-  "doi nghia",
-  "genre",
-  "genre lock",
-  "seed",
-  "motif",
-  "fingerprint",
-  "pipeline",
-  "story dna",
-  "exact evidence",
-  "exact attack",
-  "exact counter",
-  "quan ly khach san duoc",
-];
-
-function isTechnicalSeedTitle(title: string) {
-  const normalized = normalizeForCompare(title);
-
-  if (!normalized) return true;
-  if (title.length > 42) return true;
-  if (/[\/|]/.test(title)) return true;
-
-  return TECHNICAL_TITLE_PATTERNS.some((pattern) => normalized.includes(pattern));
-}
-
-function sanitizeTitleCandidate(title: string) {
-  return title
-    .replace(/\s+/g, " ")
-    .replace(/\s*[\/|]\s*/g, " ")
-    .replace(/\s+Đổi Nghĩa$/i, "")
-    .replace(/\s+doi nghia$/i, "")
-    .trim();
-}
-
-function isHumanStoryTitle(title: string, avoidTitles?: string[]) {
-  const clean = sanitizeTitleCandidate(title);
-  if (!clean) return false;
-  if (isTechnicalSeedTitle(clean)) return false;
-  if (clean.split(/\s+/).length > 8) return false;
-  return isTitleAllowedByMemory(clean, avoidTitles);
-}
-
 function isTitleAllowedByMemory(title: string, avoidTitles?: string[]) {
   if (isGenericAbstractTitle(title)) return false;
-  if (isTechnicalSeedTitle(title)) return false;
 
   const normalized = normalizeForCompare(title);
   const signature = getTitleStructureSignature(title);
@@ -1183,9 +1121,6 @@ function pickDramaLane(seed: string, avoidLibrary?: AvoidLibrary) {
 
 function cleanTitleToken(input: string) {
   return input
-    .replace(/được biến thành.*$/i, "")
-    .replace(/không dùng như.*$/i, "")
-    .replace(/của thể loại này.*$/i, "")
     .replace(/^một\s+/i, "")
     .replace(/^một chiếc\s+/i, "Chiếc ")
     .replace(/^một đoạn\s+/i, "Đoạn ")
@@ -1208,176 +1143,11 @@ function titleCaseFirst(input: string) {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-
-const GENERIC_BAD_STORY_TITLES = [
-  "Món Quà Bị Lộ",
-  "Dấu Mực Trên Trang Cũ",
-  "Người Im Lặng Ở Cuối Phòng",
-  "Mã QR Dẫn Tới Thư Mục Ẩn",
-  "Dòng Mã Trên Vé Sự Kiện",
-  "Mã Số Trong Hồ Sơ Cũ",
-  "Tin Nhắn Gửi Nhầm Vào Nhóm Gia Đình",
-  "Vệt Bút Chì Sau Giờ Đón Trẻ",
-  "Vật Chứng Bị Đặt Sai Chỗ",
-];
-
-function isGenericBadStoryTitle(title: string) {
-  const normalized = normalizeForCompare(title);
-  return GENERIC_BAD_STORY_TITLES.some((item) => normalizeForCompare(item) === normalized);
-}
-
-function titleMatchesEvidenceObject(title: string, evidenceObject: string) {
-  const titleTags = new Set(compactTags(title));
-  const evidenceTags = compactTags(evidenceObject).filter(
-    (tag) =>
-      tag.length >= 3 &&
-      ![
-        "mot",
-        "mau",
-        "dau",
-        "noi",
-        "ben",
-        "sai",
-        "dat",
-        "cho",
-        "trong",
-        "tren",
-        "duoi",
-        "goc",
-        "cu",
-        "bi",
-      ].includes(tag),
-  );
-
-  if (!evidenceTags.length) return true;
-
-  return evidenceTags.some((tag) => titleTags.has(tag));
-}
-
-function isSafeGeneratedStoryTitle(title: string, evidenceObject: string, avoidTitles?: string[]) {
-  if (!isHumanStoryTitle(title, avoidTitles)) return false;
-  if (isGenericBadStoryTitle(title)) return false;
-  if (!titleMatchesEvidenceObject(title, evidenceObject)) return false;
-  return true;
-}
-
-
-function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
-  const normalized = normalizeForCompare(evidenceObject);
-
-  if (normalized.includes("goc anh") || normalized.includes("góc ảnh") || normalized.includes("anh cu") || normalized.includes("ảnh cũ")) {
-    return "Góc Ảnh Trên Dải Ruy-Băng";
-  }
-
-  if (normalized.includes("ruy bang") || normalized.includes("ruy-bang") || normalized.includes("ruy-băng")) {
-    return "Dải Ruy-Băng Bị Ghim Ảnh";
-  }
-
-  if (normalized.includes("phieu dat banh") || normalized.includes("phiếu đặt bánh") || normalized.includes("banh") || normalized.includes("bánh")) {
-    return "Phiếu Bánh Bị Xé Góc";
-  }
-
-  if (normalized.includes("vong tay") || normalized.includes("vòng tay")) {
-    return "Vòng Tay Sự Kiện Bị Đổi Màu";
-  }
-
-  if (normalized.includes("nhan chau") || normalized.includes("nhãn chậu") || normalized.includes("chau hoa") || normalized.includes("chậu hoa")) {
-    return "Nhãn Chậu Đặt Sai";
-  }
-
-  if (normalized.includes("nap chai") || normalized.includes("nắp chai") || normalized.includes("vet xuoc") || normalized.includes("vết xước")) {
-    return "Nắp Chai Có Vết Xước";
-  }
-
-  if (normalized.includes("mau ghi chu") || normalized.includes("mẩu ghi chú") || normalized.includes("ghi chu") || normalized.includes("ghi chú")) {
-    return "Ghi Chú Lệch Ở Sảnh Chung Cư";
-  }
-
-  if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo")) {
-    return "Sợi Chỉ Trên Khuy Áo";
-  }
-
-  if (normalized.includes("mieng dan") || normalized.includes("miếng dán")) {
-    return "Miếng Dán Bong Góc";
-  }
-
-  const token = titleCaseFirst(cleanTitleToken(evidenceObject))
-    .replace(/^Một\s+/i, "")
-    .replace(/^Mảnh\s+nhỏ\s+/i, "Mảnh ")
-    .replace(/\s+bị\s+đặt\s+sai\s+chỗ$/i, "")
-    .trim();
-
-  if (token && token.length <= 32 && !isTechnicalSeedTitle(token)) {
-    return `${token} Bị Lộ`;
-  }
-
-  return "Manh Mối Ở Hiện Trường";
-}
-
 function makeEvidenceTitleVariants(evidenceObject: string) {
   const normalized = normalizeForCompare(evidenceObject);
   const token = titleCaseFirst(cleanTitleToken(evidenceObject));
 
   const variants: string[] = [];
-
-  if (normalized.includes("goc anh") || normalized.includes("góc ảnh") || normalized.includes("anh cu") || normalized.includes("ảnh cũ")) {
-    variants.push("Góc Ảnh Trên Dải Ruy-Băng", "Mảnh Ảnh Bị Ghim Trên Bó Hoa", "Bó Hoa Có Góc Ảnh Cũ");
-  }
-
-  if (normalized.includes("ruy bang") || normalized.includes("ruy-bang") || normalized.includes("ruy-băng")) {
-    variants.push("Dải Ruy-Băng Bị Ghim Ảnh", "Góc Ảnh Trên Dải Ruy-Băng");
-  }
-
-  if (normalized.includes("phieu dat banh") || normalized.includes("phiếu đặt bánh") || normalized.includes("banh") || normalized.includes("bánh")) {
-    variants.push("Phiếu Bánh Bị Xé Góc", "Mảnh Phiếu Trong Phòng Chờ", "Góc Phiếu Bánh Bị Xé");
-  }
-
-  if (normalized.includes("vong tay") || normalized.includes("vòng tay")) {
-    variants.push("Vòng Tay Sự Kiện Bị Đổi Màu", "Chiếc Vòng Đỏ Trên Tay Đứa Trẻ", "Vòng Trắng Bị Đánh Tráo");
-  }
-
-
-  if (normalized.includes("not nhac") || normalized.includes("nốt nhạc") || normalized.includes("ban nhac") || normalized.includes("bản nhạc")) {
-    variants.push("Nốt Nhạc Bị Khoanh Đỏ", "Dấu Bút Đỏ Trên Bản Nhạc", "Bản Nhạc Bị Sửa Một Nốt");
-  }
-
-  if (normalized.includes("nhan chau") || normalized.includes("nhãn chậu") || normalized.includes("chau hoa") || normalized.includes("chậu hoa")) {
-    variants.push("Nhãn Chậu Đặt Sai", "Tấm Nhãn Trên Chậu Hoa", "Chậu Hoa Bị Đổi Tên");
-  }
-
-  if (normalized.includes("nap chai") || normalized.includes("nắp chai") || normalized.includes("vet xuoc") || normalized.includes("vết xước")) {
-    variants.push("Nắp Chai Có Vết Xước", "Vết Xước Trên Nắp Chai", "Dấu Màu Trên Nắp Chai");
-  }
-
-  if (normalized.includes("ve ghe") || normalized.includes("vé ghế") || normalized.includes("ghe 27") || normalized.includes("ghế 27")) {
-    variants.push("Vé Ghế 27 Trong Bó Hoa", "Chiếc Vé Sai Ghế", "Tờ Vé 27 Ở Tiệm Hoa");
-  }
-
-  if (normalized.includes("mau ghi chu") || normalized.includes("mẩu ghi chú") || normalized.includes("ghi chu") || normalized.includes("ghi chú")) {
-    variants.push("Mẩu Ghi Chú Bị Đổi Số", "Tờ Giấy Trước Thang Máy", "Ghi Chú Lệch Ở Sảnh Chung Cư");
-  }
-
-  if (normalized.includes("soi chi") || normalized.includes("sợi chỉ") || normalized.includes("khuy ao") || normalized.includes("khuy áo")) {
-    variants.push("Sợi Chỉ Trên Khuy Áo", "Sợi Chỉ Ở Tiệm Hoa", "Dấu Chỉ Khác Màu");
-  }
-
-  if (normalized.includes("mieng dan") || normalized.includes("miếng dán") || normalized.includes("do choi") || normalized.includes("đồ chơi")) {
-    variants.push("Miếng Dán Bong Góc", "Món Đồ Chơi Bị Đặt Sai", "Dấu Dán Trên Lớp Lót");
-  }
-
-  if (normalized.includes("the giat") || normalized.includes("thẻ giặt") || normalized.includes("tiem giat") || normalized.includes("tiệm giặt")) {
-    variants.push("Thẻ Giặt Còn Ghim", "Tấm Thẻ Ở Tiệm Giặt", "Dấu Vải Sau Lần Giặt");
-  }
-
-
-  if (normalized.includes("quan ly khach san") || normalized.includes("so quan ly") || normalized.includes("so ra vao")) {
-    variants.push(
-      "Sổ Ra Vào Phòng 307",
-      "Dòng Giờ Trong Sổ Khách Sạn",
-      "Chữ Ký Lệch Trong Sổ Quản Lý",
-      "Hai Nốt Chuông Phòng 307",
-    );
-  }
 
   if (normalized.includes("tieng chuong")) {
     variants.push(
@@ -1403,8 +1173,8 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
     variants.push("Tấm Thẻ Phòng Bị Bỏ Quên", "Thẻ Phòng Quẹt Lúc Nửa Đêm", "Dấu Quẹt Trên Thẻ Phòng");
   }
 
-  if (normalized.includes("ma qr") || normalized.includes("mã qr") || normalized.includes("qr code")) {
-    variants.push("Dấu QR Bị Chụp Lại");
+  if (normalized.includes("a-7392") || normalized.includes("ma qr") || normalized.includes("ma")) {
+    variants.push("Mã QR Dẫn Tới Thư Mục Ẩn", "Dòng Mã Trên Vé Sự Kiện", "Mã Số Trong Hồ Sơ Cũ");
   }
 
   if (normalized.includes("bang phan ca")) variants.push("Bảng Phân Ca Lúc Hai Giờ Sáng", "Dòng Mực Khác Trên Bảng Phân Ca");
@@ -1424,27 +1194,22 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
   if (normalized.includes("polaroid")) variants.push("Tấm Polaroid Lệch Ngày", "Ngày Tháng Sau Tấm Ảnh Cũ");
   if (normalized.includes("phieu gui do")) variants.push("Phiếu Gửi Đồ Trong Khách Sạn", "Tên Người Gửi Trên Phiếu Cũ");
 
-  if (token && token.length <= 24 && !isTechnicalSeedTitle(token)) {
-    variants.push(
-      `Người Giữ ${token}`,
-      `Đêm ${token} Lộ Mặt`,
-    );
-  }
-
-  variants.push(makeSafeFallbackTitleFromEvidence(evidenceObject));
-
-  return uniqueStringsForCover(
-    variants.filter((item) => !isTechnicalSeedTitle(item) && !isGenericBadStoryTitle(item)),
-    10,
+  variants.push(
+    `Dấu Vết Từ ${token}`,
+    `${token} Đổi Nghĩa`,
+    `Người Giữ ${token}`,
+    `Đêm ${token} Lộ Mặt`,
   );
+
+  return uniqueStringsForCover(variants, 10);
 }
 
-function makeEvidenceTitle(evidenceObject: string) {
-  const variants = makeEvidenceTitleVariants(evidenceObject).filter(
-    (item) => isHumanStoryTitle(item) && !isGenericBadStoryTitle(item),
+function makeEvidenceTitle(evidenceObject: string, seed: string) {
+  return pickSeedItem(
+    makeEvidenceTitleVariants(evidenceObject),
+    seed,
+    "evidence-title-pattern",
   );
-
-  return variants[0] || makeSafeFallbackTitleFromEvidence(evidenceObject);
 }
 
 function makeSeedAlignedTitle(params: {
@@ -1453,26 +1218,39 @@ function makeSeedAlignedTitle(params: {
   avoidTitles?: string[];
 }) {
   const evidenceTitles = makeEvidenceTitleVariants(params.candidate.evidenceObject)
-  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject);
+  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
+  const setting = normalizeForCompare(params.candidate.setting);
+  const pressure = normalizeForCompare(params.candidate.publicPressure);
+  const hidden = normalizeForCompare(params.candidate.hiddenTruth);
 
   const options = uniqueStringsForCover(
     [
       evidenceTitle,
       ...evidenceTitles,
-      makeSafeFallbackTitleFromEvidence(params.candidate.evidenceObject),
+      setting.includes("truong") || pressure.includes("phu huynh")
+        ? "Dòng Camera Trong Phòng Họp Phụ Huynh"
+        : "",
+      setting.includes("benh vien") || hidden.includes("benh")
+        ? "Mã Hồ Sơ Trong Phòng Bệnh"
+        : "",
+      setting.includes("ngan hang") || pressure.includes("co dong")
+        ? "Dòng Ký Tên Trước Giờ Bỏ Phiếu"
+        : "",
+      setting.includes("khach san") || setting.includes("resort")
+        ? "Phiếu Phòng Trong Khách Sạn"
+        : "",
+      setting.includes("gia toc") || pressure.includes("gia toc") || hidden.includes("di chuc")
+        ? "Trang Di Chúc Trong Từ Đường"
+        : "",
+      params.candidate.dopamineHook.includes("màn hình")
+        ? "Màn Hình Đã Phát Sai File"
+        : "",
     ],
     12,
   );
 
-  const cleanOptions = options
-    .map((item) => sanitizeTitleCandidate(item))
-    .filter((item) => isSafeGeneratedStoryTitle(item, params.candidate.evidenceObject, params.avoidTitles));
-
-  return (
-    cleanOptions[0] ||
-    evidenceTitles.find((item) => isHumanStoryTitle(item, params.avoidTitles) && !isGenericBadStoryTitle(item)) ||
-    makeSafeFallbackTitleFromEvidence(params.candidate.evidenceObject)
-  );
+  const cleanOptions = options.filter((item) => isTitleAllowedByMemory(item, params.avoidTitles));
+  return cleanOptions[0] || evidenceTitles.find((item) => !isGenericAbstractTitle(item)) || evidenceTitle;
 }
 
 function makeChapterTitle(params: {
@@ -1483,8 +1261,8 @@ function makeChapterTitle(params: {
   alternatePressure: string;
   seed: string;
 }) {
-  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject);
-  const altEvidenceTitle = makeEvidenceTitle(params.alternateEvidence);
+  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject, params.seed);
+  const altEvidenceTitle = makeEvidenceTitle(params.alternateEvidence, `${params.seed}-alt`);
   const setting = params.alternateSetting.replace(/^một\s+/i, "").trim();
   const pressure = params.alternatePressure.replace(/^một\s+/i, "").trim();
 
@@ -1492,7 +1270,9 @@ function makeChapterTitle(params: {
     case 1:
       return evidenceTitle;
     case 2:
-      return altEvidenceTitle || titleCaseFirst(pressure.length <= 34 ? pressure : setting) || "Nhân Chứng Đầu Tiên";
+      if (normalizeForCompare(params.candidate.emotionalStake).includes("con")) return "Thẻ Truy Cập Bị Khóa";
+      if (normalizeForCompare(params.candidate.emotionalStake).includes("nguoi than") || normalizeForCompare(params.candidate.emotionalStake).includes("me")) return "Cuộc Gọi Từ Phòng Bệnh";
+      return "Cú Ép Đầu Tiên";
     case 3:
       return titleCaseFirst(setting.length <= 34 ? setting : pressure) || "Địa Điểm Thứ Hai";
     case 4:
@@ -1519,6 +1299,17 @@ function makeChapterTitle(params: {
 }
 
 
+type EvidenceGroupKey =
+  | "phieu_banh"
+  | "nap_chai"
+  | "goc_anh"
+  | "the_giat"
+  | "khan_tay"
+  | "hat_vong"
+  | "hac_giay"
+  | "ve_an"
+  | "unknown";
+
 type EvidenceWorldProfile = {
   genreLabel: string;
   settings: string[];
@@ -1532,8 +1323,99 @@ type EvidenceWorldProfile = {
   alternateEvidences: string[];
 };
 
+function classifyEvidenceGroup(value: string): EvidenceGroupKey {
+  const normalized = normalizeForCompare(value);
+
+  if (normalized.includes("phieu") && normalized.includes("banh")) return "phieu_banh";
+  if (normalized.includes("nap chai") || normalized.includes("vet xuoc")) return "nap_chai";
+  if (normalized.includes("goc anh") || normalized.includes("anh cu") || normalized.includes("ruy bang") || normalized.includes("bo hoa")) return "goc_anh";
+  if (normalized.includes("the giat") || normalized.includes("tiem giat") || ((normalized.includes("ao") || normalized.includes("quan")) && normalized.includes("ghim"))) return "the_giat";
+  if (normalized.includes("khan tay") || normalized.includes("theu")) return "khan_tay";
+  if (normalized.includes("hat vong") || normalized.includes("vong tay")) return "hat_vong";
+  if (normalized.includes("hac giay")) return "hac_giay";
+  if ((normalized.includes("ve") || normalized.includes("phieu")) && (normalized.includes("an") || normalized.includes("ghe"))) return "ve_an";
+
+  return "unknown";
+}
+
+function getEvidenceGroupLabel(group: EvidenceGroupKey) {
+  switch (group) {
+    case "phieu_banh":
+      return "phiếu bánh";
+    case "nap_chai":
+      return "nắp chai";
+    case "goc_anh":
+      return "góc ảnh / ruy-băng";
+    case "the_giat":
+      return "thẻ giặt";
+    case "khan_tay":
+      return "khăn tay";
+    case "hat_vong":
+      return "hạt vòng / vòng tay";
+    case "hac_giay":
+      return "hạc giấy";
+    case "ve_an":
+      return "vé ăn / phiếu ăn";
+    default:
+      return "vật chứng khác";
+  }
+}
+
 function pickWorldItem(items: string[], seed: string, salt: string) {
   return pickSeedItem(items, seed, `world-lock-${salt}`) || items[0] || "";
+}
+
+function getAvoidEvidenceGroupText(avoidLibrary?: AvoidLibrary) {
+  if (!avoidLibrary) return "";
+
+  return [
+    ...(avoidLibrary.titles || []),
+    ...(avoidLibrary.motifs || []),
+    ...(avoidLibrary.motifTexts || []),
+    ...(avoidLibrary.motifFingerprints || []).map((item) => {
+      try {
+        return JSON.stringify(item);
+      } catch {
+        return "";
+      }
+    }),
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function countEvidenceGroupInAvoid(group: EvidenceGroupKey, avoidLibrary?: AvoidLibrary) {
+  if (group === "unknown") return 0;
+
+  const normalizedAvoid = normalizeForCompare(getAvoidEvidenceGroupText(avoidLibrary));
+  if (!normalizedAvoid) return 0;
+
+  const termsByGroup: Record<EvidenceGroupKey, string[]> = {
+    phieu_banh: ["phieu banh", "phieu dat banh", "banh bi xe goc", "hoa don banh"],
+    nap_chai: ["nap chai", "vet xuoc tren nap", "nap chai co vet xuoc"],
+    goc_anh: ["goc anh", "anh cu", "ruy bang", "bo hoa co goc anh"],
+    the_giat: ["the giat", "the giat con ghim", "ao con ghim the"],
+    khan_tay: ["khan tay", "theu chu", "net theu"],
+    hat_vong: ["hat vong", "vong tay", "hat vong sai cho"],
+    hac_giay: ["hac giay", "nep gap"],
+    ve_an: ["ve an", "phieu an", "so ghe", "ve ghe"],
+    unknown: [],
+  };
+
+  return termsByGroup[group].filter((term) => normalizedAvoid.includes(term)).length;
+}
+
+function evidenceGroupRepeatPenalty(group: EvidenceGroupKey, avoidLibrary?: AvoidLibrary) {
+  const repeatCount = countEvidenceGroupInAvoid(group, avoidLibrary);
+  if (repeatCount <= 0) return 0;
+
+  const base = group === "nap_chai" ? 5.5 : 3.6;
+  return base + Math.min(3, repeatCount - 1) * 1.4;
+}
+
+function isRepeatedEvidenceGroupBlocked(group: EvidenceGroupKey, avoidLibrary?: AvoidLibrary) {
+  if (group === "unknown") return false;
+  return evidenceGroupRepeatPenalty(group, avoidLibrary) >= 3.6;
 }
 
 function getEvidenceWorldProfile(evidenceObject: string): EvidenceWorldProfile | null {
@@ -1641,155 +1523,53 @@ function getEvidenceWorldProfile(evidenceObject: string): EvidenceWorldProfile |
     };
   }
 
-  if (normalized.includes("goc anh") || normalized.includes("anh cu") || normalized.includes("ruy bang")) {
+  if (normalized.includes("the giat") || normalized.includes("tiem giat") || ((normalized.includes("ao") || normalized.includes("quan")) && normalized.includes("ghim"))) {
     return {
-      genreLabel: "đời sống studio / bó hoa / ảnh cũ",
+      genreLabel: "đời sống tiệm giặt / tiệm hoa / đồ gửi nhầm",
       settings: [
-        "sạp hoa cạnh studio cũ, nơi một bó hoa bị đem ra làm bằng chứng",
-        "phòng chờ studio ảnh nhỏ, cạnh bàn gói hoa và cuộn ruy-băng",
-        "góc cầu thang sau studio, nơi bó hoa được đặt chờ giao",
+        "tiệm giặt nhỏ cuối con ngõ, nơi một chiếc áo còn ghim thẻ bị đem ra đối chất",
+        "tiệm hoa cạnh khu bếp thiện nguyện, nơi chiếc áo gửi nhầm bị dùng làm bằng chứng",
+        "quầy nhận đồ giặt trong khu dân cư, nơi khách và hàng xóm đang đứng xem",
       ],
       conflicts: [
-        "góc ảnh cũ bị cắt thiếu bị ghim vào bó hoa để gán nữ chính với một chuyện đã qua",
-        "một mảnh ảnh cũ trên dải ruy-băng bị dùng để ép nữ chính nhận chuyện không thuộc về mình",
-        "người dàn cảnh cắt góc ảnh rồi đặt vào bó hoa để tạo hiểu lầm trước nhân chứng",
+        "thẻ giặt còn ghim trong áo bị dùng để đổ lỗi cho nữ chính lấy nhầm đồ của người khác",
+        "một chiếc áo còn ghim thẻ bị bẻ nghĩa thành bằng chứng khiến nữ chính mất uy tín",
+        "người trong khu dùng thẻ giặt lệch mã để ép nữ chính nhận lỗi trước đám đông",
       ],
       pressures: [
-        "người trong studio, khách nhận hoa và một đứa trẻ bị kéo vào cuộc đối chất",
-        "chủ sạp hoa và người nhà gây sức ép ngay trước quầy giao hoa",
-        "đám đông ở studio chờ nữ chính giải thích về mảnh ảnh bị ghim sai chỗ",
+        "chủ tiệm, hàng xóm và người giao đồ gây sức ép ngay tại quầy nhận đồ",
+        "người nhà khách hàng dùng lời chứng mơ hồ để ép nữ chính xin lỗi công khai",
+        "đám đông trong tiệm nhỏ nhìn thẻ giặt như bằng chứng đã đủ kết luận",
       ],
       hiddenTruths: [
-        "mảnh ảnh bị cắt từ một đơn hàng cũ và chỉ người trong studio mới biết góc thiếu ấy",
-        "dải ruy-băng giữ lại vết keo cho thấy bó hoa đã bị mở ra sau khi rời sạp",
-        "người thật sự ghim ảnh là người muốn dùng quá khứ của nữ chính để ép cô im lặng",
+        "thẻ giặt bị ghim lại bằng tay sau khi áo đã rời khỏi tiệm",
+        "mùi nước hoa và mũi chỉ lệch trên thẻ cho thấy người khác đã chạm vào áo",
+        "mã trên thẻ không khớp với sổ nhận đồ của tiệm giặt",
       ],
       villainAttacks: [
-        "phản diện đưa bó hoa có ghim mảnh ảnh cũ ra trước mặt mọi người",
-        "người dàn cảnh dùng lời của đứa trẻ để gán mảnh ảnh cho nữ chính",
-        "phản diện buộc nữ chính giải thích mảnh ảnh ngay tại nơi đông người",
+        "phản diện giơ chiếc áo còn ghim thẻ và ép nữ chính giải thích trước mọi người",
+        "người dàn cảnh dùng lời của một nhân chứng yếu để gán chiếc áo cho nữ chính",
+        "phản diện đe dọa tung chuyện thẻ giặt lên nhóm khu dân cư nếu nữ chính không nhận lỗi",
       ],
       heroineCounters: [
-        "giữ lại dải ruy-băng, đối chiếu vết keo và hỏi người gói hoa",
-        "nhìn ra góc ảnh bị cắt thiếu rồi lần theo đơn hàng cũ của studio",
-        "bảo vệ đứa trẻ khỏi lời nói dối và truy người đã mở bó hoa",
+        "đối chiếu mã thẻ, mũi ghim và sổ nhận đồ để truy người đã ghim lại thẻ",
+        "giữ thẻ giặt, hỏi người giao đồ và kiểm tra mùi nước hoa trên áo",
+        "bảo vệ nhân chứng yếu rồi lần theo mũi chỉ lệch trên thẻ",
       ],
       emotionalStakes: [
-        "nếu thua, quá khứ của nữ chính bị bóp méo và đứa trẻ bị dùng làm công cụ",
-        "nữ chính phải giữ danh dự của mình mà không làm tổn thương đứa trẻ bị dạy nói dối",
-        "cái giá là một lời vu oan công khai ngay tại nơi cô từng làm việc",
+        "nếu thua, nữ chính mất uy tín trong khu và một người yếu thế bị ép khai sai",
+        "nữ chính phải bảo vệ công việc nhỏ của mình trước lời buộc tội từ hàng xóm",
+        "cái giá là danh dự đời thường của một người bị đám đông kết luận quá nhanh",
       ],
       dopamineHooks: [
-        "vết keo trên ruy-băng chứng minh bó hoa đã bị mở ra",
-        "góc ảnh bị cắt khớp với một đơn hàng cũ trong studio",
-        "người gói hoa nhớ được ai yêu cầu thay dải ruy-băng",
+        "mũi chỉ xanh trên thẻ không phải đường ghim của tiệm giặt",
+        "mã thẻ trong sổ nhận đồ khác với mã trên chiếc áo bị đem ra",
+        "người giao đồ nhớ ai đã yêu cầu đổi túi áo trước giờ giao",
       ],
       alternateEvidences: [
-        "dải ruy-băng còn vết keo cũ",
-        "sổ giao hoa ghi sai tên người nhận",
-        "ảnh đơn hàng cũ trong máy của studio",
-      ],
-    };
-  }
-
-  if (normalized.includes("khan tay") || normalized.includes("theu")) {
-    return {
-      genreLabel: "đời sống gia đình / đồ thêu / nhà cũ",
-      settings: [
-        "phòng khách nhà cũ, nơi chiếc khăn tay bị đưa ra trước người thân",
-        "góc tủ đồ trong nhà cũ, cạnh hộp kim chỉ và túi quà chưa mở",
-        "bàn trà trong nhà cũ, nơi người làm và hàng xóm bị gọi đến làm chứng",
-      ],
-      conflicts: [
-        "chiếc khăn tay thêu chữ cái nhỏ bị dùng để kéo nữ chính vào một lời buộc tội trong nhà",
-        "mũi thêu lỗi trên khăn tay bị bẻ nghĩa thành dấu vết chống nữ chính",
-        "người trong nhà dùng chiếc khăn tay để ép nữ chính nhận lỗi trước người thân",
-      ],
-      pressures: [
-        "người thân, hàng xóm và người làm trong nhà cùng gây sức ép trước bàn trà",
-        "người lớn trong nhà yêu cầu nữ chính giải thích chiếc khăn trước mặt nhân chứng",
-        "lời đồn trong nhà cũ khiến người yếu thế sợ bị mất việc",
-      ],
-      hiddenTruths: [
-        "mũi thêu lỗi cho thấy chiếc khăn được gói lại bởi người không quen thêu",
-        "vết gấp trên khăn trùng với kiểu gói quà của một người trong nhà",
-        "người đưa khăn cho nhân chứng mới là người muốn nữ chính mất mặt",
-      ],
-      villainAttacks: [
-        "phản diện giơ chiếc khăn thêu chữ cái nhỏ và ép nữ chính giải thích",
-        "người trong nhà dùng nhân chứng yếu thế để xác nhận chiếc khăn thuộc về nữ chính",
-        "phản diện dọa đưa chuyện chiếc khăn ra nhóm hàng xóm nếu nữ chính không nhận lỗi",
-      ],
-      heroineCounters: [
-        "đối chiếu mũi thêu lỗi, nếp gấp và cách gói quà để truy người đưa khăn",
-        "giữ chiếc khăn làm chứng cứ rồi hỏi từng người đã chạm vào hộp quà",
-        "bảo vệ người làm bị ép khai và lần theo dấu chỉ thêu",
-      ],
-      emotionalStakes: [
-        "nếu thua, nữ chính mất danh dự trong nhà và một người làm bị đẩy ra chịu tội",
-        "nữ chính phải bảo vệ người yếu thế mà không để người nhà bẻ nghĩa chiếc khăn",
-        "cái giá là sự im lặng bị ép trong chính căn nhà cũ của mình",
-      ],
-      dopamineHooks: [
-        "mũi thêu thiếu ở đáy chữ cái lộ ra người thật đã sửa khăn",
-        "nếp gấp trên khăn trùng với kiểu gói quà của một người trong nhà",
-        "người làm nhớ ra ai đã nhờ bà giữ chiếc khăn",
-      ],
-      alternateEvidences: [
-        "hộp kim chỉ còn thiếu một màu chỉ",
-        "túi quà có nếp gấp lệch",
-        "ảnh chụp chiếc khăn trước khi bị gói lại",
-      ],
-    };
-  }
-
-  if (normalized.includes("hat vong") || normalized.includes("vong tay")) {
-    return {
-      genreLabel: "đời sống trường học / sự kiện trẻ em / đồ cá nhân",
-      settings: [
-        "chốt bảo vệ trước cổng trường, nơi một hạt vòng bị đem ra làm chứng cứ",
-        "khu gửi đồ của sự kiện trẻ em, cạnh bàn phát vòng tay",
-        "sảnh lớp học sau giờ đón trẻ, nơi phụ huynh đang đứng chờ",
-      ],
-      conflicts: [
-        "hạt vòng đặt sai chỗ bị dùng để đổ lỗi cho nữ chính trước phụ huynh",
-        "vòng tay của trẻ bị bẻ nghĩa để làm nữ chính mất quyền đón con",
-        "một món đồ nhỏ của trẻ bị đặt sai chỗ để tạo nghi ngờ công khai",
-      ],
-      pressures: [
-        "phụ huynh, bảo vệ và giáo viên gây sức ép ngay trước giờ đón trẻ",
-        "ban đại diện phụ huynh yêu cầu nữ chính giải thích trước đám đông",
-        "lời đồn trong nhóm lớp đe dọa làm đứa trẻ bị cô lập",
-      ],
-      hiddenTruths: [
-        "hạt vòng bị đặt vào xe sau khi trẻ rời khỏi cổng trường",
-        "vòng tay bị tháo ra để che việc người khác đã tiếp xúc với đứa trẻ",
-        "người chứng kiến bị dọa im lặng vì sợ mất việc ở trường",
-      ],
-      villainAttacks: [
-        "phản diện đưa hạt vòng ra và ép nữ chính nhận lỗi trước phụ huynh",
-        "người dàn cảnh dùng ảnh mờ và lời nhân chứng yếu để bẻ nghĩa hạt vòng",
-        "phản diện dọa báo lên nhóm lớp nếu nữ chính không ký biên bản",
-      ],
-      heroineCounters: [
-        "giữ hạt vòng trong túi nhỏ, hỏi nguồn gốc và truy người đã đặt nó vào xe",
-        "đối chiếu màu dây, vết đứt và thời điểm trẻ rời cổng",
-        "bảo vệ đứa trẻ trước khi phản công bằng lời khai của bảo vệ",
-      ],
-      emotionalStakes: [
-        "nếu thua, nữ chính mất quyền đón con và đứa trẻ bị nhìn bằng ánh mắt nghi ngờ",
-        "nữ chính phải bảo vệ đứa trẻ khỏi lời đồn trong nhóm phụ huynh",
-        "cái giá là một buổi đón trẻ biến thành nơi kết tội công khai",
-      ],
-      dopamineHooks: [
-        "vết đứt trên dây vòng không khớp với lời nhân chứng",
-        "bảo vệ nhớ ai đã đứng cạnh xe trước giờ đón trẻ",
-        "hạt vòng còn dính mùi keo của món đồ chơi khác",
-      ],
-      alternateEvidences: [
-        "sợi dây vòng bị đứt còn dính keo",
-        "sổ trực của bảo vệ cổng trường",
-        "ảnh chụp bàn phát vòng tay",
+        "sổ nhận đồ của tiệm giặt",
+        "mũi chỉ xanh lệch trên thẻ",
+        "biên lai giao áo còn ghi giờ nhận",
       ],
     };
   }
@@ -1812,7 +1592,6 @@ function applyEvidenceWorldLock(params: {
   seed: string;
 }) {
   const profile = getEvidenceWorldProfile(params.candidate.evidenceObject);
-
   if (!profile) return null;
 
   params.candidate.setting = pickWorldItem(profile.settings, params.seed, "setting");
@@ -1923,7 +1702,7 @@ function buildSeedCandidate(params: {
   const heroineArc = `${params.heroineLabel}: chịu đau có lý do → quan sát điểm lệch trong ${evidenceObject} → bảo vệ điều quan trọng (${emotionalStake}) → phản công bằng cách riêng (${heroineCounter}) → vả mặt có cảm xúc và payoff.`;
   const emotionalHook = `${emotionalStake}. Cảm xúc phải đến từ đúng kiểu nữ chính "${params.heroineLabel}", không biến cô thành một nữ tổng tài lạnh lùng giống mọi truyện.`;
   const powerStructure = `Quyền lực đối đầu đến từ ${publicPressure} và thế lực quanh ${relationshipConflict}; nữ chính có ${evidenceObject}, sự bình tĩnh, tổn thương thật, và cách phản công riêng: ${heroineCounter}.`;
-  const shortFingerprint = `${params.lane.key} + world:${evidenceWorldProfile?.genreLabel || 'free'} + genre:${exactGenre} + setting:${setting} + evidence:${evidenceObject} + conflict:${relationshipConflict} + heroine:${params.heroineLabel}`;
+  const shortFingerprint = `${params.lane.key} + evidenceGroup:${getEvidenceGroupLabel(classifyEvidenceGroup(evidenceObject))} + world:${evidenceWorldProfile?.genreLabel || "free"} + genre:${exactGenre} + setting:${setting} + evidence:${evidenceObject} + conflict:${relationshipConflict} + heroine:${params.heroineLabel}`;
   const dramaBalance = `Drama balance theo genre: attack=${villainAttack} → hurt=${emotionalStake} → counter=${heroineCounter} → payoff=${dopamineHook}.`;
 
   return {
@@ -2477,254 +2256,6 @@ function getSeedAttempt(seed: string, attempt: number) {
   return attempt === 0 ? seed : `${seed}-variant-${attempt + 1}`;
 }
 
-
-const MOTIF_BANK_SAMPLE_SIZE = 360;
-
-const OVERUSED_MOTIF_TERMS = [
-  "mã qr",
-  "qr",
-  "thư mục ẩn",
-  "tai khoan phu",
-  "tài khoản phụ",
-  "ho so benh an",
-  "hồ sơ bệnh án",
-  "phong khach san",
-  "phòng khách sạn",
-  "phong vip",
-  "phòng vip",
-  "du thuyen",
-  "du thuyền",
-  "quyen truy cap",
-  "quyền truy cập",
-  "khoa quyen",
-  "khóa quyền",
-  "dieu tra noi bo",
-  "điều tra nội bộ",
-];
-
-function hashSeed(input: string) {
-  let hash = 2166136261;
-
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0;
-}
-
-function hasOverusedMotifTerm(text: string) {
-  const normalized = normalizeForCompare(text);
-
-  return OVERUSED_MOTIF_TERMS.some((term) =>
-    normalized.includes(normalizeForCompare(term)),
-  );
-}
-
-function motifBankText(motif: FactoryMotifBankItem) {
-  return [
-    motif.title,
-    motif.premiseLabel,
-    motif.evidenceLabel,
-    motif.hiddenTruthLabel,
-    motif.villainAttackLabel,
-    motif.heroineCounterLabel,
-    motif.arenaLabel,
-    motif.publicPressureLabel,
-    motif.powerStructureLabel,
-    motif.deadlineLabel,
-    motif.heroineStyleLabel,
-    motif.promptHint,
-  ].join(" | ");
-}
-
-function getAvoidMotifFieldText(avoidLibrary?: AvoidLibrary) {
-  return [
-    ...(avoidLibrary?.motifTexts ?? []),
-    ...(avoidLibrary?.titles ?? []),
-    ...(avoidLibrary?.motifFingerprints ?? []).map((item) => {
-      const record = item as unknown as Record<string, unknown>;
-
-      return [
-        record.motifText,
-        record.fingerprint,
-        record.title,
-        tryStringify(record.motifFingerprint),
-        tryStringify(record.fingerprint),
-      ]
-        .filter(Boolean)
-        .join(" | ");
-    }),
-  ]
-    .filter(Boolean)
-    .join(" | ");
-}
-
-function tryStringify(value: unknown) {
-  if (!value) return "";
-
-  if (typeof value === "string") return value;
-
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return "";
-  }
-}
-
-function scoreMotifBankAgainstAvoid(
-  motif: FactoryMotifBankItem,
-  avoidLibrary?: AvoidLibrary,
-) {
-  const candidateText = motifBankText(motif);
-  const avoidText = getAvoidMotifFieldText(avoidLibrary);
-
-  let score = scoreOverlapWithAvoidLibrary(candidateText, avoidLibrary) * 1.25;
-
-  if (hasOverusedMotifTerm(candidateText)) score += 2.5;
-
-  if (avoidText) {
-    const normalizedAvoid = normalizeForCompare(avoidText);
-    const exactFields = [
-      motif.premiseFamily,
-      motif.evidenceType,
-      motif.hiddenTruthType,
-      motif.villainAttackType,
-      motif.heroineCounterType,
-      motif.openingArena,
-      motif.mainArena,
-      motif.publicPressure,
-      motif.powerStructure,
-      motif.deadlineStyle,
-    ];
-
-    for (const field of exactFields) {
-      const normalizedField = normalizeForCompare(field);
-      if (normalizedField && normalizedAvoid.includes(normalizedField)) {
-        score += 0.22;
-      }
-    }
-
-    // Các label đời sống giống nhau cũng nên bị phạt nhẹ để tránh cứ quanh một cụm motif.
-    const labelFields = [
-      motif.evidenceLabel,
-      motif.arenaLabel,
-      motif.hiddenTruthLabel,
-      motif.villainAttackLabel,
-      motif.heroineCounterLabel,
-    ];
-
-    for (const label of labelFields) {
-      const tags = compactTags(label);
-      const repeatedTagCount = tags.filter((tag) => normalizedAvoid.includes(tag)).length;
-      score += repeatedTagCount * 0.04;
-    }
-  }
-
-  score += countProceduralTerms(candidateText) / 35;
-
-  return score;
-}
-
-function pickMotifBankItem(params: {
-  seed: string;
-  genreLabel: string;
-  heroineLabel: string;
-  avoidLibrary?: AvoidLibrary;
-}) {
-  const bank = FACTORY_MOTIF_BANK_10000;
-  if (!bank.length) return null;
-
-  const baseHash = hashSeed(
-    `${params.seed}|${params.genreLabel}|${params.heroineLabel}|motif-bank-v1`,
-  );
-
-  let best: FactoryMotifBankItem | null = null;
-  let bestScore = Number.POSITIVE_INFINITY;
-
-  const sampleCount = Math.min(MOTIF_BANK_SAMPLE_SIZE, bank.length);
-
-  for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
-    const bankIndex = (baseHash + sampleIndex * 9973 + sampleIndex * sampleIndex * 37) % bank.length;
-    const motif = bank[bankIndex];
-    const score =
-      scoreMotifBankAgainstAvoid(motif, params.avoidLibrary) +
-      Number(
-        pickSeedItem(
-          ["0.000", "0.006", "0.012", "0.018", "0.024"],
-          params.seed,
-          `motif-bank-jitter-${sampleIndex}`,
-        ),
-      );
-
-    if (score < bestScore) {
-      bestScore = score;
-      best = motif;
-    }
-
-    if (score <= 0.04) break;
-  }
-
-  return best;
-}
-
-function buildMotifBankLane(
-  motif: FactoryMotifBankItem,
-  heroineLabel: string,
-): StoryDramaLane {
-  const heroine = heroineLabel || motif.heroineStyleLabel || "nữ chính đô thị hiện đại";
-
-  return {
-    key: `motif-bank-${motif.id}`,
-    label: `motif bank 10000: ${motif.premiseLabel}`,
-    conflicts: [
-      motif.premiseLabel,
-      `${heroine} bị kéo vào ${motif.premiseLabel}, nhưng điểm lệch thật nằm ở ${motif.evidenceLabel}`,
-      `phản diện dùng ${motif.villainAttackLabel} để biến nữ chính thành người có lỗi`,
-      `${motif.hiddenTruthLabel}; câu chuyện phải bám đời sống cụ thể, không quay về QR/thư mục ẩn/hồ sơ bệnh án/phòng khách sạn VIP`,
-    ],
-    settings: [
-      motif.arenaLabel,
-      `${motif.arenaLabel}, nơi ${motif.publicPressureLabel}`,
-      `${motif.arenaLabel}, dưới sức ép của ${motif.powerStructureLabel}`,
-    ],
-    evidenceObjects: [
-      motif.evidenceLabel,
-      `${motif.evidenceLabel} bị đặt sai chỗ`,
-      `${motif.evidenceLabel} có một chi tiết lệch mà chỉ nữ chính nhận ra`,
-    ],
-    publicPressures: [
-      motif.publicPressureLabel,
-      `${motif.publicPressureLabel} khiến nữ chính không thể im lặng`,
-      `${motif.publicPressureLabel} trước ${motif.deadlineLabel}`,
-    ],
-    hiddenTruths: [
-      motif.hiddenTruthLabel,
-      `${motif.hiddenTruthLabel}, nhưng phản diện cố bẻ nghĩa bằng ${motif.villainAttackLabel}`,
-    ],
-    villainAttacks: [
-      motif.villainAttackLabel,
-      `${motif.villainAttackLabel} ngay tại ${motif.arenaLabel}`,
-      `${motif.villainAttackLabel} bằng cách lợi dụng ${motif.evidenceLabel}`,
-    ],
-    heroineCounters: [
-      motif.heroineCounterLabel,
-      `${heroine} ${motif.heroineCounterLabel}`,
-      `${heroine} giữ bình tĩnh, bảo vệ người yếu thế rồi ${motif.heroineCounterLabel}`,
-    ],
-    emotionalStakes: [
-      `${motif.deadlineLabel}; nếu thua, nữ chính mất danh dự/người cần bảo vệ/quyền tự quyết`,
-      `điều nữ chính phải bảo vệ không phải thể diện, mà là người yếu thế đang bị kéo vào ${motif.premiseLabel}`,
-      `cảm xúc đến từ ${motif.premiseLabel}, không phải từ giấy tờ pháp lý chung chung`,
-    ],
-    dopamineHooks: [
-      `nữ chính dùng ${motif.evidenceLabel} để buộc phản diện lộ sơ hở`,
-      `người im lặng nhất trong ${motif.arenaLabel} trở thành chìa khóa đảo chiều`,
-      `chi tiết nhỏ trong ${motif.evidenceLabel} lật ngược cách đám đông hiểu sự việc`,
-    ],
-  };
-}
-
 export function buildMockStorySeed(params: {
   genreLabel: string;
   heroineLabel: string;
@@ -2733,17 +2264,6 @@ export function buildMockStorySeed(params: {
 }): FactoryStorySeed {
   let bestCandidate: ReturnType<typeof buildSeedCandidate> | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
-
-  const motifBankItem = pickMotifBankItem({
-    seed: params.seed,
-    genreLabel: params.genreLabel,
-    heroineLabel: params.heroineLabel,
-    avoidLibrary: params.avoidLibrary,
-  });
-
-  const motifBankLane = motifBankItem
-    ? buildMotifBankLane(motifBankItem, params.heroineLabel)
-    : null;
 
   const genreExpandedLanes = buildGenreExpandedLanesFromLabel(
     params.genreLabel,
@@ -2754,11 +2274,9 @@ export function buildMockStorySeed(params: {
   const shouldUseFallbackLanes =
     !params.genreLabel || normalizeForCompare(params.genreLabel).length < 6;
 
-  const lanePool = [
-    ...(motifBankLane ? [motifBankLane] : []),
-    ...genreExpandedLanes,
-    ...(shouldUseFallbackLanes ? FACTORY_DRAMA_LANES.slice(0, 2) : []),
-  ];
+  const lanePool = shouldUseFallbackLanes
+    ? [...genreExpandedLanes, ...FACTORY_DRAMA_LANES.slice(0, 2)]
+    : genreExpandedLanes;
 
   const laneOrder = lanePool.map((lane, index) => {
     const laneText = [
@@ -2772,17 +2290,18 @@ export function buildMockStorySeed(params: {
       ...lane.heroineCounters,
     ].join(" | ");
 
-    const motifBankBonus = lane.key.startsWith("motif-bank-") ? -6.5 : 0;
     const genreLaneBonus = lane.key.startsWith("genre-lock-") ? -2.5 : 0;
     const avoidPenalty = scoreOverlapWithAvoidLibrary(laneText, params.avoidLibrary);
     const proceduralPenalty = countProceduralTerms(laneText) / 80;
+    const laneEvidenceGroup = classifyEvidenceGroup(lane.evidenceObjects.join(" | "));
+    const evidenceRepeatPenalty = evidenceGroupRepeatPenalty(laneEvidenceGroup, params.avoidLibrary);
     const seedBias = Number(
       pickSeedItem(["0.00", "0.01", "0.02", "0.03"], params.seed, `lane-order-${lane.key}-${index}`),
     );
 
     return {
       lane,
-      score: motifBankBonus + genreLaneBonus + avoidPenalty * 0.9 + proceduralPenalty + seedBias,
+      score: genreLaneBonus + avoidPenalty * 0.9 + proceduralPenalty + evidenceRepeatPenalty + seedBias,
     };
   }).sort((a, b) => a.score - b.score);
 
@@ -2813,7 +2332,13 @@ export function buildMockStorySeed(params: {
       const overlapPenalty = scoreOverlapWithAvoidLibrary(candidateText, params.avoidLibrary);
       const proceduralPenalty = countProceduralTerms(candidateText) / 55;
       const exactGenrePenalty = candidate.shortFingerprint.includes(`genre:${params.genreLabel}`) ? -1.2 : 1.2;
-      const score = overlapPenalty * 1.15 + proceduralPenalty + laneItem.score + exactGenrePenalty;
+      const evidenceGroup = classifyEvidenceGroup(candidate.evidenceObject);
+      const evidenceRepeatPenalty = evidenceGroupRepeatPenalty(evidenceGroup, params.avoidLibrary);
+      const score = overlapPenalty * 1.15 + proceduralPenalty + laneItem.score + exactGenrePenalty + evidenceRepeatPenalty;
+
+      if (isRepeatedEvidenceGroupBlocked(evidenceGroup, params.avoidLibrary) && attempt < 7) {
+        continue;
+      }
 
       if (score < bestScore) {
         bestScore = score;
@@ -2835,17 +2360,16 @@ export function buildMockStorySeed(params: {
       lane: genreExpandedLanes[0] ?? pickDramaLane(params.seed, params.avoidLibrary),
     });
 
-  const generatedTitle = makeSeedAlignedTitle({
+  const title = makeSeedAlignedTitle({
     candidate,
     seed: params.seed,
     avoidTitles: params.avoidLibrary?.titles,
-  });
-  const safeFallbackTitle = makeEvidenceTitle(candidate.evidenceObject);
-  const title = isSafeGeneratedStoryTitle(generatedTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
-    ? sanitizeTitleCandidate(generatedTitle)
-    : isSafeGeneratedStoryTitle(safeFallbackTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
-      ? sanitizeTitleCandidate(safeFallbackTitle)
-      : makeSafeFallbackTitleFromEvidence(candidate.evidenceObject);
+  }) ||
+    buildUniqueFactoryTitle({
+      genreLabel: params.genreLabel,
+      seed: params.seed,
+      avoidTitles: params.avoidLibrary?.titles,
+    });
 
   const storyPlan = buildFactoryStoryPlan({
     title,
@@ -2941,7 +2465,7 @@ export function buildMockStorySeed(params: {
       chapterWriter: true,
       storyEditor: true,
       polishRewriter: false,
-      note: "Planner v5 motif-bank-10000: seed DNA ưu tiên motif bank lớn, cấm quay vòng QR/thư mục ẩn/hồ sơ bệnh án/phòng khách sạn VIP/khóa quyền truy cập.",
+      note: "Planner v3 genre-lock: seed DNA lấy từ genre + heroine thật, không default camera/log/pháp lý/phong tỏa.",
     },
   } as FactoryStorySeed;
 }
@@ -3015,7 +2539,6 @@ export function buildStorySeedPromptContext(
   return `
 STORY SEED / STORY DNA BẮT BUỘC:
 - Tên truyện định hướng: ${storySeed.title}
-- CẤM để tên truyện hoặc tên chương giống seed kỹ thuật. Không dùng cụm: "được biến thành", "của thể loại này", "không dùng như", "Đổi Nghĩa", "motif", "genre", "fingerprint".
 - Genre blend: ${storySeed.genreBlend.join(" | ")}
 - Core premise: ${storySeed.corePremise}
 - Opening scene bắt buộc: ${storySeed.openingScene}
@@ -3045,7 +2568,6 @@ QUY TẮC BẮT BUỘC THEO STORY SEED:
 - Không tự đổi về mô típ đã có trong kho truyện nếu seed không yêu cầu.
 - Không dùng lại khung cảnh, vật chứng, bối cảnh, bí mật hoặc áp lực xã hội đã xuất hiện nhiều trong danh sách motif cần tránh.
 - Truyện phải khác rõ rệt ở bối cảnh, vật chứng, áp lực và bí mật.
-- Nếu story seed lấy từ motif bank, phải bám đúng vật chứng đời sống và bối cảnh đời sống đó; không tự đổi về mã QR, thư mục ẩn, hồ sơ bệnh án, phòng khách sạn/VIP, khóa quyền truy cập hoặc điều tra nội bộ.
 - Không để nhiều chương liên tiếp dùng cùng một nhịp: đến một nơi → bị chặn bằng giấy tờ/pháp lý → luật sư/pháp vụ xuất hiện → nữ chính nói sẽ kiện/giám định.
 - Nếu seed có yếu tố hồ sơ/log/giám định/niêm phong/phong tỏa, các yếu tố đó chỉ là một phần của conflict; chương sau phải đổi trọng tâm sang đối đầu trực diện, cảm xúc, truyền thông bẩn, người phản bội, hoặc cú vả mặt công khai.
 - Phản diện chính phải có mặt hoặc để lại dấu ấn cá nhân rõ trong mỗi 1–2 chương; không để luật sư/PR/trợ lý gánh vai ác quá lâu.
