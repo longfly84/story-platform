@@ -992,6 +992,9 @@ const CONCRETE_TITLE_ANCHORS = [
   "anh",
   "video",
   "the phong",
+  "the tu do",
+  "locker",
+  "phong tap",
   "vong tay",
   "nhan",
   "ma so",
@@ -1263,6 +1266,21 @@ function isSafeGeneratedStoryTitle(title: string, evidenceObject: string, avoidT
 }
 
 
+
+function isLockerCardEvidence(value: string) {
+  const normalized = normalizeForCompare(value);
+
+  return (
+    normalized.includes("the tu do") ||
+    normalized.includes("tu do") ||
+    normalized.includes("locker") ||
+    normalized.includes("phong tap") ||
+    normalized.includes("cau lac bo the thao") ||
+    normalized.includes("the ra vao") ||
+    normalized.includes("so thanh vien")
+  );
+}
+
 function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
   const normalized = normalizeForCompare(evidenceObject);
 
@@ -1370,6 +1388,10 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
     variants.push("Thẻ Giặt Còn Ghim", "Tấm Thẻ Ở Tiệm Giặt", "Dấu Vải Sau Lần Giặt");
   }
 
+  if (isLockerCardEvidence(evidenceObject)) {
+    variants.push("Tấm Thẻ Tủ Đồ Bị Đặt Sai", "Chiếc Thẻ Ở Locker Của Đậu", "Tấm Thẻ Ở Tủ Đồ Phòng Tập");
+  }
+
 
   if (normalized.includes("quan ly khach san") || normalized.includes("so quan ly") || normalized.includes("so ra vao")) {
     variants.push(
@@ -1400,7 +1422,7 @@ function makeEvidenceTitleVariants(evidenceObject: string) {
     variants.push("Chiếc Chìa Khóa Trong Két Sắt", "Chìa Khóa Mở Sai Căn Phòng", "Dấu Khắc Trên Chìa Khóa");
   }
 
-  if (normalized.includes("the") && normalized.includes("phong")) {
+  if (!isLockerCardEvidence(evidenceObject) && normalized.includes("the") && normalized.includes("phong")) {
     variants.push("Tấm Thẻ Phòng Bị Bỏ Quên", "Thẻ Phòng Quẹt Lúc Nửa Đêm", "Dấu Quẹt Trên Thẻ Phòng");
   }
 
@@ -1525,51 +1547,62 @@ function buildSeedCandidate(params: {
   seed: string;
   lane: StoryDramaLane;
 }) {
-  const relationshipConflict = pickSeedItem(
+  let relationshipConflict = pickSeedItem(
     params.lane.conflicts,
     params.seed,
     `relationship-${params.lane.key}`,
   );
-  const setting = pickSeedItem(
+  let setting = pickSeedItem(
     params.lane.settings,
     params.seed,
     `setting-${params.lane.key}`,
   );
-  const evidenceObject = pickSeedItem(
+  let evidenceObject = pickSeedItem(
     params.lane.evidenceObjects,
     params.seed,
     `evidence-${params.lane.key}`,
   );
-  const publicPressure = pickSeedItem(
+  let publicPressure = pickSeedItem(
     params.lane.publicPressures,
     params.seed,
     `pressure-${params.lane.key}`,
   );
-  const hiddenTruth = pickSeedItem(
+  let hiddenTruth = pickSeedItem(
     params.lane.hiddenTruths,
     params.seed,
     `truth-${params.lane.key}`,
   );
-  const villainAttack = pickSeedItem(
+  let villainAttack = pickSeedItem(
     params.lane.villainAttacks,
     params.seed,
     `villain-attack-${params.lane.key}`,
   );
-  const heroineCounter = pickSeedItem(
+  let heroineCounter = pickSeedItem(
     params.lane.heroineCounters,
     params.seed,
     `heroine-counter-${params.lane.key}`,
   );
-  const emotionalStake = pickSeedItem(
+  let emotionalStake = pickSeedItem(
     params.lane.emotionalStakes,
     params.seed,
     `emotional-stake-${params.lane.key}`,
   );
-  const dopamineHook = pickSeedItem(
+  let dopamineHook = pickSeedItem(
     params.lane.dopamineHooks,
     params.seed,
     `dopamine-hook-${params.lane.key}`,
   );
+
+  if (isLockerCardEvidence(evidenceObject)) {
+    setting = "khu tủ đồ câu lạc bộ thể thao, cạnh dãy locker và bàn quản lý thẻ thành viên";
+    relationshipConflict = "thẻ tủ đồ bị đặt sai chỗ khiến nữ chính bị nghi cố ý tiếp cận trẻ trong câu lạc bộ";
+    publicPressure = "phụ huynh, quản lý câu lạc bộ và người lớn trong nhà ép nữ chính giải thích ngay tại khu tủ đồ";
+    hiddenTruth = "thẻ tủ đồ bị chuyển sang locker của đứa trẻ sau khi nữ chính rời khỏi phòng tập";
+    villainAttack = "phản diện giơ ảnh thẻ tủ đồ nằm trong locker của đứa trẻ và ép nữ chính nhận lỗi trước phụ huynh";
+    heroineCounter = "đối chiếu số thẻ, vết xước trên mép thẻ và camera khu gửi đồ để tìm người đã chuyển thẻ";
+    emotionalStake = "nếu thua, nữ chính bị mang tiếng lợi dụng trẻ nhỏ và người chăm sóc con cô cũng bị kéo vào lời vu cáo";
+    dopamineHook = "vết xước trên thẻ không khớp với lần quẹt cuối ở cổng phòng tập";
+  }
 
   const genreBlend = [
     params.genreLabel,

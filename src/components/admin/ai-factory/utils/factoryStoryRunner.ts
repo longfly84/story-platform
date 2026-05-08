@@ -302,6 +302,9 @@ function isBadParsedFactoryTitle(value: string) {
     'vet but chi sau gio don tre',
     'manh moi o hien truong',
     'dau chi khac mau',
+    'tam the phong bi bo quen',
+    'the phong quet luc nua dem',
+    'dau quet tren the phong',
     'mon do choi trong phong hop',
     'mon do choi bi dat sai',
     'hoa don hoa gui sai ten',
@@ -360,9 +363,28 @@ function titleMatchesSeedEvidence(title: string, storySeed?: FactoryStorySeed | 
   return evidenceTags.some((tag) => titleTags.has(tag))
 }
 
+
+function isLockerCardEvidenceTitleText(value: string) {
+  const normalized = normalizeTitleForCompare(value)
+
+  return (
+    normalized.includes('the tu do') ||
+    normalized.includes('tu do') ||
+    normalized.includes('locker') ||
+    normalized.includes('phong tap') ||
+    normalized.includes('cau lac bo the thao') ||
+    normalized.includes('the ra vao') ||
+    normalized.includes('so thanh vien')
+  )
+}
+
 function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getSeedEvidenceObject(storySeed)
   const normalized = normalizeTitleForCompare(evidence)
+
+  if (isLockerCardEvidenceTitleText(evidence)) {
+    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
+  }
 
   if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
     return 'Bức Vẽ Lệch Khung'
