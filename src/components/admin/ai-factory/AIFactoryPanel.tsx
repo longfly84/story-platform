@@ -838,7 +838,7 @@ export default function AIFactoryPanel() {
       source: 'generated',
     }
 
-    const comparisonPool = params.existingMotifs.slice(0, 40)
+    const comparisonPool = params.existingMotifs.slice(0, 80)
 
     if (params.provider === 'openai' && comparisonPool.length > 0) {
       try {
@@ -852,7 +852,8 @@ export default function AIFactoryPanel() {
         candidate.embedding = embeddings[0]
 
         comparisonPool.forEach((item, index) => {
-          if (!item.embedding && embeddings[index + 1]) {
+          if (embeddings[index + 1]) {
+            // Re-embed theo motifText v7, không dùng lại embedding cũ đã lưu từ prompt cũ.
             item.embedding = embeddings[index + 1]
           }
         })
@@ -867,7 +868,7 @@ export default function AIFactoryPanel() {
     const rejectResult = shouldRejectMotif({
       candidate,
       existing: comparisonPool,
-      threshold: 0.62,
+      threshold: 0.45,
     })
 
     enrichedSeed.motifSimilarity = rejectResult.best
@@ -930,12 +931,16 @@ export default function AIFactoryPanel() {
       rejectedHints.push(
         [
           best?.item?.title || 'unknown-title',
+          fingerprint?.premiseFamily,
           fingerprint?.openingArena,
           fingerprint?.mainArena,
+          fingerprint?.evidenceType,
+          fingerprint?.evidenceObject,
           fingerprint?.villainAttackType,
           fingerprint?.heroineCounterType,
           fingerprint?.powerStructure,
           fingerprint?.publicPressure,
+          fingerprint?.hiddenTruthType,
           fingerprint?.deadlineStyle,
         ]
           .filter(Boolean)
