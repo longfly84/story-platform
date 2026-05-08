@@ -144,6 +144,47 @@ function buildGenerateApiErrorMessage(response: Response, data: any) {
 }
 
 
+
+function getSeedEvidenceForPrompt(storySeed?: FactoryStorySeed | null) {
+  return String(
+    storySeed?.evidenceObject ||
+      (storySeed as any)?.motifFingerprint?.evidenceObject ||
+      '',
+  ).trim()
+}
+
+function buildChapterSeedLockInstruction(params: {
+  storyTitle: string
+  storySeed?: FactoryStorySeed | null
+}) {
+  const storySeed = params.storySeed
+  const evidenceObject = getSeedEvidenceForPrompt(storySeed)
+  const lockedTitle = String(params.storyTitle || storySeed?.title || evidenceObject || '').trim()
+
+  if (!storySeed && !lockedTitle && !evidenceObject) return ''
+
+  return `
+FACTORY STORY LOCK - KHÓA NGHĨA TRƯỚC KHI VIẾT:
+- STORY_TITLE_LOCK: ${lockedTitle}
+- EVIDENCE_OBJECT_LOCK: ${evidenceObject || lockedTitle}
+- SETTING_LOCK: ${storySeed?.setting || storySeed?.openingScene || ''}
+- OPENING_SCENE_LOCK: ${storySeed?.openingScene || storySeed?.setting || ''}
+- CONFLICT_LOCK: ${storySeed?.mainConflict || storySeed?.corePremise || ''}
+- HIDDEN_TRUTH_LOCK: ${storySeed?.hiddenTruth || ''}
+
+QUY TẮC CỨNG CHO OPENAI:
+1. Trước khi viết chương, phải tự hiểu EVIDENCE_OBJECT_LOCK là vật chứng chính. Không được tách chữ rời, không được đoán theo một token ngắn.
+2. story_title trong technical report PHẢI ĐÚNG Y HỆT STORY_TITLE_LOCK. Không được tự đặt lại thành hợp đồng, USB, camera, mã QR, thẻ phòng, hồ sơ niêm phong, ghi âm, sao kê nếu EVIDENCE_OBJECT_LOCK không ghi rõ.
+3. Chương 1 phải mở bằng tình huống làm EVIDENCE_OBJECT_LOCK xuất hiện sai/ lệch/ bất thường trong SETTING_LOCK. Vật chứng này phải là trung tâm cảnh, không phải chi tiết trang trí.
+4. Bằng chứng phụ chỉ được hỗ trợ vật chứng chính. Cấm thay vật chứng chính bằng vật chứng khác hấp dẫn hơn.
+5. Nếu muốn dùng hợp đồng, USB, camera, hồ sơ, luật sư, pháp vụ, sao kê, chỉ được dùng khi chúng đã có trong seed. Nếu không có trong seed thì cấm dùng làm trục truyện hoặc title.
+6. Mỗi đoạn quan trọng phải trả lời ngầm: ai nhìn thấy vật chứng, nó lệch ở đâu, vì sao nữ chính nhận ra, và nó dẫn tới HIDDEN_TRUTH_LOCK thế nào.
+7. Output technical report bắt buộc dùng:
+   story_title = ${lockedTitle}
+   evidence_object = ${evidenceObject || lockedTitle}
+`.trim()
+}
+
 export async function generateFactoryChapter(params: {
   config: AIFactoryConfig
   provider: AIFactoryConfig['provider']
@@ -202,6 +243,11 @@ Yêu cầu:
 - Trong bản kỹ thuật ghi completion_status = ongoing.
 `
 
+  const storyLockInstruction = buildChapterSeedLockInstruction({
+    storyTitle: params.storyTitle,
+    storySeed: params.storySeed,
+  })
+
   const payload = {
     mode: 'chapter',
     provider: params.provider,
@@ -210,6 +256,7 @@ Yêu cầu:
     title: params.storyTitle,
     storySummary: params.storyDescription,
     promptIdea: [
+      storyLockInstruction,
       params.chapterNumber === 1 ? params.factoryPromptIdea : '',
       params.isFinalChapter ? finalChapterInstruction : '',
     ]

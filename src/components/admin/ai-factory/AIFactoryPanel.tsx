@@ -216,9 +216,6 @@ function cleanFactoryEvidenceForTitle(input: string) {
     .trim()
 }
 
-
-
-
 function isBadFactoryStoryTitle(title: string) {
   const normalized = normalizeFactoryTitleText(title)
 

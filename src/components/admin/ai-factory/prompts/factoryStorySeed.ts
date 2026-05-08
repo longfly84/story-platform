@@ -2745,13 +2745,17 @@ function buildEvidenceSemanticContract(storySeed: FactoryStorySeed) {
 EVIDENCE SEMANTIC CONTRACT - KHÓA HIỂU NGHĨA VẬT CHỨNG:
 - Evidence object gốc: ${storySeed.evidenceObject}
 - Title lock phải xuất ra trong technical report: ${lockedTitle}
+- technical report bắt buộc: story_title = ${lockedTitle}
+- technical report bắt buộc: evidence_object = ${storySeed.evidenceObject}
+- Nếu model tự nghĩ title khác title lock, output đó sai. Không được đổi title sang vật chứng khác dù nghe hấp dẫn hơn.
 - Hãy hiểu vật chứng bằng nghĩa đời sống của cụm trên, không tách chữ rời, không đoán theo một token ngắn.
 - Trước khi viết, tự trả lời ngầm 4 câu:
   1) Vật chứng chính là đồ vật/hồ sơ/sự kiện gì trong đời sống?
   2) Nó xuất hiện ở đâu trong bối cảnh: ${storySeed.setting} / ${storySeed.openingScene}?
   3) Điểm lệch cụ thể của nó là gì, khiến nữ chính nhận ra có người dựng chuyện?
   4) Nó liên quan thế nào đến hidden truth: ${storySeed.hiddenTruth}?
-- Sau khi đã khóa nghĩa, toàn bộ chương phải bám vật chứng đó. Không được đổi vật chứng sang USB, camera, mã QR, thẻ phòng khách sạn, hồ sơ niêm phong, file ghi âm, sao kê, luật sư/pháp vụ nếu seed không ghi rõ.
+- Sau khi đã khóa nghĩa, toàn bộ chương phải bám vật chứng đó. Không được đổi vật chứng sang USB, camera, mã QR, thẻ phòng khách sạn, hợp đồng, hồ sơ niêm phong, file ghi âm, sao kê, luật sư/pháp vụ nếu seed không ghi rõ.
+- Nếu seed là nốt nhạc/cúc áo/phiếu bánh/thẻ tủ đồ/đồ vật đời sống, không được tự nâng cấp thành hợp đồng, USB, hồ sơ pháp lý hoặc camera.
 - Nếu cần thêm bằng chứng phụ, bằng chứng phụ chỉ được hỗ trợ vật chứng chính; không được thay thế vật chứng chính.
 - Tên truyện, mô tả, chương 1 và technical report phải cùng nói về một vật chứng duy nhất: ${storySeed.evidenceObject}.
 - Nếu title tự nghĩ ra không chứa nghĩa vật chứng chính, title đó sai. Dùng đúng title lock: ${lockedTitle}.
