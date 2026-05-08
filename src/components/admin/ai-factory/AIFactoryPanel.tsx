@@ -176,8 +176,73 @@ function normalizeFactoryTitleText(value: unknown) {
     .trim()
 }
 
+function isGenericFactoryEvidence(value: unknown) {
+  const normalized = normalizeFactoryTitleText(value)
+
+  return [
+    '',
+    'chi tiet bi dat sai',
+    'vat chung bi dat sai cho',
+    'mon do bi dat sai',
+    'mon do choi bi dat sai',
+    'vat chung bi lo',
+    'chi tiet bi lo',
+  ].includes(normalized)
+}
+
+function extractFactoryEvidenceFromText(value: unknown) {
+  const text = safeString(value)
+  if (!text) return ''
+
+  const patterns = [
+    /(?:^|[+|;\n])\s*evidence\s*[:=]\s*([^+|;\n]+)/i,
+    /(?:^|[+|;\n])\s*evidenceObject\s*[:=]\s*([^+|;\n]+)/i,
+    /(?:^|[+|;\n])\s*evidenceAxis\s*[:=]\s*(?:[^/\n]+\/)?\s*([^+|;\n]+)/i,
+    /(?:vật chứng chính|vat chung chinh)\s+([^.;\n]+)/i,
+    /(?:trọng tâm là|trong tam la)\s+([^.;\n]+)/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    const candidate = safeString(match?.[1])
+      .replace(/^unknown\s*/i, '')
+      .replace(/\s+heroine\s*:.+$/i, '')
+      .replace(/\s+setting\s*:.+$/i, '')
+      .replace(/\s+genre\s*:.+$/i, '')
+      .trim()
+
+    if (candidate && !isGenericFactoryEvidence(candidate)) return candidate
+  }
+
+  return ''
+}
+
 function getFactorySeedEvidence(storySeed?: FactoryStorySeed | null) {
-  return safeString((storySeed as any)?.evidenceObject || (storySeed as any)?.motifFingerprint?.evidenceObject)
+  const seed = storySeed as any
+  const direct = safeString(seed?.evidenceObject)
+  if (direct && !isGenericFactoryEvidence(direct)) return direct
+
+  const fingerprintEvidence = safeString(seed?.motifFingerprint?.evidenceObject)
+  if (fingerprintEvidence && !isGenericFactoryEvidence(fingerprintEvidence)) return fingerprintEvidence
+
+  const textSources = [
+    seed?.shortFingerprint,
+    seed?.motifText,
+    seed?.motifFingerprint?.fingerprint,
+    seed?.corePremise,
+    seed?.incitingIncident,
+    seed?.mainConflict,
+    seed?.hiddenTruth,
+    seed?.storyPlan?.chapters?.[0]?.evidenceBeat,
+    seed?.storyPlan?.chapters?.[0]?.mission,
+  ]
+
+  for (const source of textSources) {
+    const extracted = extractFactoryEvidenceFromText(source)
+    if (extracted) return extracted
+  }
+
+  return direct || fingerprintEvidence
 }
 
 function isLockerCardEvidenceText(value: string) {
@@ -198,9 +263,15 @@ function isBadFactoryStoryTitle(title: string) {
   const normalized = normalizeFactoryTitleText(title)
 
   return [
+    'chi tiet bi dat sai',
+    'chi tiet bi lo',
+    'manh moi dau tien',
     'manh moi o hien truong',
     'chua dat ten',
     'vat chung bi dat sai cho',
+    'mon do bi dat sai',
+    'mon do choi bi dat sai',
+    'vat chung bi lo',
     'mon qua bi lo',
     'ma qr dan toi thu muc an',
     'dong ma trong ho so cu',
@@ -213,12 +284,83 @@ function isBadFactoryStoryTitle(title: string) {
   ].includes(normalized)
 }
 
+function titleCaseFactoryEvidence(input: string) {
+  return input
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function compactFactoryEvidenceTitle(evidence: string) {
+  return safeString(evidence)
+    .replace(/^một\s+/i, '')
+    .replace(/^một chiếc\s+/i, 'Chiếc ')
+    .replace(/^một tấm\s+/i, 'Tấm ')
+    .replace(/\s+có một chi tiết lệch.*$/i, '')
+    .replace(/\s+không thuộc về.*$/i, '')
+    .replace(/\s+không phải.*$/i, '')
+    .replace(/\s+bị đặt sai chỗ$/i, '')
+    .replace(/\s+bị dùng để.+$/i, '')
+    .replace(/\s+trong một tình huống.+$/i, '')
+    .replace(/\s+lúc nữ chính.+$/i, ' Lúc Tôi Vắng Mặt')
+    .trim()
+}
+
 function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getFactorySeedEvidence(storySeed)
   const normalized = normalizeFactoryTitleText(evidence)
 
+  if (!evidence || isGenericFactoryEvidence(evidence)) {
+    return ''
+  }
+
+  if (normalized.includes('coc') && normalized.includes('vet son')) {
+    return 'Vết Son Trên Chiếc Cốc'
+  }
+
+  if (normalized.includes('ho so') && normalized.includes('nhan con nuoi') && normalized.includes('ghim')) {
+    return 'Dấu Ghim Mới Trên Hồ Sơ Cũ'
+  }
+
+  if ((normalized.includes('goc anh') || normalized.includes('tam anh') || normalized.includes('anh cu')) && normalized.includes('ruy bang')) {
+    return 'Tấm Ảnh Sau Dải Ruy-Băng'
+  }
+
+  if (normalized.includes('the ra vao') || normalized.includes('quet the') || (normalized.includes('the') && normalized.includes('vang mat'))) {
+    return 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt'
+  }
+
   if (isLockerCardEvidenceText(evidence)) {
-    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
+    return normalized.includes('quet') ? 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt' : 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
+  }
+
+  if (normalized.includes('ban phac thao') || normalized.includes('phac thao')) {
+    return 'Bản Phác Thảo Bị Xé Góc'
+  }
+
+  if (normalized.includes('tem') && (normalized.includes('kien hang') || normalized.includes('ma tuyen'))) {
+    return 'Tem Dán Chồng Lên Mã Cũ'
+  }
+
+  if (normalized.includes('con dau') && (normalized.includes('phu luc') || normalized.includes('hop dong'))) {
+    return 'Con Dấu Lệch Trên Phụ Lục'
+  }
+
+  if ((normalized.includes('the') || normalized.includes('so lo')) && normalized.includes('dau gia')) {
+    return 'Thẻ Đấu Giá Bị Tráo Dây'
+  }
+
+  if (normalized.includes('ban nhap') && normalized.includes('thong cao')) {
+    return 'Bản Nháp Thông Cáo Bị Gửi Nhầm'
+  }
+
+  if (normalized.includes('may anh do choi') || (normalized.includes('anh mo') && normalized.includes('do choi'))) {
+    return 'Bức Ảnh Trong Máy Ảnh Đồ Chơi'
+  }
+
+  if (normalized.includes('mau ghi chu') && normalized.includes('thang may')) {
+    return 'Mẩu Ghi Chú Tầng Thang Máy'
   }
 
   if ((normalized.includes('ve') || normalized.includes('phieu')) && (normalized.includes('an') || normalized.includes('so ghe') || normalized.includes('ghe'))) {
@@ -261,20 +403,17 @@ function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
     return 'Bức Vẽ Lệch Khung'
   }
 
-  const clean = evidence
-    .replace(/^một\s+/i, '')
-    .replace(/^một chiếc\s+/i, 'Chiếc ')
-    .replace(/^một tấm\s+/i, 'Tấm ')
-    .replace(/\s+có một chi tiết lệch.*$/i, '')
-    .replace(/\s+không phải.*$/i, '')
-    .replace(/\s+bị đặt sai chỗ$/i, '')
-    .trim()
-
-  if (clean && clean.length <= 34) {
-    return clean.charAt(0).toUpperCase() + clean.slice(1)
+  const clean = compactFactoryEvidenceTitle(evidence)
+  if (clean && clean.length <= 42 && !isGenericFactoryEvidence(clean)) {
+    return titleCaseFactoryEvidence(clean)
   }
 
-  return 'Chi Tiết Bị Đặt Sai'
+  const fallbackWords = clean.split(/\s+/).filter(Boolean).slice(0, 8).join(' ')
+  if (fallbackWords && !isGenericFactoryEvidence(fallbackWords)) {
+    return titleCaseFactoryEvidence(fallbackWords)
+  }
+
+  return ''
 }
 
 function resolvePanelStoryTitle(params: {
@@ -292,7 +431,7 @@ function resolvePanelStoryTitle(params: {
         ? seedTitle
         : parsedTitle && !isBadFactoryStoryTitle(parsedTitle)
           ? parsedTitle
-          : evidenceTitle || 'Chi Tiết Bị Đặt Sai'
+          : evidenceTitle || parsedTitle || seedTitle || 'Truyện Chưa Có Tên'
 
   return {
     title: chosen,

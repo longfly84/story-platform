@@ -1253,7 +1253,25 @@ function pickUrbanStoryFormula(params: {
   genreLabel?: string;
   heroineLabel?: string;
 }) {
-  const scored = URBAN_STORY_FORMULAS.map((formula, index) => {
+  const recentFormulaKeys = new Set(
+    (params.avoidLibrary?.motifFingerprints ?? [])
+      .flatMap((item) => [
+        item.fingerprint?.premiseFamily,
+        item.fingerprint?.fingerprint,
+        item.motifText,
+      ])
+      .map((value) => String(value || '').toLowerCase())
+      .flatMap((text) =>
+        URBAN_STORY_FORMULAS.filter((formula) => text.includes(formula.key.toLowerCase())).map(
+          (formula) => formula.key,
+        ),
+      ),
+  );
+
+  const availableFormulas = URBAN_STORY_FORMULAS.filter((formula) => !recentFormulaKeys.has(formula.key));
+  const formulaPool = availableFormulas.length >= 4 ? availableFormulas : URBAN_STORY_FORMULAS;
+
+  const scored = formulaPool.map((formula, index) => {
     const formulaText = [
       formula.key,
       formula.label,
@@ -1271,15 +1289,10 @@ function pickUrbanStoryFormula(params: {
       ...formula.heroineCounters,
     ].join(" | ");
 
-    const avoidPenalty = scoreOverlapWithAvoidLibrary(formulaText, params.avoidLibrary) * 3.5;
-    const recentFormulaPenalty = (params.avoidLibrary?.motifFingerprints ?? []).some((item) => {
-      const text = `${item.motifText || ""} ${item.fingerprint?.premiseFamily || ""} ${item.fingerprint?.fingerprint || ""}`.toLowerCase();
-      return text.includes(formula.key.toLowerCase());
-    })
-      ? 1.4
-      : 0;
+    const avoidPenalty = scoreOverlapWithAvoidLibrary(formulaText, params.avoidLibrary) * 2.2;
+    const recentFormulaPenalty = recentFormulaKeys.has(formula.key) ? 100 : 0;
     const seedBias = Number(
-      pickSeedItem(["0.00", "0.05", "0.10", "0.15", "0.20", "0.25", "0.30"], params.seed, `formula-${formula.key}-${index}`),
+      pickSeedItem(["0.00", "0.05", "0.10", "0.15", "0.20", "0.25", "0.30", "0.35"], params.seed, `formula-${formula.key}-${index}`),
     );
 
     return {
@@ -1289,11 +1302,11 @@ function pickUrbanStoryFormula(params: {
   });
 
   scored.sort((a, b) => a.score - b.score);
-  const top = scored.slice(0, Math.min(4, scored.length));
+  const top = scored.slice(0, Math.min(6, scored.length));
   return pickSeedItem(
     top.map((item) => item.formula),
     params.seed,
-    "urban-formula-pick",
+    "urban-formula-pick-v22",
   );
 }
 
@@ -2042,7 +2055,7 @@ function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
     return `${token} Bị Lộ`;
   }
 
-  return "Chi Tiết Bị Đặt Sai";
+  return token || "Truyện Chưa Có Tên";
 }
 
 function makeEvidenceTitleVariants(evidenceObject: string) {
