@@ -291,30 +291,38 @@ export function buildMotifTextFromFingerprint(
   fingerprint: StoryMotifFingerprint,
   seed?: Partial<FactoryStorySeed>,
 ) {
+  // V8: motif embedding should compare the story spine, not the whole prose prompt.
+  // Long premise/hiddenTruth prose made every urban female-lead story embed at 0.85+.
+  // Keep only compact axis labels so different arenas/attacks/counters actually separate.
   const parts = [
-    `premiseFamily: ${fingerprint.premiseFamily || 'unknown'}`,
-    `openingArena: ${fingerprint.openingArena || 'unknown'}`,
-    `incitingIncident: ${fingerprint.incitingIncident || seed?.incitingIncident || 'unknown'}`,
-    `evidenceType: ${fingerprint.evidenceType || 'unknown'}`,
-    `evidenceObject: ${fingerprint.evidenceObject || seed?.evidenceObject || 'unknown'}`,
-    `villainAttackType: ${fingerprint.villainAttackType || 'unknown'}`,
-    `heroineCounterType: ${fingerprint.heroineCounterType || 'unknown'}`,
-    `powerStructure: ${fingerprint.powerStructure || 'unknown'}`,
-    `publicPressure: ${fingerprint.publicPressure || 'unknown'}`,
-    `hiddenTruthType: ${fingerprint.hiddenTruthType || 'unknown'}`,
-    `mainArena: ${fingerprint.mainArena || 'unknown'}`,
-    `deadlineStyle: ${fingerprint.deadlineStyle || 'unknown'}`,
-    `antiRepeatTags: ${(fingerprint.antiRepeatTags || []).join(', ') || 'none'}`,
+    `premiseAxis: ${fingerprint.premiseFamily || 'unknown'}`,
+    `arenaAxis: ${fingerprint.openingArena || fingerprint.mainArena || 'unknown'}`,
+    `incidentAxis: ${fingerprint.incitingIncident || seed?.incitingIncident || 'unknown'}`,
+    `evidenceAxis: ${fingerprint.evidenceType || 'unknown'} / ${fingerprint.evidenceObject || seed?.evidenceObject || 'unknown'}`,
+    `attackAxis: ${fingerprint.villainAttackType || 'unknown'}`,
+    `counterAxis: ${fingerprint.heroineCounterType || 'unknown'}`,
+    `powerAxis: ${fingerprint.powerStructure || 'unknown'}`,
+    `pressureAxis: ${fingerprint.publicPressure || 'unknown'}`,
+    `truthAxis: ${fingerprint.hiddenTruthType || 'unknown'}`,
+    `deadlineAxis: ${fingerprint.deadlineStyle || 'unknown'}`,
+    `tags: ${(fingerprint.antiRepeatTags || []).slice(0, 10).join(', ') || 'none'}`,
   ]
 
-  if (seed?.corePremise) parts.push(`corePremise: ${seed.corePremise}`)
-  if (seed?.hiddenTruth) parts.push(`hiddenTruth: ${seed.hiddenTruth}`)
-
-  return parts.join('\n')
+  return parts.join('
+')
 }
 
 export function attachMotifToSeed(seed: FactoryStorySeed) {
-  const motifFingerprint = buildMotifFingerprintFromSeed(seed)
+  // Important V8 fix:
+  // buildMockStorySeed already creates a very specific motifFingerprint
+  // (exact evidence, exact attack, exact counter, exact pressure).
+  // Rebuilding it here with coarse classifiers collapsed many different seeds into
+  // the same buckets: evidence_collection/social_pressure/private_pressure.
+  // That is why every attempt looked like hybrid ~62%, embedding ~88%.
+  const motifFingerprint = seed.motifFingerprint
+    ? normalizeMotifFingerprint(seed.motifFingerprint)
+    : buildMotifFingerprintFromSeed(seed)
+
   const motifText = buildMotifTextFromFingerprint(motifFingerprint, seed)
 
   return {
@@ -365,7 +373,9 @@ export function extractMotifRegistryItemFromStory(story: ExistingStory): StoryMo
       storyId: story.id,
       title: story.title || undefined,
       fingerprint,
-      motifText: rawMotifText || buildMotifTextFromFingerprint(fingerprint),
+      // Rebuild motifText from compact axes instead of trusting old stored long prose.
+      // This lets old stories be compared by spine, not by generic female-urban wording.
+      motifText: buildMotifTextFromFingerprint(fingerprint),
       embedding: Array.isArray(storyDna?.motifEmbedding) ? storyDna.motifEmbedding : undefined,
       source: 'story_dna',
     }
