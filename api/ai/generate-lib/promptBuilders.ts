@@ -102,6 +102,71 @@ BẮT BUỘC KHI VIẾT PHẦN "=== THÔNG TIN TRUYỆN ĐỀ XUẤT ===":
 `.trim()
 }
 
+
+function getFactoryCharacterNameLockInstruction(payload: NormalizedGeneratePayload) {
+  const storySeed = payload.storySeed as any
+  const nameSet = storySeed?.characterNameSet as
+    | {
+        femaleLead?: string
+        child?: string
+        assistant?: string
+        teacher?: string
+        antagonist?: string
+        witness?: string
+        authority?: string
+        relative?: string
+        forbiddenNames?: string[]
+      }
+    | undefined
+
+  const forbidden = [
+    'Hạ Vân',
+    'Tạ Như',
+    'Hứa Thanh',
+    'Giang Thục',
+    'Ôn Kha',
+    'Tống Huy',
+    'Phó Lan',
+    'Mei Lạc',
+    'Lưu Vỹ',
+    'Viên Tĩnh',
+    'Tim',
+    'Tần Nhã',
+    'Phó Khải',
+    ...(Array.isArray(nameSet?.forbiddenNames) ? nameSet?.forbiddenNames || [] : []),
+  ]
+  const uniqueForbidden = Array.from(new Set(forbidden.filter(Boolean)))
+
+  if (nameSet?.femaleLead) {
+    return `
+FACTORY CHARACTER NAME LOCK — BẮT BUỘC:
+- Nữ chính: ${nameSet.femaleLead}
+- Trẻ nhỏ / người yếu thế nếu cần: ${nameSet.child || 'không bắt buộc'}
+- Trợ lý / người hỗ trợ: ${nameSet.assistant || 'không bắt buộc'}
+- Giáo viên / nhân viên chuyên môn nếu cần: ${nameSet.teacher || 'không bắt buộc'}
+- Phản diện chính / người gây áp lực: ${nameSet.antagonist || 'không bắt buộc'}
+- Nhân chứng / người đứng giữa: ${nameSet.witness || 'không bắt buộc'}
+- Người có quyền / bảo vệ / quản lý / đại diện tổ chức: ${nameSet.authority || 'không bắt buộc'}
+- Người thân / phụ huynh / đối tượng gây sức ép phụ: ${nameSet.relative || 'không bắt buộc'}
+
+Luật tên nhân vật:
+1. Nếu vai xuất hiện trong chương, phải dùng đúng tên đã khóa ở trên.
+2. Không tự thay nữ chính thành Hạ Vân/Tống Vân/Tần Nhã hoặc tên cũ.
+3. Không dùng lại các tên đã xuất hiện gần đây: ${uniqueForbidden.join(', ')}.
+4. Không dùng tên Tây như Tim, John, Anna trong bối cảnh nữ tần đô thị Trung Quốc hiện đại. Trẻ nhỏ dùng tên như Tiểu Dữu, An An, Đậu Đậu, Du Du...
+5. Trong cùng truyện phải giữ tên nhất quán qua các chương. Nếu chương trước đã có tên khác trong STORY CONTEXT, ưu tiên continuity của truyện hiện tại; nếu là chương 1 thì dùng name lock này.
+`.trim()
+  }
+
+  return `
+FACTORY CHARACTER NAME DIVERSITY HARD LOCK:
+- Mỗi truyện mới phải có dàn tên mới, không tái dùng dàn tên của truyện vừa tạo.
+- Cấm dùng lại các tên gần đây: ${uniqueForbidden.join(', ')}.
+- Không dùng tên Tây như Tim, John, Anna nếu bối cảnh là Trung Quốc hiện đại/nữ tần đô thị.
+- Tạo tên Trung Quốc hiện đại, dễ đọc với độc giả Việt; nhất quán trong cùng truyện.
+`.trim()
+}
+
 function getVietnameseProseHardGateInstruction() {
   return `
 VIETNAMESE PROSE HARD GATE — CỔNG CHẶN VĂN RÁC / DỊCH MÁY:
@@ -281,6 +346,7 @@ export function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const motifUniquenessInstruction = getGlobalMotifUniquenessInstruction(payload)
   const antiRepeatInstruction = getOpenAIAntiRepeatInstruction(payload)
   const nameDiversityInstruction = getNameDiversityInstruction(payload)
+  const factoryCharacterNameLockInstruction = getFactoryCharacterNameLockInstruction(payload)
   const titleNamingInstruction = getTitleNamingInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
@@ -323,6 +389,8 @@ ${storySeedInstruction}
 ${antiRepeatInstruction}
 
 ${nameDiversityInstruction}
+
+${factoryCharacterNameLockInstruction}
 
 ${titleNamingInstruction}
 
@@ -442,6 +510,7 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const storySeedInstruction = getStorySeedInstruction(payload)
   const antiRepeatInstruction = getOpenAIAntiRepeatInstruction(payload)
   const nameDiversityInstruction = getNameDiversityInstruction(payload)
+  const factoryCharacterNameLockInstruction = getFactoryCharacterNameLockInstruction(payload)
   const titleNamingInstruction = getTitleNamingInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
@@ -502,6 +571,8 @@ ${storySeedInstruction}
 ${antiRepeatInstruction}
 
 ${nameDiversityInstruction}
+
+${factoryCharacterNameLockInstruction}
 
 ${titleNamingInstruction}
 
@@ -754,6 +825,7 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
   const evidenceAnchorInstruction = getFactoryEvidenceAnchorInstruction(payload)
   const reportTitleLockInstruction = getFactoryReportTitleLockInstruction(payload)
+  const factoryCharacterNameLockInstruction = getFactoryCharacterNameLockInstruction(payload)
   const vietnameseEditorHardGateInstruction = getVietnameseEditorHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
 
@@ -795,6 +867,8 @@ ${urbanFemaleScaleLockInstruction}
 ${evidenceAnchorInstruction}
 
 ${reportTitleLockInstruction}
+
+${factoryCharacterNameLockInstruction}
 
 ${vietnameseEditorHardGateInstruction}
 

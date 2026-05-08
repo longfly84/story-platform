@@ -56,6 +56,18 @@ type FactoryCoverConcept = {
 };
 
 
+type FactoryCharacterNameSet = {
+  femaleLead: string;
+  child?: string;
+  assistant: string;
+  teacher: string;
+  antagonist: string;
+  witness: string;
+  authority: string;
+  relative: string;
+  forbiddenNames: string[];
+};
+
 type UrbanStoryFormula = {
   key: string;
   label: string;
@@ -2197,6 +2209,250 @@ function makeChapterTitle(params: {
   }
 }
 
+
+const RECENTLY_OVERUSED_CHARACTER_NAMES = [
+  "Hạ Vân",
+  "Tạ Như",
+  "Hứa Thanh",
+  "Giang Thục",
+  "Ôn Kha",
+  "Tống Huy",
+  "Phó Lan",
+  "Mei Lạc",
+  "Lưu Vỹ",
+  "Viên Tĩnh",
+  "Tim",
+  "Tần Nhã",
+  "Phó Khải",
+];
+
+const CHINESE_FAMILY_NAMES = [
+  "An",
+  "Bùi",
+  "Cảnh",
+  "Chử",
+  "Đàm",
+  "Đới",
+  "Đường",
+  "Dư",
+  "Hứa",
+  "Kha",
+  "Kỷ",
+  "Lạc",
+  "Lương",
+  "Mạnh",
+  "Nghiêm",
+  "Ninh",
+  "Phàn",
+  "Sầm",
+  "Thẩm",
+  "Thịnh",
+  "Tưởng",
+  "Trác",
+  "Trình",
+  "Úc",
+  "Vệ",
+  "Vưu",
+  "Yến",
+  "Doãn",
+  "Tô",
+  "Cố",
+  "Chu",
+  "Diệp",
+  "Bạch",
+  "Tống",
+  "Tần",
+  "Phó",
+  "Ôn",
+];
+
+const MODERN_GIVEN_NAMES = [
+  "Tịnh San",
+  "Nghiên Chi",
+  "Mộc Dao",
+  "Tử Duyệt",
+  "Vãn Ninh",
+  "Khả Dung",
+  "Uyển Thư",
+  "Nhược Khê",
+  "Sơ Hạ",
+  "Lam Dư",
+  "Tịch Dao",
+  "Tư Miên",
+  "Minh Hạ",
+  "Tuyết Nghi",
+  "Thanh Lê",
+  "An Hòa",
+  "Mạn Nghi",
+  "Dĩ Ninh",
+  "Sở Kiều",
+  "Dung Tự",
+  "Lộ Châu",
+  "Hàn Vi",
+  "Yên Nhiên",
+  "Tri Ý",
+];
+
+const MODERN_MALE_GIVEN_NAMES = [
+  "Thừa Dục",
+  "Kính Xuyên",
+  "Dật Thần",
+  "Hoài Sâm",
+  "Trạch Viễn",
+  "Tử Hành",
+  "Minh Triết",
+  "Tư Hoài",
+  "Cảnh Nghiêu",
+  "Bách Xuyên",
+  "Dụ Thành",
+  "Thiệu Hành",
+  "Tấn Ngôn",
+  "Thừa Chu",
+  "Lục Nghiêu",
+  "Vân Trạch",
+];
+
+const CHILD_GIVEN_NAMES = [
+  "Tiểu Dữu",
+  "Tiểu Lật",
+  "Tiểu Mạch",
+  "An An",
+  "Đậu Đậu",
+  "Tử Tử",
+  "Du Du",
+  "Nhạc Nhạc",
+  "Miên Miên",
+  "Lâm Lâm",
+  "A Dữu",
+  "A Lật",
+];
+
+function makeUniqueChineseName(params: {
+  seed: string;
+  role: string;
+  used: Set<string>;
+  male?: boolean;
+}) {
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const family = pickSeedItem(
+      CHINESE_FAMILY_NAMES,
+      params.seed,
+      `name-family-${params.role}-${attempt}`,
+    );
+    const given = pickSeedItem(
+      params.male ? MODERN_MALE_GIVEN_NAMES : MODERN_GIVEN_NAMES,
+      params.seed,
+      `name-given-${params.role}-${attempt}`,
+    );
+    const name = `${family} ${given}`.trim();
+    const normalized = normalizeForCompare(name);
+
+    if (
+      name &&
+      !params.used.has(normalized) &&
+      !RECENTLY_OVERUSED_CHARACTER_NAMES.some(
+        (item) => normalizeForCompare(item) === normalized,
+      )
+    ) {
+      params.used.add(normalized);
+      return name;
+    }
+  }
+
+  const fallback = `${params.role === "antagonist" ? "Kỷ" : "Ninh"} ${params.male ? "Tư Hoài" : "Vãn Ninh"}`;
+  params.used.add(normalizeForCompare(fallback));
+  return fallback;
+}
+
+function buildFactoryCharacterNameSet(params: {
+  seed: string;
+  formulaKey: string;
+  genreLabel: string;
+  heroineLabel: string;
+}): FactoryCharacterNameSet {
+  const used = new Set<string>();
+  const childName = pickSeedItem(
+    CHILD_GIVEN_NAMES,
+    params.seed,
+    `child-name-${params.formulaKey}`,
+  );
+  used.add(normalizeForCompare(childName));
+
+  const femaleLead = makeUniqueChineseName({
+    seed: params.seed,
+    role: "female-lead",
+    used,
+  });
+  const assistant = makeUniqueChineseName({
+    seed: params.seed,
+    role: "assistant",
+    used,
+  });
+  const teacher = makeUniqueChineseName({
+    seed: params.seed,
+    role: "teacher",
+    used,
+  });
+  const antagonist = makeUniqueChineseName({
+    seed: params.seed,
+    role: "antagonist",
+    used,
+    male: true,
+  });
+  const witness = makeUniqueChineseName({
+    seed: params.seed,
+    role: "witness",
+    used,
+  });
+  const authority = makeUniqueChineseName({
+    seed: params.seed,
+    role: "authority",
+    used,
+    male: true,
+  });
+  const relative = makeUniqueChineseName({
+    seed: params.seed,
+    role: "relative",
+    used,
+  });
+
+  return {
+    femaleLead,
+    child: childName,
+    assistant,
+    teacher,
+    antagonist,
+    witness,
+    authority,
+    relative,
+    forbiddenNames: RECENTLY_OVERUSED_CHARACTER_NAMES,
+  };
+}
+
+function formatCharacterNameSetForPrompt(nameSet?: FactoryCharacterNameSet) {
+  if (!nameSet) return "";
+
+  return `
+
+CHARACTER NAME SET / KHÓA TÊN NHÂN VẬT BẮT BUỘC:
+- Nữ chính: ${nameSet.femaleLead}
+- Trẻ nhỏ / người yếu thế nếu cần: ${nameSet.child || "không bắt buộc"}
+- Trợ lý / người hỗ trợ: ${nameSet.assistant}
+- Giáo viên / nhân viên chuyên môn nếu cần: ${nameSet.teacher}
+- Phản diện chính hoặc người tạo áp lực: ${nameSet.antagonist}
+- Nhân chứng / người đứng giữa: ${nameSet.witness}
+- Người có quyền / bảo vệ / quản lý / đại diện tổ chức: ${nameSet.authority}
+- Người thân / phụ huynh / đối tượng gây sức ép phụ: ${nameSet.relative}
+
+QUY TẮC TÊN:
+- Chương 1 phải dùng bộ tên trên, không tự lấy lại tên cũ.
+- Cấm dùng lại các tên gần đây: ${nameSet.forbiddenNames.join(", ")}.
+- Không dùng tên Tây như Tim, John, Anna nếu bối cảnh là Trung Quốc hiện đại/nữ tần đô thị.
+- Nếu vai nào không xuất hiện ở chương này thì bỏ qua, nhưng vai đã xuất hiện phải dùng đúng tên đã khóa.
+- Các chương sau phải giữ nguyên bộ tên này.
+`.trim();
+}
+
 function buildSeedCandidate(params: {
   genreLabel: string;
   heroineLabel: string;
@@ -3262,6 +3518,13 @@ export function buildMockStorySeed(params: {
       ? sanitizeTitleCandidate(safeFallbackTitle)
       : makeSafeFallbackTitleFromEvidence(candidate.evidenceObject);
 
+  const characterNameSet = buildFactoryCharacterNameSet({
+    seed: params.seed,
+    formulaKey: candidate.formulaKey,
+    genreLabel: params.genreLabel,
+    heroineLabel: params.heroineLabel,
+  });
+
   const storyPlan = buildFactoryStoryPlan({
     title,
     seed: params.seed,
@@ -3360,6 +3623,7 @@ export function buildMockStorySeed(params: {
     antiRepeatTags,
     motifFingerprint,
     motifText,
+    characterNameSet,
     coverConcept,
     storyPlan,
     pipeline: {
@@ -3431,11 +3695,15 @@ export function buildStorySeedPromptContext(
   const storySeedWithVisual = storySeed as FactoryStorySeed & {
     storyPlan?: FactoryStoryPlan;
     coverConcept?: FactoryCoverConcept;
+    characterNameSet?: FactoryCharacterNameSet;
   };
   const storyPlan = storySeedWithVisual.storyPlan;
   const storyPlanBlock = formatStoryPlanForPrompt(storyPlan);
   const coverConceptBlock = formatCoverConceptForPrompt(
     storySeedWithVisual.coverConcept,
+  );
+  const characterNameBlock = formatCharacterNameSetForPrompt(
+    storySeedWithVisual.characterNameSet,
   );
 
   return `
@@ -3462,6 +3730,8 @@ ${storyPlanBlock}
 
 ${coverConceptBlock}
 
+${characterNameBlock}
+
 QUY TẮC BẮT BUỘC THEO STORY SEED:
 - Tên truyện khi xuất ra phải giữ tinh thần của tên định hướng và bám vật chứng chính / bối cảnh cụ thể.
 - Không tự đổi tên truyện sang kiểu trừu tượng chung chung như “Người Cuối Cùng Nhìn Thấy Sự Thật”, “Sự Thật...”, “Bí Mật...”, “...Không Nên Xuất Hiện”, “...Không Thuộc Về Tôi” nếu tên đó không chứa vật chứng cụ thể của seed.
@@ -3478,5 +3748,6 @@ QUY TẮC BẮT BUỘC THEO STORY SEED:
 - Phản diện chính phải có mặt hoặc để lại dấu ấn cá nhân rõ trong mỗi 1–2 chương; không để luật sư/PR/trợ lý gánh vai ác quá lâu.
 - Mỗi 1–2 chương phải có một cú emotional stake cụ thể: con/người thân bị tổn thương, người từng tin phản bội, một nhân chứng sợ hãi, hoặc nữ chính phải nuốt nhục trước đám đông.
 - Mỗi chương phải có một thay đổi quyền lực thật: nữ chính mất lợi thế, phản diện lộ sơ hở, đồng minh đổi phe, hoặc nữ chính giành được thắng lợi nhỏ.
+- Tên nhân vật là một phần continuity lock: không tự đổi sang Tạ Như/Hứa Thanh/Giang Thục/Tim hoặc các tên đã cấm nếu CHARACTER NAME SET đã cung cấp tên khác.
 `.trim();
 }
