@@ -46,6 +46,56 @@ function getUrbanFemaleScaleLockInstruction(payload: NormalizedGeneratePayload) 
 
 
 
+
+function getFactoryEvidenceAnchorInstruction(payload: NormalizedGeneratePayload) {
+  const storySeed = payload.storySeed
+  const titleLock = safeText(storySeed?.title || payload.title, payload.title)
+  const evidenceObject = safeText(storySeed?.evidenceObject, '')
+  const incitingIncident = safeText(storySeed?.incitingIncident, '')
+  const mainConflict = safeText(storySeed?.mainConflict, '')
+  const hiddenTruth = safeText(storySeed?.hiddenTruth, '')
+  const setting = safeText(storySeed?.setting, '')
+  const currentPlan = storySeed?.storyPlan?.chapterPlan?.find(
+    (chapter) => chapter.chapterNumber === Math.max(1, Math.floor(payload.nextChapterNumber || 1)),
+  )
+  const planEvidenceBeat = safeText(currentPlan?.evidenceBeat, '')
+  const planTitle = safeText(currentPlan?.title, '')
+
+  if (!titleLock && !evidenceObject && !incitingIncident && !mainConflict && !hiddenTruth) {
+    return ''
+  }
+
+  return `
+FACTORY EVIDENCE ANCHOR LOCK — KHÓA VẬT CHỨNG TRUNG TÂM, KHÔNG ĐỂ MANH MỐI PHỤ CƯỚP TRUYỆN:
+- STORY_TITLE_LOCK: ${titleLock || 'Không có'}
+- EVIDENCE_OBJECT_LOCK: ${evidenceObject || 'Không có'}
+- INCITING_INCIDENT_LOCK: ${incitingIncident || 'Không có'}
+- SETTING_LOCK: ${setting || 'Không có'}
+- MAIN_CONFLICT_LOCK: ${mainConflict || 'Không có'}
+- HIDDEN_TRUTH_LOCK: ${hiddenTruth || 'Không có'}
+- CHAPTER_PLAN_TITLE: ${planTitle || 'Không có'}
+- CHAPTER_PLAN_EVIDENCE_BEAT: ${planEvidenceBeat || 'Không có'}
+
+LUẬT KHÓA BẮT BUỘC:
+1. Vật chứng chính của chương là EVIDENCE_OBJECT_LOCK. Không được đổi vật chứng chính sang manh mối phụ, đồ vật phụ, hoặc vật thể tự bịa.
+2. Manh mối phụ được phép xuất hiện, nhưng chỉ được làm rõ EVIDENCE_OBJECT_LOCK. Nó không được thành tiêu đề chương, không được thành trọng tâm điều tra, không được thay thế vật chứng chính.
+3. Nếu trong lúc viết xuất hiện chi tiết phụ như miếng dán, vết keo, nhãn, bút, ảnh phụ, tiếng động, người chứng kiến, vật đó chỉ là chi tiết nằm trong hoặc xoay quanh EVIDENCE_OBJECT_LOCK.
+4. Tiêu đề chương phải bám EVIDENCE_OBJECT_LOCK hoặc biến cố trực tiếp của nó. Với Chương 1, nếu chưa có lý do mạnh hơn, dùng dạng: "# Chương ${Math.max(1, Math.floor(payload.nextChapterNumber || 1))} — ${evidenceObject || titleLock}".
+5. Không đặt tiêu đề chương bằng manh mối phụ nếu vật chứng chính đã có tên rõ. Ví dụ: nếu EVIDENCE_OBJECT_LOCK là "ảnh mờ trong máy ảnh đồ chơi", không đặt tiêu đề chương là "Miếng Dán Bong Góc"; miếng dán chỉ là chi tiết phụ trong bức ảnh.
+6. Trong BẢN ĐỌC, EVIDENCE_OBJECT_LOCK phải xuất hiện bằng cảnh/hành động ít nhất 3 lần: lúc bị đưa ra, lúc nữ chính quan sát điểm lệch, và lúc nó tạo hậu quả hoặc mở hướng điều tra.
+7. Technical report phải ghi story_title đúng theo STORY_TITLE_LOCK nếu lock đã cụ thể. Không được tự đổi sang hợp đồng, USB, camera an ninh, mã QR, hồ sơ niêm phong, thẻ phòng, nhật ký, ghi âm nếu seed không ghi.
+8. Nếu EVIDENCE_OBJECT_LOCK là ảnh trong máy ảnh đồ chơi, trọng tâm phải là cái máy ảnh đồ chơi + bức ảnh mờ + vị trí bị đặt sai. Mọi nhãn/miếng dán/vết keo chỉ là dấu hiệu phụ để đọc ảnh, không phải vật chứng chính.
+9. Nếu EVIDENCE_OBJECT_LOCK là nốt nhạc bị khoanh bút đỏ, trọng tâm phải là tờ/nốt nhạc + nét khoanh + người đặt/đưa nó. Không được chuyển thành hợp đồng có dấu đỏ.
+10. Nếu EVIDENCE_OBJECT_LOCK là phiếu đặt bánh, trọng tâm phải là phiếu bánh/đơn đặt bánh/góc xé. Không được chuyển thành vé ăn/số ghế chỉ vì chữ "bánh" chứa âm gần giống.
+
+SELF CHECK TRƯỚC KHI TRẢ OUTPUT:
+- Xóa tiêu đề chương nếu tiêu đề đang gọi tên manh mối phụ thay vì EVIDENCE_OBJECT_LOCK.
+- Rewrite lại đoạn giữa nếu manh mối phụ xuất hiện nhiều hơn vật chứng chính.
+- Rewrite technical report nếu story_title hoặc title proposal lệch khỏi STORY_TITLE_LOCK/EVIDENCE_OBJECT_LOCK.
+`.trim()
+}
+
+
 function getVietnameseProseHardGateInstruction() {
   return `
 VIETNAMESE PROSE HARD GATE — CỔNG CHẶN VĂN RÁC / DỊCH MÁY:
@@ -228,6 +278,7 @@ export function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const titleNamingInstruction = getTitleNamingInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
+  const evidenceAnchorInstruction = getFactoryEvidenceAnchorInstruction(payload)
   const cliffhangerRule = getCliffhangerRule(payload)
 
   return `
@@ -272,6 +323,8 @@ ${titleNamingInstruction}
 ${heroineInstruction}
 
 ${urbanFemaleScaleLockInstruction}
+
+${evidenceAnchorInstruction}
 
 ${cliffhangerRule}
 
@@ -386,6 +439,7 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const titleNamingInstruction = getTitleNamingInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
+  const evidenceAnchorInstruction = getFactoryEvidenceAnchorInstruction(payload)
   const storyContext = buildStoryContext(payload)
   const technicalReport = getTechnicalReportInstruction()
   const cliffhangerRule = getCliffhangerRule(payload)
@@ -447,6 +501,8 @@ ${titleNamingInstruction}
 ${heroineInstruction}
 
 ${urbanFemaleScaleLockInstruction}
+
+${evidenceAnchorInstruction}
 
 ${storyContext}
 
@@ -645,7 +701,7 @@ FORMAT PHẦN ĐỌC:
 
 [Viết nội dung chương bằng văn xuôi liên tục.]
 
-Sau phần đọc, thêm dòng "---", rồi viết phần kỹ thuật theo mẫu sau:
+Sau phần đọc, thêm dòng "---", rồi viết phần kỹ thuật theo mẫu sau. Trong phần kỹ thuật, story_title / Tên truyện đề xuất phải bám STORY_TITLE_LOCK và EVIDENCE_OBJECT_LOCK; không được tự bịa vật chứng khác:
 
 ${technicalReport}
 `.trim()
@@ -678,6 +734,7 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
     (chapter) => chapter.chapterNumber === chapterNumber + 1,
   )
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
+  const evidenceAnchorInstruction = getFactoryEvidenceAnchorInstruction(payload)
   const vietnameseEditorHardGateInstruction = getVietnameseEditorHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
 
@@ -716,6 +773,8 @@ THÔNG TIN TRUYỆN:
 
 ${urbanFemaleScaleLockInstruction}
 
+${evidenceAnchorInstruction}
+
 ${vietnameseEditorHardGateInstruction}
 
 ${vietnameseSemanticLogicGateInstruction}
@@ -745,8 +804,10 @@ Nhiệm vụ đặt tên trong editor pass:
 1. Nếu tiêu đề chương trong draft chung chung/kiểu phân tích/lệch nội dung, phải đổi dòng tiêu đề chương thành tên mới cụ thể hơn.
 2. Tên chương final phải phản ánh vật chứng, biến cố, địa điểm, thời hạn, cú ép, nhân vật phản bội hoặc state change chính của chương.
 3. Cấm giữ các tiêu đề kiểu: “Cú ép đầu tiên và tổn thương thật”, “Đổi sân khấu, không đổi mục tiêu”, “Cú đáp trả bất ngờ”, “Ván cờ mới bắt đầu”, “Sự thật dần hé lộ”.
-4. Nếu phần kỹ thuật có “Tên truyện đề xuất”, tên đó phải khớp nội dung thật. Nếu tên hiện tại lệch, đề xuất tên mới dựa trên vật chứng/mâu thuẫn trung tâm.
+4. Nếu phần kỹ thuật có “Tên truyện đề xuất”, tên đó phải khớp STORY_TITLE_LOCK / vật chứng trung tâm. Không được đề xuất tên dựa trên manh mối phụ.
 5. Không đổi tên truyện trong phần BẢN ĐỌC, nhưng phần kỹ thuật phải ghi rõ nếu tên hiện tại không khớp và đề xuất tên thay thế.
+6. Nếu tiêu đề chương trong draft đang lấy manh mối phụ làm trọng tâm, phải đổi lại để bám vật chứng trung tâm. Ví dụ: evidence là ảnh mờ trong máy ảnh đồ chơi thì tiêu đề không được là “Miếng Dán Bong Góc”.
+7. Khi rewrite, không được để manh mối phụ xuất hiện nhiều hơn vật chứng trung tâm. Nếu có, phải giảm manh mối phụ và đưa vật chứng trung tâm quay lại cảnh chính.
 
 CONTEXT GẦN NHẤT:
 ${recentContext || '- Chưa có chương trước.'}
