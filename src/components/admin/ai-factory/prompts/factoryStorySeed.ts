@@ -2804,6 +2804,14 @@ ${storyPlanBlock}
 
 ${coverConceptBlock}
 
+QUY TẮC GIỌNG VĂN TỰ NHIÊN:
+- Viết như truyện mạng tiếng Việt do người thật viết, không giống văn dịch hoặc văn mẫu AI.
+- Cảnh căng phải có câu ngắn, lời thoại đời, phản ứng đám đông cụ thể.
+- Tránh giải thích tâm lý quá lộ. Đừng viết kiểu "Cái chỗ vụng về trong câu chuyện hiện ra"; hãy để chi tiết tự lộ qua hành động, nét bút, ánh mắt, vật chứng, lời nói mâu thuẫn.
+- Giảm ẩn dụ sân khấu và cụm sáo: "quyền lực rời khỏi mình", "bản cáo trạng", "con dấu", "ván cờ", "khán đài", "áp lực dồn lên".
+- Nữ chính nói gọn, sắc, đời thường. Phụ huynh/đám đông khi giận phải nói như người thật, không nói quá lịch sự như biên bản.
+- Mỗi cảnh phải có chi tiết đời thường cụ thể để người Việt đọc thấy thật: tiếng điện thoại, tay run, bút đỏ, vết bẩn, tiếng người chen ngang, ánh mắt né tránh.
+
 QUY TẮC BẮT BUỘC THEO STORY SEED:
 - Tên truyện khi xuất ra trong technical report phải dùng đúng “Tên truyện khóa theo vật chứng”. Không tự đổi sang vật chứng khác dù nghe kịch tính hơn.
 - Không tự đổi tên truyện sang kiểu trừu tượng chung chung như “Người Cuối Cùng Nhìn Thấy Sự Thật”, “Sự Thật...”, “Bí Mật...”, “...Không Nên Xuất Hiện”, “...Không Thuộc Về Tôi” nếu tên đó không chứa vật chứng cụ thể của seed.

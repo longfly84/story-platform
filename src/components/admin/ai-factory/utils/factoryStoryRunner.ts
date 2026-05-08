@@ -185,6 +185,32 @@ QUY TẮC CỨNG CHO OPENAI:
 `.trim()
 }
 
+
+
+function buildNaturalVietnameseProseInstruction() {
+  return `
+NATURAL VIETNAMESE PROSE LOCK - GIỌNG VĂN NGƯỜI VIỆT:
+Mục tiêu: đọc như truyện mạng tiếng Việt do người thật viết, không giống bản dịch máy hoặc văn mẫu AI.
+
+Bắt buộc khi viết chương:
+1. Cảnh căng phải dùng câu ngắn hơn. Ưu tiên hành động, ánh mắt, cử chỉ, lời thoại và phản ứng đám đông thay vì giải thích tâm lý dài.
+2. Đối thoại phải đời thường, có va chạm. Nhân vật đang tức giận/hoang mang không nói quá lịch sự, quá tròn câu hoặc như đang đọc biên bản.
+3. Giảm câu trừu tượng kiểu: "quyền lực rời khỏi mình", "bản cáo trạng", "con dấu", "ván cờ", "sân khấu", "khán đài", "áp lực dồn lên". Nếu cần, thay bằng câu cụ thể hơn: "Tôi biết mình đang mất thế", "Đám đông không còn nghe tôi nữa".
+4. Không giảng logic cho độc giả bằng câu phân tích lộ liễu như "Cái chỗ vụng về trong câu chuyện hiện ra". Hãy để nhân vật nhận ra qua chi tiết: nét bút, vị trí vật chứng, lời nói mâu thuẫn, camera, nhân chứng.
+5. Mỗi đoạn 2-4 câu là chính. Tránh đoạn văn quá đều, quá sạch, quá giống AI.
+6. Mỗi cảnh phải có ít nhất một chi tiết đời thường cụ thể: âm thanh, vật nhỏ, thao tác tay, ánh mắt, điện thoại, mùi, vết bẩn, tiếng người chen vào.
+7. Nữ chính bình tĩnh nhưng không nói như luật sư trong mọi cảnh. Khi bị ép trước đám đông, lời nói phải gọn, có lực, dễ hiểu.
+8. Không dùng nhiều mỹ từ. Không cố làm văn. Ưu tiên rõ, sắc, tự nhiên, có nhịp truyện.
+
+Ví dụ chuyển giọng:
+- Không viết: "Tôi cảm thấy quyền lực rời khỏi mình."
+- Nên viết: "Tôi biết mình đang mất thế. Đám đông đã ngả về phía họ."
+- Không viết: "Chúng tôi không có nhiều thời gian. Chúng tôi cần biết con mình an toàn."
+- Nên viết: "Cô nói thẳng đi. Con tôi có an toàn không?"
+`.trim()
+}
+
+
 export async function generateFactoryChapter(params: {
   config: AIFactoryConfig
   provider: AIFactoryConfig['provider']
@@ -257,6 +283,7 @@ Yêu cầu:
     storySummary: params.storyDescription,
     promptIdea: [
       storyLockInstruction,
+      buildNaturalVietnameseProseInstruction(),
       params.chapterNumber === 1 ? params.factoryPromptIdea : '',
       params.isFinalChapter ? finalChapterInstruction : '',
     ]
