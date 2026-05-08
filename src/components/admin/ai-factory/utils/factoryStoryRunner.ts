@@ -353,6 +353,60 @@ function getSeedEvidenceObject(storySeed?: FactoryStorySeed | null) {
   ).trim()
 }
 
+function titleCaseFactoryEvidence(input: string) {
+  return input
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .map((word) => {
+      if (!word) return word
+      if (/^(USB|QR|ADN|CEO|VIP)$/i.test(word)) return word.toUpperCase()
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join(' ')
+}
+
+function hasFactoryEvidenceState(input: string) {
+  const normalized = ` ${normalizeTitleForCompare(input)} `
+  return [
+    ' bi ',
+    ' co ',
+    ' lech',
+    ' sai',
+    ' rach',
+    ' xe ',
+    ' roi',
+    ' mat',
+    ' bong',
+    ' doi',
+    ' sua',
+    ' cat',
+    ' gui nham',
+    ' quay nham',
+  ].some((marker) => normalized.includes(marker))
+}
+
+function cleanFactoryEvidenceForTitle(input: string) {
+  return String(input || '')
+    .trim()
+    .replace(/^một\s+/i, '')
+    .replace(/^một chiếc\s+/i, 'Chiếc ')
+    .replace(/^một tấm\s+/i, 'Tấm ')
+    .replace(/^một mẩu\s+/i, 'Mẩu ')
+    .replace(/\s+có một chi tiết lệch.*$/i, '')
+    .replace(/\s+co mot chi tiet lech.*$/i, '')
+    .replace(/\s+mà chỉ.*$/i, '')
+    .replace(/\s+ma chi.*$/i, '')
+    .replace(/\s+không phải.*$/i, '')
+    .replace(/\s+khong phai.*$/i, '')
+    .replace(/\s+theo công thức.*$/i, '')
+    .replace(/\s+theo cong thuc.*$/i, '')
+    .replace(/\s+bị đặt sai chỗ$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+
 function titleMatchesSeedEvidence(title: string, storySeed?: FactoryStorySeed | null) {
   const evidence = getSeedEvidenceObject(storySeed)
   const titleTags = new Set(compactTitleTags(title))
@@ -364,85 +418,23 @@ function titleMatchesSeedEvidence(title: string, storySeed?: FactoryStorySeed | 
 }
 
 
-function isLockerCardEvidenceTitleText(value: string) {
-  const normalized = normalizeTitleForCompare(value)
-
-  return (
-    normalized.includes('the tu do') ||
-    normalized.includes('tu do') ||
-    normalized.includes('locker') ||
-    normalized.includes('phong tap') ||
-    normalized.includes('cau lac bo the thao') ||
-    normalized.includes('the ra vao') ||
-    normalized.includes('so thanh vien')
-  )
-}
-
 function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getSeedEvidenceObject(storySeed)
-  const normalized = normalizeTitleForCompare(evidence)
+  const clean = cleanFactoryEvidenceForTitle(evidence)
+  const title = titleCaseFactoryEvidence(clean)
 
-  if (isLockerCardEvidenceTitleText(evidence)) {
-    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
+  if (title && title.length <= 48) {
+    return hasFactoryEvidenceState(title) ? title : `${title} Bị Lộ`
   }
 
-  if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
-    return 'Bức Vẽ Lệch Khung'
-  }
-
-  if (normalized.includes('anh mo') || normalized.includes('may anh do choi')) {
-    return 'Ảnh Mờ Trong Máy Ảnh Đồ Chơi'
-  }
-
-  if (normalized.includes('mieng dan')) {
-    return 'Miếng Dán Bong Góc'
-  }
-
-  if (normalized.includes('nap chai') || normalized.includes('vet xuoc')) {
-    return 'Nắp Chai Có Vết Xước'
-  }
-
-  if (normalized.includes('hat vong')) {
-    return 'Hạt Vòng Sai Chỗ'
-  }
-
-  if (normalized.includes('vong tay')) {
-    return 'Vòng Tay Sự Kiện Bị Đổi Màu'
-  }
-
-  if (normalized.includes('nhan chau') || normalized.includes('chau hoa')) {
-    return 'Chậu Cây Bị Cắm Sai Nhãn'
-  }
-
-  if (normalized.includes('soi chi') || normalized.includes('khuy ao') || normalized.includes('chi con mac') || normalized.includes('chi lech')) {
-    return 'Sợi Chỉ Ở Khuy Áo'
-  }
-
-  if (normalized.includes('to giay') || normalized.includes('mau giay') || normalized.includes('ghi chu')) {
-    return 'Tờ Giấy Trước Thang Máy'
-  }
-
-  if (normalized.includes('phieu') && normalized.includes('banh')) {
-    return 'Phiếu Bánh Bị Xé Góc'
-  }
-
-  if (evidence) {
-    const clean = evidence
-      .replace(/^một\s+/i, '')
-      .replace(/^một chiếc\s+/i, 'Chiếc ')
-      .replace(/^một tấm\s+/i, 'Tấm ')
-      .replace(/^một mẩu\s+/i, 'Mẩu ')
-      .replace(/\s+không phải.*$/i, '')
-      .replace(/\s+bị đặt sai chỗ$/i, '')
-      .trim()
-
-    if (clean && clean.length <= 34) {
-      return clean.charAt(0).toUpperCase() + clean.slice(1)
-    }
+  const shortTitle = title.split(/\s+/).slice(0, 7).join(' ').trim()
+  if (shortTitle && shortTitle.length >= 8) {
+    return hasFactoryEvidenceState(shortTitle) ? shortTitle : `${shortTitle} Bị Lộ`
   }
 
   return 'Chi Tiết Bị Đặt Sai'
 }
+
 
 function isAcceptableFactoryStoryTitle(title: string, storySeed?: FactoryStorySeed | null) {
   if (!title || isBadParsedFactoryTitle(title)) return false

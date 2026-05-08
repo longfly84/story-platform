@@ -1189,11 +1189,20 @@ function cleanTitleToken(input: string) {
     .replace(/được biến thành.*$/i, "")
     .replace(/không dùng như.*$/i, "")
     .replace(/của thể loại này.*$/i, "")
+    .replace(/\s+có một chi tiết lệch.*$/i, "")
+    .replace(/\s+co mot chi tiet lech.*$/i, "")
+    .replace(/\s+mà chỉ.*$/i, "")
+    .replace(/\s+ma chi.*$/i, "")
+    .replace(/\s+không phải.*$/i, "")
+    .replace(/\s+khong phai.*$/i, "")
+    .replace(/\s+theo công thức.*$/i, "")
+    .replace(/\s+theo cong thuc.*$/i, "")
     .replace(/^một\s+/i, "")
     .replace(/^một chiếc\s+/i, "Chiếc ")
     .replace(/^một đoạn\s+/i, "Đoạn ")
     .replace(/^một bản\s+/i, "Bản ")
     .replace(/^một tấm\s+/i, "Tấm ")
+    .replace(/^một mẩu\s+/i, "Mẩu ")
     .replace(/^một file\s+/i, "File ")
     .replace(/^hồ sơ\s+/i, "Hồ Sơ ")
     .replace(/^ảnh\s+/i, "Ảnh ")
@@ -1202,6 +1211,7 @@ function cleanTitleToken(input: string) {
     .replace(/^di chúc\s+/i, "Di Chúc ")
     .replace(/^email\s+/i, "Email ")
     .replace(/^usb\s+/i, "USB ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -1209,6 +1219,39 @@ function titleCaseFirst(input: string) {
   const clean = input.trim();
   if (!clean) return clean;
   return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+function titleCaseEvidence(input: string) {
+  return input
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((word) => {
+      if (!word) return word;
+      if (/^(USB|QR|ADN|CEO|VIP)$/i.test(word)) return word.toUpperCase();
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+function hasBuiltInEvidenceState(input: string) {
+  const normalized = normalizeForCompare(input);
+  return [
+    " bi ",
+    " co ",
+    " lech",
+    " sai",
+    " rach",
+    " xe ",
+    " roi",
+    " mat",
+    " bong",
+    " doi",
+    " sua",
+    " cat",
+    " quay nham",
+    " gui nham",
+  ].some((marker) => ` ${normalized} `.includes(marker));
 }
 
 
@@ -1320,14 +1363,19 @@ function makeSafeFallbackTitleFromEvidence(evidenceObject: string) {
     return "Miếng Dán Bong Góc";
   }
 
-  const token = titleCaseFirst(cleanTitleToken(evidenceObject))
+  const token = titleCaseEvidence(cleanTitleToken(evidenceObject))
     .replace(/^Một\s+/i, "")
-    .replace(/^Mảnh\s+nhỏ\s+/i, "Mảnh ")
-    .replace(/\s+bị\s+đặt\s+sai\s+chỗ$/i, "")
+    .replace(/^Mảnh\s+Nhỏ\s+/i, "Mảnh ")
+    .replace(/\s+Bị\s+Đặt\s+Sai\s+Chỗ$/i, "")
     .trim();
 
-  if (token && token.length <= 32 && !isTechnicalSeedTitle(token)) {
-    return `${token} Bị Lộ`;
+  if (token && token.length <= 46 && !isTechnicalSeedTitle(token)) {
+    return hasBuiltInEvidenceState(token) ? token : `${token} Bị Lộ`;
+  }
+
+  const shortToken = token.split(/\s+/).slice(0, 7).join(" ").trim();
+  if (shortToken && shortToken.length >= 8 && !isTechnicalSeedTitle(shortToken)) {
+    return hasBuiltInEvidenceState(shortToken) ? shortToken : `${shortToken} Bị Lộ`;
   }
 
   return "Chi Tiết Bị Đặt Sai";
@@ -2690,6 +2738,26 @@ QUY TẮC THEO STORY PLANNER:
 `.trim();
 }
 
+function buildEvidenceSemanticContract(storySeed: FactoryStorySeed) {
+  const lockedTitle = makeEvidenceTitle(storySeed.evidenceObject);
+
+  return `
+EVIDENCE SEMANTIC CONTRACT - KHÓA HIỂU NGHĨA VẬT CHỨNG:
+- Evidence object gốc: ${storySeed.evidenceObject}
+- Title lock phải xuất ra trong technical report: ${lockedTitle}
+- Hãy hiểu vật chứng bằng nghĩa đời sống của cụm trên, không tách chữ rời, không đoán theo một token ngắn.
+- Trước khi viết, tự trả lời ngầm 4 câu:
+  1) Vật chứng chính là đồ vật/hồ sơ/sự kiện gì trong đời sống?
+  2) Nó xuất hiện ở đâu trong bối cảnh: ${storySeed.setting} / ${storySeed.openingScene}?
+  3) Điểm lệch cụ thể của nó là gì, khiến nữ chính nhận ra có người dựng chuyện?
+  4) Nó liên quan thế nào đến hidden truth: ${storySeed.hiddenTruth}?
+- Sau khi đã khóa nghĩa, toàn bộ chương phải bám vật chứng đó. Không được đổi vật chứng sang USB, camera, mã QR, thẻ phòng khách sạn, hồ sơ niêm phong, file ghi âm, sao kê, luật sư/pháp vụ nếu seed không ghi rõ.
+- Nếu cần thêm bằng chứng phụ, bằng chứng phụ chỉ được hỗ trợ vật chứng chính; không được thay thế vật chứng chính.
+- Tên truyện, mô tả, chương 1 và technical report phải cùng nói về một vật chứng duy nhất: ${storySeed.evidenceObject}.
+- Nếu title tự nghĩ ra không chứa nghĩa vật chứng chính, title đó sai. Dùng đúng title lock: ${lockedTitle}.
+`.trim();
+}
+
 export function buildStorySeedPromptContext(
   storySeed?: FactoryStorySeed | null,
 ) {
@@ -2708,12 +2776,16 @@ export function buildStorySeedPromptContext(
   return `
 STORY SEED / STORY DNA BẮT BUỘC:
 - Tên truyện định hướng: ${storySeed.title}
+- Tên truyện khóa theo vật chứng: ${makeEvidenceTitle(storySeed.evidenceObject)}
 - CẤM để tên truyện hoặc tên chương giống seed kỹ thuật. Không dùng cụm: "được biến thành", "của thể loại này", "không dùng như", "Đổi Nghĩa", "motif", "genre", "fingerprint".
 - Genre blend: ${storySeed.genreBlend.join(" | ")}
 - Core premise: ${storySeed.corePremise}
 - Opening scene bắt buộc: ${storySeed.openingScene}
 - Inciting incident bắt buộc: ${storySeed.incitingIncident}
 - Evidence object bắt buộc: ${storySeed.evidenceObject}
+
+${buildEvidenceSemanticContract(storySeed)}
+
 - Main conflict: ${storySeed.mainConflict}
 - Hidden truth: ${storySeed.hiddenTruth}
 - Setting: ${storySeed.setting}
@@ -2729,9 +2801,9 @@ ${storyPlanBlock}
 ${coverConceptBlock}
 
 QUY TẮC BẮT BUỘC THEO STORY SEED:
-- Tên truyện khi xuất ra phải giữ tinh thần của tên định hướng và bám vật chứng chính / bối cảnh cụ thể.
+- Tên truyện khi xuất ra trong technical report phải dùng đúng “Tên truyện khóa theo vật chứng”. Không tự đổi sang vật chứng khác dù nghe kịch tính hơn.
 - Không tự đổi tên truyện sang kiểu trừu tượng chung chung như “Người Cuối Cùng Nhìn Thấy Sự Thật”, “Sự Thật...”, “Bí Mật...”, “...Không Nên Xuất Hiện”, “...Không Thuộc Về Tôi” nếu tên đó không chứa vật chứng cụ thể của seed.
-- Công thức tên truyện ưu tiên: vật chứng chính + trạng thái bất thường / thời điểm sai / dấu vết bị cắt / nơi xuất hiện sai.
+- Công thức hiểu tên truyện: vật chứng chính + trạng thái bất thường / thời điểm sai / dấu vết bị cắt / nơi xuất hiện sai.
 - Chương 1 phải mở theo opening scene trên.
 - Biến cố chính phải dùng inciting incident trên.
 - Vật chứng quan trọng phải là evidence object trên.

@@ -164,6 +164,59 @@ function getFactorySeedEvidence(storySeed?: FactoryStorySeed | null) {
   return safeString((storySeed as any)?.evidenceObject || (storySeed as any)?.motifFingerprint?.evidenceObject)
 }
 
+function titleCaseFactoryEvidence(input: string) {
+  return input
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .map((word) => {
+      if (!word) return word
+      if (/^(USB|QR|ADN|CEO|VIP)$/i.test(word)) return word.toUpperCase()
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join(' ')
+}
+
+function hasFactoryEvidenceState(input: string) {
+  const normalized = ` ${normalizeFactoryTitleText(input)} `
+  return [
+    ' bi ',
+    ' co ',
+    ' lech',
+    ' sai',
+    ' rach',
+    ' xe ',
+    ' roi',
+    ' mat',
+    ' bong',
+    ' doi',
+    ' sua',
+    ' cat',
+    ' gui nham',
+    ' quay nham',
+  ].some((marker) => normalized.includes(marker))
+}
+
+function cleanFactoryEvidenceForTitle(input: string) {
+  return safeString(input)
+    .replace(/^một\s+/i, '')
+    .replace(/^một chiếc\s+/i, 'Chiếc ')
+    .replace(/^một tấm\s+/i, 'Tấm ')
+    .replace(/^một mẩu\s+/i, 'Mẩu ')
+    .replace(/\s+có một chi tiết lệch.*$/i, '')
+    .replace(/\s+co mot chi tiet lech.*$/i, '')
+    .replace(/\s+mà chỉ.*$/i, '')
+    .replace(/\s+ma chi.*$/i, '')
+    .replace(/\s+không phải.*$/i, '')
+    .replace(/\s+khong phai.*$/i, '')
+    .replace(/\s+theo công thức.*$/i, '')
+    .replace(/\s+theo cong thuc.*$/i, '')
+    .replace(/\s+bị đặt sai chỗ$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+
 function isLockerCardEvidenceText(value: string) {
   const normalized = normalizeFactoryTitleText(value)
 
@@ -199,67 +252,21 @@ function isBadFactoryStoryTitle(title: string) {
 
 function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getFactorySeedEvidence(storySeed)
-  const normalized = normalizeFactoryTitleText(evidence)
+  const clean = cleanFactoryEvidenceForTitle(evidence)
+  const title = titleCaseFactoryEvidence(clean)
 
-  if (isLockerCardEvidenceText(evidence)) {
-    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
+  if (title && title.length <= 48) {
+    return hasFactoryEvidenceState(title) ? title : `${title} Bị Lộ`
   }
 
-  if ((normalized.includes('ve') || normalized.includes('phieu')) && (normalized.includes('an') || normalized.includes('so ghe') || normalized.includes('ghe'))) {
-    return 'Vé Ăn Số Ghế Lệch'
-  }
-
-  if (normalized.includes('hat vong')) {
-    return 'Hạt Vòng Sai Chỗ'
-  }
-
-  if (normalized.includes('vong tay')) {
-    return 'Vòng Tay Sự Kiện Bị Đổi Màu'
-  }
-
-  if (normalized.includes('soi chi') || normalized.includes('khuy ao') || normalized.includes('chi con mac') || normalized.includes('chi lech')) {
-    return 'Sợi Chỉ Ở Khuy Áo'
-  }
-
-  if (normalized.includes('nhan chau') || normalized.includes('chau cay') || normalized.includes('chau hoa') || normalized.includes('tem kim loai')) {
-    return 'Chậu Cây Bị Cắm Sai Nhãn'
-  }
-
-  if (normalized.includes('nap chai') || normalized.includes('vet xuoc')) {
-    return 'Nắp Chai Có Vết Xước'
-  }
-
-  if (normalized.includes('phieu') && normalized.includes('banh')) {
-    return 'Phiếu Bánh Bị Xé Góc'
-  }
-
-  if (normalized.includes('the giat') || normalized.includes('tiem giat') || (normalized.includes('ao') && normalized.includes('ghim'))) {
-    return 'Thẻ Giặt Còn Ghim'
-  }
-
-  if (normalized.includes('khan tay') || normalized.includes('theu')) {
-    return 'Chiếc Khăn Tay Thêu Chữ Nhỏ'
-  }
-
-  if (normalized.includes('buc ve') || normalized.includes('tranh tre') || normalized.includes('ve tre')) {
-    return 'Bức Vẽ Lệch Khung'
-  }
-
-  const clean = evidence
-    .replace(/^một\s+/i, '')
-    .replace(/^một chiếc\s+/i, 'Chiếc ')
-    .replace(/^một tấm\s+/i, 'Tấm ')
-    .replace(/\s+có một chi tiết lệch.*$/i, '')
-    .replace(/\s+không phải.*$/i, '')
-    .replace(/\s+bị đặt sai chỗ$/i, '')
-    .trim()
-
-  if (clean && clean.length <= 34) {
-    return clean.charAt(0).toUpperCase() + clean.slice(1)
+  const shortTitle = title.split(/\s+/).slice(0, 7).join(' ').trim()
+  if (shortTitle && shortTitle.length >= 8) {
+    return hasFactoryEvidenceState(shortTitle) ? shortTitle : `${shortTitle} Bị Lộ`
   }
 
   return 'Chi Tiết Bị Đặt Sai'
 }
+
 
 function resolvePanelStoryTitle(params: {
   storySeed?: FactoryStorySeed | null
