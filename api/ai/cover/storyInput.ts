@@ -71,6 +71,23 @@ function normalizeCoverArtStyle(raw: string): string {
     return 'popular_webnovel_collage'
   }
 
+  if (
+    value === 'ancient_chinese_cinematic_romance' ||
+    value === 'ancient-chinese-cinematic-romance' ||
+    value === 'co-phong-ngon-tinh-dien-anh' ||
+    value === 'co_phong_ngon_tinh_dien_anh' ||
+    value.includes('cổ phong') ||
+    value.includes('co phong') ||
+    value.includes('ngôn tình điện ảnh') ||
+    value.includes('ngon tinh dien anh') ||
+    value.includes('huyền huyễn') ||
+    value.includes('huyen huyen') ||
+    value.includes('xianxia') ||
+    value.includes('wuxia')
+  ) {
+    return 'ancient_chinese_cinematic_romance'
+  }
+
   return 'auto'
 }
 

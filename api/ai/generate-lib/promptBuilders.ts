@@ -830,6 +830,29 @@ Ví dụ sửa:
 - Sai: “Lời anh ta như một con dấu.”
   Đúng: “Câu đó khiến mọi người im đi vài giây.”
 
+PLAIN EDITOR v31 — KHÓA CÂU THƯỜNG, CHỐNG VÍ VON GƯỢNG:
+- Đây là line-edit thực dụng, không phải lượt viết lại cho “hay hơn”.
+- Nếu một câu đang cố đẹp bằng so sánh/ẩn dụ nhưng đọc sai tai, hãy hạ xuống câu thường.
+- Không thêm ẩn dụ mới. Không thêm câu triết lý. Không biến cảnh thành sân khấu.
+- Ưu tiên câu có chủ thể rõ: ai làm gì, cầm gì, nhìn gì, yêu cầu gì, nguy cơ cụ thể là gì.
+- Tránh cấu trúc “X như Y” nếu Y không phải hình ảnh đời thường thật cần thiết.
+- Tránh câu tổng kết kiểu slogan cuối đoạn/cuối chương. Kết bằng hành động, dữ kiện, người cần kiểm tra, vật chứng cần giữ, thời hạn hoặc nguy cơ cụ thể.
+
+CỤM PHẢI HẠ XUỐNG CÂU ĐỜI HƠN NẾU GẶP:
+- “ôm ... trong lòng bàn tay” → “giữ ... trong tay”.
+- “cẩn thận như ôm một thứ dễ gãy” → “cẩn thận như sợ làm rách mép giấy”.
+- “câu đó rơi xuống ... như một tảng đá” → “câu đó làm ... im vài giây”.
+- “như đã thắng một ván nhỏ” → “như thể chuyện này coi như xong”.
+- “thay vì thi vị” → “không còn chỉ đứng xem náo nhiệt”.
+- “mở ra một con đường để truy vết” → “kéo sự chú ý về đúng chỗ cần kiểm tra”.
+- “đường sống đầu tiên” → “cơ hội đầu tiên để lật lại chuyện này”.
+
+BÀI TEST TRƯỚC KHI TRẢ OUTPUT:
+1. Có câu nào nghe như caption/poster không? Sửa thành câu kể bình thường.
+2. Có câu nào vật vô tri hành động quá đà không? Sửa lại bằng người/cảnh cụ thể.
+3. Có đoạn nào nữ chính tự diễn thuyết thay vì đưa yêu cầu cụ thể không? Cắt bớt.
+4. Có câu cuối chương nào kiểu khẩu hiệu không? Đổi thành nguy cơ/hành động tiếp theo.
+
 EDITOR CONTINUITY CHECK:
 - Nếu chương mới giống đang viết lại một chương cũ, hãy sửa.
 - Nếu chương chỉ lặp lại cảnh họp/tố cáo/niêm phong mà không có bằng chứng mới hoặc hậu quả mới, hãy sửa.
@@ -855,7 +878,7 @@ EDITOR CHECKLIST BẮT BUỘC:
 
 
 CẤM:
-- Không dùng các cụm sân khấu hóa: “khán đài”, “phiên xử”, “bản cáo trạng”, “vòng quyền lực”, “quyền lực công khai”, “ván cờ”, “áp lực dồn lên”, “lời nói như con dấu”.
+- Không dùng các cụm sân khấu hóa/ví von gượng: “khán đài”, “phiên xử”, “bản cáo trạng”, “vòng quyền lực”, “quyền lực công khai”, “ván cờ”, “áp lực dồn lên”, “lời nói như con dấu”, “rơi xuống như tảng đá”, “thắng một ván nhỏ”, “thay vì thi vị”, “mở ra một con đường”, “đường sống đầu tiên”.
 - Không đổi tên nữ chính, phản diện, mẹ/con/người thân đã có.
 - Không đổi vật chứng trung tâm.
 - Không được biên tập chương quay về format chung hồ sơ/camera/log/phong tỏa nếu genre/storySeed không yêu cầu.

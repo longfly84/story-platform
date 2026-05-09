@@ -139,6 +139,20 @@ function normalizeCoverArtStyle(raw: unknown): CoverArtStyleKey {
     return 'popular_webnovel_collage'
   }
 
+  if (
+    value === 'ancient_chinese_cinematic_romance' ||
+    value === 'ancient-chinese-cinematic-romance' ||
+    value === 'co-phong-ngon-tinh-dien-anh' ||
+    value === 'co_phong_ngon_tinh_dien_anh' ||
+    value.includes('co phong') ||
+    value.includes('ngon tinh dien anh') ||
+    value.includes('huyen huyen') ||
+    value.includes('xianxia') ||
+    value.includes('wuxia')
+  ) {
+    return 'ancient_chinese_cinematic_romance'
+  }
+
   return 'auto'
 }
 
@@ -237,6 +251,9 @@ function inferSetting(text: string): string {
   }
   if (includesAny(text, ['quan ca phe', 'quán cà phê', 'cafe'])) {
     return 'quán cà phê hoặc không gian đô thị nơi vật chứng được mở ra'
+  }
+  if (includesAny(text, ['vuong phu', 'vương phủ', 'hau phu', 'hầu phủ', 'cung', 'cung điện', 'hoang cung', 'hoàng cung', 'giang ho', 'giang hồ', 'tong mon', 'tông môn', 'tien mon', 'tiên môn', 'phu de', 'phủ đệ'])) {
+    return 'vương phủ, phủ đệ, hành lang cổ phong, đình viện trong mưa, cung điện hoặc không gian cổ trang Trung Hoa đầy áp lực'
   }
 
   return DEFAULT_SETTING
@@ -509,6 +526,20 @@ COMPOSITION PRESET LOCK: STORY_SCENE_OFFSET.
 function buildReferenceLookBlock(data: ReturnType<typeof buildPromptData>): string {
   const collageMood = data.compositionPreset === 'luxury_collage' || data.coverArtStyle === 'popular_webnovel_collage'
 
+  if (data.coverArtStyle === 'ancient_chinese_cinematic_romance') {
+    return `
+REFERENCE LOOK TARGET:
+- The overall look should feel like a premium Chinese ancient-romance / xianxia-inspired webnovel cover.
+- Elegant East Asian faces, adult cast, flowing long hair, layered hanfu-inspired costume, refined fabric rendering, painterly semi-realistic finish.
+- Use romantic cinematic digital painting language rather than flat anime.
+- Prefer moody blue-gray, charcoal, misty teal, desaturated silver, deep black, and controlled warm lantern highlights.
+- The atmosphere should feel emotional, tragic, beautiful, and story-rich.
+- This art style is only a rendering layer. Story content remains the highest priority.
+- Do not invent random fantasy symbols, magic effects, palaces, swords, or creatures unless the story content actually supports them.
+${collageMood ? '- Because this uses a collage-forward look, allow layered emotional fragments while keeping the ancient-romance mood coherent.' : '- Because this uses a single-scene look, keep the space readable, background atmospheric, and the dramatic relationship clear.'}
+`.trim()
+  }
+
   return `
 REFERENCE LOOK TARGET:
 - The overall look should feel close to premium Chinese commercial webnovel cover art.
@@ -634,6 +665,16 @@ STYLE PRESET: POPULAR_WEBNOVEL_COLLAGE.
 - emotional collage composition showing several story clues or memory fragments
 - dramatic, addictive, commercially attractive, very story-dense
 `.trim()
+    case 'ancient_chinese_cinematic_romance':
+      return `
+STYLE PRESET: ANCIENT_CHINESE_CINEMATIC_ROMANCE.
+- premium Chinese ancient-romance cover illustration
+- xianxia / wuxia / historical-romance inspired mood, but still story-first
+- semi-realistic cinematic digital painting, not flat anime
+- elegant East Asian features, flowing hair, refined hanfu-inspired costume, lantern-lit atmosphere
+- moody blue-gray palette with controlled warm highlights, romantic and tragic emotional tone
+- this style changes the rendering language, color mood, and costume language, but must still follow the actual story conflict and key evidence
+`.trim()
     case 'anime_cinematic':
     default:
       return `
@@ -754,10 +795,21 @@ ${collageNote}
   }
 }
 
-function buildFramingAndCharacterBlock(): string {
+function buildFramingAndCharacterBlock(style: CoverArtStyleKey): string {
+  const appearanceLine =
+    style === 'ancient_chinese_cinematic_romance'
+      ? '- Characters must look like East Asian adults in an ancient-Chinese romance illustration style, with elegant historical styling and believable emotional presence.'
+      : '- Characters must look like modern East Asian adults, preferably modern Chinese urban-drama appearance.'
+
+  const costumeLine =
+    style === 'ancient_chinese_cinematic_romance'
+      ? '- Use flowing hanfu-inspired costume, period hair styling, and refined historical details only when they support the story.'
+      : '- Use modern fashion, urban-drama styling, or story-appropriate contemporary costume.'
+
   return `
 CHARACTER / ETHNICITY / FRAMING RULES:
-- Characters must look like modern East Asian adults, preferably modern Chinese urban-drama appearance.
+${appearanceLine}
+${costumeLine}
 - One clear female lead must anchor the image.
 - Do not make the female lead too large.
 - Do not create an extreme close-up portrait.
@@ -781,7 +833,7 @@ ANTI-TEXT RULES — absolute priority:
 `.trim()
 }
 
-function buildAntiGenericBlock(sceneType: CoverSceneType): string {
+function buildAntiGenericBlock(sceneType: CoverSceneType, style: CoverArtStyleKey): string {
   const sceneSpecificLines: string[] = []
 
   if (sceneType === 'mother_child_protection') {
@@ -804,7 +856,9 @@ ANTI-GENERIC RULES:
 - Do not make the cover depend only on a single face.
 - Do not hide the evidence object.
 - Do not replace story-specific clues with random decorative props.
-- Do not create a children cartoon, fantasy scene, historical costume, or unrelated sci-fi setting.
+- Do not create a children cartoon or unrelated sci-fi setting.
+- Do not force fantasy or historical-costume imagery when the selected story/style does not support it.
+- If the selected style is ancient_chinese_cinematic_romance, do not invent unrelated magic, monsters, or fantasy spectacle that the story did not ask for.
 - Do not show blood, gore, corpses, wounds, knives, guns, explicit violence, or self-harm.
 - If the story contains dangerous events, show them only through emotional tension, lighting, distance, posture, reflections, and atmosphere.
 ${sceneSpecificLines.join('\n')}
@@ -843,9 +897,9 @@ export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): Cove
     buildSceneSelectionBlock(data.sceneType, data.coverArtStyle),
     buildCompositionPresetBlock(data),
     buildCompositionHardLockBlock(data),
-    buildFramingAndCharacterBlock(),
+    buildFramingAndCharacterBlock(data.coverArtStyle),
     buildNoTextBlock(),
-    buildAntiGenericBlock(data.sceneType),
+    buildAntiGenericBlock(data.sceneType, data.coverArtStyle),
     buildFinalInstructionBlock(data.coverArtStyle),
   ].join('\n\n')
 

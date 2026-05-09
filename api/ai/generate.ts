@@ -2,7 +2,7 @@ import type { GeneratePayload } from './generate-lib/types.js'
 import { getLengthRule, getStoryEditorPassEnabled, getTextModel } from './generate-lib/model.js'
 import { callOpenAIText } from './generate-lib/openaiClient.js'
 import { normalizePayload } from './generate-lib/payload.js'
-import { buildPrompt, buildStoryEditorPrompt, buildVietnameseFocusedRepairPrompt } from './generate-lib/promptBuilders.js'
+import { buildPrompt, buildStoryEditorPrompt } from './generate-lib/promptBuilders.js'
 import { moderateTextOrThrow } from './generate-lib/moderation.js'
 
 
@@ -45,6 +45,24 @@ function normalizeVietnameseProseArtifacts(input: string) {
     [/Và thời gian, dù chưa nói thành lời, đang đếm\.?/gi, 'Nếu chậm thêm, bản ghi kia có thể biến mất.'],
     [/một nỗi lo lạnh/gi, 'một nỗi lo âm ỉ'],
     [/như đang đọc mệnh lệnh/gi, 'như đã được dặn trước'],
+    [/khựng lại\s+ném vào mặt nước\s*[—-]\s*gây vết loang/gi, 'khựng lại vài giây'],
+    [/mực còn ấm trong não người khác/gi, 'lớp mực còn mới dưới đầu ngón tay'],
+    [/công thức sống còn nhỏ bé/gi, 'manh mối nhỏ còn giữ được'],
+    [/lành nghề của một nhà thiết kế/gi, 'thói quen soi chi tiết của một nhà thiết kế'],
+    [/Tiếng gõ như một yêu cầu đếm ngược\.?/gi, 'Tiếng gõ khiến căn phòng im thêm.'],
+    [/một khoảng không dài/gi, 'một quãng im lặng dài'],
+    [/lời cô khiến căn phòng khựng lại vài giây\s*[—-]\s*gây vết loang/gi, 'lời cô khiến căn phòng khựng lại vài giây'],
+    [/ôm bản sao ([^.!?\n]{0,80}) trong lòng bàn tay/gi, 'giữ bản sao $1 trong tay'],
+    [/ôm ([^.!?\n]{0,80}) trong lòng bàn tay/gi, 'giữ $1 trong tay'],
+    [/cẩn thận như ôm một thứ dễ gãy/gi, 'cẩn thận như sợ làm rách mép giấy'],
+    [/Câu đó rơi xuống hậu trường như một tảng đá\.?/gi, 'Câu đó làm hậu trường im hẳn vài giây.'],
+    [/rơi xuống hậu trường như một tảng đá/gi, 'làm hậu trường im hẳn vài giây'],
+    [/như đã thắng một ván nhỏ/gi, 'như thể chuyện này coi như xong'],
+    [/thay vì thi vị/gi, 'không còn chỉ đứng xem náo nhiệt'],
+    [/Câu hỏi đó như mở ra một con đường để truy vết\.?/gi, 'Câu hỏi đó kéo sự chú ý về đúng chỗ: ai đã chạm vào chứng cứ trước giờ công bố.'],
+    [/như mở ra một con đường để truy vết/gi, 'kéo sự chú ý về đúng chỗ cần kiểm tra'],
+    [/là đường sống đầu tiên/gi, 'là cơ hội đầu tiên để lật lại chuyện này'],
+    [/Và đó, với tôi, là cơ hội đầu tiên để lật lại chuyện này\.?/gi, 'Chỉ cần xác định được người đã đổi chứng cứ, tôi còn cơ hội lật lại chuyện này.'],
   ]
 
   for (const [pattern, replacement] of replacements) {
@@ -66,6 +84,12 @@ function findVietnameseNaturalnessIssues(input: string) {
     [/như người bị kẹp giữa/gi, 'ẩn dụ giải thích tâm lý thay vì hành động cụ thể'],
     [/con đường cần câu trả lời/gi, 'cụm sai tai “con đường cần câu trả lời”'],
     [/một vài câu trả lời đã bắt đầu hé/gi, 'câu tổng kết AI “câu trả lời bắt đầu hé”'],
+    [/khán đài|phiên xử|bản cáo trạng|vòng quyền lực|quyền lực công khai|ván cờ/gi, 'cụm sân khấu hóa/văn AI'],
+    [/lời nói như con dấu|ném vào mặt nước|mực trong não|mực còn ấm trong não|công thức sống còn|thời gian[^.\n]{0,60}đếm/gi, 'ẩn dụ lạ/sai tai cần soi thủ công'],
+    [/bộc lộ vai trò của nó|biến thành|như một yêu cầu đếm ngược/gi, 'cấu trúc ẩn dụ gượng'],
+    [/ôm[^.\n]{0,80}trong lòng bàn tay|như ôm một thứ dễ gãy/gi, 'cụm “ôm trong lòng bàn tay/như ôm thứ dễ gãy” gượng'],
+    [/rơi xuống hậu trường như một tảng đá|thắng một ván nhỏ|thay vì thi vị/gi, 'ví von/kết hợp từ gượng cần sửa'],
+    [/mở ra một con đường để truy vết|đường sống đầu tiên/gi, 'câu tổng kết/slogan cuối cảnh cần hạ xuống câu cụ thể'],
   ]
 
   const issues: string[] = []
@@ -187,28 +211,9 @@ export default async function handler(req: any, res: any) {
 
     vietnameseRepairIssues = findVietnameseNaturalnessIssues(finalText)
 
-    if (getStoryEditorPassEnabled(payload) && vietnameseRepairIssues.length > 0) {
-      try {
-        const repairPrompt = buildVietnameseFocusedRepairPrompt(payload, finalText, vietnameseRepairIssues)
+    // v31: không gọi AI repair pass mặc định nữa.
+    // Nếu còn issue, trả về vietnameseRepairIssues để soi thủ công, tránh AI tự sinh thêm ẩn dụ mới.
 
-        await moderateTextOrThrow(repairPrompt, 'story vietnamese repair input')
-
-        const repairPass = await callOpenAIText({
-          apiKey,
-          model,
-          prompt: repairPrompt,
-          maxOutputTokens: lengthRule.maxOutputTokens,
-        })
-
-        if (repairPass.response.ok && !repairPass.data?.__nonJson && repairPass.text) {
-          finalText = normalizeVietnameseProseArtifacts(softenAIDramaPhrases(repairPass.text))
-          vietnameseRepairUsed = true
-          vietnameseRepairIssues = findVietnameseNaturalnessIssues(finalText)
-        }
-      } catch {
-        // Fallback an toàn: giữ bản editor đã qua bộ lọc deterministic, không làm Factory chết.
-      }
-    }
 
     await moderateTextOrThrow(finalText, 'story generation output')
 

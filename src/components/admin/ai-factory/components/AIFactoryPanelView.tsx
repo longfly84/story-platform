@@ -27,6 +27,7 @@ const COVER_ART_STYLE_OPTIONS: Array<{
   { value: 'manga_manhwa', label: 'Manga — Chinese commercial webnovel cover' },
   { value: 'popular_webnovel_collage', label: 'Chinese manhua luxury collage' },
   { value: 'cinematic_realistic', label: 'Urban drama premium poster illustration' },
+  { value: 'ancient_chinese_cinematic_romance', label: 'Cổ phong ngôn tình điện ảnh' },
 ]
 
 const COVER_COMPOSITION_OPTIONS: Array<{

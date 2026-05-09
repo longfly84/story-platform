@@ -6,6 +6,7 @@ export type CoverArtStyleKey =
   | 'manga_manhwa'
   | 'cinematic_realistic'
   | 'popular_webnovel_collage'
+  | 'ancient_chinese_cinematic_romance'
 
 export type CoverCompositionPreset =
   | 'auto'

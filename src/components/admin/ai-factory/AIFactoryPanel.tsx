@@ -90,7 +90,8 @@ function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'
     raw === 'anime_cinematic' ||
     raw === 'manga_manhwa' ||
     raw === 'cinematic_realistic' ||
-    raw === 'popular_webnovel_collage'
+    raw === 'popular_webnovel_collage' ||
+    raw === 'ancient_chinese_cinematic_romance'
   ) {
     return raw as AIFactoryConfig['coverArtStyle']
   }
@@ -100,6 +101,8 @@ function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'
   if (raw === 'manga-drama') return 'manga_manhwa'
   if (raw === 'semi-realistic') return 'cinematic_realistic'
   if (raw === 'movie-poster') return 'popular_webnovel_collage'
+  if (raw === 'ancient-chinese-cinematic-romance') return 'ancient_chinese_cinematic_romance'
+  if (raw === 'co-phong-ngon-tinh-dien-anh') return 'ancient_chinese_cinematic_romance'
 
   return 'auto'
 }
@@ -131,6 +134,8 @@ function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
       return 'Chinese manhua luxury collage, layered storytelling, 3 to 7 story fragments, glossy premium Chinese webnovel cover'
     case 'cinematic_realistic':
       return 'Urban drama premium poster illustration, polished cinematic realism, luxury Chinese urban-drama cover'
+    case 'ancient_chinese_cinematic_romance':
+      return 'Ancient Chinese cinematic romance cover, semi-realistic xianxia / wuxia-inspired digital painting, moody lantern-lit atmosphere'
     case 'auto':
     default:
       return 'premium Chinese commercial webnovel cover, automatically matched to story content'
