@@ -262,6 +262,8 @@ Yêu cầu:
     targetChapters: params.targetChapters,
     isFinalChapter: Boolean(params.isFinalChapter),
     storySeed: params.storySeed ?? null,
+    storyEditorMode: params.config.storyEditorMode,
+    storyEditorPassEnabled: params.config.storyEditorMode !== 'off',
     recentChapters: params.recentChapters,
     storyMemory: [params.storyMemory, finalChapterInstruction].filter(Boolean).join('\n\n---\n\n'),
   }

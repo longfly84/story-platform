@@ -1,6 +1,8 @@
 export type FactoryProvider = 'mock' | 'openai'
 export type FactoryModelKey = 'economy' | 'premium' | 'auto'
 
+export type FactoryStoryEditorMode = 'off' | 'standard' | 'careful'
+
 export type CoverArtStyle =
   | 'auto'
   | 'anime_cinematic'
@@ -62,6 +64,7 @@ export type AIFactoryConfig = {
   autoCompleteByTarget: boolean
   delayMs: number
   generateCover: boolean
+  storyEditorMode: FactoryStoryEditorMode
   coverArtStyle: CoverArtStyle
   coverCompositionPreset: CoverCompositionPreset
   coverSceneType: CoverSceneType

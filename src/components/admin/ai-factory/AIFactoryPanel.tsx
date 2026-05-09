@@ -69,6 +69,7 @@ const defaultConfig: AIFactoryConfig = {
   maxTargetChapters: 20,
   delayMs: 2000,
   generateCover: false,
+  storyEditorMode: 'standard',
   coverArtStyle: 'auto',
   coverCompositionPreset: 'auto',
   coverSceneType: 'auto_story_scene',
@@ -101,6 +102,21 @@ function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'
   if (raw === 'movie-poster') return 'popular_webnovel_collage'
 
   return 'auto'
+}
+
+
+function normalizeStoryEditorMode(value: unknown): AIFactoryConfig['storyEditorMode'] {
+  const raw = String(value || '').trim()
+
+  if (raw === 'off' || raw === 'standard' || raw === 'careful') {
+    return raw as AIFactoryConfig['storyEditorMode']
+  }
+
+  // Tương thích config cũ dạng checkbox.
+  if (value === false) return 'off'
+  if (value === true) return 'standard'
+
+  return 'standard'
 }
 
 function normalizeCoverCompositionPreset(value: unknown): AIFactoryConfig['coverCompositionPreset'] {
@@ -155,23 +171,6 @@ function normalizeCoverSceneType(value: unknown): AIFactoryConfig['coverSceneTyp
   return 'auto_story_scene'
 }
 
-function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
-  switch (normalizeCoverArtStyle(style)) {
-    case 'anime_cinematic':
-      return 'Anime — Chinese commercial webnovel cover, glossy mature anime-inspired Chinese webnovel beauty, luxury urban drama color'
-    case 'manga_manhwa':
-      return 'Manga — Chinese commercial webnovel cover, polished manga/manhua-inspired line art, luxury full-color rendering'
-    case 'popular_webnovel_collage':
-      return 'Chinese manhua luxury collage, layered storytelling, 3 to 7 story fragments, glossy premium Chinese webnovel cover'
-    case 'cinematic_realistic':
-      return 'Urban drama premium poster illustration, polished cinematic realism, luxury Chinese urban-drama cover'
-    case 'auto':
-    default:
-      return 'premium Chinese commercial webnovel cover, automatically matched to story content'
-  }
-}
-
-
 function getCoverSceneTypeLabel(style: AIFactoryConfig['coverSceneType']) {
   switch (normalizeCoverSceneType(style)) {
     case 'collage_story_poster':
@@ -197,6 +196,22 @@ function getCoverSceneTypeLabel(style: AIFactoryConfig['coverSceneType']) {
     case 'auto_story_scene':
     default:
       return 'tự động chọn theo nội dung truyện'
+  }
+}
+
+function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
+  switch (normalizeCoverArtStyle(style)) {
+    case 'anime_cinematic':
+      return 'Anime — Chinese commercial webnovel cover, glossy mature anime-inspired Chinese webnovel beauty, luxury urban drama color'
+    case 'manga_manhwa':
+      return 'Manga — Chinese commercial webnovel cover, polished manga/manhua-inspired line art, luxury full-color rendering'
+    case 'popular_webnovel_collage':
+      return 'Chinese manhua luxury collage, layered storytelling, 3 to 7 story fragments, glossy premium Chinese webnovel cover'
+    case 'cinematic_realistic':
+      return 'Urban drama premium poster illustration, polished cinematic realism, luxury Chinese urban-drama cover'
+    case 'auto':
+    default:
+      return 'premium Chinese commercial webnovel cover, automatically matched to story content'
   }
 }
 
@@ -753,8 +768,10 @@ export default function AIFactoryPanel() {
           coverCompositionPreset: normalizeCoverCompositionPreset(
             (snapshot.config as any).coverCompositionPreset,
           ),
-          coverSceneType: normalizeCoverSceneType((snapshot.config as any).coverSceneType),
           autoCompleteByTarget: Boolean((snapshot.config as any).autoCompleteByTarget),
+          storyEditorMode: normalizeStoryEditorMode(
+            (snapshot.config as any).storyEditorMode ?? (snapshot.config as any).storyEditorPassEnabled,
+          ),
         })
       }
       if (Array.isArray(snapshot.jobs)) setJobs(snapshot.jobs)
@@ -1181,6 +1198,8 @@ Yêu cầu:
       targetChapters: params.targetChapters,
       isFinalChapter: Boolean(params.isFinalChapter),
       storySeed: params.storySeed ?? null,
+      storyEditorMode: config.storyEditorMode,
+      storyEditorPassEnabled: config.storyEditorMode !== 'off',
       recentChapters: params.recentChapters,
       storyMemory: [params.storyMemory, finalChapterInstruction].filter(Boolean).join('\n\n---\n\n'),
     }
@@ -1203,6 +1222,35 @@ Yêu cầu:
 
     if (!text || typeof text !== 'string') {
       throw new Error('API không trả về text hợp lệ.')
+    }
+
+    if (params.provider === 'openai') {
+      const editorMode = data?.storyEditorMode || config.storyEditorMode
+
+      if (editorMode === 'off') {
+        addLog('Story editor pass: disabled', 'info')
+      } else if (data?.editorPassUsed) {
+        addLog(
+          editorMode === 'careful'
+            ? 'Story editor pass: success (kỹ chọn lọc)'
+            : 'Story editor pass: success (tiêu chuẩn)',
+          'success',
+        )
+
+        if (data?.editorRepairUsed) {
+          addLog('Vietnamese repair pass: success', 'success')
+        } else if (Array.isArray(data?.editorAuditFlags) && data.editorAuditFlags.length > 0) {
+          addLog(`Vietnamese audit: còn ${data.editorAuditFlags.length} dấu hiệu cần soi thủ công`, 'warning')
+        }
+
+        if (data?.editorRepairFailed) {
+          addLog(`Vietnamese repair pass: fallback (${data?.editorRepairError || 'không rõ lỗi'})`, 'warning')
+        }
+      } else if (data?.editorPassFailed) {
+        addLog(`Story editor pass: fallback bản thô (${data?.editorError || 'không rõ lỗi'})`, 'warning')
+      } else {
+        addLog('Story editor pass: enabled nhưng API không báo đã sửa', 'warning')
+      }
     }
 
     return text

@@ -105,7 +105,6 @@ export function extractStoryInput(body: JsonRecord): StoryInput {
     ),
   )
 
-
   const coverCompositionPreset = safeString(
     source.coverCompositionPreset ||
       source.cover_composition_preset ||
