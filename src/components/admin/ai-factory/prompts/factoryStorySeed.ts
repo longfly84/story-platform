@@ -1247,6 +1247,33 @@ const URBAN_STORY_FORMULAS: UrbanStoryFormula[] = [
   },
 ]
 
+function normalizeFormulaLookupText(value: unknown) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+
+function formulaKeyAppearsInText(formulaKey: string, value: unknown) {
+  const text = normalizeFormulaLookupText(value)
+  const key = normalizeFormulaLookupText(formulaKey)
+  return Boolean(text && key && text.includes(key))
+}
+
+function countRecentFormulaHits(params: { formulaKey: string; avoidLibrary?: AvoidLibrary }) {
+  const sources = (params.avoidLibrary?.motifFingerprints ?? []).flatMap((item) => [
+    item.fingerprint?.premiseFamily,
+    item.fingerprint?.fingerprint,
+    item.fingerprint?.endingPromise,
+    item.motifText,
+    item.title,
+  ])
+
+  return sources.filter((value) => formulaKeyAppearsInText(params.formulaKey, value)).length
+}
+
 function pickUrbanStoryFormula(params: {
   seed: string;
   avoidLibrary?: AvoidLibrary;
@@ -1254,22 +1281,16 @@ function pickUrbanStoryFormula(params: {
   heroineLabel?: string;
 }) {
   const recentFormulaKeys = new Set(
-    (params.avoidLibrary?.motifFingerprints ?? [])
-      .flatMap((item) => [
-        item.fingerprint?.premiseFamily,
-        item.fingerprint?.fingerprint,
-        item.motifText,
-      ])
-      .map((value) => String(value || '').toLowerCase())
-      .flatMap((text) =>
-        URBAN_STORY_FORMULAS.filter((formula) => text.includes(formula.key.toLowerCase())).map(
-          (formula) => formula.key,
-        ),
-      ),
-  );
+    URBAN_STORY_FORMULAS
+      .filter((formula) => countRecentFormulaHits({ formulaKey: formula.key, avoidLibrary: params.avoidLibrary }) > 0)
+      .map((formula) => formula.key),
+  )
 
-  const availableFormulas = URBAN_STORY_FORMULAS.filter((formula) => !recentFormulaKeys.has(formula.key));
-  const formulaPool = availableFormulas.length >= 4 ? availableFormulas : URBAN_STORY_FORMULAS;
+  const availableFormulas = URBAN_STORY_FORMULAS.filter((formula) => !recentFormulaKeys.has(formula.key))
+  // V27: nếu còn dù chỉ 1 formula chưa dùng gần đây thì ưu tiên nó.
+  // Bản cũ cần >=4 formula mới dùng available; khi kho có hơn 10 truyện, tất cả formula bị đưa lại vào pool
+  // và Factory dễ quay về cùng xương sống, gây reject 90%+.
+  const formulaPool = availableFormulas.length > 0 ? availableFormulas : URBAN_STORY_FORMULAS
 
   const scored = formulaPool.map((formula, index) => {
     const formulaText = [
@@ -1290,7 +1311,9 @@ function pickUrbanStoryFormula(params: {
     ].join(" | ");
 
     const avoidPenalty = scoreOverlapWithAvoidLibrary(formulaText, params.avoidLibrary) * 2.2;
-    const recentFormulaPenalty = recentFormulaKeys.has(formula.key) ? 100 : 0;
+    const recentHits = countRecentFormulaHits({ formulaKey: formula.key, avoidLibrary: params.avoidLibrary });
+    // Mỗi lần formula xuất hiện gần đây phạt thêm. Khi tất cả formula đã dùng, vẫn chọn formula ít lặp nhất.
+    const recentFormulaPenalty = recentHits * 35 + (recentFormulaKeys.has(formula.key) ? 8 : 0);
     const seedBias = Number(
       pickSeedItem(["0.00", "0.05", "0.10", "0.15", "0.20", "0.25", "0.30", "0.35"], params.seed, `formula-${formula.key}-${index}`),
     );
@@ -3622,22 +3645,25 @@ export function buildMockStorySeed(params: {
   ).slice(0, 18);
 
   const motifFingerprint = {
+    // V27: các field motif phải đủ cụ thể.
+    // Nếu chỉ lưu formula axis chung (attackMode/evidenceRole/deadlineMode), mọi truyện cùng formula
+    // sẽ trùng 8-10 field và bị reject 90% dù vật chứng/setting/sự thật khác nhau.
     premiseFamily: `formula:${candidate.formulaKey}`,
-    openingArena: `opening:${candidate.openingMode}`,
-    incitingIncident: `incident:${candidate.attackMode}:${candidate.evidenceRole}`,
-    evidenceType: `evidence-role:${candidate.evidenceRole}`,
+    openingArena: `opening:${candidate.openingMode}:${candidate.setting}`,
+    incitingIncident: `incident:${candidate.attackMode}:${candidate.evidenceRole}:${candidate.evidenceObject}:${candidate.villainAttack}`,
+    evidenceType: `evidence-role:${candidate.evidenceRole}:${candidate.evidenceObject}`,
     evidenceObject: candidate.evidenceObject,
-    villainAttackType: `attack:${candidate.attackMode}`,
-    heroineCounterType: `counter:${candidate.counterMode}`,
-    powerStructure: `power:${candidate.powerMode}`,
-    publicPressure: `pressure:${candidate.pressureMode}`,
+    villainAttackType: `attack:${candidate.attackMode}:${candidate.villainAttack}`,
+    heroineCounterType: `counter:${candidate.counterMode}:${candidate.heroineCounter}`,
+    powerStructure: `power:${candidate.powerMode}:${candidate.publicPressure}`,
+    publicPressure: `pressure:${candidate.pressureMode}:${candidate.publicPressure}`,
     emotionalWound: `emotional:${candidate.emotionalStake}`,
-    hiddenTruthType: `truth:${candidate.truthMode}`,
+    hiddenTruthType: `truth:${candidate.truthMode}:${candidate.hiddenTruth}`,
     mainArena: `arena:${candidate.openingMode}:${candidate.setting}`,
-    secondaryArena: `pressure-arena:${candidate.pressureMode}`,
+    secondaryArena: `pressure-arena:${candidate.pressureMode}:${candidate.publicPressure}`,
     relationshipCore: `relationship-core:${candidate.formulaKey}:${candidate.relationshipConflict}`,
-    twistEngine: `twist:${candidate.evidenceRole}:${candidate.truthMode}`,
-    deadlineStyle: `deadline:${candidate.deadlineMode}`,
+    twistEngine: `twist:${candidate.evidenceRole}:${candidate.truthMode}:${candidate.hiddenTruth}`,
+    deadlineStyle: `deadline:${candidate.deadlineMode}:${candidate.dopamineHook}`,
     endingPromise: `payoff:${candidate.formulaKey}:${candidate.dopamineHook}`,
     antiRepeatTags,
     fingerprint: [

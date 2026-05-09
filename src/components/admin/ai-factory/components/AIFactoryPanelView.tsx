@@ -45,16 +45,16 @@ const COVER_SCENE_OPTIONS: Array<{
   label: string
 }> = [
   { value: 'auto_story_scene', label: 'Tự động theo nội dung truyện' },
-  { value: 'evidence_discovery_scene', label: 'Nữ chính + vật chứng / phát hiện manh mối' },
-  { value: 'public_reveal_confrontation', label: 'Đối chất công khai / vả mặt trước đám đông' },
-  { value: 'private_betrayal_confrontation', label: 'Phản bội riêng tư / bắt gian / đối đầu kín' },
-  { value: 'mother_child_protection', label: 'Mẹ con / bảo vệ đứa trẻ / quyền nuôi con' },
-  { value: 'hospital_legal_suspense', label: 'Bệnh viện / hồ sơ / ADN / pháp lý' },
-  { value: 'school_parent_conflict', label: 'Trường học / phụ huynh / bắt nạt / hiểu lầm' },
-  { value: 'airport_secret_tension', label: 'Sân bay / chia ly / bí mật trên đường đi' },
-  { value: 'family_banquet_confrontation', label: 'Tiệc gia đình / hào môn / bàn ăn căng thẳng' },
-  { value: 'boardroom_evidence_reveal', label: 'Họp hội đồng / thương chiến / lật chứng cứ' },
-  { value: 'collage_story_poster', label: 'Luxury collage nhiều mảnh truyện' },
+  { value: 'evidence_discovery_scene', label: 'Vật chứng / manh mối / lật bí mật' },
+  { value: 'public_reveal_confrontation', label: 'Công khai vả mặt / họp báo / livestream' },
+  { value: 'private_betrayal_confrontation', label: 'Phản bội tình cảm / bắt gian / tiểu tam' },
+  { value: 'mother_child_protection', label: 'Mẹ con / quyền nuôi / bảo vệ con' },
+  { value: 'hospital_legal_suspense', label: 'Bệnh viện / ADN / hồ sơ bí mật' },
+  { value: 'school_parent_conflict', label: 'Trường học / phụ huynh / hiểu lầm' },
+  { value: 'airport_secret_tension', label: 'Khách sạn / sân bay / chia ly bí mật' },
+  { value: 'family_banquet_confrontation', label: 'Hào môn gia đình / bàn ăn / trưởng bối áp lực' },
+  { value: 'boardroom_evidence_reveal', label: 'Thương chiến / hợp đồng / họp hội đồng' },
+  { value: 'collage_story_poster', label: 'Poster collage / nhiều tuyến drama' },
 ]
 
 const STORY_EDITOR_MODE_OPTIONS: Array<{
@@ -568,12 +568,11 @@ export default function AIFactoryPanelView({
                   </select>
 
                   <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                    Mục này quyết định phong cách vẽ tổng thể.
-                    4 option mới sẽ bám theo kiểu Chinese commercial webnovel cover mà mày muốn.
+                    Mục này quyết định chất vẽ tổng thể của ảnh bìa. Các option sẽ bám theo kiểu Chinese commercial webnovel cover / luxury poster mà mày muốn.
                   </p>
 
                   <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
-                    <FieldLabel>Loại scene ảnh bìa</FieldLabel>
+                    <FieldLabel>Mô típ bìa</FieldLabel>
 
                     <select
                       disabled={isRunning}
@@ -591,7 +590,7 @@ export default function AIFactoryPanelView({
                     </select>
 
                     <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                      Chọn nhóm cover theo nội dung: vật chứng, mẹ con, đối chất công khai, họp hội đồng, tiệc gia đình, phản bội, collage...
+                      Mục này chọn dòng drama / mô típ truyện thể hiện trên bìa. Nó thiên về nội dung và vibe bìa, không thay thế cho phần bố cục ở bên dưới.
                     </p>
                   </div>
 

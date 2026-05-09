@@ -174,28 +174,28 @@ function normalizeCoverSceneType(value: unknown): AIFactoryConfig['coverSceneTyp
 function getCoverSceneTypeLabel(style: AIFactoryConfig['coverSceneType']) {
   switch (normalizeCoverSceneType(style)) {
     case 'collage_story_poster':
-      return 'Luxury collage nhiều mảnh truyện, hợp kiểu webnovel thương mại Trung Quốc'
+      return 'poster collage nhiều tuyến drama, nhiều mảnh truyện, hợp kiểu webnovel thương mại Trung Quốc'
     case 'mother_child_protection':
-      return 'Mẹ con / bảo vệ đứa trẻ / tranh chấp quyền nuôi'
+      return 'mô típ mẹ con / quyền nuôi / bảo vệ đứa trẻ'
     case 'evidence_discovery_scene':
-      return 'Nữ chính + vật chứng / phát hiện manh mối'
+      return 'mô típ vật chứng / manh mối / lật bí mật'
     case 'public_reveal_confrontation':
-      return 'Đối chất công khai / vả mặt trước đám đông / họp báo / livestream'
+      return 'mô típ công khai vả mặt / họp báo / livestream / lật mặt trước đám đông'
     case 'private_betrayal_confrontation':
-      return 'Phản bội riêng tư / bắt gian / đối đầu trong khách sạn, biệt thự, hôn lễ'
+      return 'mô típ phản bội tình cảm / bắt gian / tiểu tam / đối đầu kín'
     case 'hospital_legal_suspense':
-      return 'Bệnh viện / hồ sơ / ADN / pháp lý / nhận nuôi / điều dưỡng'
+      return 'mô típ bệnh viện / ADN / hồ sơ bí mật / nhận nuôi / pháp lý'
     case 'school_parent_conflict':
-      return 'Trường học / phụ huynh / bắt nạt / hiểu lầm công khai'
+      return 'mô típ trường học / phụ huynh / hiểu lầm / áp lực công khai'
     case 'airport_secret_tension':
-      return 'Sân bay / chia ly / truy đuổi bí mật / gặp gỡ bước ngoặt'
+      return 'mô típ khách sạn / sân bay / chia ly bí mật / bước ngoặt quan hệ'
     case 'family_banquet_confrontation':
-      return 'Tiệc gia đình / hào môn / trưởng bối ép cung / bàn ăn căng thẳng'
+      return 'mô típ hào môn gia đình / bàn ăn / trưởng bối gây áp lực'
     case 'boardroom_evidence_reveal':
-      return 'Họp hội đồng / thương chiến / lật chứng cứ / đấu quyền lực'
+      return 'mô típ thương chiến / hợp đồng / họp hội đồng / đấu quyền lực'
     case 'auto_story_scene':
     default:
-      return 'tự động chọn theo nội dung truyện'
+      return 'tự động chọn mô típ bìa theo nội dung truyện'
   }
 }
 
