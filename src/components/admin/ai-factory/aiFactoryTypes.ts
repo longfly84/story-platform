@@ -1,8 +1,6 @@
 export type FactoryProvider = 'mock' | 'openai'
 export type FactoryModelKey = 'economy' | 'premium' | 'auto'
 
-export type FactoryStoryEditorMode = 'off' | 'standard' | 'careful'
-
 export type CoverArtStyle =
   | 'auto'
   | 'anime_cinematic'
@@ -14,6 +12,19 @@ export type CoverCompositionPreset =
   | 'auto'
   | 'story_scene_offset'
   | 'luxury_collage'
+
+export type CoverSceneType =
+  | 'auto_story_scene'
+  | 'collage_story_poster'
+  | 'mother_child_protection'
+  | 'evidence_discovery_scene'
+  | 'public_reveal_confrontation'
+  | 'private_betrayal_confrontation'
+  | 'hospital_legal_suspense'
+  | 'school_parent_conflict'
+  | 'airport_secret_tension'
+  | 'family_banquet_confrontation'
+  | 'boardroom_evidence_reveal'
 
 export type FactoryStatus =
   | 'idle'
@@ -51,9 +62,9 @@ export type AIFactoryConfig = {
   autoCompleteByTarget: boolean
   delayMs: number
   generateCover: boolean
-  storyEditorMode: FactoryStoryEditorMode
   coverArtStyle: CoverArtStyle
   coverCompositionPreset: CoverCompositionPreset
+  coverSceneType: CoverSceneType
   storyStatus: 'draft'
   chapterStatus: 'draft'
   chapterLengthLabel: string

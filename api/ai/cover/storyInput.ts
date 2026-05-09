@@ -105,6 +105,25 @@ export function extractStoryInput(body: JsonRecord): StoryInput {
     ),
   )
 
+
+  const coverCompositionPreset = safeString(
+    source.coverCompositionPreset ||
+      source.cover_composition_preset ||
+      body.coverCompositionPreset ||
+      body.cover_composition_preset ||
+      storyDnaRecord.coverCompositionPreset ||
+      storyDnaRecord.cover_composition_preset,
+  )
+
+  const suggestedCoverSceneType = safeString(
+    source.suggestedCoverSceneType ||
+      source.suggested_cover_scene_type ||
+      body.suggestedCoverSceneType ||
+      body.suggested_cover_scene_type ||
+      storyDnaRecord.suggestedCoverSceneType ||
+      storyDnaRecord.suggested_cover_scene_type,
+  )
+
   const currentChapterCount =
     safeNumber(
       source.currentChapterCount ||
@@ -145,14 +164,8 @@ export function extractStoryInput(body: JsonRecord): StoryInput {
     visual_style: coverArtStyle,
     cover_style: safeString(source.cover_style || body.cover_style),
     coverArtStyle,
-    suggestedCoverSceneType: safeString(
-      source.suggestedCoverSceneType ||
-        source.suggested_cover_scene_type ||
-        body.suggestedCoverSceneType ||
-        body.suggested_cover_scene_type ||
-        storyDnaRecord.suggestedCoverSceneType ||
-        storyDnaRecord.suggested_cover_scene_type,
-    ),
+    coverCompositionPreset,
+    suggestedCoverSceneType,
     currentChapterCount,
     targetChapters,
     coverBrief: safeString(source.coverBrief || source.cover_brief || body.coverBrief || body.cover_brief),

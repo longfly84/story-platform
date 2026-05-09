@@ -69,9 +69,9 @@ const defaultConfig: AIFactoryConfig = {
   maxTargetChapters: 20,
   delayMs: 2000,
   generateCover: false,
-  storyEditorMode: 'standard',
   coverArtStyle: 'auto',
   coverCompositionPreset: 'auto',
+  coverSceneType: 'auto_story_scene',
   autoCompleteByTarget: false,
   storyStatus: 'draft',
   chapterStatus: 'draft',
@@ -103,21 +103,6 @@ function normalizeCoverArtStyle(value: unknown): AIFactoryConfig['coverArtStyle'
   return 'auto'
 }
 
-
-function normalizeStoryEditorMode(value: unknown): AIFactoryConfig['storyEditorMode'] {
-  const raw = String(value || '').trim()
-
-  if (raw === 'off' || raw === 'standard' || raw === 'careful') {
-    return raw as AIFactoryConfig['storyEditorMode']
-  }
-
-  // Tương thích config cũ dạng checkbox.
-  if (value === false) return 'off'
-  if (value === true) return 'standard'
-
-  return 'standard'
-}
-
 function normalizeCoverCompositionPreset(value: unknown): AIFactoryConfig['coverCompositionPreset'] {
   const raw = String(value || '').trim()
 
@@ -135,6 +120,41 @@ function normalizeCoverCompositionPreset(value: unknown): AIFactoryConfig['cover
   return 'auto'
 }
 
+
+function normalizeCoverSceneType(value: unknown): AIFactoryConfig['coverSceneType'] {
+  const raw = String(value || '').trim()
+
+  if (
+    raw === 'auto_story_scene' ||
+    raw === 'collage_story_poster' ||
+    raw === 'mother_child_protection' ||
+    raw === 'evidence_discovery_scene' ||
+    raw === 'public_reveal_confrontation' ||
+    raw === 'private_betrayal_confrontation' ||
+    raw === 'hospital_legal_suspense' ||
+    raw === 'school_parent_conflict' ||
+    raw === 'airport_secret_tension' ||
+    raw === 'family_banquet_confrontation' ||
+    raw === 'boardroom_evidence_reveal'
+  ) {
+    return raw as AIFactoryConfig['coverSceneType']
+  }
+
+  if (raw === 'auto' || raw === '') return 'auto_story_scene'
+  if (raw === 'collage' || raw === 'story_collage' || raw === 'luxury_collage') return 'collage_story_poster'
+  if (raw === 'mother_child' || raw === 'custody' || raw === 'mother-child') return 'mother_child_protection'
+  if (raw === 'evidence' || raw === 'evidence_scene') return 'evidence_discovery_scene'
+  if (raw === 'public_reveal' || raw === 'public') return 'public_reveal_confrontation'
+  if (raw === 'private_betrayal' || raw === 'betrayal') return 'private_betrayal_confrontation'
+  if (raw === 'hospital' || raw === 'medical') return 'hospital_legal_suspense'
+  if (raw === 'school') return 'school_parent_conflict'
+  if (raw === 'airport') return 'airport_secret_tension'
+  if (raw === 'family_banquet' || raw === 'family') return 'family_banquet_confrontation'
+  if (raw === 'boardroom' || raw === 'corporate') return 'boardroom_evidence_reveal'
+
+  return 'auto_story_scene'
+}
+
 function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
   switch (normalizeCoverArtStyle(style)) {
     case 'anime_cinematic':
@@ -148,6 +168,35 @@ function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
     case 'auto':
     default:
       return 'premium Chinese commercial webnovel cover, automatically matched to story content'
+  }
+}
+
+
+function getCoverSceneTypeLabel(style: AIFactoryConfig['coverSceneType']) {
+  switch (normalizeCoverSceneType(style)) {
+    case 'collage_story_poster':
+      return 'Luxury collage nhiều mảnh truyện, hợp kiểu webnovel thương mại Trung Quốc'
+    case 'mother_child_protection':
+      return 'Mẹ con / bảo vệ đứa trẻ / tranh chấp quyền nuôi'
+    case 'evidence_discovery_scene':
+      return 'Nữ chính + vật chứng / phát hiện manh mối'
+    case 'public_reveal_confrontation':
+      return 'Đối chất công khai / vả mặt trước đám đông / họp báo / livestream'
+    case 'private_betrayal_confrontation':
+      return 'Phản bội riêng tư / bắt gian / đối đầu trong khách sạn, biệt thự, hôn lễ'
+    case 'hospital_legal_suspense':
+      return 'Bệnh viện / hồ sơ / ADN / pháp lý / nhận nuôi / điều dưỡng'
+    case 'school_parent_conflict':
+      return 'Trường học / phụ huynh / bắt nạt / hiểu lầm công khai'
+    case 'airport_secret_tension':
+      return 'Sân bay / chia ly / truy đuổi bí mật / gặp gỡ bước ngoặt'
+    case 'family_banquet_confrontation':
+      return 'Tiệc gia đình / hào môn / trưởng bối ép cung / bàn ăn căng thẳng'
+    case 'boardroom_evidence_reveal':
+      return 'Họp hội đồng / thương chiến / lật chứng cứ / đấu quyền lực'
+    case 'auto_story_scene':
+    default:
+      return 'tự động chọn theo nội dung truyện'
   }
 }
 
@@ -176,73 +225,8 @@ function normalizeFactoryTitleText(value: unknown) {
     .trim()
 }
 
-function isGenericFactoryEvidence(value: unknown) {
-  const normalized = normalizeFactoryTitleText(value)
-
-  return [
-    '',
-    'chi tiet bi dat sai',
-    'vat chung bi dat sai cho',
-    'mon do bi dat sai',
-    'mon do choi bi dat sai',
-    'vat chung bi lo',
-    'chi tiet bi lo',
-  ].includes(normalized)
-}
-
-function extractFactoryEvidenceFromText(value: unknown) {
-  const text = safeString(value)
-  if (!text) return ''
-
-  const patterns = [
-    /(?:^|[+|;\n])\s*evidence\s*[:=]\s*([^+|;\n]+)/i,
-    /(?:^|[+|;\n])\s*evidenceObject\s*[:=]\s*([^+|;\n]+)/i,
-    /(?:^|[+|;\n])\s*evidenceAxis\s*[:=]\s*(?:[^/\n]+\/)?\s*([^+|;\n]+)/i,
-    /(?:vật chứng chính|vat chung chinh)\s+([^.;\n]+)/i,
-    /(?:trọng tâm là|trong tam la)\s+([^.;\n]+)/i,
-  ]
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern)
-    const candidate = safeString(match?.[1])
-      .replace(/^unknown\s*/i, '')
-      .replace(/\s+heroine\s*:.+$/i, '')
-      .replace(/\s+setting\s*:.+$/i, '')
-      .replace(/\s+genre\s*:.+$/i, '')
-      .trim()
-
-    if (candidate && !isGenericFactoryEvidence(candidate)) return candidate
-  }
-
-  return ''
-}
-
 function getFactorySeedEvidence(storySeed?: FactoryStorySeed | null) {
-  const seed = storySeed as any
-  const direct = safeString(seed?.evidenceObject)
-  if (direct && !isGenericFactoryEvidence(direct)) return direct
-
-  const fingerprintEvidence = safeString(seed?.motifFingerprint?.evidenceObject)
-  if (fingerprintEvidence && !isGenericFactoryEvidence(fingerprintEvidence)) return fingerprintEvidence
-
-  const textSources = [
-    seed?.shortFingerprint,
-    seed?.motifText,
-    seed?.motifFingerprint?.fingerprint,
-    seed?.corePremise,
-    seed?.incitingIncident,
-    seed?.mainConflict,
-    seed?.hiddenTruth,
-    seed?.storyPlan?.chapters?.[0]?.evidenceBeat,
-    seed?.storyPlan?.chapters?.[0]?.mission,
-  ]
-
-  for (const source of textSources) {
-    const extracted = extractFactoryEvidenceFromText(source)
-    if (extracted) return extracted
-  }
-
-  return direct || fingerprintEvidence
+  return safeString((storySeed as any)?.evidenceObject || (storySeed as any)?.motifFingerprint?.evidenceObject)
 }
 
 function isLockerCardEvidenceText(value: string) {
@@ -263,15 +247,9 @@ function isBadFactoryStoryTitle(title: string) {
   const normalized = normalizeFactoryTitleText(title)
 
   return [
-    'chi tiet bi dat sai',
-    'chi tiet bi lo',
-    'manh moi dau tien',
     'manh moi o hien truong',
     'chua dat ten',
     'vat chung bi dat sai cho',
-    'mon do bi dat sai',
-    'mon do choi bi dat sai',
-    'vat chung bi lo',
     'mon qua bi lo',
     'ma qr dan toi thu muc an',
     'dong ma trong ho so cu',
@@ -284,83 +262,12 @@ function isBadFactoryStoryTitle(title: string) {
   ].includes(normalized)
 }
 
-function titleCaseFactoryEvidence(input: string) {
-  return input
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-function compactFactoryEvidenceTitle(evidence: string) {
-  return safeString(evidence)
-    .replace(/^một\s+/i, '')
-    .replace(/^một chiếc\s+/i, 'Chiếc ')
-    .replace(/^một tấm\s+/i, 'Tấm ')
-    .replace(/\s+có một chi tiết lệch.*$/i, '')
-    .replace(/\s+không thuộc về.*$/i, '')
-    .replace(/\s+không phải.*$/i, '')
-    .replace(/\s+bị đặt sai chỗ$/i, '')
-    .replace(/\s+bị dùng để.+$/i, '')
-    .replace(/\s+trong một tình huống.+$/i, '')
-    .replace(/\s+lúc nữ chính.+$/i, ' Lúc Tôi Vắng Mặt')
-    .trim()
-}
-
 function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getFactorySeedEvidence(storySeed)
   const normalized = normalizeFactoryTitleText(evidence)
 
-  if (!evidence || isGenericFactoryEvidence(evidence)) {
-    return ''
-  }
-
-  if (normalized.includes('coc') && normalized.includes('vet son')) {
-    return 'Vết Son Trên Chiếc Cốc'
-  }
-
-  if (normalized.includes('ho so') && normalized.includes('nhan con nuoi') && normalized.includes('ghim')) {
-    return 'Dấu Ghim Mới Trên Hồ Sơ Cũ'
-  }
-
-  if ((normalized.includes('goc anh') || normalized.includes('tam anh') || normalized.includes('anh cu')) && normalized.includes('ruy bang')) {
-    return 'Tấm Ảnh Sau Dải Ruy-Băng'
-  }
-
-  if (normalized.includes('the ra vao') || normalized.includes('quet the') || (normalized.includes('the') && normalized.includes('vang mat'))) {
-    return 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt'
-  }
-
   if (isLockerCardEvidenceText(evidence)) {
-    return normalized.includes('quet') ? 'Lượt Quẹt Thẻ Lúc Tôi Vắng Mặt' : 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
-  }
-
-  if (normalized.includes('ban phac thao') || normalized.includes('phac thao')) {
-    return 'Bản Phác Thảo Bị Xé Góc'
-  }
-
-  if (normalized.includes('tem') && (normalized.includes('kien hang') || normalized.includes('ma tuyen'))) {
-    return 'Tem Dán Chồng Lên Mã Cũ'
-  }
-
-  if (normalized.includes('con dau') && (normalized.includes('phu luc') || normalized.includes('hop dong'))) {
-    return 'Con Dấu Lệch Trên Phụ Lục'
-  }
-
-  if ((normalized.includes('the') || normalized.includes('so lo')) && normalized.includes('dau gia')) {
-    return 'Thẻ Đấu Giá Bị Tráo Dây'
-  }
-
-  if (normalized.includes('ban nhap') && normalized.includes('thong cao')) {
-    return 'Bản Nháp Thông Cáo Bị Gửi Nhầm'
-  }
-
-  if (normalized.includes('may anh do choi') || (normalized.includes('anh mo') && normalized.includes('do choi'))) {
-    return 'Bức Ảnh Trong Máy Ảnh Đồ Chơi'
-  }
-
-  if (normalized.includes('mau ghi chu') && normalized.includes('thang may')) {
-    return 'Mẩu Ghi Chú Tầng Thang Máy'
+    return 'Tấm Thẻ Tủ Đồ Bị Đặt Sai'
   }
 
   if ((normalized.includes('ve') || normalized.includes('phieu')) && (normalized.includes('an') || normalized.includes('so ghe') || normalized.includes('ghe'))) {
@@ -403,17 +310,20 @@ function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
     return 'Bức Vẽ Lệch Khung'
   }
 
-  const clean = compactFactoryEvidenceTitle(evidence)
-  if (clean && clean.length <= 42 && !isGenericFactoryEvidence(clean)) {
-    return titleCaseFactoryEvidence(clean)
+  const clean = evidence
+    .replace(/^một\s+/i, '')
+    .replace(/^một chiếc\s+/i, 'Chiếc ')
+    .replace(/^một tấm\s+/i, 'Tấm ')
+    .replace(/\s+có một chi tiết lệch.*$/i, '')
+    .replace(/\s+không phải.*$/i, '')
+    .replace(/\s+bị đặt sai chỗ$/i, '')
+    .trim()
+
+  if (clean && clean.length <= 34) {
+    return clean.charAt(0).toUpperCase() + clean.slice(1)
   }
 
-  const fallbackWords = clean.split(/\s+/).filter(Boolean).slice(0, 8).join(' ')
-  if (fallbackWords && !isGenericFactoryEvidence(fallbackWords)) {
-    return titleCaseFactoryEvidence(fallbackWords)
-  }
-
-  return ''
+  return 'Chi Tiết Bị Đặt Sai'
 }
 
 function resolvePanelStoryTitle(params: {
@@ -431,7 +341,7 @@ function resolvePanelStoryTitle(params: {
         ? seedTitle
         : parsedTitle && !isBadFactoryStoryTitle(parsedTitle)
           ? parsedTitle
-          : evidenceTitle || parsedTitle || seedTitle || 'Truyện Chưa Có Tên'
+          : evidenceTitle || 'Chi Tiết Bị Đặt Sai'
 
   return {
     title: chosen,
@@ -843,10 +753,8 @@ export default function AIFactoryPanel() {
           coverCompositionPreset: normalizeCoverCompositionPreset(
             (snapshot.config as any).coverCompositionPreset,
           ),
+          coverSceneType: normalizeCoverSceneType((snapshot.config as any).coverSceneType),
           autoCompleteByTarget: Boolean((snapshot.config as any).autoCompleteByTarget),
-          storyEditorMode: normalizeStoryEditorMode(
-            (snapshot.config as any).storyEditorMode ?? (snapshot.config as any).storyEditorPassEnabled,
-          ),
         })
       }
       if (Array.isArray(snapshot.jobs)) setJobs(snapshot.jobs)
@@ -1273,8 +1181,6 @@ Yêu cầu:
       targetChapters: params.targetChapters,
       isFinalChapter: Boolean(params.isFinalChapter),
       storySeed: params.storySeed ?? null,
-      storyEditorMode: config.storyEditorMode,
-      storyEditorPassEnabled: config.storyEditorMode !== 'off',
       recentChapters: params.recentChapters,
       storyMemory: [params.storyMemory, finalChapterInstruction].filter(Boolean).join('\n\n---\n\n'),
     }
@@ -1297,35 +1203,6 @@ Yêu cầu:
 
     if (!text || typeof text !== 'string') {
       throw new Error('API không trả về text hợp lệ.')
-    }
-
-    if (params.provider === 'openai') {
-      const editorMode = data?.storyEditorMode || config.storyEditorMode
-
-      if (editorMode === 'off') {
-        addLog('Story editor pass: disabled', 'info')
-      } else if (data?.editorPassUsed) {
-        addLog(
-          editorMode === 'careful'
-            ? 'Story editor pass: success (kỹ chọn lọc)'
-            : 'Story editor pass: success (tiêu chuẩn)',
-          'success',
-        )
-
-        if (data?.editorRepairUsed) {
-          addLog('Vietnamese repair pass: success', 'success')
-        } else if (Array.isArray(data?.editorAuditFlags) && data.editorAuditFlags.length > 0) {
-          addLog(`Vietnamese audit: còn ${data.editorAuditFlags.length} dấu hiệu cần soi thủ công`, 'warning')
-        }
-
-        if (data?.editorRepairFailed) {
-          addLog(`Vietnamese repair pass: fallback (${data?.editorRepairError || 'không rõ lỗi'})`, 'warning')
-        }
-      } else if (data?.editorPassFailed) {
-        addLog(`Story editor pass: fallback bản thô (${data?.editorError || 'không rõ lỗi'})`, 'warning')
-      } else {
-        addLog('Story editor pass: enabled nhưng API không báo đã sửa', 'warning')
-      }
     }
 
     return text
@@ -1510,10 +1387,12 @@ Yêu cầu:
               coverConcept: (params.storySeed as any).coverConcept ?? null,
               coverArtStyle: normalizeCoverArtStyle(config.coverArtStyle),
               coverCompositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
+              coverSceneType: normalizeCoverSceneType(config.coverSceneType),
             }
           : {
               coverArtStyle: normalizeCoverArtStyle(config.coverArtStyle),
               coverCompositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
+              coverSceneType: normalizeCoverSceneType(config.coverSceneType),
             },
         story: {
           id: params.storyId,
@@ -1524,6 +1403,7 @@ Yêu cầu:
           tags: [params.genreLabel, params.heroineLabel].filter(Boolean),
           coverArtStyle: normalizeCoverArtStyle(config.coverArtStyle),
           coverCompositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
+          suggestedCoverSceneType: normalizeCoverSceneType(config.coverSceneType),
           story_dna: params.storySeed
             ? {
                 ...params.storySeed,
@@ -1546,6 +1426,9 @@ Yêu cầu:
         cover_composition_preset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
         compositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
         compositionLabel: getCoverCompositionPresetLabel(config.coverCompositionPreset),
+        suggestedCoverSceneType: normalizeCoverSceneType(config.coverSceneType),
+        suggested_cover_scene_type: normalizeCoverSceneType(config.coverSceneType),
+        sceneLabel: getCoverSceneTypeLabel(config.coverSceneType),
         aspectRatio: '2:3',
       }),
     })

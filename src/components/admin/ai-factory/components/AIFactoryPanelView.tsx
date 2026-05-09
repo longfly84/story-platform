@@ -39,27 +39,24 @@ const COVER_COMPOSITION_OPTIONS: Array<{
 ]
 
 
-const STORY_EDITOR_MODE_OPTIONS: Array<{
-  value: AIFactoryConfig['storyEditorMode']
+
+const COVER_SCENE_OPTIONS: Array<{
+  value: AIFactoryConfig['coverSceneType']
   label: string
-  hint: string
 }> = [
-  {
-    value: 'off',
-    label: 'Tắt',
-    hint: 'Nhanh/rẻ nhất. Dùng khi test prompt hoặc test logic.',
-  },
-  {
-    value: 'standard',
-    label: 'Tiêu chuẩn',
-    hint: 'Writer + 1 lượt AI editor. Nên dùng mặc định để giữ chi phí 2–3 triệu/tháng.',
-  },
-  {
-    value: 'careful',
-    label: 'Kỹ chọn lọc',
-    hint: 'Editor + audit bằng code. Chỉ gọi repair AI khi phát hiện câu gượng/sai tai.',
-  },
+  { value: 'auto_story_scene', label: 'Tự động theo nội dung truyện' },
+  { value: 'evidence_discovery_scene', label: 'Nữ chính + vật chứng / phát hiện manh mối' },
+  { value: 'public_reveal_confrontation', label: 'Đối chất công khai / vả mặt trước đám đông' },
+  { value: 'private_betrayal_confrontation', label: 'Phản bội riêng tư / bắt gian / đối đầu kín' },
+  { value: 'mother_child_protection', label: 'Mẹ con / bảo vệ đứa trẻ / quyền nuôi con' },
+  { value: 'hospital_legal_suspense', label: 'Bệnh viện / hồ sơ / ADN / pháp lý' },
+  { value: 'school_parent_conflict', label: 'Trường học / phụ huynh / bắt nạt / hiểu lầm' },
+  { value: 'airport_secret_tension', label: 'Sân bay / chia ly / bí mật trên đường đi' },
+  { value: 'family_banquet_confrontation', label: 'Tiệc gia đình / hào môn / bàn ăn căng thẳng' },
+  { value: 'boardroom_evidence_reveal', label: 'Họp hội đồng / thương chiến / lật chứng cứ' },
+  { value: 'collage_story_poster', label: 'Luxury collage nhiều mảnh truyện' },
 ]
+
 
 type AIFactoryPanelViewProps = {
   status: FactoryStatus
@@ -489,46 +486,22 @@ export default function AIFactoryPanelView({
                 </label>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 sm:col-span-2">
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <FieldLabel>Biên tập tiếng Việt</FieldLabel>
-                  <select
+              <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-200">
+                  <input
+                    type="checkbox"
                     disabled={isRunning}
-                    value={config.storyEditorMode ?? 'standard'}
-                    onChange={(event) =>
-                      updateConfig('storyEditorMode', event.target.value as AIFactoryConfig['storyEditorMode'])
-                    }
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                  >
-                    {STORY_EDITOR_MODE_OPTIONS.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                  <SmallHint>
-                    {STORY_EDITOR_MODE_OPTIONS.find((item) => item.value === (config.storyEditorMode ?? 'standard'))?.hint}
-                  </SmallHint>
-                </div>
-
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-200">
-                    <input
-                      type="checkbox"
-                      disabled={isRunning}
-                      checked={config.generateCover}
-                      onChange={(event) => updateConfig('generateCover', event.target.checked)}
-                      className="h-4 w-4 accent-yellow-300"
-                    />
-                    <span>
-                      <span className="block font-bold text-slate-100">Generate cover</span>
-                      <span className="mt-1 block text-xs text-slate-500">
-                        Mock skip, OpenAI tạo ảnh thật + upload public.
-                      </span>
-                    </span>
-                  </label>
-                </div>
+                    checked={config.generateCover}
+                    onChange={(event) => updateConfig('generateCover', event.target.checked)}
+                    className="h-4 w-4 accent-yellow-300"
+                  />
+                  Generate cover
+                </label>
+                <span className="ml-2 text-xs text-slate-500">
+                  Mock sẽ skip, OpenAI sẽ tạo ảnh thật + upload public
+                </span>
               </div>
+
 
               {config.generateCover ? (
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -553,6 +526,29 @@ export default function AIFactoryPanelView({
                     Mục này quyết định phong cách vẽ tổng thể.
                     4 option mới sẽ bám theo kiểu Chinese commercial webnovel cover mà mày muốn.
                   </p>
+
+                  <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
+                    <FieldLabel>Loại scene ảnh bìa</FieldLabel>
+
+                    <select
+                      disabled={isRunning}
+                      value={config.coverSceneType ?? 'auto_story_scene'}
+                      onChange={(event) =>
+                        updateConfig('coverSceneType', event.target.value as AIFactoryConfig['coverSceneType'])
+                      }
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                    >
+                      {COVER_SCENE_OPTIONS.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                      Mục này là option theo nhóm cover mà mày vừa phân tích: vật chứng, mẹ con, đối chất công khai, họp hội đồng, tiệc gia đình, betrayal, collage...
+                    </p>
+                  </div>
 
                   <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
                     <FieldLabel>Bố cục ảnh bìa</FieldLabel>

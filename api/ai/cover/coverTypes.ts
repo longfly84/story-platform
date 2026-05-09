@@ -7,6 +7,11 @@ export type CoverArtStyleKey =
   | 'cinematic_realistic'
   | 'popular_webnovel_collage'
 
+export type CoverCompositionPreset =
+  | 'auto'
+  | 'story_scene_offset'
+  | 'luxury_collage'
+
 export type CoverSceneType =
   | 'auto_story_scene'
   | 'collage_story_poster'
@@ -59,7 +64,8 @@ export interface StoryInput {
   visual_style?: string
   cover_style?: string
   coverArtStyle?: string
-  suggestedCoverSceneType?: string
+  coverCompositionPreset?: CoverCompositionPreset | string
+  suggestedCoverSceneType?: CoverSceneType | string
   currentChapterCount?: number
   targetChapters?: number
   coverBrief?: string

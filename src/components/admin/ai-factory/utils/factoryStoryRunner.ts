@@ -65,6 +65,41 @@ function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
   }
 }
 
+
+function normalizeCoverSceneType(value: unknown): AIFactoryConfig['coverSceneType'] {
+  const raw = String(value || '').trim()
+
+  if (
+    raw === 'auto_story_scene' ||
+    raw === 'collage_story_poster' ||
+    raw === 'mother_child_protection' ||
+    raw === 'evidence_discovery_scene' ||
+    raw === 'public_reveal_confrontation' ||
+    raw === 'private_betrayal_confrontation' ||
+    raw === 'hospital_legal_suspense' ||
+    raw === 'school_parent_conflict' ||
+    raw === 'airport_secret_tension' ||
+    raw === 'family_banquet_confrontation' ||
+    raw === 'boardroom_evidence_reveal'
+  ) {
+    return raw as AIFactoryConfig['coverSceneType']
+  }
+
+  if (raw === 'auto' || raw === '') return 'auto_story_scene'
+  if (raw === 'collage' || raw === 'story_collage' || raw === 'luxury_collage') return 'collage_story_poster'
+  if (raw === 'mother_child' || raw === 'custody') return 'mother_child_protection'
+  if (raw === 'evidence') return 'evidence_discovery_scene'
+  if (raw === 'public_reveal' || raw === 'public') return 'public_reveal_confrontation'
+  if (raw === 'private_betrayal' || raw === 'betrayal') return 'private_betrayal_confrontation'
+  if (raw === 'hospital' || raw === 'medical') return 'hospital_legal_suspense'
+  if (raw === 'school') return 'school_parent_conflict'
+  if (raw === 'airport') return 'airport_secret_tension'
+  if (raw === 'family_banquet' || raw === 'family') return 'family_banquet_confrontation'
+  if (raw === 'boardroom' || raw === 'corporate') return 'boardroom_evidence_reveal'
+
+  return 'auto_story_scene'
+}
+
 type SupabaseLike = {
   from: (table: string) => any
 }
@@ -227,8 +262,6 @@ Yêu cầu:
     targetChapters: params.targetChapters,
     isFinalChapter: Boolean(params.isFinalChapter),
     storySeed: params.storySeed ?? null,
-    storyEditorMode: params.config.storyEditorMode,
-    storyEditorPassEnabled: params.config.storyEditorMode !== 'off',
     recentChapters: params.recentChapters,
     storyMemory: [params.storyMemory, finalChapterInstruction].filter(Boolean).join('\n\n---\n\n'),
   }
@@ -701,6 +734,8 @@ export async function generateAndAttachFactoryCover(params: {
   storySeed?: FactoryStorySeed | null
 }) {
   const normalizedCoverArtStyle = normalizeCoverArtStyle(params.config.coverArtStyle)
+  const normalizedCoverCompositionPreset = params.config.coverCompositionPreset || 'auto'
+  const normalizedCoverSceneType = normalizeCoverSceneType(params.config.coverSceneType)
 
   const storyDna = params.storySeed
     ? {
@@ -733,11 +768,19 @@ export async function generateAndAttachFactoryCover(params: {
         genreLabel: params.genreLabel,
         tags: [params.genreLabel, params.heroineLabel].filter(Boolean),
         story_dna: storyDna,
+        coverCompositionPreset: normalizedCoverCompositionPreset,
+        cover_composition_preset: normalizedCoverCompositionPreset,
+        suggestedCoverSceneType: normalizedCoverSceneType,
+        suggested_cover_scene_type: normalizedCoverSceneType,
       },
       cover_art_style: normalizedCoverArtStyle,
       visual_style: normalizedCoverArtStyle,
       style: normalizedCoverArtStyle,
       styleLabel: getCoverArtStyleLabel(normalizedCoverArtStyle),
+      coverCompositionPreset: normalizedCoverCompositionPreset,
+      cover_composition_preset: normalizedCoverCompositionPreset,
+      suggestedCoverSceneType: normalizedCoverSceneType,
+      suggested_cover_scene_type: normalizedCoverSceneType,
       aspectRatio: '2:3',
     }),
   })
