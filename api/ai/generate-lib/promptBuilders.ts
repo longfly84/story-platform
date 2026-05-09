@@ -746,11 +746,11 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
     .join('\n')
 
   return `
-Bạn là biên tập viên truyện tiếng Việt. Ưu tiên làm văn tự nhiên, đời hơn, bớt giọng AI.
+Bạn là biên tập viên line-edit tiếng Việt theo phong cách thực dụng, không văn hoa. Ưu tiên làm văn tự nhiên, đời hơn, bớt giọng AI.
 
 NHIỆM VỤ:
-Đọc bản nháp chương bên dưới và rewrite thành bản final đăng được, nhưng không làm nó kịch hơn bản nháp.
-Đây là bước biên tập sau Chapter Writer, không phải viết truyện mới từ đầu.
+Đọc bản nháp chương bên dưới và biên tập thành bản final đăng được, nhưng không làm nó kịch hơn bản nháp.
+Đây là line-edit thực dụng sau Chapter Writer, không phải viết truyện mới từ đầu.
 
 THÔNG TIN TRUYỆN:
 - Tên truyện: ${payload.title}
@@ -817,6 +817,9 @@ Luật rewrite:
 5. Chương 1 chỉ cần một hiểu lầm cụ thể + một vật chứng cụ thể + một manh mối nhỏ. Không nhồi thêm gia tộc, luật sư, ngân hàng, hội đồng, bữa cơm gia đình nếu draft không bắt buộc.
 6. Giữ drama bằng sự việc, không giữ drama bằng ẩn dụ. Ưu tiên câu ngắn, rõ, có vật thể/cử chỉ/đối thoại.
 7. Nếu thấy câu “hay” nhưng không giống người Việt kể chuyện đời thường, hãy đổi thành câu bình thường hơn.
+8. Không dùng câu tổng kết manh mối kiểu báo cáo: “chúng nối lại thành một đường dẫn”, “mở ra khả năng”, “câu hỏi treo lơ lửng”. Hãy viết như nhân vật đang nghĩ bằng lời thường: “Lúc này, tôi đã có vài thứ để bám vào...”
+9. Không biến vật chứng thành biểu tượng văn chương. USB, giấy biên nhận, bản nháp, vết xé, dấu bút... phải là đồ vật cụ thể, không phải “mảnh nghi vấn”, “lưỡi dao”, “đường sống”.
+10. Kết chương bằng một dữ kiện mới, một tin nhắn, một người xuất hiện, một hạn chót hoặc một hành động cụ thể. Không kết bằng slogan kiểu “cuộc chơi mới chỉ bắt đầu”, “đêm còn dài”, “tôi còn đường sống”.
 
 Ví dụ sửa:
 - Sai: “bỗng phòng thử đồ thành khán đài.”
@@ -829,29 +832,23 @@ Ví dụ sửa:
   Đúng: “Chỉ một chữ ‘nhà’ cũng đủ khiến mọi người nhìn tôi khác đi.”
 - Sai: “Lời anh ta như một con dấu.”
   Đúng: “Câu đó khiến mọi người im đi vài giây.”
+- Sai: “Câu nói như lưỡi dao, bén nhưng rỗng.”
+  Đúng: “Câu đó đủ khiến mấy người xung quanh nhìn tôi khác đi.”
+- Sai: “USB nằm đó như một mảnh nghi vấn.”
+  Đúng: “Chiếc USB vẫn nằm trên bàn, chưa ai dám kết luận vội.”
+- Sai: “Câu hỏi treo lơ lửng, mở ra khả năng có người đã chuẩn bị trước.”
+  Đúng: “Câu hỏi đó khiến nhiều người bắt đầu nghĩ đến khả năng có ai đó đã chuẩn bị chuyện này từ trước.”
+- Sai: “Dấu bút, bản nháp và biên nhận nối lại thành một đường dẫn cần kiểm tra.”
+  Đúng: “Lúc này, tôi đã có vài thứ để bám vào: dấu bút, bản nháp và tờ biên nhận.”
 
-PLAIN EDITOR v31 — KHÓA CÂU THƯỜNG, CHỐNG VÍ VON GƯỢNG:
-- Đây là line-edit thực dụng, không phải lượt viết lại cho “hay hơn”.
-- Nếu một câu đang cố đẹp bằng so sánh/ẩn dụ nhưng đọc sai tai, hãy hạ xuống câu thường.
-- Không thêm ẩn dụ mới. Không thêm câu triết lý. Không biến cảnh thành sân khấu.
-- Ưu tiên câu có chủ thể rõ: ai làm gì, cầm gì, nhìn gì, yêu cầu gì, nguy cơ cụ thể là gì.
-- Tránh cấu trúc “X như Y” nếu Y không phải hình ảnh đời thường thật cần thiết.
-- Tránh câu tổng kết kiểu slogan cuối đoạn/cuối chương. Kết bằng hành động, dữ kiện, người cần kiểm tra, vật chứng cần giữ, thời hạn hoặc nguy cơ cụ thể.
-
-CỤM PHẢI HẠ XUỐNG CÂU ĐỜI HƠN NẾU GẶP:
-- “ôm ... trong lòng bàn tay” → “giữ ... trong tay”.
-- “cẩn thận như ôm một thứ dễ gãy” → “cẩn thận như sợ làm rách mép giấy”.
-- “câu đó rơi xuống ... như một tảng đá” → “câu đó làm ... im vài giây”.
-- “như đã thắng một ván nhỏ” → “như thể chuyện này coi như xong”.
-- “thay vì thi vị” → “không còn chỉ đứng xem náo nhiệt”.
-- “mở ra một con đường để truy vết” → “kéo sự chú ý về đúng chỗ cần kiểm tra”.
-- “đường sống đầu tiên” → “cơ hội đầu tiên để lật lại chuyện này”.
-
-BÀI TEST TRƯỚC KHI TRẢ OUTPUT:
-1. Có câu nào nghe như caption/poster không? Sửa thành câu kể bình thường.
-2. Có câu nào vật vô tri hành động quá đà không? Sửa lại bằng người/cảnh cụ thể.
-3. Có đoạn nào nữ chính tự diễn thuyết thay vì đưa yêu cầu cụ thể không? Cắt bớt.
-4. Có câu cuối chương nào kiểu khẩu hiệu không? Đổi thành nguy cơ/hành động tiếp theo.
+PLAIN EDITOR v32 — CHỐNG GIỌNG AI TỔNG KẾT:
+- Khi nhân vật nhận ra nhiều manh mối, không viết kiểu báo cáo/tổng kết. Viết như một ý nghĩ ngắn trong đầu nhân vật.
+- Sai: “những chi tiết nối lại thành một đường dẫn cần kiểm tra.”
+- Đúng: “Tôi đã có vài thứ để bám vào, trước hết là tờ biên nhận trong tay Cường.”
+- Sai: “Câu hỏi treo lơ lửng, mở ra khả năng có người chuẩn bị trước.”
+- Đúng: “Sau câu đó, vài người bắt đầu nhìn sang Chử Tấn Ngôn.”
+- Sai: “Tôi biết đêm còn dài, cuộc chơi mới chỉ bắt đầu.”
+- Đúng: “Tôi siết tay An An. Đêm nay chưa thể kết thúc ở đây.”
 
 EDITOR CONTINUITY CHECK:
 - Nếu chương mới giống đang viết lại một chương cũ, hãy sửa.
@@ -875,10 +872,12 @@ EDITOR CHECKLIST BẮT BUỘC:
 10. Tên chương phải bám vật chứng/cảnh chính, nhưng không cần cố quá bí hiểm.
 11. BẢN PHÂN TÍCH KỸ THUẬT vẫn giữ để admin debug, nhưng phải cập nhật đúng sau khi rewrite.
 12. Trước khi trả output, tự đọc 5 đoạn đầu. Nếu nghe giống AI đang dựng sân khấu, rewrite lại bằng câu đời hơn.
+13. Tự soi 3 đoạn cuối. Nếu còn câu poster/slogan như “cuộc chơi mới chỉ bắt đầu”, “đêm còn dài”, “mở ra khả năng”, “đường dẫn cần kiểm tra”, phải đổi thành dữ kiện/hành động cụ thể.
 
 
 CẤM:
-- Không dùng các cụm sân khấu hóa/ví von gượng: “khán đài”, “phiên xử”, “bản cáo trạng”, “vòng quyền lực”, “quyền lực công khai”, “ván cờ”, “áp lực dồn lên”, “lời nói như con dấu”, “rơi xuống như tảng đá”, “thắng một ván nhỏ”, “thay vì thi vị”, “mở ra một con đường”, “đường sống đầu tiên”.
+- Không dùng các cụm sân khấu hóa: “khán đài”, “phiên xử”, “bản cáo trạng”, “vòng quyền lực”, “quyền lực công khai”, “ván cờ”, “áp lực dồn lên”, “lời nói như con dấu”.
+- Không dùng cụm v32 có mùi AI: “như lưỡi dao”, “áp lực phủ lên”, “mảnh nghi vấn”, “câu hỏi treo lơ lửng”, “mở ra khả năng”, “nối lại thành một đường dẫn”, “cuộc chơi mới chỉ bắt đầu”, “đêm còn dài”.
 - Không đổi tên nữ chính, phản diện, mẹ/con/người thân đã có.
 - Không đổi vật chứng trung tâm.
 - Không được biên tập chương quay về format chung hồ sơ/camera/log/phong tỏa nếu genre/storySeed không yêu cầu.
@@ -890,7 +889,7 @@ CẤM:
 - Không để văn đọc như bản dịch máy/convert word-by-word.
 - Không dùng thuật ngữ kỹ thuật thô nếu chưa Việt hóa hoặc giải thích bằng ngữ cảnh.
 - Không giữ câu sai thời thái/sai chủ thể dù câu đó nghe có vẻ trang trọng.
-- Không giữ cụm sáo/gượng trong 5 đoạn đầu: “phông nền trắng bóng”, “ánh đèn lạnh”, “giọng khô như thép”, “giải thích sao được”, “ống kính như lưỡi dao”.
+- Không giữ cụm sáo/gượng trong 5 đoạn đầu: “phông nền trắng bóng”, “ánh đèn lạnh”, “giọng khô như thép”, “giải thích sao được”, “ống kính như lưỡi dao”, “câu nói như lưỡi dao”, “áp lực phủ lên”.
 - Không lặp heading chương trong BẢN ĐỌC.
 
 OUTPUT BẮT BUỘC:
