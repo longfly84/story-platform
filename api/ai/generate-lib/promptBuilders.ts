@@ -660,6 +660,60 @@ export function buildPrompt(payload: NormalizedGeneratePayload) {
 }
 
 
+
+export function buildVietnameseFocusedRepairPrompt(
+  payload: NormalizedGeneratePayload,
+  draftText: string,
+  issues: string[] = [],
+) {
+  const chapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
+  const storySeed = payload.storySeed
+  const issueList = issues.length
+    ? issues.map((issue, index) => `${index + 1}. ${issue}`).join('\n')
+    : '- Có dấu hiệu câu gượng / văn máy / thuật ngữ thô.'
+
+  return `
+Bạn là biên tập viên line-edit tiếng Việt. Đây là lượt sửa CUỐI, chỉ sửa câu chữ và cầu nối logic, không viết lại premise.
+
+MỤC TIÊU:
+- Làm BẢN ĐỌC nghe như truyện tiếng Việt tự nhiên hơn.
+- Không thêm drama mới.
+- Không đổi tên nhân vật, vật chứng, bối cảnh, thứ tự sự kiện.
+- Không đổi chương số.
+- Giữ đúng 2 phần output nếu bản nháp đang có: "# BẢN ĐỌC CHO ĐỘC GIẢ" và "# BẢN PHÂN TÍCH KỸ THUẬT / KHÔNG ĐĂNG".
+
+THÔNG TIN KHÓA:
+- Tên truyện: ${payload.title}
+- Chương: ${chapterNumber}
+- Vật chứng trung tâm: ${storySeed?.evidenceObject || 'Không có'}
+- Bối cảnh: ${storySeed?.setting || storySeed?.openingScene || 'Không có'}
+- Mâu thuẫn chính: ${storySeed?.mainConflict || 'Không có'}
+
+CÁC VẤN ĐỀ PHẢI SỬA:
+${issueList}
+
+CÁCH SỬA BẮT BUỘC:
+1. Câu nào nghe như dịch máy hoặc AI đang giải thích thì đổi thành câu đời hơn.
+2. Thuật ngữ kỹ thuật phải Việt hóa:
+   - "log" → "bản ghi hệ thống" hoặc "lịch sử hệ thống"
+   - "screenshot/ảnh chụp giao diện" → "ảnh chụp màn hình"
+   - "access/quyền access" → "quyền truy cập"
+   - "metadata/cache/backup" phải giải thích bằng ngữ cảnh nếu buộc dùng.
+3. Sửa các cụm sai tai:
+   - "ôm cái bìa" → "giữ chặt một bìa hồ sơ"
+   - "micro trợ lý" → "điện thoại của trợ lý" / "loa ngoài"
+   - "chính sách ghi đè/ghi đệm" → "dữ liệu tạm thường bị ghi đè sau..."
+   - "thời gian đang đếm" → một nguy cơ cụ thể: "bản ghi có thể biến mất"
+   - "người bị kẹp giữa mệnh lệnh trên..." → hành động cụ thể: "muốn nói gì đó nhưng không dám"
+4. Thêm tối đa 1–2 câu cầu nối nếu vật chứng phụ xuất hiện đột ngột.
+5. Kết chương bằng hành động/dữ kiện/nguy cơ cụ thể, không bằng tuyên ngôn.
+
+BẢN CẦN SỬA:
+${compactText(draftText, 14000)}
+`.trim()
+}
+
+
 export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draftText: string) {
   const lengthRule = getLengthRule(payload.chapterLengthLabel)
   const chapterMinChars = Math.max(1000, Math.floor(Number(payload.chapterMinChars || 3500)))
@@ -824,58 +878,5 @@ Hai phần cách nhau bằng dòng "---".
 
 BẢN NHÁP CẦN BIÊN TẬP:
 ${compactText(draftText, 12000)}
-`.trim()
-}
-
-
-export function buildStoryEditorRepairPrompt(
-  payload: NormalizedGeneratePayload,
-  editedText: string,
-  auditFlags: string[],
-) {
-  const storySeed = payload.storySeed as any
-  const currentPlan = Array.isArray(storySeed?.storyPlan?.chapterPlan)
-    ? storySeed.storyPlan.chapterPlan.find(
-        (chapter: any) => Number(chapter?.chapterNumber) === Number(payload.nextChapterNumber),
-      )
-    : null
-
-  return `
-Bạn là biên tập viên tiếng Việt vòng cuối cho web truyện nữ tần đô thị.
-
-NHIỆM VỤ DUY NHẤT:
-Sửa bản đã biên tập dưới đây để đọc tự nhiên hơn như người Việt viết thật.
-Đây là vòng sửa lỗi nhỏ, KHÔNG viết lại cốt truyện.
-
-CÁC LỖI AUDIT VỪA PHÁT HIỆN:
-${auditFlags.length ? auditFlags.map((flag) => `- ${flag}`).join('\n') : '- Có câu văn gượng/sai tai cần rà lại.'}
-
-KHÓA KHÔNG ĐƯỢC ĐỔI:
-- Tên truyện: ${payload.title}
-- Chương số: ${payload.nextChapterNumber}
-- Vật chứng trung tâm: ${storySeed?.evidenceObject || 'Không có'}
-- Bối cảnh chính: ${storySeed?.setting || currentPlan?.mainScene || payload.genreLabel}
-- Mâu thuẫn chính: ${storySeed?.mainConflict || currentPlan?.mission || 'Không có'}
-- Không đổi tên nhân vật.
-- Không đổi số giờ, mã, biên nhận, dấu ghim, mã tuyến, ảnh, hồ sơ, bằng chứng.
-- Không thêm tuyến mới, không đổi kết quả cảnh.
-
-CÁCH SỬA BẮT BUỘC:
-1. Mỗi câu gượng phải đổi thành hành động/cử chỉ/đồ vật cụ thể.
-2. Cắt câu tổng kết trừu tượng kiểu “câu trả lời bắt đầu hé”, “con đường cần câu trả lời”, “sự thật sẽ nói thay tôi”.
-3. Nếu có collocation lạ như “vách ấm”, “mùi keo còn ấm”, “che nhoài”, “bằng chứng tĩnh người”, phải sửa thành tiếng Việt thuận tai.
-4. Không dùng slogan kết chương. Kết bằng một việc cụ thể: giữ điện thoại, chụp hồ sơ, khóa bằng chứng, gọi nhân chứng, nhìn thấy người khả nghi.
-5. Không để lộ rule kỹ thuật như “lần một/lần hai vật chứng xuất hiện”.
-6. Nếu câu thoại quá trang trọng, làm đời hơn nhưng vẫn đúng vai và đúng kính ngữ.
-7. Giữ đúng 2 phần output như bản gốc.
-
-OUTPUT:
-Trả lại toàn bộ chương đã sửa, giữ format:
-# BẢN ĐỌC CHO ĐỘC GIẢ
----
-# BẢN PHÂN TÍCH KỸ THUẬT / KHÔNG ĐĂNG
-
-BẢN CẦN SỬA:
-${compactText(editedText, 14000)}
 `.trim()
 }

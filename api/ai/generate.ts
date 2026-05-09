@@ -1,8 +1,8 @@
 import type { GeneratePayload } from './generate-lib/types.js'
-import { getLengthRule, getStoryEditorMode, getStoryEditorPassEnabled, getStoryEditorRepairEnabled, getTextModel } from './generate-lib/model.js'
+import { getLengthRule, getStoryEditorPassEnabled, getTextModel } from './generate-lib/model.js'
 import { callOpenAIText } from './generate-lib/openaiClient.js'
 import { normalizePayload } from './generate-lib/payload.js'
-import { buildPrompt, buildStoryEditorPrompt, buildStoryEditorRepairPrompt } from './generate-lib/promptBuilders.js'
+import { buildPrompt, buildStoryEditorPrompt, buildVietnameseFocusedRepairPrompt } from './generate-lib/promptBuilders.js'
 import { moderateTextOrThrow } from './generate-lib/moderation.js'
 
 
@@ -30,51 +30,52 @@ function softenAIDramaPhrases(input: string) {
   return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), input)
 }
 
-function auditVietnameseLineEdit(input: string) {
-  const flags: string[] = []
-  const checks: Array<[RegExp, string]> = [
-    [/vách\s+ấm/gi, 'Cụm “vách ấm” sai tai, cần đổi thành vách gỗ/vách tường/sát vách.'],
-    [/mùi\s+keo\s+còn\s+ấm/gi, '“Mùi keo còn ấm” sai collocation, cần đổi thành lớp keo còn mới hoặc mùi keo còn hắc.'],
-    [/phập\s+phồng(?!\s+(ngực|lồng ngực|hơi thở))/gi, 'Từ “phập phồng” thiếu chủ thể tự nhiên.'],
-    [/con\s+đường\s+cần\s+câu\s+trả\s+lời/gi, 'Câu “con đường cần câu trả lời” là văn máy.'],
-    [/câu\s+trả\s+lời\s+đã\s+bắt\s+đầu\s+hé/gi, 'Câu “câu trả lời bắt đầu hé” là meta/slogan.'],
-    [/một\s+vài\s+câu\s+trả\s+lời\s+đã\s+bắt\s+đầu\s+hé/gi, 'Câu kết trừu tượng “một vài câu trả lời...” cần đổi thành hành động cụ thể.'],
-    [/bằng\s+chứng\s+tĩnh\s+người/gi, '“Bằng chứng tĩnh người” sai nghĩa/sai tai.'],
-    [/che\s+nhoài/gi, '“Che nhoài” không phải cách nói tự nhiên.'],
-    [/ngòi\s+nắm/gi, '“Ngòi nắm” sai từ, cần đổi thành đầu mối/chỗ bám.'],
-    [/mảnh\s+hé/gi, '“Mảnh hé” sai tai, cần đổi thành manh mối/khe hở.'],
-    [/đứng\s+tay\s+chốc\s+lát/gi, '“Đứng tay chốc lát” sai câu, cần đổi thành dừng lại vài giây.'],
-    [/mọi\s+ánh\s+mắt\s+dồn\s+vào/gi, 'Cụm “mọi ánh mắt dồn vào” lặp văn AI, cần đổi thành hành động cụ thể.'],
-    [/mọi\s+âm\s+thanh\s+dồn\s+về/gi, 'Cụm “mọi âm thanh dồn về” là văn máy.'],
-    [/tiếng\s+hỏi\s+như\s+mũi\s+dao/gi, 'Ẩn dụ “tiếng hỏi như mũi dao” sáo và sân khấu.'],
-    [/chuyển\s+cuộc\s+chơi/gi, 'Cụm “chuyển cuộc chơi” là meta, cần đổi thành hành động cụ thể.'],
-    [/trả\s+đũa\s+bằng\s+sự\s+thật/gi, 'Slogan “trả đũa bằng sự thật” cần đổi thành câu hành động.'],
-    [/sự\s+thật\s+sẽ\s+nói\s+thay/gi, 'Slogan “sự thật sẽ nói thay” cần đổi thành hành động chứng minh.'],
-    [/lần\s+(một|hai|ba)\s+[^\n.]{0,60}(vật chứng|tờ giấy|tấm thẻ|hồ sơ|bản phác thảo|con dấu)/gi, 'Câu lộ rule đếm số lần vật chứng xuất hiện.'],
-    [/như\s+người\s+dò\s+lỗi/gi, '“Như người dò lỗi” nghe kỹ thuật, cần đổi thành nhìn kỹ từng chi tiết.'],
-    [/mắt\s+thẳm/gi, '“Mắt thẳm” là văn dịch.'],
-    [/nói\s+khoan/gi, '“Nói khoan” sai tai.'],
+
+function normalizeVietnameseProseArtifacts(input: string) {
+  let text = String(input || '')
+
+  const replacements: Array<[RegExp, string]> = [
+    [/trích xuất lịch sử hệ thống\s*\(log\)/gi, 'bản trích lịch sử hệ thống'],
+    [/\bbản log\b/gi, 'bản ghi hệ thống'],
+    [/\blog\b/gi, 'bản ghi hệ thống'],
+    [/ôm cái bìa/gi, 'giữ chặt một bìa hồ sơ'],
+    [/micro trợ lý/gi, 'điện thoại của trợ lý'],
+    [/chính sách ghi đè\/ghi đệm/gi, 'dữ liệu tạm thường bị ghi đè'],
+    [/như người bị kẹp giữa mệnh lệnh trên và trách nhiệm với đồng nghiệp/gi, 'như muốn nói gì đó nhưng không dám'],
+    [/Và thời gian, dù chưa nói thành lời, đang đếm\.?/gi, 'Nếu chậm thêm, bản ghi kia có thể biến mất.'],
+    [/một nỗi lo lạnh/gi, 'một nỗi lo âm ỉ'],
+    [/như đang đọc mệnh lệnh/gi, 'như đã được dặn trước'],
   ]
 
-  for (const [pattern, message] of checks) {
-    if (pattern.test(input)) flags.push(message)
+  for (const [pattern, replacement] of replacements) {
+    text = text.replace(pattern, replacement)
   }
 
-  const readerPart = input.split('# BẢN PHÂN TÍCH KỸ THUẬT')[0] || input
-  const longAbstractSentences = readerPart
-    .split(/(?<=[.!?。])\s+/)
-    .filter((sentence) => {
-      const text = sentence.trim()
-      if (text.length < 150) return false
-      return /(tôi biết|tôi hiểu|trong lòng tôi|rõ ràng|câu trả lời|sự thật|quyền lực|áp lực|cục diện|manh mối)/i.test(text)
-    })
-
-  if (longAbstractSentences.length >= 2) {
-    flags.push('Có nhiều câu dài giải thích/tổng kết trừu tượng trong BẢN ĐỌC, cần cắt thành hành động cụ thể.')
-  }
-
-  return Array.from(new Set(flags)).slice(0, 8)
+  return text
 }
+
+function findVietnameseNaturalnessIssues(input: string) {
+  const text = String(input || '')
+  const checks: Array<[RegExp, string]> = [
+    [/Chi Tiết Bị Đặt Sai/gi, 'title còn là placeholder “Chi Tiết Bị Đặt Sai”'],
+    [/ôm cái bìa/gi, 'cụm “ôm cái bìa” gượng trong văn công sở'],
+    [/micro trợ lý/gi, 'cụm “micro trợ lý” không rõ nghĩa'],
+    [/chính sách ghi đè\/ghi đệm/gi, 'thuật ngữ “ghi đè/ghi đệm” quá kỹ thuật'],
+    [/\b(log|metadata|cache|backup|screenshot)\b/gi, 'còn thuật ngữ kỹ thuật thô'],
+    [/thời gian[^.\n]{0,40}đang đếm/gi, 'câu kết kiểu slogan “thời gian đang đếm”'],
+    [/như người bị kẹp giữa/gi, 'ẩn dụ giải thích tâm lý thay vì hành động cụ thể'],
+    [/con đường cần câu trả lời/gi, 'cụm sai tai “con đường cần câu trả lời”'],
+    [/một vài câu trả lời đã bắt đầu hé/gi, 'câu tổng kết AI “câu trả lời bắt đầu hé”'],
+  ]
+
+  const issues: string[] = []
+  for (const [pattern, message] of checks) {
+    if (pattern.test(text)) issues.push(message)
+  }
+
+  return [...new Set(issues)].slice(0, 8)
+}
+
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -96,13 +97,13 @@ export default async function handler(req: any, res: any) {
     const payload = normalizePayload((req.body || {}) as GeneratePayload)
 
     const moderationInput = [
-      payload.title,
+      payload.storyTitle,
       payload.promptIdea,
-      payload.genreLabel,
-      payload.mainCharacterStyleLabel,
-      payload.chapterLengthLabel,
-      payload.storySummary,
-      payload.storyMemory,
+      payload.genre,
+      payload.writingStyle,
+      payload.chapterTitle,
+      payload.previousChapterSummary,
+      payload.userInstruction,
     ]
       .filter(Boolean)
       .join('\n\n')
@@ -148,12 +149,8 @@ export default async function handler(req: any, res: any) {
     let editorPassFailed = false
     let editorUsage = null
     let editorError = ''
-    let editorRepairUsed = false
-    let editorRepairFailed = false
-    let editorRepairError = ''
-    let editorRepairUsage = null
-    let editorAuditFlags: string[] = []
-    const storyEditorMode = getStoryEditorMode(payload)
+    let vietnameseRepairUsed = false
+    let vietnameseRepairIssues: string[] = []
 
     if (getStoryEditorPassEnabled(payload)) {
       try {
@@ -186,39 +183,30 @@ export default async function handler(req: any, res: any) {
     }
 
     finalText = softenAIDramaPhrases(finalText)
+    finalText = normalizeVietnameseProseArtifacts(finalText)
 
-    if (editorPassUsed && getStoryEditorRepairEnabled(payload)) {
-      editorAuditFlags = auditVietnameseLineEdit(finalText)
+    vietnameseRepairIssues = findVietnameseNaturalnessIssues(finalText)
 
-      if (editorAuditFlags.length > 0) {
-        try {
-          const repairPrompt = buildStoryEditorRepairPrompt(payload, finalText, editorAuditFlags)
+    if (getStoryEditorPassEnabled(payload) && vietnameseRepairIssues.length > 0) {
+      try {
+        const repairPrompt = buildVietnameseFocusedRepairPrompt(payload, finalText, vietnameseRepairIssues)
 
-          await moderateTextOrThrow(repairPrompt, 'story editor repair input')
+        await moderateTextOrThrow(repairPrompt, 'story vietnamese repair input')
 
-          const repairPass = await callOpenAIText({
-            apiKey,
-            model,
-            prompt: repairPrompt,
-            maxOutputTokens: lengthRule.maxOutputTokens,
-          })
+        const repairPass = await callOpenAIText({
+          apiKey,
+          model,
+          prompt: repairPrompt,
+          maxOutputTokens: lengthRule.maxOutputTokens,
+        })
 
-          if (repairPass.response.ok && !repairPass.data?.__nonJson && repairPass.text) {
-            finalText = softenAIDramaPhrases(repairPass.text)
-            editorRepairUsed = true
-            editorRepairUsage = repairPass.data?.usage || null
-            editorAuditFlags = auditVietnameseLineEdit(finalText)
-          } else {
-            editorRepairFailed = true
-            editorRepairError =
-              repairPass.data?.error?.message ||
-              repairPass.data?.preview ||
-              `Story editor repair failed with status ${repairPass.response.status}`
-          }
-        } catch (repairErrorRaw: any) {
-          editorRepairFailed = true
-          editorRepairError = repairErrorRaw?.message || 'Story editor repair failed'
+        if (repairPass.response.ok && !repairPass.data?.__nonJson && repairPass.text) {
+          finalText = normalizeVietnameseProseArtifacts(softenAIDramaPhrases(repairPass.text))
+          vietnameseRepairUsed = true
+          vietnameseRepairIssues = findVietnameseNaturalnessIssues(finalText)
         }
+      } catch {
+        // Fallback an toàn: giữ bản editor đã qua bộ lọc deterministic, không làm Factory chết.
       }
     }
 
@@ -229,25 +217,19 @@ export default async function handler(req: any, res: any) {
       draftText: editorPassUsed ? draftText : undefined,
       model,
       modelKey: payload.modelKey,
-      storyEditorMode,
       editorPassUsed,
       editorPassFailed,
       editorError: editorPassFailed ? editorError : undefined,
-      editorRepairUsed,
-      editorRepairFailed,
-      editorRepairError: editorRepairFailed ? editorRepairError : undefined,
-      editorAuditFlags,
-      editorAuditFlagCount: editorAuditFlags.length,
+      vietnameseRepairUsed,
+      vietnameseRepairIssues,
       moderation: {
         inputChecked: true,
         outputChecked: true,
         editorInputChecked: getStoryEditorPassEnabled(payload),
-        editorMode: storyEditorMode,
         model: process.env.OPENAI_MODERATION_MODEL || 'omni-moderation-latest',
       },
       usage: firstPass.data?.usage || null,
       editorUsage,
-      editorRepairUsage,
     })
   } catch (error: any) {
     return res.status(500).json({
