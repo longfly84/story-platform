@@ -189,6 +189,52 @@ SEMANTIC VIETNAMESE LOGIC GATE — CỔNG SOÁT NGHĨA CÂU / LOGIC SỰ KIỆN:
 `.trim()
 }
 
+
+function getVietnameseNaturalProseFewShotInstruction() {
+  return `
+NATURAL VIETNAMESE FEW-SHOT LOCK — CHỐNG CONVERT / CHỐNG VĂN AI:
+Mục tiêu: viết truyện mạng tiếng Việt dễ đọc, đời thường, rõ tình huống. Không cố làm văn hoa. Không biến mọi vật chứng thành biểu tượng.
+
+1) KHÔNG VIẾT TẮT TÊN NHÂN VẬT KIỂU HỌ ĐƠN:
+- Nếu tên là "Phó Tư Mẫn", "Úc Sở Kiều", "Chử Tấn Ngôn", "Lương Uyển Thư"... không được tự tiện gọi cụt là "Phó", "Úc", "Chử", "Lương".
+- Khi cần rút gọn, dùng danh xưng tự nhiên theo ngữ cảnh: anh ta, cô ta, người đàn ông đó, người phụ nữ đó, cô giáo, hiệu phó, đứa trẻ, người mẹ, nhân viên bảo vệ.
+- Tên đầy đủ phải xuất hiện lại ở các đoạn dễ nhầm người, nhất là khi có nhiều nhân vật cùng giới/cùng vai.
+
+2) KHÔNG ÉP CÂU DÀI ĐỀU ĐỀU:
+- Dùng câu dài ngắn xen kẽ như người thật kể chuyện.
+- Tránh chuỗi câu cụt một nhịp kiểu: "Tôi nhìn. Anh im. Cô cười." nếu không có dụng ý nhấn nhịp.
+- Cũng không kéo câu dài lê thê chỉ để nghe "mượt".
+
+3) SHOW, DON'T EXPLAIN — NHƯNG PHẢI ĐỜI:
+- Đừng viết cảm xúc bằng câu khẩu hiệu hoặc ví von lạ.
+- Ưu tiên hành động nhỏ, phản ứng của người xung quanh, một vật chứng cụ thể, một câu thoại bị ngắt.
+
+VÍ DỤ XẤU / TỐT:
+- Xấu: "Tiếng trẻ con khóc — mảnh, liên tục như chuông mảnh bị chạm."
+  Tốt: "Tôi chưa kịp bước vào phòng y tế thì đã nghe tiếng trẻ con khóc. Tiếng khóc nhỏ, dồn dập, nghe đến xót ruột."
+
+- Xấu: "Tôi đặt tay lên balo bé, cố che chắn cả bầu không khí xung quanh nó."
+  Tốt: "Tôi đặt tay lên balo của bé, cố giữ mọi người lùi ra một chút."
+
+- Xấu: "Giọng cô nhanh, dừng đúng chỗ để thu hút chú ý — tôi nghe được độ chính xác của câu nói đó."
+  Tốt: "Cô ta nói nhanh, nhưng ngắt nghỉ rất đúng lúc, như đã tập trước."
+
+- Xấu: "USB nằm đó như một mảnh nghi vấn. Câu hỏi treo lơ lửng, mở ra khả năng cuộc chơi mới chỉ bắt đầu."
+  Tốt: "Chiếc USB vẫn nằm trên bàn. Không ai dám kết luận vội. Chử Tấn Ngôn nhìn nó một lần rồi lập tức quay đi. Chỉ một động tác đó cũng đủ khiến tôi biết anh ta đang sợ."
+
+- Xấu: "Lời nói ngắn như một tấm khiên. Không khí thay đổi, tấm thẻ không còn là vật nhỏ."
+  Tốt: "Tôi nói ngắn gọn, không để ai hỏi thêm Miên Miên. Cả phòng im xuống vài giây. Lúc này, mọi người đều hiểu tấm thẻ không đơn giản như bức ảnh trong nhóm chat."
+
+- Xấu: "Dấu bút, bản nháp và biên nhận nối lại thành một đường dẫn cần kiểm tra."
+  Tốt: "Lúc này, tôi đã có vài thứ để bám vào: dấu bút, bản nháp và tờ biên nhận."
+
+4) CẤM KẾT CHƯƠNG BẰNG SLOGAN:
+- Không viết: "cuộc chơi mới chỉ bắt đầu", "đêm còn dài", "tôi sẽ không thua", "ván cờ vừa mở màn".
+- Kết bằng dữ kiện mới, hành động mới, tin nhắn, người xuất hiện, hạn chót, hoặc phản ứng cụ thể.
+`.trim()
+}
+
+
 function getVietnameseEditorHardGateInstruction() {
   return `
 EDITOR HARD GATE — BIÊN TẬP TỪNG CÂU TIẾNG VIỆT:
@@ -397,6 +443,7 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const humanCostInstruction = getHumanCostInstruction()
   const vietnameseProseHardGateInstruction = getVietnameseProseHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
+  const vietnameseNaturalProseFewShotInstruction = getVietnameseNaturalProseFewShotInstruction()
   const nextChapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
   const isContinuation = nextChapterNumber > 1
 
@@ -575,6 +622,8 @@ CLEAN PROSE RULE:
 
 HUMAN PROSE RULE:
 - Viết như tác giả người thật đang kể chuyện, không viết như máy hoàn thành checklist.
+- Không viết tắt tên nhân vật bằng họ đơn lẻ kiểu “Phó”, “Úc”, “Chử”, “Lương”. Khi cần tránh lặp, dùng “anh ta”, “cô ta”, “cô giáo”, “hiệu phó”, “đứa trẻ” theo đúng ngữ cảnh.
+- Không dùng câu ví von lạ để làm đẹp văn. Một câu bình thường nhưng rõ cảnh luôn tốt hơn một câu nghe thơ nhưng sai tai.
 - Câu văn được phép có nhịp dài ngắn khác nhau, nhưng không được rối.
 - Đối thoại không được chỉ để giải thích cốt truyện. Mỗi câu thoại phải có ý đồ: ép, né, đe dọa, thử phản ứng, che giấu, châm chọc, hoặc lật thế.
 - Nhân vật không được nói quá đúng, quá đủ, quá sạch. Người thật thường nói thiếu một nửa, vòng vo, cắt ngang, hoặc giấu ý.
@@ -583,6 +632,8 @@ HUMAN PROSE RULE:
 ${vietnameseProseHardGateInstruction}
 
 ${vietnameseSemanticLogicGateInstruction}
+
+${vietnameseNaturalProseFewShotInstruction}
 
 SELF-REVISION PASS BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
 Trước khi xuất kết quả cuối cùng, hãy tự đọc lại bản chương như một biên tập viên và tự sửa trong im lặng theo checklist này:
@@ -734,6 +785,7 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
   const vietnameseEditorHardGateInstruction = getVietnameseEditorHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
+  const vietnameseNaturalProseFewShotInstruction = getVietnameseNaturalProseFewShotInstruction()
 
   const recentContext = payload.recentChapters
     .slice(0, 3)
@@ -773,6 +825,8 @@ ${urbanFemaleScaleLockInstruction}
 ${vietnameseEditorHardGateInstruction}
 
 ${vietnameseSemanticLogicGateInstruction}
+
+${vietnameseNaturalProseFewShotInstruction}
 
 CHAPTER PLAN HIỆN TẠI:
 - Mission: ${currentPlan?.mission || 'Không có'}
@@ -876,6 +930,7 @@ EDITOR CHECKLIST BẮT BUỘC:
 
 
 CẤM:
+- Không viết tắt tên nhân vật bằng họ đơn lẻ kiểu “Phó”, “Úc”, “Chử”, “Lương” nếu tên đầy đủ đã có. Hãy dùng tên đầy đủ hoặc danh xưng tự nhiên theo ngữ cảnh.
 - Không dùng các cụm sân khấu hóa: “khán đài”, “phiên xử”, “bản cáo trạng”, “vòng quyền lực”, “quyền lực công khai”, “ván cờ”, “áp lực dồn lên”, “lời nói như con dấu”.
 - Không dùng cụm v32 có mùi AI: “như lưỡi dao”, “áp lực phủ lên”, “mảnh nghi vấn”, “câu hỏi treo lơ lửng”, “mở ra khả năng”, “nối lại thành một đường dẫn”, “cuộc chơi mới chỉ bắt đầu”, “đêm còn dài”.
 - Không đổi tên nữ chính, phản diện, mẹ/con/người thân đã có.

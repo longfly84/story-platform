@@ -63,6 +63,29 @@ function normalizeVietnameseProseArtifacts(input: string) {
     [/như mở ra một con đường để truy vết/gi, 'kéo sự chú ý về đúng chỗ cần kiểm tra'],
     [/là đường sống đầu tiên/gi, 'là cơ hội đầu tiên để lật lại chuyện này'],
     [/Và đó, với tôi, là cơ hội đầu tiên để lật lại chuyện này\.?/gi, 'Chỉ cần xác định được người đã đổi chứng cứ, tôi còn cơ hội lật lại chuyện này.'],
+    [/tiếng trẻ con khóc\s*[—-]\s*mảnh,\s*liên tục như chuông mảnh bị chạm/gi, 'tiếng trẻ con khóc. Tiếng khóc nhỏ, dồn dập, nghe đến xót ruột'],
+    [/như chuông mảnh bị chạm/gi, 'nghe đến xót ruột'],
+    [/cố che chắn cả bầu không khí xung quanh nó/gi, 'cố giữ mọi người lùi ra một chút'],
+    [/che chắn cả bầu không khí xung quanh (?:nó|bé|con)/gi, 'giữ mọi người lùi ra một chút'],
+    [/tôi nghe được độ chính xác của câu nói đó/gi, 'tôi nhận ra câu đó giống như đã được chuẩn bị trước'],
+    [/nghe được độ chính xác của câu nói đó/gi, 'nhận ra câu đó giống như đã được chuẩn bị trước'],
+    [/bắt đầu vỗ tay kiểu đồng thuận/gi, 'lập tức hùa theo'],
+    [/vỗ tay kiểu đồng thuận/gi, 'hùa theo'],
+    [/Không khí thay đổi:\s*tấm thẻ không còn là vật nhỏ,\s*nó đặt ra câu hỏi ai đã dán chồng nhãn,\s*ai có quyền sửa đổi\.?/gi, 'Cả phòng im xuống vài giây. Lúc này, mọi người đều hiểu tấm thẻ không đơn giản như bức ảnh trong nhóm chat.'],
+    [/tấm thẻ không còn là vật nhỏ/gi, 'tấm thẻ không đơn giản như mọi người tưởng'],
+    [/nó đặt ra câu hỏi ai đã ([^.!?\n]{0,80})/gi, 'mọi người bắt đầu hỏi ai đã $1'],
+    [/Lời nói ngắn như một tấm khiên\.?/gi, 'Tôi nói ngắn gọn, không để ai có cơ hội hỏi thêm.'],
+    [/như một tấm khiên/gi, 'đủ để chặn câu hỏi tiếp theo'],
+    [/mọi thứ đang theo kịch bản/gi, 'mọi chuyện đã được sắp sẵn'],
+    [/theo kịch bản/gi, 'được sắp sẵn'],
+    [/cú đánh có chủ ý/gi, 'chuyện được chuẩn bị từ trước'],
+    [/mắt xích đầu tiên để lần ra người đứng sau/gi, 'bằng chứng đầu tiên để lần ra người đứng sau'],
+    [/mắt xích đầu tiên/gi, 'bằng chứng đầu tiên'],
+    [/manh mối nhỏ chỉ ra ai đó cố che đường đi của đứa trẻ/gi, 'tấm nhãn này cho thấy có người đã cố tình đổi thông tin trên balo của đứa trẻ'],
+    [/bằng chứng nhỏ,\s*bằng chứng đầu tiên/gi, 'bằng chứng đầu tiên'],
+    [/bằng chứng nhỏ,\s*mắt xích đầu tiên/gi, 'bằng chứng đầu tiên'],
+    [/như muốn nói:\s*mọi thứ đang được sắp sẵn/gi, 'như muốn nói rằng mọi chuyện đã được sắp sẵn'],
+    [/như muốn nói:\s*mọi chuyện đang theo kịch bản/gi, 'như muốn nói rằng mọi chuyện đã được sắp sẵn'],
   ]
 
   for (const [pattern, replacement] of replacements) {
@@ -90,6 +113,9 @@ function findVietnameseNaturalnessIssues(input: string) {
     [/ôm[^.\n]{0,80}trong lòng bàn tay|như ôm một thứ dễ gãy/gi, 'cụm “ôm trong lòng bàn tay/như ôm thứ dễ gãy” gượng'],
     [/rơi xuống hậu trường như một tảng đá|thắng một ván nhỏ|thay vì thi vị/gi, 'ví von/kết hợp từ gượng cần sửa'],
     [/mở ra một con đường để truy vết|đường sống đầu tiên/gi, 'câu tổng kết/slogan cuối cảnh cần hạ xuống câu cụ thể'],
+    [/chuông mảnh bị chạm|che chắn cả bầu không khí|độ chính xác của câu nói|vỗ tay kiểu đồng thuận/gi, 'cụm ví von/diễn đạt gượng trong cảnh đời thường'],
+    [/không còn là vật nhỏ|đặt ra câu hỏi ai đã|mắt xích đầu tiên|theo kịch bản|cú đánh có chủ ý/gi, 'câu tổng kết/phân tích hộ độc giả còn mùi AI'],
+    [/như một tấm khiên|mảnh nghi vấn|câu hỏi treo lơ lửng|cuộc chơi mới chỉ bắt đầu|đêm còn dài/gi, 'ẩn dụ/slogan AI cần hạ xuống hành động hoặc dữ kiện cụ thể'],
   ]
 
   const issues: string[] = []
