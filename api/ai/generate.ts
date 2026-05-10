@@ -5,7 +5,6 @@ import { normalizePayload } from './generate-lib/payload.js'
 import { buildPrompt, buildStoryEditorPrompt } from './generate-lib/promptBuilders.js'
 import { moderateTextOrThrow } from './generate-lib/moderation.js'
 
-
 function softenAIDramaPhrases(input: string) {
   const replacements: Array<[RegExp, string]> = [
     [/bỗng\s+phòng\s+([^.\n]{0,40})\s+thành khán đài/gi, 'mọi người trong phòng $1 dừng tay và quay sang nhìn tôi'],
@@ -25,16 +24,40 @@ function softenAIDramaPhrases(input: string) {
     [/như một mũi tên/gi, 'khiến mọi ánh mắt quay về phía tôi'],
     [/một cuộc chơi vừa mở màn/gi, 'mọi chuyện rõ ràng chưa dừng ở đây'],
     [/ván cờ mới vừa bắt đầu mở/gi, 'chuyện này mới chỉ bắt đầu'],
+    [/Câu nói như lưỡi dao,\s*bén nhưng rỗng\.?/gi, 'Câu đó đủ khiến mấy người xung quanh nhìn tôi khác đi.'],
+    [/như lưỡi dao,?\s*bén nhưng rỗng/gi, 'đủ khiến người nghe nhìn tôi khác đi'],
+    [/ống kính như lưỡi dao/gi, 'máy quay đặt sát lối đi'],
+    [/Áp lực phủ lên ([^.\n]+?)\.?/gi, '$1 đứng giữa những ánh mắt đang đổ tới.'],
+    [/USB nằm đó như một mảnh nghi vấn\.?/gi, 'Chiếc USB vẫn nằm trên bàn, chưa ai dám kết luận vội.'],
+    [/Câu hỏi treo lơ lửng,?\s*mở ra khả năng ([^.\n]+?)\.?/gi, 'Câu hỏi đó khiến nhiều người bắt đầu nghĩ đến khả năng $1.'],
+    [/cuộc chơi mới chỉ bắt đầu/gi, 'chuyện này chưa thể kết thúc ở đây'],
   ]
 
   return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), input)
 }
 
-
 function normalizeVietnameseProseArtifacts(input: string) {
   let text = String(input || '')
 
   const replacements: Array<[RegExp, string]> = [
+    [/Từ góc vực đông người/gi, 'Từ phía đám đông'],
+    [/ở góc vực đông người/gi, 'ở phía đám đông'],
+    [/góc vực đông người/gi, 'phía đám đông'],
+
+    [/mắt dán vào ([^.\n]{0,80}) như bị hút/gi, 'tôi không rời mắt khỏi $1'],
+    [/Mắt tôi dán vào ([^.\n]{0,80}) như bị hút/gi, 'Tôi không rời mắt khỏi $1'],
+    [/ánh mắt tôi dán vào ([^.\n]{0,80}) như bị hút/gi, 'tôi không rời mắt khỏi $1'],
+
+    [/giọng máy móc/gi, 'giọng đều đều'],
+    [/Hàng chục tài khoản ẩn đồng loạt nhảy lên/gi, 'Hàng chục tài khoản ẩn danh đồng loạt bình luận'],
+    [/Cái âm vang ấy dính vào ký ức của tôi/gi, 'Tôi nhớ rất rõ âm thanh đó'],
+    [/Câu hỏi rơi vào tôi như một viên đá lạnh/gi, 'Tôi khựng lại khi nghe câu đó'],
+    [/Ánh mắt ([^.\n]{0,40}) chĩa về phía tôi/gi, 'Người đó nhìn thẳng về phía tôi'],
+    [/ánh mắt ([^.\n]{0,40}) chĩa về phía tôi/gi, 'người đó nhìn thẳng về phía tôi'],
+    [/Đó là cú đòn bất ngờ nhất/gi, 'Tôi không ngờ họ lại kéo cả chuyện này đi xa đến vậy'],
+    [/trong tôi đã lóe lên hướng đi/gi, 'tôi biết mình phải bắt đầu từ đâu'],
+    [/Có một dấu tay trong đó\s*[—-]\s*dấu tay mà tôi sẽ dùng để lần theo\.?/gi, 'Cách người đó cầm đồ vật khiến tôi chú ý. Nếu kiểm tra được, có thể vẫn còn dấu vân tay.'],
+
     [/trích xuất lịch sử hệ thống\s*\(log\)/gi, 'bản trích lịch sử hệ thống'],
     [/\bbản log\b/gi, 'bản ghi hệ thống'],
     [/\blog\b/gi, 'bản ghi hệ thống'],
@@ -63,46 +86,22 @@ function normalizeVietnameseProseArtifacts(input: string) {
     [/như mở ra một con đường để truy vết/gi, 'kéo sự chú ý về đúng chỗ cần kiểm tra'],
     [/là đường sống đầu tiên/gi, 'là cơ hội đầu tiên để lật lại chuyện này'],
     [/Và đó, với tôi, là cơ hội đầu tiên để lật lại chuyện này\.?/gi, 'Chỉ cần xác định được người đã đổi chứng cứ, tôi còn cơ hội lật lại chuyện này.'],
-    [/tiếng trẻ con khóc\s*[—-]\s*mảnh,\s*liên tục như chuông mảnh bị chạm/gi, 'tiếng trẻ con khóc. Tiếng khóc nhỏ, dồn dập, nghe đến xót ruột'],
-    [/như chuông mảnh bị chạm/gi, 'nghe đến xót ruột'],
-    [/cố che chắn cả bầu không khí xung quanh nó/gi, 'cố giữ mọi người lùi ra một chút'],
-    [/che chắn cả bầu không khí xung quanh (?:nó|bé|con)/gi, 'giữ mọi người lùi ra một chút'],
-    [/tôi nghe được độ chính xác của câu nói đó/gi, 'tôi nhận ra câu đó giống như đã được chuẩn bị trước'],
-    [/nghe được độ chính xác của câu nói đó/gi, 'nhận ra câu đó giống như đã được chuẩn bị trước'],
-    [/bắt đầu vỗ tay kiểu đồng thuận/gi, 'lập tức hùa theo'],
-    [/vỗ tay kiểu đồng thuận/gi, 'hùa theo'],
-    [/Không khí thay đổi:\s*tấm thẻ không còn là vật nhỏ,\s*nó đặt ra câu hỏi ai đã dán chồng nhãn,\s*ai có quyền sửa đổi\.?/gi, 'Cả phòng im xuống vài giây. Lúc này, mọi người đều hiểu tấm thẻ không đơn giản như bức ảnh trong nhóm chat.'],
-    [/tấm thẻ không còn là vật nhỏ/gi, 'tấm thẻ không đơn giản như mọi người tưởng'],
-    [/nó đặt ra câu hỏi ai đã ([^.!?\n]{0,80})/gi, 'mọi người bắt đầu hỏi ai đã $1'],
-    [/Lời nói ngắn như một tấm khiên\.?/gi, 'Tôi nói ngắn gọn, không để ai có cơ hội hỏi thêm.'],
-    [/như một tấm khiên/gi, 'đủ để chặn câu hỏi tiếp theo'],
-    [/mọi thứ đang theo kịch bản/gi, 'mọi chuyện đã được sắp sẵn'],
-    [/theo kịch bản/gi, 'được sắp sẵn'],
-    [/cú đánh có chủ ý/gi, 'chuyện được chuẩn bị từ trước'],
-    [/mắt xích đầu tiên để lần ra người đứng sau/gi, 'bằng chứng đầu tiên để lần ra người đứng sau'],
-    [/mắt xích đầu tiên/gi, 'bằng chứng đầu tiên'],
-    [/manh mối nhỏ chỉ ra ai đó cố che đường đi của đứa trẻ/gi, 'tấm nhãn này cho thấy có người đã cố tình đổi thông tin trên balo của đứa trẻ'],
-    [/bằng chứng nhỏ,\s*bằng chứng đầu tiên/gi, 'bằng chứng đầu tiên'],
-    [/bằng chứng nhỏ,\s*mắt xích đầu tiên/gi, 'bằng chứng đầu tiên'],
-    [/như muốn nói:\s*mọi thứ đang được sắp sẵn/gi, 'như muốn nói rằng mọi chuyện đã được sắp sẵn'],
-    [/như muốn nói:\s*mọi chuyện đang theo kịch bản/gi, 'như muốn nói rằng mọi chuyện đã được sắp sẵn'],
-    [/giọng như đọc tên một giấy tờ hết hạn/gi, 'như thể đây chỉ là một thủ tục quen thuộc'],
-    [/Tôi không sững\./g, 'Tôi không vội phản ứng.'],
-    [/\bkhông sững\b/gi, 'không vội phản ứng'],
-    [/chuỗi chuyển tiếp đã bay đến nhiều nhóm nội bộ/gi, 'tin nhắn đã bị chuyển tiếp sang nhiều nhóm nội bộ'],
-    [/đã bay đến nhiều nhóm nội bộ/gi, 'đã bị chuyển tiếp sang nhiều nhóm nội bộ'],
-    [/cú nhắm vào vị thế của mình/gi, 'việc họ đang nhắm thẳng vào vị trí của tôi'],
-    [/cú nhắm vào vị thế/gi, 'việc nhắm thẳng vào vị trí của tôi'],
-    [/Cái lạnh kéo xuống cổ\./g, 'Tôi khựng lại vài giây.'],
-    [/cái lạnh kéo xuống cổ/gi, 'cảm giác lạnh chạy dọc sau gáy'],
-    [/Một nửa chữ ["“]Mẹ["”] treo lơ lửng giữa hai mảnh giấy\./g, 'Trên mảnh giấy rách, chữ “Mẹ” chỉ còn một nửa.'],
-    [/một nửa chữ ["“]Mẹ["”] treo lơ lửng giữa hai mảnh giấy/gi, 'chữ “Mẹ” chỉ còn một nửa trên mảnh giấy rách'],
-    [/bị kéo vào một con đường khác/gi, 'bị ép đứng về phía người khác'],
-    [/cửa đóng lại sau lưng như một quyết định tạm thời\./gi, 'Cửa khép lại, cắt tiếng thì thầm ở bên ngoài.'],
-    [/cửa đóng lại sau lưng như một quyết định tạm thời/gi, 'cửa khép lại sau lưng tôi'],
-    [/tờ phiếu vẫn vo tròn như một hòn đá nhỏ/gi, 'tờ phiếu bị tôi nắm đến nhăn lại'],
-    [/Tôi đứng lên, không quyết liệt, chỉ chắc chắn\./g, 'Tôi đứng lên, cất tờ phiếu vào túi áo.'],
-    [/không quyết liệt, chỉ chắc chắn/gi, 'không nói thêm, chỉ làm tiếp việc cần làm'],
+    [/thắng một ván nhỏ/gi, 'chuyện này coi như xong'],
+    [/Khung kính trưng bày các mẫu vải và chậu cây thủy tinh nhấp nháy như những món đồ trưng bày trong một vườn nhỏ\.?/gi, 'Trong các khung kính là mẫu vải, bản phối màu và vài chậu cây thủy tinh nhỏ dùng để trang trí.'],
+    [/Tôi cảm thấy áp lực, nhưng cố giữ mọi thứ ở mức vừa phải/gi, 'Tôi căng thẳng, nhưng vẫn cố giữ mặt bình tĩnh'],
+    [/Áp lực phủ lên An An nhỏ bên cạnh tôi\.?/gi, 'An An đứng sát bên tôi, nhỏ bé giữa những ánh mắt đang đổ tới.'],
+    [/Áp lực phủ lên ([^.\n]+?)\.?/gi, '$1 đứng giữa những ánh mắt đang đổ tới.'],
+    [/USB nằm đó như một mảnh nghi vấn\.?/gi, 'Chiếc USB vẫn nằm trên bàn, chưa ai dám kết luận vội.'],
+    [/Câu hỏi treo lơ lửng,?\s*mở ra khả năng có người đã chuẩn bị trước\.?/gi, 'Câu hỏi đó khiến nhiều người bắt đầu nghĩ đến khả năng có ai đó đã chuẩn bị chuyện này từ trước.'],
+    [/Câu hỏi treo lơ lửng/gi, 'Câu hỏi đó khiến nhiều người im lại'],
+    [/mở ra khả năng có người đã chuẩn bị trước/gi, 'khiến nhiều người bắt đầu nghĩ đến khả năng có ai đó đã chuẩn bị chuyện này từ trước'],
+    [/mở ra khả năng/gi, 'khiến nhiều người nghĩ đến khả năng'],
+    [/chúng nối lại thành một đường dẫn cần kiểm tra/gi, 'những thứ đó đủ để tôi bám vào và kiểm tra tiếp'],
+    [/nối lại thành một đường dẫn cần kiểm tra/gi, 'đủ để bám vào và kiểm tra tiếp'],
+    [/nối lại thành một đường dẫn/gi, 'cho tôi vài điểm để kiểm tra tiếp'],
+    [/Tôi cảm nhận được manh mối đầu tiên rõ hơn:\s*([^.!?\n]+?)\s*[—-]\s*những thứ đó đủ để tôi bám vào và kiểm tra tiếp\.?/gi, 'Lúc này, tôi đã có vài thứ để bám vào: $1.'],
+    [/Tôi siết thêm tay ([^,.\n]+), biết rằng đêm còn dài, và chuyện này chưa thể kết thúc ở đây\.?/gi, 'Tôi siết tay $1. Đêm nay chưa thể kết thúc ở đây.'],
+    [/đêm còn dài, và cuộc chơi mới chỉ bắt đầu/gi, 'đêm nay chưa thể kết thúc ở đây'],
   ]
 
   for (const [pattern, replacement] of replacements) {
@@ -130,12 +129,22 @@ function findVietnameseNaturalnessIssues(input: string) {
     [/ôm[^.\n]{0,80}trong lòng bàn tay|như ôm một thứ dễ gãy/gi, 'cụm “ôm trong lòng bàn tay/như ôm thứ dễ gãy” gượng'],
     [/rơi xuống hậu trường như một tảng đá|thắng một ván nhỏ|thay vì thi vị/gi, 'ví von/kết hợp từ gượng cần sửa'],
     [/mở ra một con đường để truy vết|đường sống đầu tiên/gi, 'câu tổng kết/slogan cuối cảnh cần hạ xuống câu cụ thể'],
-    [/chuông mảnh bị chạm|che chắn cả bầu không khí|độ chính xác của câu nói|vỗ tay kiểu đồng thuận/gi, 'cụm ví von/diễn đạt gượng trong cảnh đời thường'],
-    [/không còn là vật nhỏ|đặt ra câu hỏi ai đã|mắt xích đầu tiên|theo kịch bản|cú đánh có chủ ý/gi, 'câu tổng kết/phân tích hộ độc giả còn mùi AI'],
-    [/như một tấm khiên|mảnh nghi vấn|câu hỏi treo lơ lửng|cuộc chơi mới chỉ bắt đầu|đêm còn dài/gi, 'ẩn dụ/slogan AI cần hạ xuống hành động hoặc dữ kiện cụ thể'],
-    [/giọng như đọc tên một giấy tờ hết hạn|chuỗi chuyển tiếp đã bay|cú nhắm vào vị thế|cái lạnh kéo xuống cổ/gi, 'cụm văn dịch/ví von lạ cần đổi thành câu đời thường'],
-    [/Tôi không sững|không sững/gi, 'câu cụt/sai kết hợp từ “không sững” cần sửa thành “không vội phản ứng” hoặc “không sững lại”'],
-    [/treo lơ lửng giữa hai mảnh giấy|con đường khác|quyết định tạm thời|hòn đá nhỏ|không quyết liệt, chỉ chắc chắn/gi, 'ẩn dụ/trừu tượng hóa làm văn có mùi AI'],
+    [/như lưỡi dao|áp lực phủ lên|mảnh nghi vấn|câu hỏi treo lơ lửng|nối lại thành một đường dẫn|cuộc chơi mới chỉ bắt đầu/gi, 'cụm v32 còn giọng AI/câu slogan cần soi thủ công'],
+    [/mở ra khả năng|đêm còn dài/gi, 'câu tổng kết/kịch hóa cuối cảnh nên viết cụ thể hơn'],
+
+    [/nơi tôi che chắn nhất/gi, 'cụm “nơi tôi che chắn nhất” còn trừu tượng, nên đổi thành điều nhân vật muốn bảo vệ cụ thể'],
+    [/chuông vẫn vang trong đầu/gi, 'cụm “chuông vẫn vang trong đầu” dễ thành biểu tượng văn chương, nên viết thành nhân vật nhớ rõ âm thanh'],
+    [/hạn chót đã có/gi, 'câu “hạn chót đã có” giống slogan cuối chương'],
+    [/không định bỏ lỡ/gi, 'cụm “không định bỏ lỡ” dễ thành câu slogan AI'],
+    [/quyền lực chao đảo/gi, 'cụm “quyền lực chao đảo” sân khấu hóa, nên viết cụ thể ai bị ảnh hưởng'],
+    [/nụ cười mỏng lại/gi, 'cụm “nụ cười mỏng lại” hơi convert/AI'],
+    [/nước mắt lăn không thành tiếng/gi, 'cụm “nước mắt lăn không thành tiếng” sáo và gượng'],
+    [/mắt dán vào[^.\n]{0,80}như bị hút/gi, 'cụm “mắt dán vào... như bị hút” còn giọng AI'],
+    [/giọng máy móc/gi, 'cụm “giọng máy móc” nên đổi thành “giọng đều đều” hoặc mô tả hành động cụ thể'],
+    [/góc vực đông người/gi, 'lỗi dùng từ “góc vực đông người”, phải là “phía đám đông” hoặc “góc đông người”'],
+    [/dính vào ký ức/gi, 'cụm “dính vào ký ức” gượng, nên viết “tôi nhớ rất rõ...”'],
+    [/lóe lên hướng đi/gi, 'cụm “lóe lên hướng đi” gượng, nên viết “tôi biết mình phải bắt đầu từ đâu”'],
+    [/dấu tay mà tôi sẽ dùng để lần theo/gi, 'cụm dấu tay suy luận hơi phi logic, nên viết rõ cần kiểm tra vật chứng để tìm dấu vân tay'],
   ]
 
   const issues: string[] = []
@@ -143,9 +152,8 @@ function findVietnameseNaturalnessIssues(input: string) {
     if (pattern.test(text)) issues.push(message)
   }
 
-  return [...new Set(issues)].slice(0, 8)
+  return [...new Set(issues)].slice(0, 10)
 }
-
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -252,14 +260,18 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    const beforeDeterministicCleanup = finalText
+
     finalText = softenAIDramaPhrases(finalText)
     finalText = normalizeVietnameseProseArtifacts(finalText)
 
+    vietnameseRepairUsed = finalText !== beforeDeterministicCleanup
     vietnameseRepairIssues = findVietnameseNaturalnessIssues(finalText)
 
-    // v31: không gọi AI repair pass mặc định nữa.
-    // Nếu còn issue, trả về vietnameseRepairIssues để soi thủ công, tránh AI tự sinh thêm ẩn dụ mới.
-
+    // v37 Plain Editor:
+    // Không gọi AI repair pass lần 2.
+    // Chỉ cleanup deterministic các cụm chắc chắn gượng/sai,
+    // còn cụm nghi ngờ thì trả về vietnameseRepairIssues để soi thủ công.
 
     await moderateTextOrThrow(finalText, 'story generation output')
 

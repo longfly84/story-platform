@@ -45,7 +45,7 @@ export default function App() {
 
           {/* Giữ route cũ để không gãy link cũ nếu trước đây có dùng */}
           <Route path="/admin/stories/:id/edit" element={<AdminEditStoryPage />} />
-          <Route path="/admin/content/chapters/new" element={<AdminCreateChapterPage />} />
+          
           <Route path="/admin/content/chapters/new" element={<AdminCreateChapterPage />} />
           <Route path="/admin/content/categories" element={<AdminCategoriesPage />} />
           <Route path="/admin/content/comments" element={<AdminCommentsPage />} />

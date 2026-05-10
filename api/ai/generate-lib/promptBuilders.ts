@@ -189,6 +189,103 @@ SEMANTIC VIETNAMESE LOGIC GATE — CỔNG SOÁT NGHĨA CÂU / LOGIC SỰ KIỆN:
 `.trim()
 }
 
+function getAntiAIStyleRulesInstruction() {
+  return `
+ANTI-AI / ANTI-CONVERT STYLE RULES — CHẶN VĂN GIẢ, VÍ VON SÁO, CÂU POSTER:
+Mục tiêu: văn phải đời, rõ, tự nhiên như người Việt kể chuyện. Không cố viết hay bằng ẩn dụ lạ. Một câu bình thường nhưng đúng cảnh luôn tốt hơn một câu nghe văn hoa nhưng giả.
+
+1) CẤM VÍ VON SÁO RỖNG / CẢM XÚC GIẢ:
+Không dùng hoặc phải tự đổi nếu thấy các cụm kiểu:
+- "như viên đá lạnh"
+- "như mũi dao"
+- "như kim châm"
+- "vực thẳm"
+- "trái tim rơi xuống"
+- "cả thế giới im lặng"
+- "không khí đông cứng"
+- "ánh mắt sắc như dao"
+- "câu hỏi treo lơ lửng"
+- "cuộc chơi mới chỉ bắt đầu"
+- "đêm còn dài"
+- "ván cờ vừa mở màn"
+
+Cách sửa:
+- Sai: "Câu hỏi rơi vào tôi như một viên đá lạnh."
+- Đúng: "Tôi khựng lại khi nghe câu đó."
+- Sai: "Ánh mắt anh ta sắc như dao."
+- Đúng: "Anh ta nhìn thẳng vào tôi, không hề tránh né."
+
+2) CẤM CỤM MÔ TẢ KIỂU AI / DỊCH MÁY:
+Không dùng hoặc phải tự đổi nếu thấy:
+- "mắt dán vào ... như bị hút"
+- "giọng máy móc"
+- "ánh mắt chĩa về phía..."
+- "cú đòn bất ngờ nhất"
+- "lóe lên hướng đi"
+- "dính vào ký ức"
+- "nụ cười mỏng lại"
+- "nước mắt lăn không thành tiếng"
+- "quyền lực chao đảo"
+- "một quyết định tạm thời"
+- "nơi tôi che chắn nhất"
+- "hạn chót đã có"
+- "không định bỏ lỡ"
+
+Cách sửa:
+- Sai: "Mắt tôi dán vào màn hình như bị hút."
+- Đúng: "Tôi không rời mắt khỏi màn hình."
+- Sai: "Anh ta nói bằng giọng máy móc."
+- Đúng: "Anh ta nói đều đều, như đã chuẩn bị sẵn câu trả lời."
+- Sai: "Cái âm vang ấy dính vào ký ức của tôi."
+- Đúng: "Tôi nhớ rất rõ âm thanh đó."
+- Sai: "Trong tôi đã lóe lên hướng đi."
+- Đúng: "Tôi biết mình phải bắt đầu từ đâu."
+
+3) KHÔNG BIẾN VẬT CHỨNG THÀNH BIỂU TƯỢNG VĂN CHƯƠNG:
+Vật chứng phải là đồ vật cụ thể, có cách kiểm tra, có người chạm vào, có nguồn gốc, có hậu quả. Không biến nó thành biểu tượng mơ hồ.
+
+- Sai: "Chiếc USB nằm đó như một mảnh nghi vấn."
+- Đúng: "Chiếc USB vẫn nằm trên bàn. Không ai dám kết luận vội."
+- Sai: "Tệp âm thanh trở thành đường sống đầu tiên của tôi."
+- Đúng: "Đoạn âm đó là thứ đầu tiên tôi có thể đem đi kiểm tra."
+- Sai: "Có một dấu tay trong đó — dấu tay mà tôi sẽ dùng để lần theo."
+- Đúng: "Cách người đó cầm đồ vật khiến tôi chú ý. Nếu kiểm tra được, có thể vẫn còn dấu vân tay."
+
+4) CẢM XÚC PHẢI ĐI QUA HÀNH ĐỘNG CỤ THỂ:
+Không viết cảm xúc bằng khẩu hiệu hoặc câu tổng kết đẹp. Hãy cho nhân vật phản ứng như người thật.
+
+- Sai: "Chuyện đã chạm vào nơi tôi che chắn nhất."
+- Đúng: "Chuyện đã chạm đến điều tôi muốn bảo vệ nhất: con tôi."
+- Sai: "Nước mắt lăn không thành tiếng."
+- Đúng: "Cô ấy cúi mặt, lấy tay lau vội khóe mắt."
+- Sai: "Nụ cười của anh ta mỏng lại."
+- Đúng: "Anh ta ngừng cười."
+
+5) KHÔNG VIẾT CÂU SLOGAN CUỐI CHƯƠNG:
+Không kết chương bằng câu tuyên ngôn/poster. Kết bằng dữ kiện, hành động, người xuất hiện, tin nhắn, vật chứng hoặc hạn chót cụ thể.
+
+- Sai: "Hạn chót đã có, và tôi không định bỏ lỡ."
+- Đúng: "Tôi chỉ còn 48 giờ để tìm người mặc áo khoác tối qua."
+- Sai: "Cuộc chơi mới chỉ bắt đầu."
+- Đúng: "Ngay lúc đó, điện thoại tôi hiện lên một tin nhắn lạ: 'Đừng kiểm tra chiếc chuông.'"
+
+6) KIỂM TRA LỖI DÙNG TỪ:
+- Tuyệt đối không viết "góc vực đông người".
+- Phải viết: "từ phía đám đông", "ở phía đám đông", hoặc "ở góc đông người".
+- Không dùng các cụm nghe như dịch máy nhưng không có nghĩa tự nhiên trong tiếng Việt.
+- Nếu một cụm đọc lên thấy lạ miệng, hãy đổi thành câu đời thường hơn.
+
+7) ƯU TIÊN CÂU ĐỜI, CÓ NGƯỜI, CÓ HÀNH ĐỘNG:
+Câu tốt thường có:
+- ai đang nói/làm
+- người khác phản ứng ra sao
+- vật chứng nằm ở đâu
+- hành động tiếp theo là gì
+- hậu quả cụ thể là gì
+
+Không viết câu chỉ để nghe "kịch". Viết câu để người đọc hiểu ngay chuyện gì đang xảy ra.
+`.trim()
+}
 
 function getVietnameseNaturalProseFewShotInstruction() {
   return `
@@ -464,6 +561,7 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const humanCostInstruction = getHumanCostInstruction()
   const vietnameseProseHardGateInstruction = getVietnameseProseHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
+  const antiAIStyleRulesInstruction = getAntiAIStyleRulesInstruction()
   const vietnameseNaturalProseFewShotInstruction = getVietnameseNaturalProseFewShotInstruction()
   const nextChapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
   const isContinuation = nextChapterNumber > 1
@@ -654,6 +752,8 @@ ${vietnameseProseHardGateInstruction}
 
 ${vietnameseSemanticLogicGateInstruction}
 
+${antiAIStyleRulesInstruction}
+
 ${vietnameseNaturalProseFewShotInstruction}
 
 SELF-REVISION PASS BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
@@ -740,6 +840,7 @@ export function buildVietnameseFocusedRepairPrompt(
 ) {
   const chapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
   const storySeed = payload.storySeed
+  const antiAIStyleRulesInstruction = getAntiAIStyleRulesInstruction()
   const issueList = issues.length
     ? issues.map((issue, index) => `${index + 1}. ${issue}`).join('\n')
     : '- Có dấu hiệu câu gượng / văn máy / thuật ngữ thô.'
@@ -763,6 +864,8 @@ THÔNG TIN KHÓA:
 
 CÁC VẤN ĐỀ PHẢI SỬA:
 ${issueList}
+
+${antiAIStyleRulesInstruction}
 
 CÁCH SỬA BẮT BUỘC:
 1. Câu nào nghe như dịch máy hoặc AI đang giải thích thì đổi thành câu đời hơn.
@@ -806,6 +909,7 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
   const vietnameseEditorHardGateInstruction = getVietnameseEditorHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
+  const antiAIStyleRulesInstruction = getAntiAIStyleRulesInstruction()
   const vietnameseNaturalProseFewShotInstruction = getVietnameseNaturalProseFewShotInstruction()
 
   const recentContext = payload.recentChapters
@@ -846,6 +950,8 @@ ${urbanFemaleScaleLockInstruction}
 ${vietnameseEditorHardGateInstruction}
 
 ${vietnameseSemanticLogicGateInstruction}
+
+${antiAIStyleRulesInstruction}
 
 ${vietnameseNaturalProseFewShotInstruction}
 
