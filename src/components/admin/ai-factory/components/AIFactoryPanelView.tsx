@@ -80,6 +80,35 @@ const STORY_EDITOR_MODE_OPTIONS: Array<{
   },
 ]
 
+
+function getOptionLabel<T extends string>(
+  options: Array<{ value: T; label: string }>,
+  value: T | undefined,
+  fallback: string,
+): string {
+  return options.find((item) => item.value === value)?.label ?? fallback
+}
+
+function getStoryEditorShortLabel(value: AIFactoryConfig['storyEditorMode'] | undefined): string {
+  return getOptionLabel(
+    STORY_EDITOR_MODE_OPTIONS,
+    value ?? 'standard',
+    'Tiêu chuẩn',
+  )
+}
+
+function getCoverArtStyleLabel(value: AIFactoryConfig['coverArtStyle'] | undefined): string {
+  return getOptionLabel(COVER_ART_STYLE_OPTIONS, value ?? 'auto', 'Tự động theo nội dung truyện')
+}
+
+function getCoverSceneLabel(value: AIFactoryConfig['coverSceneType'] | undefined): string {
+  return getOptionLabel(COVER_SCENE_OPTIONS, value ?? 'auto_story_scene', 'Tự động theo nội dung truyện')
+}
+
+function getCoverCompositionLabel(value: AIFactoryConfig['coverCompositionPreset'] | undefined): string {
+  return getOptionLabel(COVER_COMPOSITION_OPTIONS, value ?? 'auto', 'Tự động theo nội dung truyện')
+}
+
 type AIFactoryPanelViewProps = {
   status: FactoryStatus
   progressText: string
@@ -508,122 +537,155 @@ export default function AIFactoryPanelView({
                 </label>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 sm:col-span-2">
+              <div className="grid gap-3 sm:col-span-2 xl:grid-cols-[0.95fr_1.05fr]">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <FieldLabel>Biên tập tiếng Việt</FieldLabel>
-                  <select
-                    disabled={isRunning}
-                    value={config.storyEditorMode ?? 'standard'}
-                    onChange={(event) =>
-                      updateConfig('storyEditorMode', event.target.value as AIFactoryConfig['storyEditorMode'])
-                    }
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                  >
-                    {STORY_EDITOR_MODE_OPTIONS.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                  <SmallHint>
-                    {STORY_EDITOR_MODE_OPTIONS.find((item) => item.value === (config.storyEditorMode ?? 'standard'))?.hint}
-                  </SmallHint>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <FieldLabel>Biên tập tiếng Việt</FieldLabel>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                        Chọn 1 chế độ. Dạng checklist để nhìn rõ Factory đang dùng mức biên tập nào.
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 text-[11px] font-bold text-emerald-100">
+                      {getStoryEditorShortLabel(config.storyEditorMode)}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {STORY_EDITOR_MODE_OPTIONS.map((item) => {
+                      const checked = (config.storyEditorMode ?? 'standard') === item.value
+
+                      return (
+                        <label
+                          key={item.value}
+                          className={cx(
+                            'flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition',
+                            checked
+                              ? 'border-emerald-300/60 bg-emerald-300/10 text-emerald-50'
+                              : 'border-white/10 bg-black/20 text-slate-300 hover:border-white/20',
+                            isRunning ? 'cursor-not-allowed opacity-70' : '',
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={isRunning}
+                            checked={checked}
+                            onChange={() =>
+                              updateConfig('storyEditorMode', item.value as AIFactoryConfig['storyEditorMode'])
+                            }
+                            className="mt-0.5 h-4 w-4 accent-emerald-300"
+                          />
+                          <span>
+                            <span className="block font-bold">{item.label}</span>
+                            <span className="mt-1 block text-xs leading-relaxed text-slate-400">
+                              {item.hint}
+                            </span>
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-200">
+                  <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-200">
                     <input
                       type="checkbox"
                       disabled={isRunning}
                       checked={config.generateCover}
                       onChange={(event) => updateConfig('generateCover', event.target.checked)}
-                      className="h-4 w-4 accent-yellow-300"
+                      className="mt-1 h-4 w-4 accent-yellow-300"
                     />
                     <span>
                       <span className="block font-bold text-slate-100">Generate cover</span>
-                      <span className="mt-1 block text-xs text-slate-500">
-                        Mock skip, OpenAI tạo ảnh thật + upload public.
+                      <span className="mt-1 block text-xs leading-relaxed text-slate-500">
+                        Bật thì OpenAI tạo ảnh bìa thật rồi upload public. Tắt thì Factory chỉ tạo truyện/chương.
                       </span>
                     </span>
                   </label>
+
+                  {config.generateCover ? (
+                    <div className="mt-4 grid gap-3">
+                      <div>
+                        <FieldLabel>Phong cách vẽ ảnh bìa</FieldLabel>
+                        <select
+                          disabled={isRunning}
+                          value={config.coverArtStyle ?? 'auto'}
+                          onChange={(event) =>
+                            updateConfig('coverArtStyle', event.target.value as AIFactoryConfig['coverArtStyle'])
+                          }
+                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                        >
+                          {COVER_ART_STYLE_OPTIONS.map((item) => (
+                            <option key={item.value} value={item.value}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                          Chất vẽ / rendering style tổng thể của bìa.
+                        </p>
+                      </div>
+
+                      <div>
+                        <FieldLabel>Mô típ bìa</FieldLabel>
+                        <select
+                          disabled={isRunning}
+                          value={config.coverSceneType ?? 'auto_story_scene'}
+                          onChange={(event) =>
+                            updateConfig('coverSceneType', event.target.value as AIFactoryConfig['coverSceneType'])
+                          }
+                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                        >
+                          {COVER_SCENE_OPTIONS.map((item) => (
+                            <option key={item.value} value={item.value}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                          Dòng drama / vibe nội dung thể hiện trên bìa. Không thay thế bố cục.
+                        </p>
+                      </div>
+
+                      <div>
+                        <FieldLabel>Bố cục ảnh bìa</FieldLabel>
+                        <select
+                          disabled={isRunning}
+                          value={config.coverCompositionPreset ?? 'auto'}
+                          onChange={(event) =>
+                            updateConfig(
+                              'coverCompositionPreset',
+                              event.target.value as AIFactoryConfig['coverCompositionPreset'],
+                            )
+                          }
+                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                        >
+                          {COVER_COMPOSITION_OPTIONS.map((item) => (
+                            <option key={item.value} value={item.value}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                          Layout / dàn khung ảnh: poster cảnh chính hoặc collage nhiều lớp.
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-xs leading-relaxed text-yellow-50/90">
+                        <div className="font-bold text-yellow-100">Option ảnh đang chọn</div>
+                        <div className="mt-1">Phong cách: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
+                        <div>Mô típ: {getCoverSceneLabel(config.coverSceneType)}</div>
+                        <div>Bố cục: {getCoverCompositionLabel(config.coverCompositionPreset)}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-relaxed text-slate-500">
+                      Generate cover đang tắt nên phần chọn phong cách / mô típ / bố cục ảnh được ẩn để đỡ rối.
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {config.generateCover ? (
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <FieldLabel>Phong cách vẽ ảnh bìa</FieldLabel>
-
-                  <select
-                    disabled={isRunning}
-                    value={config.coverArtStyle ?? 'auto'}
-                    onChange={(event) =>
-                      updateConfig('coverArtStyle', event.target.value as AIFactoryConfig['coverArtStyle'])
-                    }
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                  >
-                    {COVER_ART_STYLE_OPTIONS.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-
-                  <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                    Mục này quyết định chất vẽ tổng thể của ảnh bìa. Các option sẽ bám theo kiểu Chinese commercial webnovel cover / luxury poster mà mày muốn.
-                  </p>
-
-                  <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
-                    <FieldLabel>Mô típ bìa</FieldLabel>
-
-                    <select
-                      disabled={isRunning}
-                      value={config.coverSceneType ?? 'auto_story_scene'}
-                      onChange={(event) =>
-                        updateConfig('coverSceneType', event.target.value as AIFactoryConfig['coverSceneType'])
-                      }
-                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                    >
-                      {COVER_SCENE_OPTIONS.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-
-                    <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                      Mục này chọn dòng drama / mô típ truyện thể hiện trên bìa. Nó thiên về nội dung và vibe bìa, không thay thế cho phần bố cục ở bên dưới.
-                    </p>
-                  </div>
-
-                  <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
-                    <FieldLabel>Bố cục ảnh bìa</FieldLabel>
-
-                    <select
-                      disabled={isRunning}
-                      value={config.coverCompositionPreset ?? 'auto'}
-                      onChange={(event) =>
-                        updateConfig(
-                          'coverCompositionPreset',
-                          event.target.value as AIFactoryConfig['coverCompositionPreset'],
-                        )
-                      }
-                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                    >
-                      {COVER_COMPOSITION_OPTIONS.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-
-                    <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                      - Ảnh 1: hợp kiểu poster cảnh chính, nữ chính lệch khung, thấy rõ không gian + nhân vật phụ.
-                      <br />
-                      - Ảnh 2: hợp kiểu collage luxury, có nhiều mảnh truyện / nhiều lớp cảnh như mẫu mày gửi.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
             </div>
           </Section>
 
@@ -769,6 +831,21 @@ export default function AIFactoryPanelView({
                     <div>Text request: {totalTextRequests}</div>
                     <div>Cover request: {totalCoverRequests}</div>
                     <div>Tổng request dự kiến: {totalRequests}</div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
+                    <div className="font-bold text-red-50">Option đang chọn</div>
+                    <div className="mt-2 grid gap-1 text-xs leading-relaxed text-red-100/85">
+                      <div>Biên tập tiếng Việt: {getStoryEditorShortLabel(config.storyEditorMode)}</div>
+                      <div>Generate cover: {config.generateCover ? 'Bật' : 'Tắt'}</div>
+                      {config.generateCover ? (
+                        <>
+                          <div>Phong cách vẽ ảnh bìa: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
+                          <div>Mô típ bìa: {getCoverSceneLabel(config.coverSceneType)}</div>
+                          <div>Bố cục ảnh bìa: {getCoverCompositionLabel(config.coverCompositionPreset)}</div>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
 
