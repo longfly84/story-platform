@@ -209,6 +209,12 @@ Mục tiêu: viết truyện mạng tiếng Việt dễ đọc, đời thường
 - Đừng viết cảm xúc bằng câu khẩu hiệu hoặc ví von lạ.
 - Ưu tiên hành động nhỏ, phản ứng của người xung quanh, một vật chứng cụ thể, một câu thoại bị ngắt.
 
+4) STORY LANE LOCK — CẤM TỰ KÉO VỀ CHỒNG CŨ/HỦY HÔN NẾU SEED KHÔNG CÓ:
+- Chỉ dùng hôn nhân, phản bội tình cảm, hủy hôn, chồng cũ, ngoại tình, tiểu tam khi Story Seed hoặc Genre Lock nêu rõ các yếu tố đó.
+- Nếu seed là bệnh viện, trường học, công sở, showbiz, logistics, sáng tạo, tài chính, nghệ thuật, hồ sơ, vật chứng đời thường... thì giữ đúng lõi đó.
+- Không biến mọi phản diện nam thành chồng cũ/vị hôn phu/người yêu cũ. Có thể là đồng nghiệp, đối tác, trưởng bối, quản lý, bác sĩ, giáo viên, phụ huynh, cổ đông, nhân viên, nhà tài trợ, người giữ hồ sơ.
+- Không tự thêm mẹ chồng/nhà chồng/con dâu nếu seed không yêu cầu.
+
 VÍ DỤ XẤU / TỐT:
 - Xấu: "Tiếng trẻ con khóc — mảnh, liên tục như chuông mảnh bị chạm."
   Tốt: "Tôi chưa kịp bước vào phòng y tế thì đã nghe tiếng trẻ con khóc. Tiếng khóc nhỏ, dồn dập, nghe đến xót ruột."
@@ -343,6 +349,7 @@ YÊU CẦU:
 - Phải bám đúng GENRE LOCK, PREMISE DIVERSITY LOCK, STORY SEED, MOTIF UNIQUENESS LOCK, 1000 GENRE / 100 HEROINE SCALE LOCK và HEROINE LOCK.
 - Dàn ý phải chứng minh genre 1000 loại đang có tác dụng: dùng đúng vật chứng, bối cảnh, quan hệ và twist riêng của genreLabel.
 - Dàn ý phải chứng minh heroine 100 kiểu đang có tác dụng: cách nữ chính chịu đau, đối thoại và phản công phải khác theo heroineLabel, không chỉ “nhẫn nhịn rồi lạnh lùng tung bằng chứng”.
+- Nếu GENRE LOCK không phải hôn nhân/phản bội, dàn ý tuyệt đối không tự sinh chồng cũ, hủy hôn, ngoại tình, tiểu tam, mẹ chồng/nhà chồng.
 
 OUTPUT BẮT BUỘC:
 # STORY PLAN
