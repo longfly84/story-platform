@@ -139,20 +139,6 @@ function normalizeCoverArtStyle(raw: unknown): CoverArtStyleKey {
     return 'popular_webnovel_collage'
   }
 
-  if (
-    value === 'ancient_chinese_cinematic_romance' ||
-    value === 'ancient-chinese-cinematic-romance' ||
-    value === 'co-phong-ngon-tinh-dien-anh' ||
-    value === 'co_phong_ngon_tinh_dien_anh' ||
-    value.includes('co phong') ||
-    value.includes('ngon tinh dien anh') ||
-    value.includes('huyen huyen') ||
-    value.includes('xianxia') ||
-    value.includes('wuxia')
-  ) {
-    return 'ancient_chinese_cinematic_romance'
-  }
-
   return 'auto'
 }
 
@@ -251,9 +237,6 @@ function inferSetting(text: string): string {
   }
   if (includesAny(text, ['quan ca phe', 'quán cà phê', 'cafe'])) {
     return 'quán cà phê hoặc không gian đô thị nơi vật chứng được mở ra'
-  }
-  if (includesAny(text, ['vuong phu', 'vương phủ', 'hau phu', 'hầu phủ', 'cung', 'cung điện', 'hoang cung', 'hoàng cung', 'giang ho', 'giang hồ', 'tong mon', 'tông môn', 'tien mon', 'tiên môn', 'phu de', 'phủ đệ'])) {
-    return 'vương phủ, phủ đệ, hành lang cổ phong, đình viện trong mưa, cung điện hoặc không gian cổ trang Trung Hoa đầy áp lực'
   }
 
   return DEFAULT_SETTING
@@ -532,8 +515,10 @@ REFERENCE LOOK TARGET:
 - The overall look should feel like a premium Chinese ancient-romance / xianxia-inspired webnovel cover.
 - Elegant East Asian faces, adult cast, flowing long hair, layered hanfu-inspired costume, refined fabric rendering, painterly semi-realistic finish.
 - Use romantic cinematic digital painting language rather than flat anime.
-- Prefer moody blue-gray, charcoal, misty teal, desaturated silver, deep black, and controlled warm lantern highlights.
-- The atmosphere should feel emotional, tragic, beautiful, and story-rich.
+- Prefer moody blue-gray, charcoal, misty teal, desaturated silver, deep black, cool moonlight, and clean cinematic contrast.
+- Warm lantern light is allowed only as a small rim light or background accent, not as a yellow wash over the whole image.
+- Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, over-warm skin tint, and brown monochrome color.
+- The atmosphere should feel emotional, tragic, beautiful, and story-rich, but the image must not look old, dirty, nicotine-yellow, or faded.
 - This art style is only a rendering layer. Story content remains the highest priority.
 - Do not invent random fantasy symbols, magic effects, palaces, swords, or creatures unless the story content actually supports them.
 ${collageMood ? '- Because this uses a collage-forward look, allow layered emotional fragments while keeping the ancient-romance mood coherent.' : '- Because this uses a single-scene look, keep the space readable, background atmospheric, and the dramatic relationship clear.'}
@@ -545,9 +530,50 @@ REFERENCE LOOK TARGET:
 - The overall look should feel close to premium Chinese commercial webnovel cover art.
 - Refined modern East Asian faces, adult cast, elegant fashion styling, glossy hair, luminous skin, polished dramatic rendering.
 - Keep the mood mature, luxurious, emotionally heavy, and visually addictive.
-- Prefer cool charcoal, smoke gray, midnight blue, champagne beige, soft silver, muted sepia, and controlled warm highlights over loud random colors.
+- Prefer cool charcoal, smoke gray, midnight blue, steel blue, neutral gray, slate black, soft silver, and clean cinematic contrast.
+- Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, over-warm skin tint, brown monochrome color, and vintage faded poster color.
+- Warm highlights are allowed only as small accent lights from lamps, screens, city lights, or windows, not as the whole image color.
 - The result should feel more like Chinese webnovel / manhua key art than ordinary Japanese anime.
-${collageMood ? '- Because this uses a collage-forward look, allow darker luxury mood, layered montage storytelling, and a more editorial premium finish.' : '- Because this uses a single-scene look, keep the space readable, background wide enough, and character placement off-center.'}
+${collageMood ? '- Because this uses a collage-forward look, allow darker luxury mood, layered montage storytelling, and a more editorial premium finish without turning the whole image yellow-brown.' : '- Because this uses a single-scene look, keep the space readable, background wide enough, and character placement off-center.'}
+`.trim()
+}
+
+function buildColorDiversityBlock(style: CoverArtStyleKey, sceneType: CoverSceneType): string {
+  const sceneAccent = (() => {
+    switch (sceneType) {
+      case 'hospital_legal_suspense':
+        return 'Use cooler hospital tones: clean white, cold blue, pale green, gray glass, and controlled shadow.'
+      case 'school_parent_conflict':
+        return 'Use clean school / office tones: neutral gray, muted blue, pale wall colors, and natural daylight.'
+      case 'airport_secret_tension':
+        return 'Use airport-night tones: steel blue, glass gray, runway lights, cool reflections, and dark neutral shadows.'
+      case 'boardroom_evidence_reveal':
+        return 'Use corporate tones: graphite, navy, glass blue, steel gray, and restrained high-end lighting.'
+      case 'family_banquet_confrontation':
+        return 'A small amount of warm interior light is allowed, but balance it with dark neutral shadows and cool contrast.'
+      case 'public_reveal_confrontation':
+        return 'Event lights can be dramatic, but do not let gold/yellow lighting cover the whole image.'
+      default:
+        return 'Use a story-specific palette instead of repeating the same yellow-brown cover look.'
+    }
+  })()
+
+  const styleLine =
+    style === 'ancient_chinese_cinematic_romance'
+      ? 'For ancient romance, keep the base palette blue-gray / charcoal / misty teal; lantern orange may appear only as small rim light or background glow.'
+      : 'For modern drama, prefer cool neutral cinematic color grading; avoid sepia, champagne beige, and yellow-brown webnovel filter.'
+
+  return `
+COLOR DIVERSITY LOCK:
+- Do not repeat the same yellow, beige, brown, or sepia color grading across covers.
+- Do not apply a global warm/yellow filter over the whole image.
+- Do not make skin, paper, walls, and background all the same yellow-brown color.
+- Keep whites and papers neutral/off-white, not yellowed, unless the story specifically needs an old document.
+- Keep shadows clean: charcoal, graphite, blue-gray, steel gray, or neutral black.
+- Warm light may be used as a small accent only; it must not dominate the full image.
+- Make each cover color palette follow the story setting, evidence, and scene mood.
+- ${styleLine}
+- ${sceneAccent}
 `.trim()
 }
 
@@ -672,7 +698,8 @@ STYLE PRESET: ANCIENT_CHINESE_CINEMATIC_ROMANCE.
 - xianxia / wuxia / historical-romance inspired mood, but still story-first
 - semi-realistic cinematic digital painting, not flat anime
 - elegant East Asian features, flowing hair, refined hanfu-inspired costume, lantern-lit atmosphere
-- moody blue-gray palette with controlled warm highlights, romantic and tragic emotional tone
+- base palette must stay cool blue-gray, charcoal, misty teal, deep black, and desaturated silver
+- warm lantern light can be used only as a small accent; avoid yellow wash, sepia wash, muddy beige, and brown monochrome grading
 - this style changes the rendering language, color mood, and costume language, but must still follow the actual story conflict and key evidence
 `.trim()
     case 'anime_cinematic':
@@ -857,8 +884,9 @@ ANTI-GENERIC RULES:
 - Do not hide the evidence object.
 - Do not replace story-specific clues with random decorative props.
 - Do not create a children cartoon or unrelated sci-fi setting.
-- Do not force fantasy or historical-costume imagery when the selected story/style does not support it.
-- If the selected style is ancient_chinese_cinematic_romance, do not invent unrelated magic, monsters, or fantasy spectacle that the story did not ask for.
+- Do not force fantasy, historical costume, palace, sword, lantern, or ancient setting when the selected story/style does not support it.
+- If the selected style is ancient_chinese_cinematic_romance, do not invent unrelated magic, monsters, weapons, or fantasy spectacle that the story did not ask for.
+- Do not use a global yellow filter, sepia filter, brown monochrome grading, or muddy beige color wash.
 - Do not show blood, gore, corpses, wounds, knives, guns, explicit violence, or self-harm.
 - If the story contains dangerous events, show them only through emotional tension, lighting, distance, posture, reflections, and atmosphere.
 ${sceneSpecificLines.join('\n')}
@@ -882,7 +910,7 @@ The final result must be a finished cover artwork illustration only, with zero t
 }
 
 function buildFallbackPrompt(data: ReturnType<typeof buildPromptData>): string {
-  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Composition preset: ${data.compositionPreset}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Show the environment, supporting figures, and conflict clearly. Keep the heroine off-center or use a luxury collage layout depending on the preset. Prefer medium-long shot or 3/4 body framing. The character must not fill the whole frame. No blood, no wounds, no corpse, no weapons, no explicit violence.`
+  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Composition preset: ${data.compositionPreset}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Show the environment, supporting figures, and conflict clearly. Keep the heroine off-center or use a luxury collage layout depending on the preset. Prefer medium-long shot or 3/4 body framing. The character must not fill the whole frame. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, and repeated yellow-brown cover palette. Use story-specific cool neutral cinematic color with warm accents only when needed.`
 }
 
 export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): CoverBuildResult {
@@ -894,6 +922,7 @@ export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): Cove
     buildStoryStageBlock(data.storyStage),
     buildStyleBlock(data.coverArtStyle),
     buildReferenceLookBlock(data),
+    buildColorDiversityBlock(data.coverArtStyle, data.sceneType),
     buildSceneSelectionBlock(data.sceneType, data.coverArtStyle),
     buildCompositionPresetBlock(data),
     buildCompositionHardLockBlock(data),
