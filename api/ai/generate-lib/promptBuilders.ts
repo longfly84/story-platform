@@ -228,7 +228,21 @@ VÍ DỤ XẤU / TỐT:
 - Xấu: "Dấu bút, bản nháp và biên nhận nối lại thành một đường dẫn cần kiểm tra."
   Tốt: "Lúc này, tôi đã có vài thứ để bám vào: dấu bút, bản nháp và tờ biên nhận."
 
-4) CẤM KẾT CHƯƠNG BẰNG SLOGAN:
+- Xấu: "Không được phép, cô lễ tân nói, giọng như đọc tên một giấy tờ hết hạn."
+  Tốt: "Không được phép, cô lễ tân nói bình thản, như thể đây chỉ là một thủ tục quen thuộc."
+
+- Xấu: "Tôi không sững. Chuỗi chuyển tiếp đã bay đến nhiều nhóm nội bộ."
+  Tốt: "Tôi không vội phản ứng. Tin nhắn đã bị chuyển tiếp sang nhiều nhóm nội bộ."
+
+- Xấu: "Cửa đóng lại sau lưng như một quyết định tạm thời. Trong túi, tờ phiếu vo tròn như một hòn đá nhỏ."
+  Tốt: "Tôi bước vào thang máy. Cửa khép lại, cắt tiếng thì thầm ở bên ngoài. Trong túi, tờ phiếu bị tôi nắm đến nhăn lại."
+
+4) QUẢN LÝ TÊN RIÊNG TRONG CHƯƠNG 1:
+- Không dồn quá nhiều họ tên mới vào chương đầu. Nếu nhân vật chỉ xuất hiện để làm nhiệm vụ nhỏ, hãy dùng chức danh tự nhiên: cô lễ tân, bảo vệ, trợ lý, hiệu phó, phụ huynh, người gửi tin.
+- Chương 1 nên ưu tiên 3–4 tên riêng thật sự quan trọng. Các vai phụ có thể giữ bằng chức danh cho đến khi họ cần trở thành tuyến chính.
+- Khi đã có nhiều tên trong một cảnh, không giới thiệu thêm họ tên đầy đủ nếu không cần. Người đọc phải hiểu ai đang làm gì mà không phải nhớ một danh sách tên.
+
+5) CẤM KẾT CHƯƠNG BẰNG SLOGAN:
 - Không viết: "cuộc chơi mới chỉ bắt đầu", "đêm còn dài", "tôi sẽ không thua", "ván cờ vừa mở màn".
 - Kết bằng dữ kiện mới, hành động mới, tin nhắn, người xuất hiện, hạn chót, hoặc phản ứng cụ thể.
 `.trim()
@@ -927,12 +941,14 @@ EDITOR CHECKLIST BẮT BUỘC:
 11. BẢN PHÂN TÍCH KỸ THUẬT vẫn giữ để admin debug, nhưng phải cập nhật đúng sau khi rewrite.
 12. Trước khi trả output, tự đọc 5 đoạn đầu. Nếu nghe giống AI đang dựng sân khấu, rewrite lại bằng câu đời hơn.
 13. Tự soi 3 đoạn cuối. Nếu còn câu poster/slogan như “cuộc chơi mới chỉ bắt đầu”, “đêm còn dài”, “mở ra khả năng”, “đường dẫn cần kiểm tra”, phải đổi thành dữ kiện/hành động cụ thể.
+14. Tự soi các câu ví von về âm thanh/cánh cửa/tờ giấy/tin nhắn. Nếu câu chỉ nghe “hay” nhưng đời thường không ai nói vậy, hãy đổi thành hành động cụ thể.
+15. Với chương 1, giảm tải tên riêng: chỉ giữ họ tên đầy đủ cho nhân vật quan trọng. Vai phụ chưa quan trọng thì dùng chức danh tự nhiên để người đọc không bị rối.
 
 
 CẤM:
 - Không viết tắt tên nhân vật bằng họ đơn lẻ kiểu “Phó”, “Úc”, “Chử”, “Lương” nếu tên đầy đủ đã có. Hãy dùng tên đầy đủ hoặc danh xưng tự nhiên theo ngữ cảnh.
 - Không dùng các cụm sân khấu hóa: “khán đài”, “phiên xử”, “bản cáo trạng”, “vòng quyền lực”, “quyền lực công khai”, “ván cờ”, “áp lực dồn lên”, “lời nói như con dấu”.
-- Không dùng cụm v32 có mùi AI: “như lưỡi dao”, “áp lực phủ lên”, “mảnh nghi vấn”, “câu hỏi treo lơ lửng”, “mở ra khả năng”, “nối lại thành một đường dẫn”, “cuộc chơi mới chỉ bắt đầu”, “đêm còn dài”.
+- Không dùng cụm v32/v33/v34 có mùi AI: “như lưỡi dao”, “áp lực phủ lên”, “mảnh nghi vấn”, “câu hỏi treo lơ lửng”, “mở ra khả năng”, “nối lại thành một đường dẫn”, “cuộc chơi mới chỉ bắt đầu”, “đêm còn dài”, “giọng như đọc tên một giấy tờ hết hạn”, “chuỗi chuyển tiếp đã bay”, “cú nhắm vào vị thế”, “cái lạnh kéo xuống cổ”, “cửa đóng lại như một quyết định tạm thời”, “tờ phiếu như một hòn đá nhỏ”.
 - Không đổi tên nữ chính, phản diện, mẹ/con/người thân đã có.
 - Không đổi vật chứng trung tâm.
 - Không được biên tập chương quay về format chung hồ sơ/camera/log/phong tỏa nếu genre/storySeed không yêu cầu.

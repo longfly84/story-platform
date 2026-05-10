@@ -86,6 +86,23 @@ function normalizeVietnameseProseArtifacts(input: string) {
     [/bằng chứng nhỏ,\s*mắt xích đầu tiên/gi, 'bằng chứng đầu tiên'],
     [/như muốn nói:\s*mọi thứ đang được sắp sẵn/gi, 'như muốn nói rằng mọi chuyện đã được sắp sẵn'],
     [/như muốn nói:\s*mọi chuyện đang theo kịch bản/gi, 'như muốn nói rằng mọi chuyện đã được sắp sẵn'],
+    [/giọng như đọc tên một giấy tờ hết hạn/gi, 'như thể đây chỉ là một thủ tục quen thuộc'],
+    [/Tôi không sững\./g, 'Tôi không vội phản ứng.'],
+    [/\bkhông sững\b/gi, 'không vội phản ứng'],
+    [/chuỗi chuyển tiếp đã bay đến nhiều nhóm nội bộ/gi, 'tin nhắn đã bị chuyển tiếp sang nhiều nhóm nội bộ'],
+    [/đã bay đến nhiều nhóm nội bộ/gi, 'đã bị chuyển tiếp sang nhiều nhóm nội bộ'],
+    [/cú nhắm vào vị thế của mình/gi, 'việc họ đang nhắm thẳng vào vị trí của tôi'],
+    [/cú nhắm vào vị thế/gi, 'việc nhắm thẳng vào vị trí của tôi'],
+    [/Cái lạnh kéo xuống cổ\./g, 'Tôi khựng lại vài giây.'],
+    [/cái lạnh kéo xuống cổ/gi, 'cảm giác lạnh chạy dọc sau gáy'],
+    [/Một nửa chữ ["“]Mẹ["”] treo lơ lửng giữa hai mảnh giấy\./g, 'Trên mảnh giấy rách, chữ “Mẹ” chỉ còn một nửa.'],
+    [/một nửa chữ ["“]Mẹ["”] treo lơ lửng giữa hai mảnh giấy/gi, 'chữ “Mẹ” chỉ còn một nửa trên mảnh giấy rách'],
+    [/bị kéo vào một con đường khác/gi, 'bị ép đứng về phía người khác'],
+    [/cửa đóng lại sau lưng như một quyết định tạm thời\./gi, 'Cửa khép lại, cắt tiếng thì thầm ở bên ngoài.'],
+    [/cửa đóng lại sau lưng như một quyết định tạm thời/gi, 'cửa khép lại sau lưng tôi'],
+    [/tờ phiếu vẫn vo tròn như một hòn đá nhỏ/gi, 'tờ phiếu bị tôi nắm đến nhăn lại'],
+    [/Tôi đứng lên, không quyết liệt, chỉ chắc chắn\./g, 'Tôi đứng lên, cất tờ phiếu vào túi áo.'],
+    [/không quyết liệt, chỉ chắc chắn/gi, 'không nói thêm, chỉ làm tiếp việc cần làm'],
   ]
 
   for (const [pattern, replacement] of replacements) {
@@ -116,6 +133,9 @@ function findVietnameseNaturalnessIssues(input: string) {
     [/chuông mảnh bị chạm|che chắn cả bầu không khí|độ chính xác của câu nói|vỗ tay kiểu đồng thuận/gi, 'cụm ví von/diễn đạt gượng trong cảnh đời thường'],
     [/không còn là vật nhỏ|đặt ra câu hỏi ai đã|mắt xích đầu tiên|theo kịch bản|cú đánh có chủ ý/gi, 'câu tổng kết/phân tích hộ độc giả còn mùi AI'],
     [/như một tấm khiên|mảnh nghi vấn|câu hỏi treo lơ lửng|cuộc chơi mới chỉ bắt đầu|đêm còn dài/gi, 'ẩn dụ/slogan AI cần hạ xuống hành động hoặc dữ kiện cụ thể'],
+    [/giọng như đọc tên một giấy tờ hết hạn|chuỗi chuyển tiếp đã bay|cú nhắm vào vị thế|cái lạnh kéo xuống cổ/gi, 'cụm văn dịch/ví von lạ cần đổi thành câu đời thường'],
+    [/Tôi không sững|không sững/gi, 'câu cụt/sai kết hợp từ “không sững” cần sửa thành “không vội phản ứng” hoặc “không sững lại”'],
+    [/treo lơ lửng giữa hai mảnh giấy|con đường khác|quyết định tạm thời|hòn đá nhỏ|không quyết liệt, chỉ chắc chắn/gi, 'ẩn dụ/trừu tượng hóa làm văn có mùi AI'],
   ]
 
   const issues: string[] = []
