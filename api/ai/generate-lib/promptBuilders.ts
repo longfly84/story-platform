@@ -324,7 +324,27 @@ Không kết chương bằng slogan. Kết bằng dữ kiện, hành động, ti
 - Sai: "Tôi không còn là người duy nhất đưa ra quyết định trong căn phòng này."
   Đúng: "Ông công chứng đặt con dấu xuống, kéo phụ lục về phía mình và nói: 'Tạm dừng. Tôi cần kiểm tra bản gốc.'"
 
-7) KIỂM TRA LỖI DÙNG TỪ:
+7) CẤM VĂN CONVERT TRUNG / XƯNG HÔ LỆCH VAI:
+Không được dùng các cụm xưng hô nhiễm truyện dịch Trung trong bối cảnh đô thị hiện đại tiếng Việt:
+- Không dùng: "lão Chu", "lão gia", "lão đại gia", "lão phu nhân" nếu không có dụng ý rất rõ.
+- Không dùng: "tiểu Nhạc Nhạc", "tiểu An An", "tiểu thư ấy", "nữ tử", "nam nhân", "thanh âm", "diện mạo".
+- Với người lớn tuổi/trưởng bối, dùng: "ông Chu", "bà Chu", "ông cụ", "bà cụ", "trưởng bối nhà họ Chu".
+- Với trẻ nhỏ, dùng: "bé Nhạc Nhạc", "bé An An", "đứa trẻ", "con bé", "thằng bé" theo ngữ cảnh.
+- Không trộn xưng hô trong cùng một câu. Sai: "Anh Chu, ông thấy sao?" Đúng: "Ông Chu, ông thấy nên xử lý thế nào?" hoặc "Anh Chu, anh thấy nên xử lý thế nào?"
+- Quản gia/người giúp việc/trợ lý/cấp dưới phải thưa gửi rõ vai: "Dạ", "thưa ông", "thưa cô", "xin lỗi cô...", không nói kiểu dịch máy.
+- Không dùng "hắn" hàng loạt trong truyện đô thị hiện đại nếu giọng kể đang là đời thường. Ưu tiên "anh ta", "người đàn ông đó", tên riêng hoặc chức danh.
+
+Ví dụ sửa:
+- Sai: "lão Chu đặt muỗng xuống."
+  Đúng: "Ông Chu đặt muỗng xuống."
+- Sai: "tiểu Nhạc Nhạc đang đợi ở phòng bên."
+  Đúng: "Bé Nhạc Nhạc đang đợi ở phòng bên."
+- Sai: "Xin lỗi, tiểu nhạc Nhạc của cô gái… đang đợi ở phòng bên ạ."
+  Đúng: "Xin lỗi cô Uyển Thư, bé Nhạc Nhạc đang đợi ở phòng bên ạ."
+- Sai: "Anh Chu, ông thấy sao?"
+  Đúng: "Ông Chu, ông thấy nên xử lý thế nào?"
+
+8) KIỂM TRA LỖI DÙNG TỪ:
 - Tuyệt đối không viết "góc vực đông người".
 - Phải viết: "từ phía đám đông", "ở phía đám đông", hoặc "ở góc đông người".
 - Không dùng các cụm nghe như dịch máy nhưng không có nghĩa tự nhiên trong tiếng Việt.

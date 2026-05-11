@@ -8,6 +8,97 @@ import { verifyAIAdminRequest } from './generate-lib/aiSecurity.js'
 
 function softenAIDramaPhrases(input: string) {
   const replacements: Array<[RegExp, string]> = [
+    // v39 cleanup — chặn output bẩn, văn convert/AI, xưng hô sai từ các chương test thật
+    [
+      /^\s*#\s*(?!BẢN ĐỌC|Chương)([^\n]{4,120})\n\s*(?:---\s*){1,3}(#\s*Chương\s+\d+\s*[—-])/i,
+      '$2',
+    ],
+    [
+      /\n\s*---\s*\n\s*---\s*\n\s*(#\s*Chương\s+\d+\s*[—-])/gi,
+      '\n\n$1',
+    ],
+    [/Tô Tử Duyệt khẽ nở nụ cười như đóng băng\.?/gi, 'Tô Tử Duyệt khẽ nhếch môi.'],
+    [/nở nụ cười như đóng băng/gi, 'khẽ nhếch môi'],
+    [/nụ cười như đóng băng/gi, 'nụ cười lạnh nhạt'],
+    [/Người bên phải tôi ngoẹo đầu/gi, 'Người bên phải tôi nghiêng đầu'],
+    [/\bngoẹo đầu\b/gi, 'nghiêng đầu'],
+    [
+      /Câu nói đó\s*[—-]\s*chỉ một nửa sự thật\s*[—-]\s*lách qua khe im lặng và đổ lên vai tôi\.?/gi,
+      'Câu đó chỉ nói một nửa sự thật, nhưng đủ để mọi người nhìn sang tôi.',
+    ],
+    [
+      /chỉ một nửa sự thật\s*[—-]\s*lách qua khe im lặng và đổ lên vai tôi/gi,
+      'chỉ nói một nửa sự thật, nhưng đủ để mọi người nhìn sang tôi',
+    ],
+    [
+      /Giọng bà trơn như cánh quạt lùa qua,\s*nhưng câu chữ nhắm thẳng vào một ý định/gi,
+      'Bà nói rất nhẹ, nhưng từng chữ đều nhắm thẳng vào một ý định',
+    ],
+    [/Giọng bà trơn như cánh quạt lùa qua/gi, 'Bà nói rất nhẹ'],
+    [/giọng bà trơn như cánh quạt lùa qua/gi, 'bà nói rất nhẹ'],
+    [
+      /Người thân bên chồng im lặng\s*[—-]\s*đó lạnh hơn mọi lời kết án\.?/gi,
+      'Điều khiến tôi khó chịu nhất không phải lời bà ta nói, mà là cả bàn không ai lên tiếng giúp tôi.',
+    ],
+    [
+      /người thân bên chồng im lặng\s*[—-]\s*đó lạnh hơn mọi lời kết án/gi,
+      'cả bàn không ai lên tiếng giúp tôi',
+    ],
+    [
+      /tiếng đủ nặng để làm rơi ly rượu gần đó như im lặng/gi,
+      'giọng đủ nặng để cả bàn im xuống',
+    ],
+    [
+      /Một tiếng thở như bị bóp nghẹn rơi vào khoảng trống\.?/gi,
+      'Có người hít vào rất khẽ. Cả bàn lại im.',
+    ],
+    [
+      /một tiếng thở như bị bóp nghẹn rơi vào khoảng trống/gi,
+      'có người hít vào rất khẽ',
+    ],
+    [
+      /cảm nhận đường chỉ trên khăn qua hình ảnh con mắt mình/gi,
+      'nhìn lại đường chỉ lệch trên mép khăn',
+    ],
+    [
+      /Nó bắt đầu bằng một câu hỏi đặt đúng chỗ\s*[—-]\s*và chờ đáp\.?/gi,
+      'Tôi chỉ cần hỏi đúng người, đúng lúc.',
+    ],
+    [
+      /bắt đầu bằng một câu hỏi đặt đúng chỗ\s*[—-]\s*và chờ đáp/gi,
+      'bắt đầu từ việc hỏi đúng người, đúng lúc',
+    ],
+    [/\blão đại gia\b/gi, 'ông cụ nhà họ Chu'],
+    [/\blão Chu Thừa Dục\b/gi, 'ông Chu Thừa Dục'],
+    [/\blão Chu\b/gi, 'ông Chu'],
+    [/\btiểu\s+nhạc\s+Nhạc\b/gi, 'bé Nhạc Nhạc'],
+    [/\btiểu\s+Nhạc\s+Nhạc\b/gi, 'bé Nhạc Nhạc'],
+    [/tiểu nhạc Nhạc của cô gái/gi, 'bé Nhạc Nhạc'],
+    [/tiểu Nhạc Nhạc của cô gái/gi, 'bé Nhạc Nhạc'],
+    [
+      /"Xin lỗi,\s*bé Nhạc Nhạc[^"]{0,80}đang đợi ở phòng bên ạ,"\s*ông nói,\s*giọng run\.?/gi,
+      '"Xin lỗi cô Uyển Thư, bé Nhạc Nhạc đang đợi ở phòng bên ạ," ông nói, giọng run.',
+    ],
+    [
+      /"Xin lỗi,\s*tiểu\s+nhạc\s+Nhạc[^"]{0,80}đang đợi ở phòng bên ạ,"\s*ông nói,\s*giọng run\.?/gi,
+      '"Xin lỗi cô Uyển Thư, bé Nhạc Nhạc đang đợi ở phòng bên ạ," ông nói, giọng run.',
+    ],
+    [
+      /"Anh Chu,"\s*bà ngước mắt,\s*hướng về phía Chu Thừa Dục,\s*"ông thấy sao\?"/gi,
+      '"Ông Chu," bà nhìn sang Chu Thừa Dục, "ông thấy nên xử lý thế nào?"',
+    ],
+    [
+      /Tôi thừa nhận tình thế nghiêm trọng\.?/gi,
+      'Tôi hiểu tình thế lúc này không có lợi cho mình.',
+    ],
+    [
+      /Động tác của anh ta đã đổi cuộc chơi:\s*từ người thể hiện sự quyền uy,\s*anh ta biến tấm ảnh thành vũ khí\.?/gi,
+      'Từ lúc đó, mọi người không còn chú ý đến phong bì di chúc nữa. Tất cả đều quay sang tấm ảnh trên bàn.',
+    ],
+    [
+      /Câu nói ngắn gọn đó gom lại cả uất ức và quyết tâm\.?/gi,
+      'Tôi nói xong, tay vẫn giữ chặt điện thoại.',
+    ],
     [
       /bỗng\s+phòng\s+([^.\n]{0,40})\s+thành khán đài/gi,
       'mọi người trong phòng $1 dừng tay và quay sang nhìn tôi',
@@ -62,6 +153,7 @@ function normalizeVietnameseProseArtifacts(input: string) {
   let text = String(input || '')
 
   const replacements: Array<[RegExp, string]> = [
+    // v37.2 cleanup từ các truyện test mới nhất
     [/Đó là dữ kiện rõ ràng\.?/gi, 'Câu đó đủ khiến cả phòng im xuống.'],
     [
       /Trong khoảnh khắc đó,\s*quyền lực dịch chuyển:\s*từ người định dàn xếp sang người có nghi vấn\.?/gi,
@@ -109,6 +201,7 @@ function normalizeVietnameseProseArtifacts(input: string) {
       'anh ta bước vào rất đúng lúc, như chỉ chờ cảnh này xảy ra',
     ],
 
+    // v37 cleanup
     [/Từ góc vực đông người/gi, 'Từ phía đám đông'],
     [/ở góc vực đông người/gi, 'ở phía đám đông'],
     [/góc vực đông người/gi, 'phía đám đông'],
@@ -280,6 +373,18 @@ function findVietnameseNaturalnessIssues(input: string) {
       /dẫn tôi tới ai đã tráo hồ sơ/gi,
       'cụm “dẫn tôi tới ai” sai tai, nên viết “giúp tôi tìm ra người...”',
     ],
+    [/nụ cười như đóng băng|nở nụ cười như đóng băng/gi, 'cụm “nụ cười như đóng băng” còn giọng AI/convert'],
+    [/\bngoẹo đầu\b/gi, 'cụm “ngoẹo đầu” sai tai trong ngữ cảnh ánh nhìn/nghe chuyện'],
+    [/lách qua khe im lặng|đổ lên vai tôi/gi, 'ẩn dụ “lách qua khe im lặng/đổ lên vai” gượng'],
+    [/giọng[^.\n]{0,40}trơn như cánh quạt/gi, 'ẩn dụ “giọng trơn như cánh quạt” sai tai'],
+    [/lạnh hơn mọi lời kết án/gi, 'câu tổng kết cảm xúc còn giọng AI'],
+    [/làm rơi ly rượu[^.\n]{0,40}như im lặng/gi, 'câu “làm rơi ly rượu như im lặng” sai nghĩa'],
+    [/tiếng thở[^.\n]{0,60}rơi vào khoảng trống/gi, 'ẩn dụ tiếng thở rơi vào khoảng trống gượng'],
+    [/đường chỉ[^.\n]{0,80}qua hình ảnh con mắt/gi, 'câu “qua hình ảnh con mắt” sai tiếng Việt tự nhiên'],
+    [/câu hỏi đặt đúng chỗ[^.\n]{0,40}chờ đáp/gi, 'câu kết kiểu slogan AI'],
+    [/\blão đại gia\b|\blão Chu\b/gi, 'xưng hô “lão/lão Chu” nhiễm convert, nên dùng “ông Chu/ông cụ”'],
+    [/\btiểu\s+nhạc\s+Nhạc\b|\btiểu\s+Nhạc\s+Nhạc\b/gi, 'xưng hô “tiểu...” nhiễm convert, nên dùng “bé...”'],
+    [/Anh Chu[^.\n]{0,80}ông thấy sao/gi, 'xưng hô lẫn “anh/ông” trong cùng câu'],
   ]
 
   const issues: string[] = []
@@ -291,32 +396,6 @@ function findVietnameseNaturalnessIssues(input: string) {
   }
 
   return [...new Set(issues)].slice(0, 10)
-}
-
-function getEditorPassTimeoutMs() {
-  const raw = Number(process.env.OPENAI_EDITOR_TIMEOUT_MS || 18000)
-  if (!Number.isFinite(raw)) return 18000
-  return Math.max(8000, Math.min(25000, Math.floor(raw)))
-}
-
-function getErrorMessage(error: any) {
-  return error?.message || error?.error?.message || String(error || 'Unknown error')
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error(message))
-    }, timeoutMs)
-  })
-
-  try {
-    return await Promise.race([promise, timeoutPromise])
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId)
-  }
 }
 
 export default async function handler(req: any, res: any) {
@@ -422,17 +501,12 @@ export default async function handler(req: any, res: any) {
 
         await moderateTextOrThrow(editorPrompt, 'story editor input')
 
-        const editorTimeoutMs = getEditorPassTimeoutMs()
-        const editorPass = await withTimeout(
-          callOpenAIText({
-            apiKey,
-            model,
-            prompt: editorPrompt,
-            maxOutputTokens: lengthRule.maxOutputTokens,
-          }),
-          editorTimeoutMs,
-          `Story editor pass timed out after ${editorTimeoutMs}ms`,
-        )
+        const editorPass = await callOpenAIText({
+          apiKey,
+          model,
+          prompt: editorPrompt,
+          maxOutputTokens: lengthRule.maxOutputTokens,
+        })
 
         if (editorPass.response.ok && !editorPass.data?.__nonJson && editorPass.text) {
           finalText = editorPass.text
@@ -444,14 +518,10 @@ export default async function handler(req: any, res: any) {
             editorPass.data?.error?.message ||
             editorPass.data?.preview ||
             `Story editor pass failed with status ${editorPass.response.status}`
-
-          finalText = draftText
         }
       } catch (editorErrorRaw: any) {
         editorPassFailed = true
-        editorError = getErrorMessage(editorErrorRaw) || 'Story editor pass failed'
-
-        finalText = draftText
+        editorError = editorErrorRaw?.message || 'Story editor pass failed'
       }
     }
 
