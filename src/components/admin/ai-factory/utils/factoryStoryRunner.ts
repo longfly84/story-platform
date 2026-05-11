@@ -24,6 +24,43 @@ import {
 } from './factoryCoverStorage'
 import { buildFactoryPublicStoryDescription } from './factoryPublicDescription'
 
+const AI_ADMIN_TOKEN_STORAGE_KEY = 'story-platform-ai-admin-token'
+
+function getAIAdminToken() {
+  if (typeof window === 'undefined') return ''
+
+  const existingToken = window.localStorage
+    .getItem(AI_ADMIN_TOKEN_STORAGE_KEY)
+    ?.trim()
+
+  if (existingToken) return existingToken
+
+  const inputToken =
+    window
+      .prompt(
+        'Nhập AI_ADMIN_TOKEN để chạy AI Factory. Token này chỉ lưu trên máy của bạn.',
+      )
+      ?.trim() || ''
+
+  if (inputToken) {
+    window.localStorage.setItem(AI_ADMIN_TOKEN_STORAGE_KEY, inputToken)
+  }
+
+  return inputToken
+}
+
+function getAIAdminHeaders(): Record<string, string> {
+  const token = getAIAdminToken()
+
+  if (!token) {
+    return {}
+  }
+
+  return {
+    'x-ai-admin-token': token,
+  }
+}
+
 type AddLog = (message: string, type?: FactoryLog['type']) => void
 
 function normalizeCoverArtStyle(value: unknown): CoverArtStyle {
@@ -64,7 +101,6 @@ function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
       return 'premium Chinese commercial webnovel cover, automatically matched to story content'
   }
 }
-
 
 function normalizeCoverSceneType(value: unknown): AIFactoryConfig['coverSceneType'] {
   const raw = String(value || '').trim()
@@ -178,7 +214,6 @@ function buildGenerateApiErrorMessage(response: Response, data: any) {
   return data?.error || data?.message || `OpenAI generate request failed (${response.status})`
 }
 
-
 export async function generateFactoryChapter(params: {
   config: AIFactoryConfig
   provider: AIFactoryConfig['provider']
@@ -272,6 +307,7 @@ Yêu cầu:
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...getAIAdminHeaders(),
     },
     body: JSON.stringify(payload),
   })
@@ -290,7 +326,6 @@ Yêu cầu:
 
   return text
 }
-
 
 function normalizeTitleForCompare(value: string) {
   return String(value || '')
@@ -347,11 +382,10 @@ function isBadParsedFactoryTitle(value: string) {
     'hoa don hoa gui sai ten',
     'khung hinh bi cat khoi camera',
     'tam ve mot chieu trong ngan keo',
-      'dau do tren ban hop dong',
+    'dau do tren ban hop dong',
     'truyen moi tu ai writer phu hop voi vat chung trung tam',
-].includes(normalized)
+  ].includes(normalized)
 }
-
 
 function compactTitleTags(value: string) {
   return normalizeTitleForCompare(value)
@@ -399,7 +433,6 @@ function titleMatchesSeedEvidence(title: string, storySeed?: FactoryStorySeed | 
 
   return evidenceTags.some((tag) => titleTags.has(tag))
 }
-
 
 function isLockerCardEvidenceTitleText(value: string) {
   const normalized = normalizeTitleForCompare(value)
@@ -451,7 +484,12 @@ function makeFactoryTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
     return 'Chậu Cây Bị Cắm Sai Nhãn'
   }
 
-  if (normalized.includes('soi chi') || normalized.includes('khuy ao') || normalized.includes('chi con mac') || normalized.includes('chi lech')) {
+  if (
+    normalized.includes('soi chi') ||
+    normalized.includes('khuy ao') ||
+    normalized.includes('chi con mac') ||
+    normalized.includes('chi lech')
+  ) {
     return 'Sợi Chỉ Ở Khuy Áo'
   }
 
@@ -485,7 +523,6 @@ function isAcceptableFactoryStoryTitle(title: string, storySeed?: FactoryStorySe
   if (!title || isBadParsedFactoryTitle(title)) return false
   return titleMatchesSeedEvidence(title, storySeed)
 }
-
 
 function chooseFactoryStoryTitle(params: {
   parsedTitle: string
@@ -524,7 +561,6 @@ function chooseFactoryStoryTitle(params: {
   }
 }
 
-
 function assertFactoryTitleGatePassed(title: string, storySeed?: FactoryStorySeed | null) {
   if (!isAcceptableFactoryStoryTitle(title, storySeed)) {
     const evidenceTitle = makeFactoryTitleFromEvidence(storySeed)
@@ -533,7 +569,6 @@ function assertFactoryTitleGatePassed(title: string, storySeed?: FactoryStorySee
     )
   }
 }
-
 
 export async function insertFactoryStoryDraft(params: {
   supabase: SupabaseLike
@@ -753,6 +788,7 @@ export async function generateAndAttachFactoryCover(params: {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...getAIAdminHeaders(),
     },
     body: JSON.stringify({
       provider: 'openai',

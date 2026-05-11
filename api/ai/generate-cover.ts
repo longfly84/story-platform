@@ -7,6 +7,7 @@ import { extractStoryInput } from './cover/storyInput.js'
 import { buildCoverPrompt } from './cover/coverPrompt.js'
 import { generateCoverImage } from './cover/openaiImage.js'
 import { SUPABASE_COVER_BUCKET, uploadCoverToSupabase } from './cover/coverStorage.js'
+import { verifyAIAdminRequest } from './generate-lib/aiSecurity.js'
 
 function parseBody(req: VercelRequest): JsonRecord {
   if (typeof req.body === 'string') {
@@ -38,6 +39,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
+  // Khóa API cover trước khi parse body / gọi OpenAI.
+  // Người ngoài không có AI_ADMIN_TOKEN sẽ bị chặn ngay tại đây.
+  const auth = verifyAIAdminRequest(req, {
+    routeName: 'generate-cover',
+    maxRequestsPerWindow: 8,
+    windowMs: 60_000,
+  })
+
+  if (!auth.ok) {
+    return res.status(auth.status).json(auth.body)
+  }
+
   try {
     const body = parseBody(req)
     const story = extractStoryInput(body)
@@ -54,6 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const imageBuffer = Buffer.from(imageResult.b64, 'base64')
 
     const uploadEnabled = body.uploadToSupabase !== false
+
     let publicUrl: string | null = null
     let storagePath: string | null = null
     let uploadWarning: string | null = null
@@ -88,7 +102,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const includeBase64 = shouldReturnBase64Fallback(body, publicUrl)
-    const dataUrl = includeBase64 ? `data:image/png;base64,${imageResult.b64}` : undefined
+    const dataUrl = includeBase64
+      ? `data:image/png;base64,${imageResult.b64}`
+      : undefined
 
     return res.status(200).json({
       ok: true,
@@ -114,7 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       coverUrl: publicUrl,
 
       // Compatibility fields for Factory fallback.
-      // factoryStoryRunner.ts currently checks b64_json and dataUrl if no publicUrl/imageUrl.
+      // factoryStoryRunner.ts đang check b64_json/dataUrl nếu không có publicUrl/imageUrl.
       b64_json: includeBase64 ? imageResult.b64 : undefined,
       imageBase64: includeBase64 ? imageResult.b64 : undefined,
       dataUrl,
