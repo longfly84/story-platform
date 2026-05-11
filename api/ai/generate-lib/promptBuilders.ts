@@ -194,96 +194,141 @@ function getAntiAIStyleRulesInstruction() {
 ANTI-AI / ANTI-CONVERT STYLE RULES — CHẶN VĂN GIẢ, VÍ VON SÁO, CÂU POSTER:
 Mục tiêu: văn phải đời, rõ, tự nhiên như người Việt kể chuyện. Không cố viết hay bằng ẩn dụ lạ. Một câu bình thường nhưng đúng cảnh luôn tốt hơn một câu nghe văn hoa nhưng giả.
 
-1) CẤM VÍ VON SÁO RỖNG / CẢM XÚC GIẢ:
-Không dùng hoặc phải tự đổi nếu thấy các cụm kiểu:
-- "như viên đá lạnh"
-- "như mũi dao"
-- "như kim châm"
+1) QUY TẮC VÀNG: SHOW, DON'T TELL
+Không dùng câu tổng kết trạng thái một cách lười biếng. Phải chuyển trạng thái thành hành động, phản ứng, lời nói, hoặc thay đổi trong căn phòng.
+
+Không viết:
+- "Đó là dữ kiện rõ ràng."
+- "Tình hình rất căng thẳng."
+- "Quyền lực dịch chuyển."
+- "Cả phòng lạnh đi."
+- "Không khí đặc quánh lại."
+- "Đó là cú đòn bất ngờ nhất."
+- "Chưa thắng, nhưng có đường để đi."
+- "Hạn chót đã có."
+- "Hạn chót của ngày vẫn ở ngoài kia."
+
+Hãy viết:
+- "Câu đó đủ khiến cả phòng im xuống."
+- "Lương Thiệu Hành không còn đứng yên như lúc đầu. Anh ta nhìn sang người bên cạnh, rõ ràng đang tìm cách khác để ép việc ký tiếp tục."
+- "Không ai nói gì trong vài giây."
+- "Tôi chưa thắng. Nhưng ít nhất, họ không thể bắt tôi ký ngay trong căn phòng này nữa."
+- "Phòng công chứng sắp hết giờ làm việc. Nếu chậm thêm, họ sẽ có lý do đẩy mọi việc sang ngày mai."
+
+2) NEGATIVE DICTIONARY — CỤM PHẢI TRÁNH:
+Không dùng hoặc phải tự đổi nếu thấy các cụm kiểu AI/convert sau:
+
+Cảm xúc/ví von sáo:
+- "viên đá lạnh"
+- "mũi dao"
+- "kim châm"
 - "vực thẳm"
 - "trái tim rơi xuống"
 - "cả thế giới im lặng"
 - "không khí đông cứng"
+- "không khí đặc quánh"
 - "ánh mắt sắc như dao"
-- "câu hỏi treo lơ lửng"
+- "sự thật cay đắng"
+- "đầu lưỡi đắng ngắt"
+- "tan loãng vào không gian"
+
+Trạng thái/tổng kết AI:
+- "dữ kiện rõ ràng"
+- "phản ứng tự nhiên"
+- "quyền lực dịch chuyển"
+- "quyền lực chao đảo"
+- "mở ra khả năng"
+- "đường dẫn cần kiểm tra"
+- "đường sống đầu tiên"
 - "cuộc chơi mới chỉ bắt đầu"
-- "đêm còn dài"
 - "ván cờ vừa mở màn"
+- "đêm còn dài"
+- "hạn chót đã có"
+- "không định bỏ lỡ"
 
-Cách sửa:
-- Sai: "Câu hỏi rơi vào tôi như một viên đá lạnh."
-- Đúng: "Tôi khựng lại khi nghe câu đó."
-- Sai: "Ánh mắt anh ta sắc như dao."
-- Đúng: "Anh ta nhìn thẳng vào tôi, không hề tránh né."
-
-2) CẤM CỤM MÔ TẢ KIỂU AI / DỊCH MÁY:
-Không dùng hoặc phải tự đổi nếu thấy:
-- "mắt dán vào ... như bị hút"
+Mô tả convert/máy:
+- "giọng nói máy móc"
 - "giọng máy móc"
-- "ánh mắt chĩa về phía..."
-- "cú đòn bất ngờ nhất"
+- "ánh mắt chĩa về"
+- "mắt dán vào ... như bị hút"
+- "dán chặt vào"
 - "lóe lên hướng đi"
 - "dính vào ký ức"
 - "nụ cười mỏng lại"
 - "nước mắt lăn không thành tiếng"
-- "quyền lực chao đảo"
-- "một quyết định tạm thời"
-- "nơi tôi che chắn nhất"
-- "hạn chót đã có"
-- "không định bỏ lỡ"
+- "lạnh lùng nhếch môi"
 
-Cách sửa:
-- Sai: "Mắt tôi dán vào màn hình như bị hút."
-- Đúng: "Tôi không rời mắt khỏi màn hình."
-- Sai: "Anh ta nói bằng giọng máy móc."
-- Đúng: "Anh ta nói đều đều, như đã chuẩn bị sẵn câu trả lời."
-- Sai: "Cái âm vang ấy dính vào ký ức của tôi."
-- Đúng: "Tôi nhớ rất rõ âm thanh đó."
-- Sai: "Trong tôi đã lóe lên hướng đi."
-- Đúng: "Tôi biết mình phải bắt đầu từ đâu."
+Hán Việt/thô convert:
+- Không dùng "nữ tử", "nam nhân", "thanh âm", "diện mạo", "thoát ly", "cực hạn".
+- Hạn chế "hắn" nếu không thật sự hợp giọng truyện. Với truyện đô thị hiện đại, ưu tiên "anh ta", "người đàn ông đó", gọi tên riêng, hoặc chức danh theo ngữ cảnh.
+- Không gọi nhân vật bằng họ đơn lẻ kiểu "Phó", "Úc", "Chử", "Lương" nếu tên đầy đủ là "Phó Tư Mẫn", "Úc Sở Kiều", "Chử Tấn Ngôn", "Lương Thiệu Hành".
 
-3) KHÔNG BIẾN VẬT CHỨNG THÀNH BIỂU TƯỢNG VĂN CHƯƠNG:
-Vật chứng phải là đồ vật cụ thể, có cách kiểm tra, có người chạm vào, có nguồn gốc, có hậu quả. Không biến nó thành biểu tượng mơ hồ.
+3) TRANSFORMATION ENGINE — CÁCH CHUYỂN CÂU:
+Khi gặp câu telling/convert, phải đổi thành câu có hành động hoặc phản ứng cụ thể.
+
+- Sai: "Đó là dữ kiện rõ ràng."
+  Đúng: "Câu đó đủ khiến cả phòng im xuống."
+
+- Sai: "Tình hình rất căng thẳng."
+  Đúng: "Không ai đặt bút xuống. Ông công chứng cũng dừng tay ở mép con dấu."
+
+- Sai: "Quyền lực dịch chuyển."
+  Đúng: "Lương Thiệu Hành không còn nhìn tôi bằng vẻ chắc thắng. Anh ta quay sang Yến Dật Thần, như đang chờ một câu chống đỡ."
+
+- Sai: "Ánh mắt cô ấy dán vào màn hình."
+  Đúng: "Cô ấy không rời mắt khỏi màn hình."
+
+- Sai: "Giọng nói của cô ấy máy móc."
+  Đúng: "Cô ấy nói đều đều, như đã được dặn trước."
+
+- Sai: "Cú đòn này rất bất ngờ."
+  Đúng: "Mọi chuyện xảy ra quá nhanh, tôi không kịp chen vào một câu."
+
+- Sai: "Nội tâm cô ấy vô cùng hỗn loạn."
+  Đúng: "Cô ấy siết chặt vạt áo, mấy lần định nói rồi lại nuốt xuống."
+
+- Sai: "Chưa thắng, nhưng có đường để đi."
+  Đúng: "Tôi chưa thắng. Nhưng ít nhất, họ không thể bắt tôi ký ngay trong căn phòng này nữa."
+
+- Sai: "Hạn chót của ngày vẫn ở ngoài kia."
+  Đúng: "Phòng công chứng sắp hết giờ làm việc. Nếu họ kéo thêm vài phút nữa, mọi thứ có thể bị đẩy sang ngày mai."
+
+4) QUY TẮC CÂU TIẾNG VIỆT ĐỜI THƯỜNG:
+- Không để quá nhiều câu liên tiếp bắt đầu bằng "Tôi".
+- Không cố nhồi từ nối như "Hóa ra", "Chẳng qua", "Đột nhiên", "Cứ thế" nếu không tự nhiên. Chỉ dùng khi đúng nhịp câu.
+- Không viết câu quá sạch như báo cáo. Người trong khủng hoảng thường nói ngắn, ngắt quãng, né tránh, hoặc giấu một phần ý.
+- Đối thoại phải có vai vế. Trợ lý/cấp dưới không nói trống không với sếp.
+- Câu hay nhưng nghe không giống người Việt nói/kể chuyện thì phải đổi thành câu bình thường hơn.
+
+5) VẬT CHỨNG PHẢI LÀ ĐỒ VẬT CỤ THỂ:
+Không biến vật chứng thành biểu tượng văn chương.
 
 - Sai: "Chiếc USB nằm đó như một mảnh nghi vấn."
-- Đúng: "Chiếc USB vẫn nằm trên bàn. Không ai dám kết luận vội."
+  Đúng: "Chiếc USB vẫn nằm trên bàn. Không ai dám kết luận vội."
+
 - Sai: "Tệp âm thanh trở thành đường sống đầu tiên của tôi."
-- Đúng: "Đoạn âm đó là thứ đầu tiên tôi có thể đem đi kiểm tra."
+  Đúng: "Đoạn âm đó là thứ đầu tiên tôi có thể đem đi kiểm tra."
+
 - Sai: "Có một dấu tay trong đó — dấu tay mà tôi sẽ dùng để lần theo."
-- Đúng: "Cách người đó cầm đồ vật khiến tôi chú ý. Nếu kiểm tra được, có thể vẫn còn dấu vân tay."
+  Đúng: "Cách người đó cầm đồ vật khiến tôi chú ý. Nếu kiểm tra được, có thể vẫn còn dấu vân tay."
 
-4) CẢM XÚC PHẢI ĐI QUA HÀNH ĐỘNG CỤ THỂ:
-Không viết cảm xúc bằng khẩu hiệu hoặc câu tổng kết đẹp. Hãy cho nhân vật phản ứng như người thật.
+6) KẾT CHƯƠNG PHẢI CỤ THỂ:
+Không kết chương bằng slogan. Kết bằng dữ kiện, hành động, tin nhắn, người xuất hiện, vật chứng, hoặc thời hạn cụ thể.
 
-- Sai: "Chuyện đã chạm vào nơi tôi che chắn nhất."
-- Đúng: "Chuyện đã chạm đến điều tôi muốn bảo vệ nhất: con tôi."
-- Sai: "Nước mắt lăn không thành tiếng."
-- Đúng: "Cô ấy cúi mặt, lấy tay lau vội khóe mắt."
-- Sai: "Nụ cười của anh ta mỏng lại."
-- Đúng: "Anh ta ngừng cười."
-
-5) KHÔNG VIẾT CÂU SLOGAN CUỐI CHƯƠNG:
-Không kết chương bằng câu tuyên ngôn/poster. Kết bằng dữ kiện, hành động, người xuất hiện, tin nhắn, vật chứng hoặc hạn chót cụ thể.
+- Sai: "Cuộc chơi mới chỉ bắt đầu."
+  Đúng: "Ngay lúc đó, điện thoại tôi hiện lên một tin nhắn lạ: 'Đừng kiểm tra chiếc chuông.'"
 
 - Sai: "Hạn chót đã có, và tôi không định bỏ lỡ."
-- Đúng: "Tôi chỉ còn 48 giờ để tìm người mặc áo khoác tối qua."
-- Sai: "Cuộc chơi mới chỉ bắt đầu."
-- Đúng: "Ngay lúc đó, điện thoại tôi hiện lên một tin nhắn lạ: 'Đừng kiểm tra chiếc chuông.'"
+  Đúng: "Tôi chỉ còn 48 giờ để tìm người mặc áo khoác tối qua."
 
-6) KIỂM TRA LỖI DÙNG TỪ:
+- Sai: "Tôi không còn là người duy nhất đưa ra quyết định trong căn phòng này."
+  Đúng: "Ông công chứng đặt con dấu xuống, kéo phụ lục về phía mình và nói: 'Tạm dừng. Tôi cần kiểm tra bản gốc.'"
+
+7) KIỂM TRA LỖI DÙNG TỪ:
 - Tuyệt đối không viết "góc vực đông người".
 - Phải viết: "từ phía đám đông", "ở phía đám đông", hoặc "ở góc đông người".
 - Không dùng các cụm nghe như dịch máy nhưng không có nghĩa tự nhiên trong tiếng Việt.
 - Nếu một cụm đọc lên thấy lạ miệng, hãy đổi thành câu đời thường hơn.
-
-7) ƯU TIÊN CÂU ĐỜI, CÓ NGƯỜI, CÓ HÀNH ĐỘNG:
-Câu tốt thường có:
-- ai đang nói/làm
-- người khác phản ứng ra sao
-- vật chứng nằm ở đâu
-- hành động tiếp theo là gì
-- hậu quả cụ thể là gì
-
-Không viết câu chỉ để nghe "kịch". Viết câu để người đọc hiểu ngay chuyện gì đang xảy ra.
 `.trim()
 }
 

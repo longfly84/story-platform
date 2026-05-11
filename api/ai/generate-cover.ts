@@ -8,6 +8,22 @@ import { buildCoverPrompt } from './cover/coverPrompt.js'
 import { generateCoverImage } from './cover/openaiImage.js'
 import { SUPABASE_COVER_BUCKET, uploadCoverToSupabase } from './cover/coverStorage.js'
 
+function parseBody(req: VercelRequest): JsonRecord {
+  if (typeof req.body === 'string') {
+    return JSON.parse(req.body) as JsonRecord
+  }
+
+  return (req.body || {}) as JsonRecord
+}
+
+function shouldReturnBase64Fallback(body: JsonRecord, publicUrl: string | null) {
+  if (body.returnBase64 === true) return true
+
+  // Nếu upload Supabase phía server không trả được publicUrl,
+  // trả b64_json/dataUrl để frontend Factory dùng fallback uploadCoverToStorage().
+  return !publicUrl
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res)
 
@@ -23,11 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const body =
-      typeof req.body === 'string'
-        ? (JSON.parse(req.body) as JsonRecord)
-        : ((req.body || {}) as JsonRecord)
-
+    const body = parseBody(req)
     const story = extractStoryInput(body)
 
     if (!story.title) {
@@ -39,47 +51,81 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { prompt, fallbackPrompt, coverConcept } = buildCoverPrompt(story)
     const imageResult = await generateCoverImage(prompt, fallbackPrompt)
-
     const imageBuffer = Buffer.from(imageResult.b64, 'base64')
 
     const uploadEnabled = body.uploadToSupabase !== false
     let publicUrl: string | null = null
     let storagePath: string | null = null
+    let uploadWarning: string | null = null
 
     if (uploadEnabled) {
-      const uploadResult = await uploadCoverToSupabase({
-        imageBuffer,
-        title: story.title,
-        storyId: story.id || story.slug,
-        explicitPath: safeString(body.storagePath),
-      })
+      try {
+        const uploadResult = await uploadCoverToSupabase({
+          imageBuffer,
+          title: story.title,
+          storyId: story.id || story.slug,
+          explicitPath: safeString(body.storagePath),
+        })
 
-      publicUrl = uploadResult.publicUrl
-      storagePath = uploadResult.storagePath
+        publicUrl = uploadResult.publicUrl
+        storagePath = uploadResult.storagePath
+
+        if (!publicUrl) {
+          uploadWarning =
+            'Server Supabase upload did not return publicUrl. Returning b64_json fallback for client-side upload.'
+        }
+      } catch (uploadError: any) {
+        uploadWarning =
+          uploadError?.message ||
+          'Server Supabase upload failed. Returning b64_json fallback for client-side upload.'
+
+        console.error(
+          '[generate-cover] supabase upload warning:',
+          uploadError?.message || uploadError,
+          uploadError?.detail || '',
+        )
+      }
     }
+
+    const includeBase64 = shouldReturnBase64Fallback(body, publicUrl)
+    const dataUrl = includeBase64 ? `data:image/png;base64,${imageResult.b64}` : undefined
 
     return res.status(200).json({
       ok: true,
       title: story.title,
+
       prompt,
       fallbackPrompt,
       promptUsed: imageResult.promptUsed,
       revisedPrompt: imageResult.revisedPrompt,
+
       fallbackUsed: imageResult.fallbackUsed,
       noTextRescueUsed: imageResult.noTextRescueUsed || false,
       emergencyFallbackUsed: imageResult.emergencyFallbackUsed || false,
       primaryError: imageResult.primaryError || null,
       fallbackError: imageResult.fallbackError || null,
+
       coverConcept,
       currentChapterCount: story.currentChapterCount || 0,
       targetChapters: story.targetChapters || 0,
-      imageBase64: body.returnBase64 ? imageResult.b64 : undefined,
+
       publicUrl,
       imageUrl: publicUrl,
       coverUrl: publicUrl,
+
+      // Compatibility fields for Factory fallback.
+      // factoryStoryRunner.ts currently checks b64_json and dataUrl if no publicUrl/imageUrl.
+      b64_json: includeBase64 ? imageResult.b64 : undefined,
+      imageBase64: includeBase64 ? imageResult.b64 : undefined,
+      dataUrl,
+
       storagePath,
       bucket: uploadEnabled ? SUPABASE_COVER_BUCKET : null,
-      message: 'Cover generated successfully',
+      uploadWarning,
+
+      message: publicUrl
+        ? 'Cover generated and uploaded successfully'
+        : 'Cover generated successfully; upload fallback returned',
     })
   } catch (error: any) {
     console.error('[generate-cover] error:', error?.message || error, error?.detail || '')
