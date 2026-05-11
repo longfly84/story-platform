@@ -129,6 +129,7 @@ export function uniqueSlugs(items: string[]) {
 
 export function getPreferredPublicGenreSlugs(params: {
   genreLabel: string
+  genreSlug?: string
   storySeed?: FactoryStorySeed | null
 }) {
   const source = normalizeCategoryText([
@@ -143,6 +144,11 @@ export function getPreferredPublicGenreSlugs(params: {
   ].filter(Boolean).join(' | '))
 
   const slugs: string[] = []
+
+  const directGenreSlug = String(params.genreSlug || '').trim()
+  if (directGenreSlug) {
+    slugs.push(directGenreSlug)
+  }
 
   const add = (...items: string[]) => {
     slugs.push(...items)
@@ -291,6 +297,7 @@ export function getPreferredPublicGenreSlugs(params: {
 
 export async function resolvePublicGenreSlugs(params: {
   genreLabel: string
+  genreSlug?: string
   storySeed?: FactoryStorySeed | null
 }) {
   const preferredSlugs = getPreferredPublicGenreSlugs(params)
@@ -321,6 +328,9 @@ export async function resolvePublicGenreSlugs(params: {
   if (availableSet.has('hien-dai')) return ['hien-dai']
   if (availableSet.has('ngon-tinh')) return ['ngon-tinh']
 
-  return [availableSlugs[0]]
+  // Không fallback về category đầu tiên trong database.
+  // Nếu fallback availableSlugs[0], truyện không match category sẽ bị dính nhầm
+  // category đầu bảng, ví dụ “Hôn nhân phản bội / hủy hôn / chồng cũ hối hận”.
+  return preferredSlugs.slice(0, 2)
 }
 

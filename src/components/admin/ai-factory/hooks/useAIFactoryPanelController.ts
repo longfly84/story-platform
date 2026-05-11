@@ -692,6 +692,7 @@ Yêu cầu:
 
     const publicGenreSlugs = await resolvePublicGenreSlugs({
       genreLabel: params.genre.label,
+      genreSlug: params.genre.slug,
       storySeed: params.storySeed,
     })
     const finalStoryTitle = safeString(params.parsed.storyTitle) || params.storySeed?.title || 'Truyện AI'
