@@ -3596,11 +3596,16 @@ export function buildMockStorySeed(params: {
     avoidTitles: params.avoidLibrary?.titles,
   });
   const safeFallbackTitle = makeEvidenceTitle(candidate.evidenceObject);
+  const safeFallbackVariant = makeEvidenceTitleVariants(candidate.evidenceObject).find((item) =>
+    isSafeGeneratedStoryTitle(item, candidate.evidenceObject, params.avoidLibrary?.titles),
+  );
   const title = isSafeGeneratedStoryTitle(generatedTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
     ? sanitizeTitleCandidate(generatedTitle)
     : isSafeGeneratedStoryTitle(safeFallbackTitle, candidate.evidenceObject, params.avoidLibrary?.titles)
       ? sanitizeTitleCandidate(safeFallbackTitle)
-      : makeSafeFallbackTitleFromEvidence(candidate.evidenceObject);
+      : safeFallbackVariant
+        ? sanitizeTitleCandidate(safeFallbackVariant)
+        : makeSafeFallbackTitleFromEvidence(candidate.evidenceObject);
 
   const characterNameSet = buildFactoryCharacterNameSet({
     seed: params.seed,

@@ -144,8 +144,89 @@ function compactFactoryLogText(value: unknown, maxLength = 140) {
   return `${text.slice(0, maxLength).trim()}...`;
 }
 
+
+function normalizeFactoryTitleForCompare(value: unknown) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanFactoryTitleCandidate(value: unknown) {
+  return String(value || "")
+    .replace(/^[\s"'“”‘’]+|[\s"'“”‘’]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function titleAlreadyExistsInList(title: string, titles: string[]) {
+  const key = normalizeFactoryTitleForCompare(title);
+  if (!key) return false;
+  return titles.some((item) => normalizeFactoryTitleForCompare(item) === key);
+}
+
+function trimFactoryTitleWords(title: string, maxWords = 7) {
+  const words = cleanFactoryTitleCandidate(title).split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return words.join(" ");
+  return words.slice(0, maxWords).join(" ");
+}
+
+function buildFactoryTitleVariantCandidates(
+  baseTitle: string,
+  storySeed?: FactoryStorySeed | null,
+) {
+  const clean = cleanFactoryTitleCandidate(baseTitle) || "Truyện AI";
+  const variants = new Set<string>([clean]);
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\bĐược\s+Ghim\b/giu, "Bị Kẹp"],
+    [/\bĐược\s+Gài\b/giu, "Bị Gài"],
+    [/\bBị\s+In\s+Lệch\b/giu, "In Sai"],
+    [/\bBị\s+Đổi\s+Màu\b/giu, "Đổi Màu Lạ"],
+    [/\bBị\s+Đặt\s+Sai\b/giu, "Nằm Sai Chỗ"],
+    [/\bSau\b/giu, "Dưới"],
+    [/\bTrên\b/giu, "Ở"],
+    [/\bCũ\b/giu, "Bị Bỏ Lại"],
+    [/\bMột\s+Ký\s+Tự\b/giu, "Một Chữ"],
+  ];
+
+  replacements.forEach(([pattern, replacement]) => {
+    const next = cleanFactoryTitleCandidate(clean.replace(pattern, replacement));
+    if (next && normalizeFactoryTitleForCompare(next) !== normalizeFactoryTitleForCompare(clean)) {
+      variants.add(next);
+    }
+  });
+
+  const evidence = cleanFactoryTitleCandidate(storySeed?.evidenceObject || "");
+  if (evidence) {
+    variants.add(`${trimFactoryTitleWords(evidence, 5)} Bị Đặt Sai`);
+    variants.add(`${trimFactoryTitleWords(evidence, 5)} Lộ Dấu Bất Thường`);
+  }
+
+  const shortBase = trimFactoryTitleWords(clean, 6);
+  [
+    "Dấu Vết Thứ Hai",
+    "Ở Góc Khuất",
+    "Trước Giờ Công Bố",
+    "Trong Lần Đối Chất",
+    "Dưới Ánh Đèn Cũ",
+    "Khi Bị Gọi Tên",
+  ].forEach((suffix) => variants.add(`${shortBase} ${suffix}`));
+
+  return Array.from(variants)
+    .map(cleanFactoryTitleCandidate)
+    .filter(Boolean)
+    .filter((item) => item.length <= 90);
+}
+
 export function useAIFactoryPanelController() {
   const stopRequestedRef = useRef(false);
+  const currentRunTitleKeysRef = useRef<Set<string>>(new Set());
 
   const [config, setConfig] = useState<AIFactoryConfig>(defaultConfig);
   const [selectedGenres, setSelectedGenres] = useState<FactoryGenreOption[]>(
@@ -300,6 +381,83 @@ export function useAIFactoryPanelController() {
       },
       ...prev,
     ]);
+  }
+
+
+  async function checkStoryTitleExistsInDatabase(title: string) {
+    const clean = cleanFactoryTitleCandidate(title);
+    if (!clean) return false;
+
+    const result = await supabase
+      .from("stories")
+      .select("id, title")
+      .ilike("title", clean)
+      .limit(5);
+
+    if (result.error) {
+      addLog(
+        `Không check được title trùng trong Supabase: ${result.error.message}`,
+        "warning",
+      );
+      return false;
+    }
+
+    const rows = Array.isArray(result.data) ? result.data : [];
+    return rows.some(
+      (row: any) =>
+        normalizeFactoryTitleForCompare(row?.title) ===
+        normalizeFactoryTitleForCompare(clean),
+    );
+  }
+
+  async function resolveUniqueStoryTitleForInsert(params: {
+    requestedTitle: string;
+    avoidTitles?: string[];
+    storySeed?: FactoryStorySeed | null;
+    storyIndex: number;
+  }) {
+    const baseTitle = cleanFactoryTitleCandidate(params.requestedTitle) ||
+      cleanFactoryTitleCandidate(params.storySeed?.title) ||
+      "Truyện AI";
+    const candidateTitles = buildFactoryTitleVariantCandidates(
+      baseTitle,
+      params.storySeed,
+    );
+    const avoidTitles = params.avoidTitles || [];
+
+    for (const candidate of candidateTitles) {
+      const key = normalizeFactoryTitleForCompare(candidate);
+      if (!key) continue;
+
+      if (currentRunTitleKeysRef.current.has(key)) continue;
+      if (titleAlreadyExistsInList(candidate, avoidTitles)) continue;
+
+      const existsInDatabase = await checkStoryTitleExistsInDatabase(candidate);
+      if (existsInDatabase) continue;
+
+      currentRunTitleKeysRef.current.add(key);
+
+      if (normalizeFactoryTitleForCompare(candidate) !== normalizeFactoryTitleForCompare(baseTitle)) {
+        addLog(
+          `Title final gate đổi để tránh trùng: "${baseTitle}" → "${candidate}"`,
+          "warning",
+        );
+      }
+
+      return candidate;
+    }
+
+    const fallbackTitle = cleanFactoryTitleCandidate(
+      `${trimFactoryTitleWords(baseTitle, 6)} Dấu Vết ${params.storyIndex}`,
+    );
+    currentRunTitleKeysRef.current.add(
+      normalizeFactoryTitleForCompare(fallbackTitle),
+    );
+    addLog(
+      `Title final gate dùng fallback để tránh trùng: "${baseTitle}" → "${fallbackTitle}"`,
+      "warning",
+    );
+    return fallbackTitle;
   }
 
   function logVietnameseProseQuality(
@@ -978,6 +1136,7 @@ Yêu cầu:
     premiseSeed: string;
     nameSeed: string;
     storySeed?: FactoryStorySeed | null;
+    avoidTitles?: string[];
   }) {
     const generatedChaptersNow = params.config.autoCompleteByTarget
       ? params.targetChapters
@@ -1025,10 +1184,16 @@ Yêu cầu:
       genreSlug: params.genre.slug,
       storySeed: params.storySeed,
     });
-    const finalStoryTitle =
+    const requestedStoryTitle =
       safeString(params.parsed.storyTitle) ||
       params.storySeed?.title ||
       "Truyện AI";
+    const finalStoryTitle = await resolveUniqueStoryTitleForInsert({
+      requestedTitle: requestedStoryTitle,
+      avoidTitles: params.avoidTitles,
+      storySeed: params.storySeed,
+      storyIndex: params.storyIndex,
+    });
     const baseSlugSuffix = `${params.factoryRunId}-${params.storyIndex}`;
 
     const buildSlugForAttempt = (attempt: number) =>
@@ -1728,6 +1893,7 @@ Yêu cầu:
     setLogs([]);
 
     const factoryRunId = makeId("factory");
+    currentRunTitleKeysRef.current = new Set();
     const totalBatchesForRun = Math.ceil(
       config.storyCount / Math.max(1, config.batchSize),
     );
@@ -1770,6 +1936,7 @@ Yêu cầu:
     try {
       const scanResult = await scanExistingStories();
       let activeAvoidLibrary = scanResult.avoid;
+      let generatedStoriesForAvoid: ExistingStory[] = [];
 
       for (
         let storyIndex = 1;
@@ -2052,6 +2219,7 @@ Yêu cầu:
                 premiseSeed,
                 nameSeed,
                 storySeed,
+                avoidTitles: activeAvoidLibrary.titles,
               });
 
               updateJob(job.id, {
@@ -2192,21 +2360,28 @@ Yêu cầu:
           }
 
           {
-            const updatedStoriesForAvoid = [
-              {
-                id: createdStory?.id || makeId("story"),
-                title: createdStory?.title || "",
-                description: recentChapters[0]?.content?.slice(0, 260) || "",
-                genres: [genre.slug],
-                story_dna: {
-                  factory_seed: storySeed,
-                  motifFingerprint: storySeed.motifFingerprint ?? null,
-                  motifText: storySeed.motifText ?? null,
-                  motifEmbedding: storySeed.motifEmbedding ?? null,
-                },
-                story_memory: storyMemory,
-                created_at: new Date().toISOString(),
+            const justCreatedStoryForAvoid = {
+              id: createdStory?.id || makeId("story"),
+              title: createdStory?.title || "",
+              description: recentChapters[0]?.content?.slice(0, 260) || "",
+              genres: [genre.slug],
+              story_dna: {
+                factory_seed: storySeed,
+                motifFingerprint: storySeed.motifFingerprint ?? null,
+                motifText: storySeed.motifText ?? null,
+                motifEmbedding: storySeed.motifEmbedding ?? null,
               },
+              story_memory: storyMemory,
+              created_at: new Date().toISOString(),
+            } as ExistingStory;
+
+            generatedStoriesForAvoid = [
+              justCreatedStoryForAvoid,
+              ...generatedStoriesForAvoid,
+            ];
+
+            const updatedStoriesForAvoid = [
+              ...generatedStoriesForAvoid,
               ...scanResult.stories,
             ] as ExistingStory[];
 
@@ -2221,6 +2396,7 @@ Yêu cầu:
                 .map((item) => item.motifText)
                 .filter(Boolean),
             };
+            setAvoidLibrary(activeAvoidLibrary);
           }
 
           if (storyIndex < config.storyCount && config.delayMs > 0) {
