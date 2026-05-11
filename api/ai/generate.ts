@@ -188,6 +188,17 @@ export default async function handler(req: any, res: any) {
 
     await moderateTextOrThrow(finalText, 'story generation output')
 
+    const proseReport = {
+      textChanged: vietnameseRepairUsed,
+      autoFixCount: vietnameseQuality.stats.fixedCount,
+      warningCount: vietnameseQuality.stats.warningCount,
+      allowedCount: vietnameseQuality.stats.allowedCount,
+      autoFixes: vietnameseQuality.appliedFixes,
+      warnings: vietnameseQuality.issues,
+      allowedSamples: vietnameseQuality.stats.allowedSamples,
+      stats: vietnameseQuality.stats,
+    }
+
     return res.status(200).json({
       ok: true,
       text: finalText,
@@ -200,7 +211,9 @@ export default async function handler(req: any, res: any) {
       vietnameseRepairUsed,
       vietnameseRepairIssues,
       vietnameseRepairAppliedFixes: vietnameseQuality.appliedFixes,
+      vietnameseRepairIssuesStructured: vietnameseQuality.issues,
       vietnameseRepairStats: vietnameseQuality.stats,
+      proseReport,
       moderation: {
         inputChecked: true,
         outputChecked: true,

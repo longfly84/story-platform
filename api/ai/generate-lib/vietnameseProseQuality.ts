@@ -488,30 +488,39 @@ function applyRule(text: string, rule: VietnameseProseRule, appliedFixes: Vietna
 function findIssues(text: string, appliedFixes: VietnameseProseAppliedFix[]) {
   const issues: VietnameseProseIssue[] = []
   const fixedIds = new Set(appliedFixes.map((fix) => fix.id))
+  const seen = new Set<string>()
 
   for (const rule of [...replacementRules, ...userVietnameseProseReplacementRules, ...warningRules, ...userVietnameseProseWarningRules]) {
+    // Replacement rules that already fired are auto-fix records, not warnings.
+    // Warning rules always remain report-only and never mutate chapter content.
     if (rule.mode !== 'warning' && fixedIds.has(rule.id)) continue
 
-    const freshPattern = new RegExp(rule.pattern.source, rule.pattern.flags)
-    const match = freshPattern.exec(text)
-    if (!match) continue
+    const flags = rule.pattern.flags.includes('g') ? rule.pattern.flags : `${rule.pattern.flags}g`
+    const freshPattern = new RegExp(rule.pattern.source, flags)
+    let match: RegExpExecArray | null
 
-    issues.push({
-      id: rule.id,
-      category: rule.category,
-      severity: rule.severity,
-      message: rule.message,
-      genericSuggestion: rule.genericSuggestion,
-      sample: cleanSnippet(match[0]),
-    })
+    while ((match = freshPattern.exec(text)) && issues.length < 30) {
+      const sample = cleanSnippet(match[0])
+      if (!sample) continue
+
+      const key = `${rule.id}::${sample}`
+      if (seen.has(key)) continue
+      seen.add(key)
+
+      issues.push({
+        id: rule.id,
+        category: rule.category,
+        severity: rule.severity,
+        message: rule.message,
+        genericSuggestion: rule.genericSuggestion,
+        sample,
+      })
+
+      if (!freshPattern.global) break
+    }
   }
 
-  const unique = new Map<string, VietnameseProseIssue>()
-  for (const issue of issues) {
-    if (!unique.has(issue.id)) unique.set(issue.id, issue)
-  }
-
-  return [...unique.values()].slice(0, 12)
+  return issues.slice(0, 30)
 }
 
 export function runVietnameseProseQualityPipeline(input: string): VietnameseProseQualityResult {
@@ -525,7 +534,7 @@ export function runVietnameseProseQualityPipeline(input: string): VietnamesePros
   const issues = findIssues(text, appliedFixes)
   const allowedSamples = findViralAllowedSamples(text)
   const visibleAppliedFixes = appliedFixes.slice(0, 30)
-  const visibleIssues = issues.slice(0, 12)
+  const visibleIssues = issues.slice(0, 30)
 
   return {
     text,
@@ -536,7 +545,7 @@ export function runVietnameseProseQualityPipeline(input: string): VietnamesePros
       warningCount: issues.length,
       allowedCount: allowedSamples.length,
       fixedSamples: visibleAppliedFixes.slice(0, 8),
-      warningSamples: visibleIssues.slice(0, 8),
+      warningSamples: visibleIssues.slice(0, 12),
       allowedSamples: allowedSamples.slice(0, 8),
     },
   }

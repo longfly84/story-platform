@@ -91,16 +91,38 @@ export function buildFactoryStorySlug(title: string, suffix: string) {
       .replace(/^-|-$/g, '')
       .slice(0, 70) || 'truyen-ai'
 
-  const cleanSuffix =
+  const rawSuffix =
     safeString(suffix)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
-      .slice(0, 18) || makeId().slice(0, 6)
 
-  return `${base}-${cleanSuffix}`
+  // Giữ cả phần đầu và phần cuối của suffix.
+  // Lỗi cũ: suffix `${factoryRunId}-${storyIndex}` bị slice(0, 18),
+  // làm mất storyIndex ở cuối. Trong cùng batch, nhiều truyện cùng title có thể
+  // sinh cùng slug và bị Supabase báo duplicate stories_slug_key.
+  const cleanSuffix = rawSuffix
+    ? rawSuffix.length > 32
+      ? `${rawSuffix.slice(0, 16)}-${rawSuffix.slice(-12)}`
+      : rawSuffix
+    : makeId().slice(0, 8)
+
+  return `${base}-${cleanSuffix}`.slice(0, 120).replace(/-$/g, '')
 }
+
+export function isDuplicateStorySlugError(error: any) {
+  const message = String(error?.message || error?.details || error?.hint || error?.code || '')
+    .toLowerCase()
+
+  return (
+    message.includes('duplicate key') ||
+    message.includes('stories_slug_key') ||
+    message.includes('slug_key') ||
+    error?.code === '23505'
+  )
+}
+
 
 export function normalizeCategoryText(input: string) {
   return input
@@ -329,8 +351,8 @@ export async function resolvePublicGenreSlugs(params: {
   if (availableSet.has('ngon-tinh')) return ['ngon-tinh']
 
   // Không fallback về category đầu tiên trong database.
-  // Nếu fallback availableSlugs[0], truyện không match category sẽ bị dính nhầm
-  // category đầu bảng, ví dụ “Hôn nhân phản bội / hủy hôn / chồng cũ hối hận”.
+  // Nếu lấy availableSlugs[0], truyện không match category sẽ dễ dính nhầm
+  // category đầu bảng như “Hôn nhân phản bội / hủy hôn / chồng cũ hối hận”.
   return preferredSlugs.slice(0, 2)
 }
 

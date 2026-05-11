@@ -46,10 +46,104 @@ function getUrbanFemaleScaleLockInstruction(payload: NormalizedGeneratePayload) 
 
 
 
+
+function getViralDopamineWebNovelInstruction() {
+  return `
+VIRAL DOPAMINE WEB NOVEL MODE — GIỮ CHẤT TRUYỆN NGẮN ĐỌC NHANH / TRẢ ĐŨA ĐÃ:
+Mục tiêu không phải văn học hóa hay làm văn quá sạch. Độc giả mục tiêu quen đọc truyện mạng/convert dịch nhẹ nhiều năm: họ cần hook nhanh, câu dễ nuốt, cảm xúc trực diện, phản diện đáng ghét, nữ chính trả đòn rõ và payoff hả hê.
+
+NGUYÊN TẮC CỐT LÕI:
+- Giữ nhịp truyện viral: câu ngắn, cảnh vào nhanh, mâu thuẫn rõ trong 5 đoạn đầu.
+- Cho phép một mức "truyện mạng/convert nhẹ" nếu câu vẫn dễ hiểu và tạo dopamine.
+- Không được lọc sạch đến mức truyện thành văn đời thường nhạt, thiếu cú tức và thiếu cú đã.
+- Chặn lỗi sai/tối nghĩa/rác kỹ thuật, không chặn những câu web novel quen thuộc nếu chúng tạo nhịp.
+
+1) HOOK 5 ĐOẠN ĐẦU PHẢI RÕ NHƯ TRUYỆN VIRAL:
+Trong 5 đoạn đầu phải có đủ:
+- Ai đang ép nữ chính?
+- Ép bằng thứ gì: tiền, con, danh dự, hồ sơ, nhóm chat, camera, vé, hợp đồng, vật chứng?
+- Nếu nữ chính thua thì mất gì cụ thể?
+- Vật chứng chính nằm ở đâu?
+- Phản diện có một câu/hành động khiến độc giả ghét ngay.
+
+Không mở quá lâu bằng đèn, mùi giấy, không khí, cảnh phòng nếu mâu thuẫn chưa xuất hiện.
+Mở tốt kiểu:
+- "Tôi chỉ tiêu nhầm 1 tệ 8 từ thẻ phụ, con trai đã bêu tôi trong nhóm gia đình."
+- "Tôi chỉ yêu cầu so lại trang phụ số 07, Thẩm Dụ Thành đã nói trước mặt mọi người rằng tôi cố tình phá hợp đồng."
+- "Tôi chưa kịp xem hết đoạn video 7 giây, tên của đứa trẻ đã bị họ kéo vào phần bình luận."
+
+2) MỖI CHƯƠNG PHẢI CÓ TRỤC TỨC GIẬN + CÚ TRẢ ĐÒN:
+Không viết chương chỉ để giữ manh mối cho chương sau. Mỗi chương cần ít nhất một cú phản công có kết quả nhỏ.
+- Phản diện làm một việc quá đáng: quỵt tiền, ép ký, bêu trong nhóm, tung clip cắt, kéo trẻ con/người yếu thế ra làm chứng, khóa quyền, đòi xin lỗi công khai.
+- Nữ chính chịu một nhịp để độc giả tức.
+- Sau đó nữ chính làm một hành động cụ thể: hoàn vé, trả lì xì, tung sao kê, yêu cầu niêm phong bản gốc, gọi nhân chứng ngay tại chỗ, khóa thẻ, gửi bản scan, giữ vật chứng, công khai một đoạn ghi âm.
+- Cuối chương phải có một cú "đã" nhỏ hoặc một hook rõ, không chỉ là "tôi sẽ tìm sự thật".
+
+3) PHẢN DIỆN PHẢI GÂY GHÉT BẰNG LỜI ĐỜI:
+Phản diện không chỉ nói thủ tục/pháp lý. Họ phải có câu đánh vào tự trọng, công sức, tình thân hoặc nỗi sợ của nữ chính.
+Ví dụ câu gây ghét hợp truyện mạng:
+- "Có từng đó tiền mà cô cũng tính à?"
+- "Một người mẹ thật sự sẽ không làm ầm lên trước mặt con như thế."
+- "Cô không ký là vì muốn lấy đứa trẻ ra mặc cả à?"
+- "Cô nghĩ mình còn lựa chọn sao?"
+- "Cô không xin lỗi thì người chịu khổ không chỉ là cô đâu."
+- "Mẹ già rồi còn làm mình làm mẩy à?"
+- "Không có cô, việc này vẫn chạy. Cô chỉ đang làm chậm mọi người."
+
+4) NỮ CHÍNH PHẢI TRẢ ĐÒN BẰNG HÀNH ĐỘNG, KHÔNG CHỈ TUYÊN NGÔN:
+Ưu tiên câu/hành động ngắn, lạnh, có payoff:
+- "Tôi không ký." + đẩy hai bản hợp đồng về phía công chứng viên.
+- "Vậy gọi người giao ca đến đây." + bật ghi âm.
+- "Được." + hoàn vé/khóa thẻ/gửi sao kê/niêm phong vật chứng.
+- "Anh nói đã chuyển tiền? Vậy mở lịch sử giao dịch trước mặt mọi người đi."
+- "Tôi chỉ hỏi một câu: ai sửa con số này?"
+
+5) CHO PHÉP NHỊP TRUYỆN MẠNG QUEN THUỘC:
+Các câu sau được phép nếu dùng vừa phải, đúng thời điểm, tạo dopamine:
+- "Được."
+- "Hay thật."
+- "Được lắm."
+- "Anh ta tính sai rồi."
+- "Tôi bật cười lạnh."
+- "Một cuộc. Hai cuộc. Ba cuộc."
+- "Tôi không bắt máy."
+- "Tôi không trả lời nữa."
+- "Từ giờ, chuyện này không còn do anh quyết định."
+- "Tôi đã chết tâm." chỉ dùng khi thật sự là tình thân/tình yêu bị cắt đứt, không lạm dụng.
+
+6) NHƯNG VẪN CẤM LỖI RÁC / TỐI NGHĨA / AI VĂN HOA:
+Không để lọt chữ rác kiểu category/quảng cáo vào truyện: "Toán học", "Gia đình", "Trái cây & rau", "Chó", "Trống", "Nhạc cụ", "Lãng mạn" nếu chúng không phải nội dung câu chuyện.
+Không dùng câu tối nghĩa/sai tai kiểu:
+- "góc vực đông người"
+- "giọng trơn như cánh quạt"
+- "tiếng đủ nặng để làm rơi ly rượu như im lặng"
+- "cảm nhận đường chỉ qua hình ảnh con mắt"
+- "trong lòng lửa tỉnh"
+- "ánh mắt cô nói USB"
+Không văn hoa hóa vật chứng: vật chứng dùng để vả mặt, không phải biểu tượng thơ.
+
+7) CÔNG THỨC NHỊP CHƯƠNG NÊN THEO:
+- Đoạn 1–3: vào thẳng cú ép/cú bêu/cú vu oan.
+- Đoạn 4–8: phản diện bồi thêm, đám đông/người thân/người yếu thế tạo áp lực.
+- Đoạn giữa: nữ chính phát hiện 1 điểm lệch cụ thể.
+- Đoạn sau: nữ chính trả đòn bằng 1 hành động thật.
+- Đoạn cuối: phản diện hoảng/đổi thái độ hoặc tung đòn mới; nữ chính có câu/hành động khiến độc giả muốn đọc tiếp.
+
+8) PAYOFF CUỐI CHƯƠNG PHẢI ĐÃ:
+Không kết bằng: "Tôi sẽ theo nó tới cùng", "Đây mới chỉ là bước đầu", "Tôi đi tìm sự thật".
+Hãy kết bằng một cú cụ thể:
+- Điện thoại phản diện gọi 99 cuộc, nữ chính mới bắt máy.
+- Công chứng viên đặt con dấu xuống: "Tạm dừng, tôi cần bản gốc."
+- Nhóm chat im sau khi sao kê được gửi lên.
+- Phản diện vừa cười xong thì nhận tin: vé đã bị hoàn / thẻ đã khóa / hợp đồng bị niêm phong.
+- Nữ chính tắt máy, bước vào sân bay, để người phía sau tự lo hậu quả.
+`.trim()
+}
+
 function getVietnameseProseHardGateInstruction() {
   return `
 VIETNAMESE PROSE HARD GATE — CỔNG CHẶN VĂN RÁC / DỊCH MÁY:
-Mục tiêu tối cao: BẢN ĐỌC CHO ĐỘC GIẢ phải giống truyện tiếng Việt do người thật viết, đọc thuận miệng, đủ chủ vị, đúng ngữ nghĩa, không cụt lủn, không giống Google Translate, không giống bản convert word-by-word.
+Mục tiêu tối cao: BẢN ĐỌC CHO ĐỘC GIẢ phải đọc thuận miệng, đủ chủ vị, đúng ngữ nghĩa, không cụt lủn, không giống Google Translate hoặc convert lỗi. Có thể giữ nhịp truyện mạng/convert dịch nhẹ quen thuộc nếu câu rõ, cuốn và tạo dopamine.
 
 1) VIẾT ĐÚNG CÁCH NÓI TIẾNG VIỆT TỰ NHIÊN:
 - Không viết câu dịch thẳng từ tiếng Anh/Trung.
@@ -192,7 +286,7 @@ SEMANTIC VIETNAMESE LOGIC GATE — CỔNG SOÁT NGHĨA CÂU / LOGIC SỰ KIỆN:
 function getAntiAIStyleRulesInstruction() {
   return `
 ANTI-AI / ANTI-CONVERT STYLE RULES — CHẶN VĂN GIẢ, VÍ VON SÁO, CÂU POSTER:
-Mục tiêu: văn phải đời, rõ, tự nhiên như người Việt kể chuyện. Không cố viết hay bằng ẩn dụ lạ. Một câu bình thường nhưng đúng cảnh luôn tốt hơn một câu nghe văn hoa nhưng giả.
+Mục tiêu: văn phải dễ đọc, rõ nghĩa, có nhịp truyện mạng/dopamine. Không cần làm văn quá sạch đến mức mất chất truyện viral; được giữ một chút nhịp convert quen thuộc nếu câu rõ, đã và không tối nghĩa. Chỉ chặn câu sai tai, rác, tối nghĩa, văn hoa giả hoặc làm chậm payoff.
 
 1) QUY TẮC VÀNG: SHOW, DON'T TELL
 Không dùng câu tổng kết trạng thái một cách lười biếng. Phải chuyển trạng thái thành hành động, phản ứng, lời nói, hoặc thay đổi trong căn phòng.
@@ -216,7 +310,7 @@ Hãy viết:
 - "Phòng công chứng sắp hết giờ làm việc. Nếu chậm thêm, họ sẽ có lý do đẩy mọi việc sang ngày mai."
 
 2) NEGATIVE DICTIONARY — CỤM PHẢI TRÁNH:
-Không dùng hoặc phải tự đổi nếu thấy các cụm kiểu AI/convert sau:
+Không dùng hoặc phải tự đổi nếu thấy các cụm kiểu AI/convert quá lố, tối nghĩa hoặc làm chậm dopamine sau. Lưu ý: các câu truyện mạng quen thuộc như “Được lắm”, “Hay thật”, “Tôi bật cười lạnh”, “Anh ta tính sai rồi”, “Tôi đã chết tâm” được phép dùng vừa phải nếu đúng cảnh:
 
 Cảm xúc/ví von sáo:
 - "viên đá lạnh"
@@ -457,6 +551,7 @@ export function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
   const cliffhangerRule = getCliffhangerRule(payload)
+  const viralDopamineWebNovelInstruction = getViralDopamineWebNovelInstruction()
 
   return `
 Bạn là Master Story Engine Core v3.2 chuyên thiết kế nữ tần đô thị mở rộng nhiều thể loại cho độc giả Việt.
@@ -500,6 +595,8 @@ ${titleNamingInstruction}
 ${heroineInstruction}
 
 ${urbanFemaleScaleLockInstruction}
+
+${viralDopamineWebNovelInstruction}
 
 ${cliffhangerRule}
 
@@ -627,6 +724,7 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const vietnameseProseHardGateInstruction = getVietnameseProseHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
   const antiAIStyleRulesInstruction = getAntiAIStyleRulesInstruction()
+  const viralDopamineWebNovelInstruction = getViralDopamineWebNovelInstruction()
   const vietnameseNaturalProseFewShotInstruction = getVietnameseNaturalProseFewShotInstruction()
   const nextChapterNumber = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
   const isContinuation = nextChapterNumber > 1
@@ -637,7 +735,7 @@ Bạn là Master Story Engine Core v3.2 viết nữ tần đô thị mở rộng
 Nhiệm vụ của bạn:
 - Viết bằng tiếng Việt tự nhiên, dễ đọc, giàu drama.
 - Giữ giọng truyện ngôi thứ nhất "tôi" khi viết chương.
-- Tạo cảm giác như truyện web novel do người thật sáng tác, không phải bản dịch máy, không phải phân tích khô.
+- Tạo cảm giác như truyện web novel/dopamine trả đũa do người thật viết cho độc giả Việt quen đọc truyện mạng; không phải bản dịch máy lỗi, không phải phân tích khô.
 - Không nhắc rằng bạn là AI.
 - Không giải thích ngoài output.
 - Không đạo văn.
@@ -692,6 +790,8 @@ ${sceneFunctionInstruction}
 ${villainPresenceInstruction}
 
 ${humanCostInstruction}
+
+${viralDopamineWebNovelInstruction}
 
 CHAPTER CONTINUATION RULE:
 - Số chương cần viết: Chương ${nextChapterNumber}.
@@ -818,6 +918,8 @@ ${vietnameseProseHardGateInstruction}
 ${vietnameseSemanticLogicGateInstruction}
 
 ${antiAIStyleRulesInstruction}
+
+${viralDopamineWebNovelInstruction}
 
 ${vietnameseNaturalProseFewShotInstruction}
 
@@ -975,6 +1077,7 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
   const vietnameseEditorHardGateInstruction = getVietnameseEditorHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
   const antiAIStyleRulesInstruction = getAntiAIStyleRulesInstruction()
+  const viralDopamineWebNovelInstruction = getViralDopamineWebNovelInstruction()
   const vietnameseNaturalProseFewShotInstruction = getVietnameseNaturalProseFewShotInstruction()
 
   const recentContext = payload.recentChapters
@@ -1018,6 +1121,8 @@ ${vietnameseSemanticLogicGateInstruction}
 
 ${antiAIStyleRulesInstruction}
 
+${viralDopamineWebNovelInstruction}
+
 ${vietnameseNaturalProseFewShotInstruction}
 
 CHAPTER PLAN HIỆN TẠI:
@@ -1053,7 +1158,7 @@ ${recentContext || '- Chưa có chương trước.'}
 
 
 NATURAL VIETNAMESE PROSE MODE — ƯU TIÊN VĂN NGƯỜI THẬT:
-Mục tiêu của editor pass này không phải làm chương “kịch hơn”, mà làm chương đọc tự nhiên hơn.
+Mục tiêu của editor pass này không phải làm chương “văn học hơn”, mà làm chương đọc cuốn hơn, rõ hơn, giữ được nhịp truyện mạng dopamine nhưng không còn câu tối nghĩa/sai tai.
 
 Luật rewrite:
 1. Cắt giọng AI/sân khấu hóa. Không biến cảnh đời thường thành “khán đài”, “phiên xử”, “ván cờ”, “vòng quyền lực”, “áp lực đè lên vai”.

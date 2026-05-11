@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom'
-import type { Dispatch, SetStateAction } from 'react'
+import { Link } from "react-router-dom";
+import type { Dispatch, SetStateAction } from "react";
 import type {
   AIFactoryConfig,
   AvoidLibrary,
@@ -9,174 +9,310 @@ import type {
   FactoryJob,
   FactoryLog,
   FactoryStatus,
-} from '../aiFactoryTypes'
+} from "../aiFactoryTypes";
 import {
   DEFAULT_FACTORY_GENRES,
   DEFAULT_HEROINE_OPTIONS,
   clampNumber,
-} from '../aiFactoryUtils'
-import type { ContinueStatusFilter, FactoryMode, IncompleteStory } from '../types/factoryPanelTypes'
-import { cx, FieldLabel, Section, SmallHint, ToggleChip } from './FactoryUi'
+} from "../aiFactoryUtils";
+import type {
+  ContinueStatusFilter,
+  FactoryMode,
+  IncompleteStory,
+} from "../types/factoryPanelTypes";
+import { cx, FieldLabel, Section, SmallHint, ToggleChip } from "./FactoryUi";
 
 const COVER_ART_STYLE_OPTIONS: Array<{
-  value: AIFactoryConfig['coverArtStyle']
-  label: string
+  value: AIFactoryConfig["coverArtStyle"];
+  label: string;
 }> = [
-  { value: 'auto', label: 'Tự động theo nội dung truyện' },
-  { value: 'anime_glossy', label: 'Anime webnovel bóng bẩy' },
-  { value: 'manhwa_drama', label: 'Manhwa / Manhua drama' },
-  { value: 'clean_webtoon_manhua', label: 'Webtoon / Manhua sạch màu sáng' },
-  { value: 'cinematic_semi_realistic', label: 'Cinematic semi-realistic' },
-  { value: 'cinematic_realistic', label: 'Cinematic realistic / poster phim' },
-  { value: 'monochrome_collage', label: 'Collage đơn sắc / drama u tối' },
-  { value: 'promo_poster', label: 'Poster quảng bá nhiều lớp' },
+  { value: "auto", label: "Tự động theo nội dung truyện" },
+  { value: "anime_glossy", label: "Anime webnovel bóng bẩy" },
+  { value: "manhwa_drama", label: "Manhwa / Manhua drama" },
+  { value: "clean_webtoon_manhua", label: "Webtoon / Manhua sạch màu sáng" },
+  { value: "cinematic_semi_realistic", label: "Cinematic semi-realistic" },
+  { value: "cinematic_realistic", label: "Cinematic realistic / poster phim" },
+  { value: "monochrome_collage", label: "Collage đơn sắc / drama u tối" },
+  { value: "promo_poster", label: "Poster quảng bá nhiều lớp" },
 
   // Legacy options giữ để đọc config/localStorage cũ không bị mất nhãn.
-  { value: 'anime_cinematic', label: 'Anime cinematic cũ' },
-  { value: 'manga_manhwa', label: 'Manga / Manhwa cũ' },
-  { value: 'popular_webnovel_collage', label: 'Webnovel collage cũ' },
-  { value: 'ancient_chinese_cinematic_romance', label: 'Cổ phong ngôn tình điện ảnh' },
-]
+  { value: "anime_cinematic", label: "Anime cinematic cũ" },
+  { value: "manga_manhwa", label: "Manga / Manhwa cũ" },
+  { value: "popular_webnovel_collage", label: "Webnovel collage cũ" },
+  {
+    value: "ancient_chinese_cinematic_romance",
+    label: "Cổ phong ngôn tình điện ảnh",
+  },
+];
 
 const COVER_COMPOSITION_OPTIONS: Array<{
-  value: AIFactoryConfig['coverCompositionPreset']
-  label: string
+  value: AIFactoryConfig["coverCompositionPreset"];
+  label: string;
 }> = [
-  { value: 'auto', label: 'Tự động theo nội dung truyện' },
-  { value: 'wide_story_scene', label: 'Bối cảnh rộng / cảnh truyện mở / thấy rõ không gian' },
-  { value: 'single_heroine_center', label: 'Nhân vật trung tâm nhưng không zoom mặt' },
-  { value: 'public_confrontation', label: 'Đối đầu công khai / nhiều nhân vật' },
-  { value: 'evidence_focus', label: 'Vật chứng foreground / bằng chứng rõ' },
-  { value: 'mother_child_protection', label: 'Mẹ con bảo vệ / áp lực phía sau' },
-  { value: 'betrayal_triangle', label: 'Tam giác phản bội / bắt quả tang' },
-  { value: 'collage_story_poster', label: 'Collage nhiều cảnh / nhiều lớp truyện' },
+  { value: "auto", label: "Tự động theo nội dung truyện" },
+  {
+    value: "wide_story_scene",
+    label: "Bối cảnh rộng / cảnh truyện mở / thấy rõ không gian",
+  },
+  {
+    value: "single_heroine_center",
+    label: "Nhân vật trung tâm nhưng không zoom mặt",
+  },
+  {
+    value: "public_confrontation",
+    label: "Đối đầu công khai / nhiều nhân vật",
+  },
+  { value: "evidence_focus", label: "Vật chứng foreground / bằng chứng rõ" },
+  {
+    value: "mother_child_protection",
+    label: "Mẹ con bảo vệ / áp lực phía sau",
+  },
+  { value: "betrayal_triangle", label: "Tam giác phản bội / bắt quả tang" },
+  {
+    value: "collage_story_poster",
+    label: "Collage nhiều cảnh / nhiều lớp truyện",
+  },
 
   // Legacy options giữ để đọc config/localStorage cũ.
-  { value: 'story_scene_offset', label: 'Bố cục cũ — cảnh chính lệch khung' },
-  { value: 'luxury_collage', label: 'Bố cục cũ — luxury collage' },
-]
+  { value: "story_scene_offset", label: "Bố cục cũ — cảnh chính lệch khung" },
+  { value: "luxury_collage", label: "Bố cục cũ — luxury collage" },
+];
 
 const STORY_EDITOR_MODE_OPTIONS: Array<{
-  value: AIFactoryConfig['storyEditorMode']
-  label: string
-  hint: string
+  value: AIFactoryConfig["storyEditorMode"];
+  label: string;
+  hint: string;
 }> = [
   {
-    value: 'off',
-    label: 'Tắt',
-    hint: 'Nhanh/rẻ nhất. Dùng khi test prompt hoặc test logic.',
+    value: "off",
+    label: "Tắt",
+    hint: "Nhanh/rẻ nhất. Dùng khi test prompt hoặc test logic.",
   },
   {
-    value: 'standard',
-    label: 'Tiêu chuẩn',
-    hint: 'Writer + 1 lượt AI editor. Nên dùng mặc định để giữ chi phí 2–3 triệu/tháng.',
+    value: "standard",
+    label: "Tiêu chuẩn",
+    hint: "Writer + 1 lượt AI editor. Nên dùng mặc định để giữ chi phí 2–3 triệu/tháng.",
   },
   {
-    value: 'careful',
-    label: 'Kỹ chọn lọc',
-    hint: 'Editor + audit bằng code. Chỉ gọi repair AI khi phát hiện câu gượng/sai.',
+    value: "careful",
+    label: "Kỹ chọn lọc",
+    hint: "Editor + audit bằng code. Chỉ gọi repair AI khi phát hiện câu gượng/sai.",
   },
-]
+];
 
 function getOptionLabel<T extends string>(
   options: Array<{ value: T; label: string }>,
   value: T | undefined,
   fallback: string,
 ): string {
-  return options.find((item) => item.value === value)?.label ?? fallback
+  return options.find((item) => item.value === value)?.label ?? fallback;
 }
 
-function getStoryEditorShortLabel(value: AIFactoryConfig['storyEditorMode'] | undefined): string {
+function getStoryEditorShortLabel(
+  value: AIFactoryConfig["storyEditorMode"] | undefined,
+): string {
   return getOptionLabel(
     STORY_EDITOR_MODE_OPTIONS,
-    value ?? 'standard',
-    'Tiêu chuẩn',
-  )
+    value ?? "standard",
+    "Tiêu chuẩn",
+  );
 }
 
-function getCoverArtStyleLabel(value: AIFactoryConfig['coverArtStyle'] | undefined): string {
-  return getOptionLabel(COVER_ART_STYLE_OPTIONS, value ?? 'auto', 'Tự động theo nội dung truyện')
+function getCoverArtStyleLabel(
+  value: AIFactoryConfig["coverArtStyle"] | undefined,
+): string {
+  return getOptionLabel(
+    COVER_ART_STYLE_OPTIONS,
+    value ?? "auto",
+    "Tự động theo nội dung truyện",
+  );
 }
 
-function getCoverCompositionLabel(value: AIFactoryConfig['coverCompositionPreset'] | undefined): string {
-  return getOptionLabel(COVER_COMPOSITION_OPTIONS, value ?? 'auto', 'Tự động theo nội dung truyện')
+function getCoverCompositionLabel(
+  value: AIFactoryConfig["coverCompositionPreset"] | undefined,
+): string {
+  return getOptionLabel(
+    COVER_COMPOSITION_OPTIONS,
+    value ?? "auto",
+    "Tự động theo nội dung truyện",
+  );
 }
 
 function getCoverImageQualityLabel(
-  value: AIFactoryConfig['coverImageQuality'] | undefined,
+  value: AIFactoryConfig["coverImageQuality"] | undefined,
 ): string {
-  return value === 'high'
-    ? 'High — đẹp hơn, tốn tiền hơn'
-    : 'Medium — mặc định, cân bằng chi phí'
+  return value === "high"
+    ? "High — đẹp hơn, tốn tiền hơn"
+    : "Medium — mặc định, cân bằng chi phí";
+}
+
+function compactProseText(value: unknown, maxLength = 160) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function getJobVietnameseProseReport(job: FactoryJob) {
+  const anyJob = job as any;
+  const report = anyJob.vietnameseProseReport || {};
+  const stats = anyJob.vietnameseRepairStats || {};
+  const autoFixes = Array.isArray(report.autoFixes)
+    ? report.autoFixes
+    : Array.isArray(stats.fixedSamples)
+      ? stats.fixedSamples
+      : [];
+  const warnings = Array.isArray(report.warnings)
+    ? report.warnings
+    : Array.isArray(stats.warningSamples)
+      ? stats.warningSamples
+      : [];
+  const allowedSamples = Array.isArray(report.allowedSamples)
+    ? report.allowedSamples
+    : Array.isArray(stats.allowedSamples)
+      ? stats.allowedSamples.map((text: string) => ({ text }))
+      : [];
+
+  return {
+    fixedCount:
+      Number(report.fixedCount ?? stats.fixedCount ?? autoFixes.length ?? 0) ||
+      0,
+    warningCount:
+      Number(
+        report.warningCount ?? stats.warningCount ?? warnings.length ?? 0,
+      ) || 0,
+    allowedCount:
+      Number(
+        report.allowedCount ?? stats.allowedCount ?? allowedSamples.length ?? 0,
+      ) || 0,
+    autoFixes,
+    warnings,
+    allowedSamples,
+  };
+}
+
+function JobVietnameseProseMiniReport({ job }: { job: FactoryJob }) {
+  const report = getJobVietnameseProseReport(job);
+
+  if (!report.fixedCount && !report.warningCount && !report.allowedCount)
+    return null;
+
+  return (
+    <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-xs text-cyan-50">
+      <div className="font-bold text-cyan-100">Kiểm tra văn phong</div>
+      <div className="mt-1 text-cyan-100/80">
+        Tự sửa {report.fixedCount} câu, cảnh báo {report.warningCount} câu, giữ{" "}
+        {report.allowedCount} cụm viral.
+      </div>
+
+      {report.autoFixes.length ? (
+        <div className="mt-2 space-y-1">
+          {report.autoFixes.slice(-3).map((fix: any, index: number) => (
+            <div
+              key={`${fix.id || "fix"}-${index}`}
+              className="rounded-lg bg-black/25 p-2"
+            >
+              <span className="text-emerald-200">Auto fix:</span> “
+              {compactProseText(fix.before, 90)}” → “
+              {compactProseText(fix.after, 90)}”
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {report.warnings.length ? (
+        <div className="mt-2 space-y-1">
+          {report.warnings.slice(-3).map((warning: any, index: number) => (
+            <div
+              key={`${warning.id || "warning"}-${index}`}
+              className="rounded-lg bg-black/25 p-2"
+            >
+              <span className="text-yellow-200">Warning:</span>{" "}
+              {warning.sample
+                ? `“${compactProseText(warning.sample, 90)}” — `
+                : ""}
+              {compactProseText(warning.message || "Câu/cụm cần soi lại.", 140)}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function mapCompositionToLegacySceneType(
-  value: AIFactoryConfig['coverCompositionPreset'],
-): AIFactoryConfig['coverSceneType'] {
+  value: AIFactoryConfig["coverCompositionPreset"],
+): AIFactoryConfig["coverSceneType"] {
   switch (value) {
-    case 'collage_story_poster':
-    case 'luxury_collage':
-      return 'collage_story_poster'
-    case 'wide_story_scene':
-      return 'auto_story_scene'
-    case 'mother_child_protection':
-      return 'mother_child_protection'
-    case 'evidence_focus':
-      return 'evidence_discovery_scene'
-    case 'public_confrontation':
-      return 'public_reveal_confrontation'
-    case 'betrayal_triangle':
-      return 'private_betrayal_confrontation'
-    case 'single_heroine_center':
-    case 'story_scene_offset':
-    case 'auto':
+    case "collage_story_poster":
+    case "luxury_collage":
+      return "collage_story_poster";
+    case "wide_story_scene":
+      return "auto_story_scene";
+    case "mother_child_protection":
+      return "mother_child_protection";
+    case "evidence_focus":
+      return "evidence_discovery_scene";
+    case "public_confrontation":
+      return "public_reveal_confrontation";
+    case "betrayal_triangle":
+      return "private_betrayal_confrontation";
+    case "single_heroine_center":
+    case "story_scene_offset":
+    case "auto":
     default:
-      return 'auto_story_scene'
+      return "auto_story_scene";
   }
 }
 
 type AIFactoryPanelViewProps = {
-  status: FactoryStatus
-  progressText: string
-  factoryMode: FactoryMode
-  setFactoryMode: Dispatch<SetStateAction<FactoryMode>>
-  isRunning: boolean
-  continueStoryLimit: number
-  setContinueStoryLimit: Dispatch<SetStateAction<number>>
-  continueChaptersPerStory: number
-  setContinueChaptersPerStory: Dispatch<SetStateAction<number>>
-  continueStatusFilter: ContinueStatusFilter
-  setContinueStatusFilter: Dispatch<SetStateAction<ContinueStatusFilter>>
-  selectedContinueStoryId: string
-  setSelectedContinueStoryId: Dispatch<SetStateAction<string>>
-  config: AIFactoryConfig
-  updateConfig: <K extends keyof AIFactoryConfig>(key: K, value: AIFactoryConfig[K]) => void
-  setOpenaiConfirmed: Dispatch<SetStateAction<boolean>>
-  selectedGenres: FactoryGenreOption[]
-  selectedHeroines: FactoryHeroineOption[]
-  toggleGenre: (item: FactoryGenreOption) => void
-  toggleHeroine: (item: FactoryHeroineOption) => void
-  existingStories: ExistingStory[]
-  avoidLibrary: AvoidLibrary
-  scanExistingStories: () => Promise<{ stories: ExistingStory[]; avoid: AvoidLibrary }>
-  incompleteStories: IncompleteStory[]
-  scanIncompleteStories: () => Promise<IncompleteStory[]>
-  openaiConfirmed: boolean
-  totalBatches: number
-  totalTextRequests: number
-  totalCoverRequests: number
-  totalRequests: number
-  canStart: boolean
-  startFactory: () => Promise<void>
-  stopFactory: () => void
-  clearLog: () => void
-  currentAction: string
-  jobs: FactoryJob[]
-  logs: FactoryLog[]
-  expensiveModelRequiresConfirmation: boolean
-  expensiveModelConfirmed: boolean
-  setExpensiveModelConfirmed: Dispatch<SetStateAction<boolean>>
-}
+  status: FactoryStatus;
+  progressText: string;
+  factoryMode: FactoryMode;
+  setFactoryMode: Dispatch<SetStateAction<FactoryMode>>;
+  isRunning: boolean;
+  continueStoryLimit: number;
+  setContinueStoryLimit: Dispatch<SetStateAction<number>>;
+  continueChaptersPerStory: number;
+  setContinueChaptersPerStory: Dispatch<SetStateAction<number>>;
+  continueStatusFilter: ContinueStatusFilter;
+  setContinueStatusFilter: Dispatch<SetStateAction<ContinueStatusFilter>>;
+  selectedContinueStoryId: string;
+  setSelectedContinueStoryId: Dispatch<SetStateAction<string>>;
+  config: AIFactoryConfig;
+  updateConfig: <K extends keyof AIFactoryConfig>(
+    key: K,
+    value: AIFactoryConfig[K],
+  ) => void;
+  setOpenaiConfirmed: Dispatch<SetStateAction<boolean>>;
+  selectedGenres: FactoryGenreOption[];
+  selectedHeroines: FactoryHeroineOption[];
+  toggleGenre: (item: FactoryGenreOption) => void;
+  toggleHeroine: (item: FactoryHeroineOption) => void;
+  existingStories: ExistingStory[];
+  avoidLibrary: AvoidLibrary;
+  scanExistingStories: () => Promise<{
+    stories: ExistingStory[];
+    avoid: AvoidLibrary;
+  }>;
+  incompleteStories: IncompleteStory[];
+  scanIncompleteStories: () => Promise<IncompleteStory[]>;
+  openaiConfirmed: boolean;
+  totalBatches: number;
+  totalTextRequests: number;
+  totalCoverRequests: number;
+  totalRequests: number;
+  canStart: boolean;
+  startFactory: () => Promise<void>;
+  stopFactory: () => void;
+  clearLog: () => void;
+  currentAction: string;
+  jobs: FactoryJob[];
+  logs: FactoryLog[];
+  expensiveModelRequiresConfirmation: boolean;
+  expensiveModelConfirmed: boolean;
+  setExpensiveModelConfirmed: Dispatch<SetStateAction<boolean>>;
+};
 
 export default function AIFactoryPanelView({
   status,
@@ -220,40 +356,44 @@ export default function AIFactoryPanelView({
   jobs,
   logs,
 }: AIFactoryPanelViewProps) {
-  const chapterMinChars = Number((config as any).chapterMinChars ?? 3500)
-  const chapterMaxChars = Number((config as any).chapterMaxChars ?? 4500)
+  const chapterMinChars = Number((config as any).chapterMinChars ?? 3500);
+  const chapterMaxChars = Number((config as any).chapterMaxChars ?? 4500);
   const selectedContinueStory = incompleteStories.find(
     (story) => String((story as any).id) === selectedContinueStoryId,
-  )
+  );
 
   function updateChapterCharRange(nextMin: number, nextMax: number) {
-    const safeMin = clampNumber(Number(nextMin), 1000, 12000)
-    const safeMax = clampNumber(Number(nextMax), safeMin, 15000)
+    const safeMin = clampNumber(Number(nextMin), 1000, 12000);
+    const safeMax = clampNumber(Number(nextMax), safeMin, 15000);
 
-    updateConfig('chapterMinChars' as keyof AIFactoryConfig, safeMin as any)
-    updateConfig('chapterMaxChars' as keyof AIFactoryConfig, safeMax as any)
+    updateConfig("chapterMinChars" as keyof AIFactoryConfig, safeMin as any);
+    updateConfig("chapterMaxChars" as keyof AIFactoryConfig, safeMax as any);
     updateConfig(
-      'chapterLengthLabel',
-      `Tùy chỉnh — khoảng ${safeMin}–${safeMax} ký tự` as AIFactoryConfig['chapterLengthLabel'],
-    )
+      "chapterLengthLabel",
+      `Tùy chỉnh — khoảng ${safeMin}–${safeMax} ký tự` as AIFactoryConfig["chapterLengthLabel"],
+    );
   }
 
-  function updateCoverCompositionPreset(nextValue: AIFactoryConfig['coverCompositionPreset']) {
-    updateConfig('coverCompositionPreset', nextValue)
-    updateConfig('coverSceneType', mapCompositionToLegacySceneType(nextValue))
+  function updateCoverCompositionPreset(
+    nextValue: AIFactoryConfig["coverCompositionPreset"],
+  ) {
+    updateConfig("coverCompositionPreset", nextValue);
+    updateConfig("coverSceneType", mapCompositionToLegacySceneType(nextValue));
   }
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-6 text-slate-100 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-yellow-300">Admin AI Factory</p>
+          <p className="text-sm font-medium text-yellow-300">
+            Admin AI Factory
+          </p>
           <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
             AI Writer Factory
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400">
-            Tạo truyện/chương hàng loạt theo batch. MVP chạy tuần tự, lưu story/chapter
-            dạng draft vào Supabase.
+            Tạo truyện/chương hàng loạt theo batch. MVP chạy tuần tự, lưu
+            story/chapter dạng draft vào Supabase.
           </p>
         </div>
 
@@ -265,29 +405,36 @@ export default function AIFactoryPanelView({
 
       <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-5">
-          <Section title="Factory Config" desc="Cấu hình số truyện, số chương, provider và delay.">
+          <Section
+            title="Factory Config"
+            desc="Cấu hình số truyện, số chương, provider và delay."
+          >
             <div className="mb-4 rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3">
               <FieldLabel>Factory mode</FieldLabel>
               <select
                 value={factoryMode}
                 disabled={isRunning}
                 onChange={(event) => {
-                  setFactoryMode(event.target.value as FactoryMode)
-                  if (event.target.value !== 'continue-existing') {
-                    setSelectedContinueStoryId('auto')
+                  setFactoryMode(event.target.value as FactoryMode);
+                  if (event.target.value !== "continue-existing") {
+                    setSelectedContinueStoryId("auto");
                   }
                 }}
                 className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
               >
                 <option value="create-new">Tạo truyện mới</option>
-                <option value="continue-existing">Viết tiếp truyện dang dở</option>
+                <option value="continue-existing">
+                  Viết tiếp truyện dang dở
+                </option>
               </select>
               <SmallHint>
-                Tạo truyện mới sẽ insert story mới. Viết tiếp truyện dang dở sẽ quét target_chapters trong story_dna hoặc cột target_chapters và tạo chương còn thiếu.
+                Tạo truyện mới sẽ insert story mới. Viết tiếp truyện dang dở sẽ
+                quét target_chapters trong story_dna hoặc cột target_chapters và
+                tạo chương còn thiếu.
               </SmallHint>
             </div>
 
-            {factoryMode === 'continue-existing' ? (
+            {factoryMode === "continue-existing" ? (
               <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div>
                   <FieldLabel>Số truyện dang dở cần xử lý</FieldLabel>
@@ -297,10 +444,17 @@ export default function AIFactoryPanelView({
                     max={50}
                     disabled={isRunning}
                     value={continueStoryLimit}
-                    onChange={(event) => setContinueStoryLimit(clampNumber(Number(event.target.value), 1, 50))}
+                    onChange={(event) =>
+                      setContinueStoryLimit(
+                        clampNumber(Number(event.target.value), 1, 50),
+                      )
+                    }
                     className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                   />
-                  <SmallHint>Factory sẽ lấy tối đa số truyện thiếu chương theo thứ tự mới nhất.</SmallHint>
+                  <SmallHint>
+                    Factory sẽ lấy tối đa số truyện thiếu chương theo thứ tự mới
+                    nhất.
+                  </SmallHint>
                 </div>
 
                 <div>
@@ -311,10 +465,16 @@ export default function AIFactoryPanelView({
                     max={25}
                     disabled={isRunning}
                     value={continueChaptersPerStory}
-                    onChange={(event) => setContinueChaptersPerStory(clampNumber(Number(event.target.value), 1, 25))}
+                    onChange={(event) =>
+                      setContinueChaptersPerStory(
+                        clampNumber(Number(event.target.value), 1, 25),
+                      )
+                    }
                     className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                   />
-                  <SmallHint>Ví dụ truyện 1/15, nhập 3 sẽ tạo chương 2–4.</SmallHint>
+                  <SmallHint>
+                    Ví dụ truyện 1/15, nhập 3 sẽ tạo chương 2–4.
+                  </SmallHint>
                 </div>
 
                 <div>
@@ -322,22 +482,30 @@ export default function AIFactoryPanelView({
                   <select
                     value={selectedContinueStoryId}
                     disabled={isRunning}
-                    onChange={(event) => setSelectedContinueStoryId(event.target.value)}
+                    onChange={(event) =>
+                      setSelectedContinueStoryId(event.target.value)
+                    }
                     className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                   >
-                    <option value="auto">Tự động — lấy theo danh sách scan</option>
+                    <option value="auto">
+                      Tự động — lấy theo danh sách scan
+                    </option>
                     {incompleteStories.map((story) => {
-                      const storyId = String((story as any).id || '')
-                      if (!storyId) return null
+                      const storyId = String((story as any).id || "");
+                      if (!storyId) return null;
 
                       return (
                         <option key={storyId} value={storyId}>
-                          {story.title || 'Truyện chưa có tên'} — {story.currentChapters}/{story.targetChapters} chương
+                          {story.title || "Truyện chưa có tên"} —{" "}
+                          {story.currentChapters}/{story.targetChapters} chương
                         </option>
-                      )
+                      );
                     })}
                   </select>
-                  <SmallHint>Muốn viết thêm 2 chương cho 1 truyện cụ thể thì scan trước, chọn truyện, rồi nhập 2.</SmallHint>
+                  <SmallHint>
+                    Muốn viết thêm 2 chương cho 1 truyện cụ thể thì scan trước,
+                    chọn truyện, rồi nhập 2.
+                  </SmallHint>
                 </div>
 
                 <div>
@@ -345,14 +513,21 @@ export default function AIFactoryPanelView({
                   <select
                     value={continueStatusFilter}
                     disabled={isRunning}
-                    onChange={(event) => setContinueStatusFilter(event.target.value as ContinueStatusFilter)}
+                    onChange={(event) =>
+                      setContinueStatusFilter(
+                        event.target.value as ContinueStatusFilter,
+                      )
+                    }
                     className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                   >
                     <option value="draft">Draft</option>
                     <option value="published">Published</option>
                     <option value="all">Tất cả</option>
                   </select>
-                  <SmallHint>Nên để Draft để tránh tự thêm chương vào truyện đã public nếu chưa duyệt.</SmallHint>
+                  <SmallHint>
+                    Nên để Draft để tránh tự thêm chương vào truyện đã public
+                    nếu chưa duyệt.
+                  </SmallHint>
                 </div>
               </div>
             ) : null}
@@ -364,8 +539,11 @@ export default function AIFactoryPanelView({
                   value={config.provider}
                   disabled={isRunning}
                   onChange={(event) => {
-                    updateConfig('provider', event.target.value as AIFactoryConfig['provider'])
-                    setOpenaiConfirmed(false)
+                    updateConfig(
+                      "provider",
+                      event.target.value as AIFactoryConfig["provider"],
+                    );
+                    setOpenaiConfirmed(false);
                   }}
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 >
@@ -380,8 +558,11 @@ export default function AIFactoryPanelView({
                   value={config.modelKey}
                   disabled={isRunning}
                   onChange={(event) => {
-                    updateConfig('modelKey', event.target.value as AIFactoryConfig['modelKey'])
-                    setExpensiveModelConfirmed(false)
+                    updateConfig(
+                      "modelKey",
+                      event.target.value as AIFactoryConfig["modelKey"],
+                    );
+                    setExpensiveModelConfirmed(false);
                   }}
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 >
@@ -401,13 +582,16 @@ export default function AIFactoryPanelView({
                   value={config.storyCount}
                   onChange={(event) =>
                     updateConfig(
-                      'storyCount',
+                      "storyCount",
                       clampNumber(Number(event.target.value), 1, 50),
                     )
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
-                <SmallHint>Tối đa 50 truyện/lần chạy. Factory sẽ tự chia batch và chạy tuần tự.</SmallHint>
+                <SmallHint>
+                  Tối đa 50 truyện/lần chạy. Factory sẽ tự chia batch và chạy
+                  tuần tự.
+                </SmallHint>
               </div>
 
               <div>
@@ -420,13 +604,16 @@ export default function AIFactoryPanelView({
                   value={config.batchSize}
                   onChange={(event) =>
                     updateConfig(
-                      'batchSize',
+                      "batchSize",
                       clampNumber(Number(event.target.value), 1, 5),
                     )
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
-                <SmallHint>Mỗi batch nên để 3–5 truyện để dễ kiểm soát và tránh spam request.</SmallHint>
+                <SmallHint>
+                  Mỗi batch nên để 3–5 truyện để dễ kiểm soát và tránh spam
+                  request.
+                </SmallHint>
               </div>
 
               <div>
@@ -439,7 +626,7 @@ export default function AIFactoryPanelView({
                   value={config.chaptersToGenerateNow}
                   onChange={(event) =>
                     updateConfig(
-                      'chaptersToGenerateNow',
+                      "chaptersToGenerateNow",
                       clampNumber(Number(event.target.value), 1, 25),
                     )
                   }
@@ -447,8 +634,8 @@ export default function AIFactoryPanelView({
                 />
                 <SmallHint>
                   {config.autoCompleteByTarget
-                    ? 'Đang bật mode full target random: ô này sẽ bị bỏ qua. Số chương thật sẽ lấy theo target random của từng truyện.'
-                    : 'Đây là số chương tạo thật ngay mỗi truyện. Hai ô mục tiêu bên dưới chỉ là kế hoạch cho AI, không tự tạo thêm chương.'}
+                    ? "Đang bật mode full target random: ô này sẽ bị bỏ qua. Số chương thật sẽ lấy theo target random của từng truyện."
+                    : "Đây là số chương tạo thật ngay mỗi truyện. Hai ô mục tiêu bên dưới chỉ là kế hoạch cho AI, không tự tạo thêm chương."}
                 </SmallHint>
               </div>
 
@@ -462,11 +649,16 @@ export default function AIFactoryPanelView({
                   disabled={isRunning}
                   value={chapterMinChars}
                   onChange={(event) =>
-                    updateChapterCharRange(Number(event.target.value), chapterMaxChars)
+                    updateChapterCharRange(
+                      Number(event.target.value),
+                      chapterMaxChars,
+                    )
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
-                <SmallHint>Mặc định khuyên dùng 3500 ký tự để chương đủ dày.</SmallHint>
+                <SmallHint>
+                  Mặc định khuyên dùng 3500 ký tự để chương đủ dày.
+                </SmallHint>
               </div>
 
               <div>
@@ -479,12 +671,16 @@ export default function AIFactoryPanelView({
                   disabled={isRunning}
                   value={chapterMaxChars}
                   onChange={(event) =>
-                    updateChapterCharRange(chapterMinChars, Number(event.target.value))
+                    updateChapterCharRange(
+                      chapterMinChars,
+                      Number(event.target.value),
+                    )
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
                 <SmallHint>
-                  Đang ép AI viết khoảng {chapterMinChars}–{chapterMaxChars} ký tự/chương.
+                  Đang ép AI viết khoảng {chapterMinChars}–{chapterMaxChars} ký
+                  tự/chương.
                 </SmallHint>
               </div>
 
@@ -498,14 +694,15 @@ export default function AIFactoryPanelView({
                   value={config.minTargetChapters}
                   onChange={(event) =>
                     updateConfig(
-                      'minTargetChapters',
+                      "minTargetChapters",
                       clampNumber(Number(event.target.value), 5, 50),
                     )
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
                 <SmallHint>
-                  Khi bật full target mode, đây là số chương tối thiểu có thể tạo thật cho mỗi truyện.
+                  Khi bật full target mode, đây là số chương tối thiểu có thể
+                  tạo thật cho mỗi truyện.
                 </SmallHint>
               </div>
 
@@ -519,13 +716,16 @@ export default function AIFactoryPanelView({
                   value={config.maxTargetChapters}
                   onChange={(event) =>
                     updateConfig(
-                      'maxTargetChapters',
+                      "maxTargetChapters",
                       clampNumber(Number(event.target.value), 5, 60),
                     )
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
-                <SmallHint>Factory sẽ random target trong khoảng này và lưu vào story_dna + cột target_chapters.</SmallHint>
+                <SmallHint>
+                  Factory sẽ random target trong khoảng này và lưu vào story_dna
+                  + cột target_chapters.
+                </SmallHint>
               </div>
 
               <div>
@@ -538,7 +738,10 @@ export default function AIFactoryPanelView({
                   disabled={isRunning}
                   value={config.delayMs}
                   onChange={(event) =>
-                    updateConfig('delayMs', clampNumber(Number(event.target.value), 0, 10000))
+                    updateConfig(
+                      "delayMs",
+                      clampNumber(Number(event.target.value), 0, 10000),
+                    )
                   }
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
@@ -551,7 +754,9 @@ export default function AIFactoryPanelView({
                     type="checkbox"
                     disabled={isRunning}
                     checked={config.autoCompleteByTarget}
-                    onChange={(event) => updateConfig('autoCompleteByTarget', event.target.checked)}
+                    onChange={(event) =>
+                      updateConfig("autoCompleteByTarget", event.target.checked)
+                    }
                     className="mt-1 h-4 w-4 accent-emerald-300"
                   />
 
@@ -560,9 +765,10 @@ export default function AIFactoryPanelView({
                       Tạo full truyện theo target random
                     </span>
                     <span className="mt-1 block text-xs leading-relaxed text-slate-400">
-                      Khi bật, mỗi truyện sẽ random số chương trong khoảng tối thiểu/tối đa.
-                      Ví dụ random 15 thì Factory sẽ tạo đủ 15 chương, chương cuối kết truyện
-                      và lưu completion_status = full.
+                      Khi bật, mỗi truyện sẽ random số chương trong khoảng tối
+                      thiểu/tối đa. Ví dụ random 15 thì Factory sẽ tạo đủ 15
+                      chương, chương cuối kết truyện và lưu completion_status =
+                      full.
                     </span>
                   </span>
                 </label>
@@ -574,7 +780,8 @@ export default function AIFactoryPanelView({
                     <div>
                       <FieldLabel>Biên tập tiếng Việt</FieldLabel>
                       <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                        Chọn 1 chế độ. Dạng checklist để nhìn rõ Factory đang dùng mức biên tập nào.
+                        Chọn 1 chế độ. Dạng checklist để nhìn rõ Factory đang
+                        dùng mức biên tập nào.
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 text-[11px] font-bold text-emerald-100">
@@ -584,17 +791,18 @@ export default function AIFactoryPanelView({
 
                   <div className="mt-3 space-y-2">
                     {STORY_EDITOR_MODE_OPTIONS.map((item) => {
-                      const checked = (config.storyEditorMode ?? 'standard') === item.value
+                      const checked =
+                        (config.storyEditorMode ?? "standard") === item.value;
 
                       return (
                         <label
                           key={item.value}
                           className={cx(
-                            'flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition',
+                            "flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition",
                             checked
-                              ? 'border-emerald-300/60 bg-emerald-300/10 text-emerald-50'
-                              : 'border-white/10 bg-black/20 text-slate-300 hover:border-white/20',
-                            isRunning ? 'cursor-not-allowed opacity-70' : '',
+                              ? "border-emerald-300/60 bg-emerald-300/10 text-emerald-50"
+                              : "border-white/10 bg-black/20 text-slate-300 hover:border-white/20",
+                            isRunning ? "cursor-not-allowed opacity-70" : "",
                           )}
                         >
                           <input
@@ -602,18 +810,23 @@ export default function AIFactoryPanelView({
                             disabled={isRunning}
                             checked={checked}
                             onChange={() =>
-                              updateConfig('storyEditorMode', item.value as AIFactoryConfig['storyEditorMode'])
+                              updateConfig(
+                                "storyEditorMode",
+                                item.value as AIFactoryConfig["storyEditorMode"],
+                              )
                             }
                             className="mt-0.5 h-4 w-4 accent-emerald-300"
                           />
                           <span>
-                            <span className="block font-bold">{item.label}</span>
+                            <span className="block font-bold">
+                              {item.label}
+                            </span>
                             <span className="mt-1 block text-xs leading-relaxed text-slate-400">
                               {item.hint}
                             </span>
                           </span>
                         </label>
-                      )
+                      );
                     })}
                   </div>
                 </div>
@@ -624,13 +837,18 @@ export default function AIFactoryPanelView({
                       type="checkbox"
                       disabled={isRunning}
                       checked={config.generateCover}
-                      onChange={(event) => updateConfig('generateCover', event.target.checked)}
+                      onChange={(event) =>
+                        updateConfig("generateCover", event.target.checked)
+                      }
                       className="mt-1 h-4 w-4 accent-yellow-300"
                     />
                     <span>
-                      <span className="block font-bold text-slate-100">Generate cover</span>
+                      <span className="block font-bold text-slate-100">
+                        Generate cover
+                      </span>
                       <span className="mt-1 block text-xs leading-relaxed text-slate-500">
-                        Bật thì OpenAI tạo ảnh bìa thật rồi upload public. Tắt thì Factory chỉ tạo truyện/chương.
+                        Bật thì OpenAI tạo ảnh bìa thật rồi upload public. Tắt
+                        thì Factory chỉ tạo truyện/chương.
                       </span>
                     </span>
                   </label>
@@ -641,9 +859,13 @@ export default function AIFactoryPanelView({
                         <FieldLabel>Dạng vẽ ảnh bìa</FieldLabel>
                         <select
                           disabled={isRunning}
-                          value={config.coverArtStyle ?? 'auto'}
+                          value={config.coverArtStyle ?? "auto"}
                           onChange={(event) =>
-                            updateConfig('coverArtStyle', event.target.value as AIFactoryConfig['coverArtStyle'])
+                            updateConfig(
+                              "coverArtStyle",
+                              event.target
+                                .value as AIFactoryConfig["coverArtStyle"],
+                            )
                           }
                           className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
                         >
@@ -654,7 +876,8 @@ export default function AIFactoryPanelView({
                           ))}
                         </select>
                         <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                          Chọn chất vẽ tổng thể: anime, manhwa, cinematic, collage hoặc poster.
+                          Chọn chất vẽ tổng thể: anime, manhwa, cinematic,
+                          collage hoặc poster.
                         </p>
                       </div>
 
@@ -662,10 +885,11 @@ export default function AIFactoryPanelView({
                         <FieldLabel>Bố cục ảnh bìa</FieldLabel>
                         <select
                           disabled={isRunning}
-                          value={config.coverCompositionPreset ?? 'auto'}
+                          value={config.coverCompositionPreset ?? "auto"}
                           onChange={(event) =>
                             updateCoverCompositionPreset(
-                              event.target.value as AIFactoryConfig['coverCompositionPreset'],
+                              event.target
+                                .value as AIFactoryConfig["coverCompositionPreset"],
                             )
                           }
                           className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
@@ -677,21 +901,25 @@ export default function AIFactoryPanelView({
                           ))}
                         </select>
                         <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                          Điều khiển khung hình: không để nữ chính zoom quá lớn, ưu tiên bối cảnh, vật chứng và nhân vật phụ.
+                          Điều khiển khung hình: không để nữ chính zoom quá lớn,
+                          ưu tiên bối cảnh, vật chứng và nhân vật phụ.
                         </p>
                       </div>
-
 
                       <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                         <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-200">
                           <input
                             type="checkbox"
                             disabled={isRunning}
-                            checked={(config.coverImageQuality ?? 'medium') === 'high'}
+                            checked={
+                              (config.coverImageQuality ?? "medium") === "high"
+                            }
                             onChange={(event) =>
                               updateConfig(
-                                'coverImageQuality',
-                                (event.target.checked ? 'high' : 'medium') as AIFactoryConfig['coverImageQuality'],
+                                "coverImageQuality",
+                                (event.target.checked
+                                  ? "high"
+                                  : "medium") as AIFactoryConfig["coverImageQuality"],
                               )
                             }
                             className="mt-1 h-4 w-4 accent-yellow-300"
@@ -701,22 +929,36 @@ export default function AIFactoryPanelView({
                               Dùng chất lượng High cho ảnh bìa
                             </span>
                             <span className="mt-1 block text-xs leading-relaxed text-slate-400">
-                              Bỏ tick = Medium mặc định, rẻ hơn. Tick = High, ảnh đẹp hơn nhưng tốn phí hơn.
+                              Bỏ tick = Medium mặc định, rẻ hơn. Tick = High,
+                              ảnh đẹp hơn nhưng tốn phí hơn.
                             </span>
                           </span>
                         </label>
                       </div>
 
                       <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-xs leading-relaxed text-yellow-50/90">
-                        <div className="font-bold text-yellow-100">Option ảnh đang chọn</div>
-                        <div className="mt-1">Dạng vẽ: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
-                        <div>Bố cục: {getCoverCompositionLabel(config.coverCompositionPreset)}</div>
-                        <div>Chất lượng ảnh: {getCoverImageQualityLabel(config.coverImageQuality)}</div>
+                        <div className="font-bold text-yellow-100">
+                          Option ảnh đang chọn
+                        </div>
+                        <div className="mt-1">
+                          Dạng vẽ: {getCoverArtStyleLabel(config.coverArtStyle)}
+                        </div>
+                        <div>
+                          Bố cục:{" "}
+                          {getCoverCompositionLabel(
+                            config.coverCompositionPreset,
+                          )}
+                        </div>
+                        <div>
+                          Chất lượng ảnh:{" "}
+                          {getCoverImageQualityLabel(config.coverImageQuality)}
+                        </div>
                       </div>
                     </div>
                   ) : (
                     <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-relaxed text-slate-500">
-                      Generate cover đang tắt nên phần chọn dạng vẽ / bố cục ảnh được ẩn để đỡ rối.
+                      Generate cover đang tắt nên phần chọn dạng vẽ / bố cục ảnh
+                      được ẩn để đỡ rối.
                     </div>
                   )}
                 </div>
@@ -724,13 +966,18 @@ export default function AIFactoryPanelView({
             </div>
           </Section>
 
-          <Section title="Genre Pool" desc="Factory sẽ random mỗi truyện một thể loại trong pool.">
+          <Section
+            title="Genre Pool"
+            desc="Factory sẽ random mỗi truyện một thể loại trong pool."
+          >
             <div className="max-h-44 overflow-auto rounded-xl border border-white/10 bg-black/20 p-2">
               <div className="flex flex-wrap gap-1.5">
                 {DEFAULT_FACTORY_GENRES.map((genre) => (
                   <ToggleChip
                     key={genre.key}
-                    active={selectedGenres.some((item) => item.key === genre.key)}
+                    active={selectedGenres.some(
+                      (item) => item.key === genre.key,
+                    )}
                     onClick={() => toggleGenre(genre)}
                   >
                     {genre.label}
@@ -739,17 +986,23 @@ export default function AIFactoryPanelView({
               </div>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              Đang chọn {selectedGenres.length}/{DEFAULT_FACTORY_GENRES.length} thể loại.
+              Đang chọn {selectedGenres.length}/{DEFAULT_FACTORY_GENRES.length}{" "}
+              thể loại.
             </p>
           </Section>
 
-          <Section title="Heroine Pool" desc="Factory sẽ random kiểu nữ chính để tránh truyện bị trùng vibe.">
+          <Section
+            title="Heroine Pool"
+            desc="Factory sẽ random kiểu nữ chính để tránh truyện bị trùng vibe."
+          >
             <div className="max-h-36 overflow-auto rounded-xl border border-white/10 bg-black/20 p-2">
               <div className="flex flex-wrap gap-1.5">
                 {DEFAULT_HEROINE_OPTIONS.map((heroine) => (
                   <ToggleChip
                     key={heroine.key}
-                    active={selectedHeroines.some((item) => item.key === heroine.key)}
+                    active={selectedHeroines.some(
+                      (item) => item.key === heroine.key,
+                    )}
                     onClick={() => toggleHeroine(heroine)}
                   >
                     {heroine.label}
@@ -758,27 +1011,38 @@ export default function AIFactoryPanelView({
               </div>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              Đang chọn {selectedHeroines.length}/{DEFAULT_HEROINE_OPTIONS.length} kiểu nữ chính.
+              Đang chọn {selectedHeroines.length}/
+              {DEFAULT_HEROINE_OPTIONS.length} kiểu nữ chính.
             </p>
           </Section>
 
-          <Section title="Existing Library Scan" desc="Quét truyện gần nhất để build avoid context chống trùng.">
+          <Section
+            title="Existing Library Scan"
+            desc="Quét truyện gần nhất để build avoid context chống trùng."
+          >
             <div className="grid gap-3 sm:grid-cols-4">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="text-2xl font-black text-white">{existingStories.length}</div>
+                <div className="text-2xl font-black text-white">
+                  {existingStories.length}
+                </div>
                 <div className="text-xs text-slate-400">truyện đã quét</div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="text-2xl font-black text-white">{avoidLibrary.titles.length}</div>
+                <div className="text-2xl font-black text-white">
+                  {avoidLibrary.titles.length}
+                </div>
                 <div className="text-xs text-slate-400">title cần tránh</div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="text-2xl font-black text-white">{avoidLibrary.motifs.length}</div>
+                <div className="text-2xl font-black text-white">
+                  {avoidLibrary.motifs.length}
+                </div>
                 <div className="text-xs text-slate-400">motif/premise</div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="text-2xl font-black text-white">
-                  {avoidLibrary.characterNames.length + avoidLibrary.companyNames.length}
+                  {avoidLibrary.characterNames.length +
+                    avoidLibrary.companyNames.length}
                 </div>
                 <div className="text-xs text-slate-400">tên/công ty</div>
               </div>
@@ -794,7 +1058,10 @@ export default function AIFactoryPanelView({
             </button>
           </Section>
 
-          <Section title="Continue Existing Stories" desc="Quét truyện chưa đủ target_chapters để viết tiếp chương còn thiếu.">
+          <Section
+            title="Continue Existing Stories"
+            desc="Quét truyện chưa đủ target_chapters để viết tiếp chương còn thiếu."
+          >
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
@@ -806,15 +1073,19 @@ export default function AIFactoryPanelView({
               </button>
 
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300">
-                Đã tìm thấy: <span className="font-bold text-white">{incompleteStories.length}</span> truyện
+                Đã tìm thấy:{" "}
+                <span className="font-bold text-white">
+                  {incompleteStories.length}
+                </span>{" "}
+                truyện
               </div>
 
               <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-2 text-sm text-yellow-100">
-                {selectedContinueStoryId === 'auto'
-                  ? 'Đang chọn: Tự động theo danh sách scan'
+                {selectedContinueStoryId === "auto"
+                  ? "Đang chọn: Tự động theo danh sách scan"
                   : selectedContinueStory
-                    ? `Đang chọn: ${selectedContinueStory.title || 'Truyện chưa có tên'} — ${selectedContinueStory.currentChapters}/${selectedContinueStory.targetChapters} chương`
-                    : 'Đang chọn: truyện chưa có trong danh sách scan'}
+                    ? `Đang chọn: ${selectedContinueStory.title || "Truyện chưa có tên"} — ${selectedContinueStory.currentChapters}/${selectedContinueStory.targetChapters} chương`
+                    : "Đang chọn: truyện chưa có trong danh sách scan"}
               </div>
             </div>
 
@@ -824,41 +1095,66 @@ export default function AIFactoryPanelView({
                   <div
                     key={(story as any).id || story.slug || story.title}
                     className={cx(
-                      'rounded-lg border p-3',
+                      "rounded-lg border p-3",
                       selectedContinueStoryId === String((story as any).id)
-                        ? 'border-yellow-300/60 bg-yellow-300/10'
-                        : 'border-white/10 bg-white/[0.03]',
+                        ? "border-yellow-300/60 bg-yellow-300/10"
+                        : "border-white/10 bg-white/[0.03]",
                     )}
                   >
-                    <div className="text-sm font-bold text-white">{story.title}</div>
+                    <div className="text-sm font-bold text-white">
+                      {story.title}
+                    </div>
                     <div className="mt-1 text-xs text-slate-400">
-                      {story.currentChapters}/{story.targetChapters} chương • thiếu {story.missingChapters} • chương tiếp theo {story.nextChapterNumber}
+                      {story.currentChapters}/{story.targetChapters} chương •
+                      thiếu {story.missingChapters} • chương tiếp theo{" "}
+                      {story.nextChapterNumber}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-slate-500">Chưa scan hoặc không có truyện dang dở.</div>
+                <div className="text-sm text-slate-500">
+                  Chưa scan hoặc không có truyện dang dở.
+                </div>
               )}
             </div>
           </Section>
         </div>
 
         <div className="space-y-5">
-          <Section title="API Cost Guard" desc="Chống bấm nhầm khi dùng OpenAI thật.">
-            {config.provider === 'openai' ? (
+          <Section
+            title="API Cost Guard"
+            desc="Chống bấm nhầm khi dùng OpenAI thật."
+          >
+            {config.provider === "openai" ? (
               <div className="space-y-3">
                 <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">
                   <div className="font-bold">SẼ GỌI OPENAI API</div>
-                  <div>Mode: {factoryMode === 'continue-existing' ? 'Viết tiếp truyện dang dở' : 'Tạo truyện mới'}</div>
+                  <div>
+                    Mode:{" "}
+                    {factoryMode === "continue-existing"
+                      ? "Viết tiếp truyện dang dở"
+                      : "Tạo truyện mới"}
+                  </div>
                   <div className="mt-2 grid gap-1 text-red-100/90">
-                    <div>Tổng số truyện: {factoryMode === 'create-new' ? config.storyCount : continueStoryLimit}</div>
-                    <div>Số truyện mỗi batch: {factoryMode === 'create-new' ? config.batchSize : continueStoryLimit}</div>
+                    <div>
+                      Tổng số truyện:{" "}
+                      {factoryMode === "create-new"
+                        ? config.storyCount
+                        : continueStoryLimit}
+                    </div>
+                    <div>
+                      Số truyện mỗi batch:{" "}
+                      {factoryMode === "create-new"
+                        ? config.batchSize
+                        : continueStoryLimit}
+                    </div>
                     <div>Tổng batch dự kiến: {totalBatches}</div>
                     <div>
-                      Mode chương:{' '}
-                      {factoryMode === 'create-new' && config.autoCompleteByTarget
+                      Mode chương:{" "}
+                      {factoryMode === "create-new" &&
+                      config.autoCompleteByTarget
                         ? `Full random target ${config.minTargetChapters}-${config.maxTargetChapters} chương/truyện`
-                        : factoryMode === 'create-new'
+                        : factoryMode === "create-new"
                           ? `${config.chaptersToGenerateNow} chương tạo ngay/truyện`
                           : `Viết tiếp tối đa ${continueChaptersPerStory} chương/truyện`}
                     </div>
@@ -869,15 +1165,35 @@ export default function AIFactoryPanelView({
                   </div>
 
                   <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
-                    <div className="font-bold text-red-50">Option đang chọn</div>
+                    <div className="font-bold text-red-50">
+                      Option đang chọn
+                    </div>
                     <div className="mt-2 grid gap-1 text-xs leading-relaxed text-red-100/85">
-                      <div>Biên tập tiếng Việt: {getStoryEditorShortLabel(config.storyEditorMode)}</div>
-                      <div>Generate cover: {config.generateCover ? 'Bật' : 'Tắt'}</div>
+                      <div>
+                        Biên tập tiếng Việt:{" "}
+                        {getStoryEditorShortLabel(config.storyEditorMode)}
+                      </div>
+                      <div>
+                        Generate cover: {config.generateCover ? "Bật" : "Tắt"}
+                      </div>
                       {config.generateCover ? (
                         <>
-                          <div>Dạng vẽ ảnh bìa: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
-                          <div>Bố cục ảnh bìa: {getCoverCompositionLabel(config.coverCompositionPreset)}</div>
-                          <div>Chất lượng ảnh bìa: {getCoverImageQualityLabel(config.coverImageQuality)}</div>
+                          <div>
+                            Dạng vẽ ảnh bìa:{" "}
+                            {getCoverArtStyleLabel(config.coverArtStyle)}
+                          </div>
+                          <div>
+                            Bố cục ảnh bìa:{" "}
+                            {getCoverCompositionLabel(
+                              config.coverCompositionPreset,
+                            )}
+                          </div>
+                          <div>
+                            Chất lượng ảnh bìa:{" "}
+                            {getCoverImageQualityLabel(
+                              config.coverImageQuality,
+                            )}
+                          </div>
                         </>
                       ) : null}
                     </div>
@@ -889,10 +1205,14 @@ export default function AIFactoryPanelView({
                     type="checkbox"
                     checked={openaiConfirmed}
                     disabled={isRunning}
-                    onChange={(event) => setOpenaiConfirmed(event.target.checked)}
+                    onChange={(event) =>
+                      setOpenaiConfirmed(event.target.checked)
+                    }
                     className="mt-0.5 h-4 w-4 accent-yellow-300"
                   />
-                  <span>Tao xác nhận Factory sẽ gọi OpenAI API và có thể tốn phí.</span>
+                  <span>
+                    Tao xác nhận Factory sẽ gọi OpenAI API và có thể tốn phí.
+                  </span>
                 </label>
 
                 {expensiveModelRequiresConfirmation ? (
@@ -901,16 +1221,20 @@ export default function AIFactoryPanelView({
                       type="checkbox"
                       checked={expensiveModelConfirmed}
                       disabled={isRunning}
-                      onChange={(event) => setExpensiveModelConfirmed(event.target.checked)}
+                      onChange={(event) =>
+                        setExpensiveModelConfirmed(event.target.checked)
+                      }
                       className="mt-0.5 h-4 w-4 accent-red-300"
                     />
                     <span>
                       <span className="block font-bold">
-                        Tao xác nhận đang dùng model {config.modelKey === 'premium' ? 'Cao cấp' : 'Tự động'}.
+                        Tao xác nhận đang dùng model{" "}
+                        {config.modelKey === "premium" ? "Cao cấp" : "Tự động"}.
                       </span>
                       <span className="mt-1 block text-xs leading-relaxed text-red-100/80">
-                        Premium dùng OPENAI_MODEL_PREMIUM. Auto có thể tự đẩy chương quan trọng sang premium,
-                        nên chi phí có thể cao hơn economy.
+                        Premium dùng OPENAI_MODEL_PREMIUM. Auto có thể tự đẩy
+                        chương quan trọng sang premium, nên chi phí có thể cao
+                        hơn economy.
                       </span>
                     </span>
                   </label>
@@ -918,10 +1242,12 @@ export default function AIFactoryPanelView({
               </div>
             ) : (
               <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
-                Mock mode — không gửi OpenAI API. Vẫn insert story/chapter draft vào Supabase để test flow.
-                {factoryMode === 'create-new' && config.autoCompleteByTarget ? (
+                Mock mode — không gửi OpenAI API. Vẫn insert story/chapter draft
+                vào Supabase để test flow.
+                {factoryMode === "create-new" && config.autoCompleteByTarget ? (
                   <div className="mt-2 text-emerald-100/90">
-                    Đang bật full target mode: mock cũng sẽ tạo đủ số chương target và đánh dấu Full để test flow.
+                    Đang bật full target mode: mock cũng sẽ tạo đủ số chương
+                    target và đánh dấu Full để test flow.
                   </div>
                 ) : null}
               </div>
@@ -936,7 +1262,9 @@ export default function AIFactoryPanelView({
                 onClick={startFactory}
                 className="rounded-xl bg-yellow-300 px-4 py-2 text-sm font-black text-black transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {factoryMode === 'continue-existing' ? 'Start Continue' : 'Start Factory'}
+                {factoryMode === "continue-existing"
+                  ? "Start Continue"
+                  : "Start Factory"}
               </button>
 
               <button
@@ -966,8 +1294,12 @@ export default function AIFactoryPanelView({
             </div>
 
             <div className="mt-4 rounded-xl border border-white/10 bg-black/50 p-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500">Current action</div>
-              <div className="mt-1 text-sm font-semibold text-white">{currentAction}</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                Current action
+              </div>
+              <div className="mt-1 text-sm font-semibold text-white">
+                {currentAction}
+              </div>
             </div>
           </Section>
 
@@ -990,12 +1322,17 @@ export default function AIFactoryPanelView({
                       </div>
                       <span
                         className={cx(
-                          'rounded-full px-2 py-1 text-xs font-bold',
-                          job.status === 'success' && 'bg-emerald-500/15 text-emerald-200',
-                          job.status === 'running' && 'bg-yellow-500/15 text-yellow-200',
-                          job.status === 'failed' && 'bg-red-500/15 text-red-200',
-                          job.status === 'stopped' && 'bg-orange-500/15 text-orange-200',
-                          job.status === 'pending' && 'bg-slate-500/15 text-slate-300',
+                          "rounded-full px-2 py-1 text-xs font-bold",
+                          job.status === "success" &&
+                            "bg-emerald-500/15 text-emerald-200",
+                          job.status === "running" &&
+                            "bg-yellow-500/15 text-yellow-200",
+                          job.status === "failed" &&
+                            "bg-red-500/15 text-red-200",
+                          job.status === "stopped" &&
+                            "bg-orange-500/15 text-orange-200",
+                          job.status === "pending" &&
+                            "bg-slate-500/15 text-slate-300",
                         )}
                       >
                         {job.status}
@@ -1004,16 +1341,28 @@ export default function AIFactoryPanelView({
 
                     <div className="mt-2 grid gap-1 text-xs text-slate-400">
                       <div>Chapter: {job.chapterProgress}</div>
-                      {typeof job.targetChapters === 'number' ? <div>Target: {job.targetChapters}</div> : null}
-                      {job.completionStatus ? <div>Completion: {job.completionStatus}</div> : null}
+                      {typeof job.targetChapters === "number" ? (
+                        <div>Target: {job.targetChapters}</div>
+                      ) : null}
+                      {job.completionStatus ? (
+                        <div>Completion: {job.completionStatus}</div>
+                      ) : null}
                       <div>Cover: {job.coverStatus}</div>
-                      {job.error ? <div className="text-red-300">Lỗi: {job.error}</div> : null}
+                      {job.error ? (
+                        <div className="text-red-300">Lỗi: {job.error}</div>
+                      ) : null}
                     </div>
+
+                    <JobVietnameseProseMiniReport job={job} />
                   </div>
                 ))
               ) : (
                 <div className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-500">
-                  Chưa có job nào. Bấm {factoryMode === 'continue-existing' ? 'Start Continue' : 'Start Factory'} để chạy.
+                  Chưa có job nào. Bấm{" "}
+                  {factoryMode === "continue-existing"
+                    ? "Start Continue"
+                    : "Start Factory"}{" "}
+                  để chạy.
                 </div>
               )}
             </div>
@@ -1023,7 +1372,9 @@ export default function AIFactoryPanelView({
 
       <Section title="Progress Log">
         <div className="mb-3 rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-xs leading-relaxed text-cyan-100/90">
-          Kiểm tra văn phong chỉ hiện ở log/admin debug: số câu tự sửa, số cảnh báo và cụm viral được giữ nguyên. Nội dung chương đăng cho độc giả không bị chèn warning.
+          Kiểm tra văn phong chỉ hiện ở log/admin debug: số câu tự sửa, số cảnh
+          báo và cụm viral được giữ nguyên. Nội dung chương đăng cho độc giả
+          không bị chèn warning.
         </div>
         <div className="max-h-[420px] space-y-2 overflow-auto rounded-xl bg-black/50 p-3">
           {logs.length ? (
@@ -1031,13 +1382,15 @@ export default function AIFactoryPanelView({
               <div
                 key={log.id}
                 className={cx(
-                  'rounded-lg border px-3 py-2 text-sm',
-                  log.type === 'info' && 'border-white/10 bg-white/[0.03] text-slate-300',
-                  log.type === 'success' &&
-                    'border-emerald-400/20 bg-emerald-500/10 text-emerald-100',
-                  log.type === 'warning' &&
-                    'border-yellow-400/20 bg-yellow-500/10 text-yellow-100',
-                  log.type === 'error' && 'border-red-400/20 bg-red-500/10 text-red-100',
+                  "rounded-lg border px-3 py-2 text-sm",
+                  log.type === "info" &&
+                    "border-white/10 bg-white/[0.03] text-slate-300",
+                  log.type === "success" &&
+                    "border-emerald-400/20 bg-emerald-500/10 text-emerald-100",
+                  log.type === "warning" &&
+                    "border-yellow-400/20 bg-yellow-500/10 text-yellow-100",
+                  log.type === "error" &&
+                    "border-red-400/20 bg-red-500/10 text-red-100",
                 )}
               >
                 <span className="mr-2 text-xs opacity-70">[{log.time}]</span>
@@ -1052,11 +1405,11 @@ export default function AIFactoryPanelView({
 
       <button
         type="button"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         className="fixed bottom-5 right-5 z-50 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-black/40 transition hover:border-yellow-300/60 hover:bg-zinc-800"
       >
         ↑ Lên đầu
       </button>
     </div>
-  )
+  );
 }

@@ -145,6 +145,7 @@ function normalizeCoverCompositionPreset(
 
   if (
     raw === 'auto' ||
+    raw === 'wide_story_scene' ||
     raw === 'single_heroine_center' ||
     raw === 'public_confrontation' ||
     raw === 'evidence_focus' ||
@@ -157,6 +158,7 @@ function normalizeCoverCompositionPreset(
     return raw as AIFactoryConfig['coverCompositionPreset']
   }
 
+  if (raw === 'wide-story-scene' || raw === 'wide_scene' || raw === 'wide') return 'wide_story_scene'
   if (raw === 'single-heroine-center') return 'single_heroine_center'
   if (raw === 'public-reveal' || raw === 'public') return 'public_confrontation'
   if (raw === 'evidence') return 'evidence_focus'
@@ -177,6 +179,8 @@ function mapCompositionPresetToSceneType(
     case 'collage_story_poster':
     case 'luxury_collage':
       return 'collage_story_poster'
+    case 'wide_story_scene':
+      return 'auto_story_scene'
     case 'mother_child_protection':
       return 'mother_child_protection'
     case 'evidence_focus':

@@ -25,6 +25,7 @@ export type CoverCompositionPreset =
   | 'auto'
 
   // New UI names — Bố cục ảnh bìa
+  | 'wide_story_scene'
   | 'single_heroine_center'
   | 'public_confrontation'
   | 'evidence_focus'

@@ -1,123 +1,169 @@
-import { Link } from 'react-router-dom'
+import { Link } from "react-router-dom";
 
-type FactoryJobStatus = 'pending' | 'running' | 'success' | 'failed' | 'stopped'
+type FactoryJobStatus =
+  | "pending"
+  | "running"
+  | "success"
+  | "failed"
+  | "stopped";
 
 type FactoryJob = {
-  id: string
-  index: number
-  title: string
-  genreLabel: string
-  genreSlug: string
-  heroineLabel: string
-  status: FactoryJobStatus
-  chapterProgress: string
-  coverStatus: 'off' | 'pending' | 'success' | 'failed' | 'stopped' | 'skipped'
-  error?: string
-  storyId?: string
-  storySlug?: string
+  id: string;
+  index: number;
+  title: string;
+  genreLabel: string;
+  genreSlug: string;
+  heroineLabel: string;
+  status: FactoryJobStatus;
+  chapterProgress: string;
+  coverStatus: "off" | "pending" | "success" | "failed" | "stopped" | "skipped";
+  error?: string;
+  storyId?: string;
+  storySlug?: string;
 
-  currentChapters?: number
-  targetChapters?: number
-  remainingChapters?: number
-  nextChapterNumber?: number
-  createFromChapter?: number | null
-  createToChapter?: number | null
-}
+  currentChapters?: number;
+  targetChapters?: number;
+  remainingChapters?: number;
+  nextChapterNumber?: number;
+  createFromChapter?: number | null;
+  createToChapter?: number | null;
+  vietnameseProseReport?: VietnameseProseJobReport;
+  vietnameseRepairStats?: VietnameseRepairStats;
+};
 
 type FactoryLog = {
-  id: string
-  time: string
-  message: string
-  type: 'info' | 'success' | 'warning' | 'error'
-}
+  id: string;
+  time: string;
+  message: string;
+  type: "info" | "success" | "warning" | "error";
+};
+
+type VietnameseRepairFix = {
+  id?: string;
+  category?: string;
+  before?: string;
+  after?: string;
+  message?: string;
+  chapterLabel?: string;
+};
+
+type VietnameseRepairWarning = {
+  id?: string;
+  category?: string;
+  severity?: string;
+  message?: string;
+  sample?: string;
+  genericSuggestion?: string;
+  chapterLabel?: string;
+};
+
+type VietnameseRepairStats = {
+  fixedCount?: number;
+  warningCount?: number;
+  allowedCount?: number;
+  fixedSamples?: VietnameseRepairFix[];
+  warningSamples?: VietnameseRepairWarning[];
+  allowedSamples?: string[];
+};
+
+type VietnameseProseJobReport = {
+  fixedCount?: number;
+  warningCount?: number;
+  allowedCount?: number;
+  autoFixes?: VietnameseRepairFix[];
+  warnings?: VietnameseRepairWarning[];
+  allowedSamples?: Array<{ text?: string; chapterLabel?: string }>;
+};
 
 type FactoryRunSnapshot = {
-  jobs?: FactoryJob[]
-  logs?: FactoryLog[]
-  status?: string
-  startedAt?: string
-  finishedAt?: string
-}
+  jobs?: FactoryJob[];
+  logs?: FactoryLog[];
+  status?: string;
+  startedAt?: string;
+  finishedAt?: string;
+};
 
-const AI_FACTORY_STORAGE_KEY = 'storyPlatform.aiFactory.lastRun'
+const AI_FACTORY_STORAGE_KEY = "storyPlatform.aiFactory.lastRun";
 
 function getStatusClass(status: FactoryJobStatus) {
-  if (status === 'success') return 'bg-emerald-500/15 text-emerald-200'
-  if (status === 'failed') return 'bg-red-500/15 text-red-200'
-  if (status === 'stopped') return 'bg-orange-500/15 text-orange-200'
-  if (status === 'running') return 'bg-yellow-500/15 text-yellow-200'
-  return 'bg-slate-500/15 text-slate-300'
+  if (status === "success") return "bg-emerald-500/15 text-emerald-200";
+  if (status === "failed") return "bg-red-500/15 text-red-200";
+  if (status === "stopped") return "bg-orange-500/15 text-orange-200";
+  if (status === "running") return "bg-yellow-500/15 text-yellow-200";
+  return "bg-slate-500/15 text-slate-300";
 }
 
-function getLogClass(type: FactoryLog['type']) {
-  if (type === 'success') return 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100'
-  if (type === 'warning') return 'border-yellow-400/20 bg-yellow-500/10 text-yellow-100'
-  if (type === 'error') return 'border-red-400/20 bg-red-500/10 text-red-100'
-  return 'border-white/10 bg-white/[0.03] text-slate-300'
+function getLogClass(type: FactoryLog["type"]) {
+  if (type === "success")
+    return "border-emerald-400/20 bg-emerald-500/10 text-emerald-100";
+  if (type === "warning")
+    return "border-yellow-400/20 bg-yellow-500/10 text-yellow-100";
+  if (type === "error") return "border-red-400/20 bg-red-500/10 text-red-100";
+  return "border-white/10 bg-white/[0.03] text-slate-300";
 }
 
 function safeNumber(value: unknown, fallback = 0) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : fallback
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function parseChapterProgress(value: string) {
-  const match = value.match(/^(\d+)\s*\/\s*(\d+)/)
+  const match = value.match(/^(\d+)\s*\/\s*(\d+)/);
 
   if (!match) {
     return {
       current: 0,
       target: 0,
-    }
+    };
   }
 
   return {
     current: safeNumber(match[1], 0),
     target: safeNumber(match[2], 0),
-  }
+  };
 }
 
 function getJobChapterReport(job: FactoryJob) {
-  const parsed = parseChapterProgress(job.chapterProgress || '')
+  const parsed = parseChapterProgress(job.chapterProgress || "");
 
   const current = Math.max(
     0,
     Math.floor(safeNumber(job.currentChapters, parsed.current)),
-  )
+  );
 
   const target = Math.max(
     0,
     Math.floor(safeNumber(job.targetChapters, parsed.target)),
-  )
+  );
 
   const remaining =
-    typeof job.remainingChapters === 'number'
+    typeof job.remainingChapters === "number"
       ? Math.max(0, Math.floor(job.remainingChapters))
       : target > 0
         ? Math.max(0, target - current)
-        : 0
+        : 0;
 
   const nextChapter =
-    typeof job.nextChapterNumber === 'number'
+    typeof job.nextChapterNumber === "number"
       ? Math.max(1, Math.floor(job.nextChapterNumber))
-      : current + 1
+      : current + 1;
 
   const createFrom =
-    typeof job.createFromChapter === 'number'
+    typeof job.createFromChapter === "number"
       ? job.createFromChapter
       : remaining > 0
         ? nextChapter
-        : null
+        : null;
 
   const createTo =
-    typeof job.createToChapter === 'number'
+    typeof job.createToChapter === "number"
       ? job.createToChapter
       : remaining > 0
         ? current + remaining
-        : null
+        : null;
 
-  const hasTarget = target > 0
-  const isFull = hasTarget && current >= target
+  const hasTarget = target > 0;
+  const isFull = hasTarget && current >= target;
 
   return {
     current,
@@ -135,9 +181,9 @@ function getJobChapterReport(job: FactoryJob) {
       ? isFull
         ? `Đã full ${current}/${target}`
         : `Còn thiếu ${remaining} chương`
-      : 'Chưa có target chương',
+      : "Chưa có target chương",
 
-    nextChapterLabel: isFull ? 'Không có' : `Chương ${nextChapter}`,
+    nextChapterLabel: isFull ? "Không có" : `Chương ${nextChapter}`,
 
     createRangeLabel:
       createFrom && createTo
@@ -145,23 +191,206 @@ function getJobChapterReport(job: FactoryJob) {
           ? `Chương ${createFrom}`
           : `Chương ${createFrom} → ${createTo}`
         : isFull
-          ? 'Không tạo thêm'
-          : 'Chưa xác định',
+          ? "Không tạo thêm"
+          : "Chưa xác định",
+  };
+}
+
+function compactText(value: unknown, maxLength = 180) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function getVietnameseProseReport(job: FactoryJob): VietnameseProseJobReport {
+  const report = job.vietnameseProseReport || {};
+  const stats = job.vietnameseRepairStats || {};
+
+  const autoFixes = Array.isArray(report.autoFixes)
+    ? report.autoFixes
+    : Array.isArray(stats.fixedSamples)
+      ? stats.fixedSamples
+      : [];
+
+  const warnings = Array.isArray(report.warnings)
+    ? report.warnings
+    : Array.isArray(stats.warningSamples)
+      ? stats.warningSamples
+      : [];
+
+  const allowedSamples = Array.isArray(report.allowedSamples)
+    ? report.allowedSamples
+    : Array.isArray(stats.allowedSamples)
+      ? stats.allowedSamples.map((text) => ({ text }))
+      : [];
+
+  return {
+    fixedCount: safeNumber(
+      report.fixedCount,
+      safeNumber(stats.fixedCount, autoFixes.length),
+    ),
+    warningCount: safeNumber(
+      report.warningCount,
+      safeNumber(stats.warningCount, warnings.length),
+    ),
+    allowedCount: safeNumber(
+      report.allowedCount,
+      safeNumber(stats.allowedCount, allowedSamples.length),
+    ),
+    autoFixes,
+    warnings,
+    allowedSamples,
+  };
+}
+
+function VietnameseProseReportBlock({ job }: { job: FactoryJob }) {
+  const report = getVietnameseProseReport(job);
+  const fixedCount = safeNumber(report.fixedCount, 0);
+  const warningCount = safeNumber(report.warningCount, 0);
+  const allowedCount = safeNumber(report.allowedCount, 0);
+  const autoFixes = report.autoFixes || [];
+  const warnings = report.warnings || [];
+  const allowedSamples = report.allowedSamples || [];
+
+  if (
+    !fixedCount &&
+    !warningCount &&
+    !allowedCount &&
+    !autoFixes.length &&
+    !warnings.length &&
+    !allowedSamples.length
+  ) {
+    return null;
   }
+
+  return (
+    <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-xs text-cyan-50">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="font-black text-cyan-100">
+            Kiểm tra văn phong tiếng Việt
+          </div>
+          <div className="mt-1 text-cyan-100/75">
+            Chỉ là debug/admin report. Nội dung chương đã lưu không bị chèn
+            warning.
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-lg bg-black/25 px-2 py-1">
+            <div className="font-black text-emerald-200">{fixedCount}</div>
+            <div className="text-[10px] text-cyan-100/60">tự sửa</div>
+          </div>
+          <div className="rounded-lg bg-black/25 px-2 py-1">
+            <div className="font-black text-yellow-200">{warningCount}</div>
+            <div className="text-[10px] text-cyan-100/60">cảnh báo</div>
+          </div>
+          <div className="rounded-lg bg-black/25 px-2 py-1">
+            <div className="font-black text-sky-200">{allowedCount}</div>
+            <div className="text-[10px] text-cyan-100/60">viral giữ</div>
+          </div>
+        </div>
+      </div>
+
+      {autoFixes.length ? (
+        <div className="mt-3 rounded-lg border border-emerald-400/15 bg-black/20 p-3">
+          <div className="font-bold text-emerald-100">
+            Danh sách câu đã tự sửa
+          </div>
+          <div className="mt-2 space-y-2">
+            {autoFixes.slice(0, 12).map((fix, index) => (
+              <div
+                key={`${fix.id || "fix"}-${index}`}
+                className="rounded-lg bg-black/25 p-2"
+              >
+                <div className="text-[10px] uppercase tracking-wide text-emerald-200/70">
+                  {fix.chapterLabel ? `${fix.chapterLabel} • ` : ""}
+                  {fix.id || fix.category || "auto-fix"}
+                </div>
+                <div className="mt-1 text-red-100/90">
+                  “{compactText(fix.before, 220)}”
+                </div>
+                <div className="mt-1 text-emerald-100">
+                  → “{compactText(fix.after, 220)}”
+                </div>
+                {fix.message ? (
+                  <div className="mt-1 text-slate-400">{fix.message}</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {warnings.length ? (
+        <div className="mt-3 rounded-lg border border-yellow-400/15 bg-black/20 p-3">
+          <div className="font-bold text-yellow-100">Danh sách cảnh báo</div>
+          <div className="mt-2 space-y-2">
+            {warnings.slice(0, 12).map((warning, index) => (
+              <div
+                key={`${warning.id || "warning"}-${index}`}
+                className="rounded-lg bg-black/25 p-2"
+              >
+                <div className="text-[10px] uppercase tracking-wide text-yellow-200/70">
+                  {warning.chapterLabel ? `${warning.chapterLabel} • ` : ""}
+                  {warning.id || warning.category || "warning"}
+                  {warning.severity ? ` • ${warning.severity}` : ""}
+                </div>
+                {warning.sample ? (
+                  <div className="mt-1 text-yellow-50">
+                    “{compactText(warning.sample, 220)}”
+                  </div>
+                ) : null}
+                <div className="mt-1 text-slate-200">
+                  {warning.message || "Câu/cụm cần soi lại."}
+                </div>
+                {warning.genericSuggestion ? (
+                  <div className="mt-1 text-slate-400">
+                    Gợi ý: {warning.genericSuggestion}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {allowedSamples.length ? (
+        <div className="mt-3 rounded-lg border border-sky-400/15 bg-black/20 p-3">
+          <div className="font-bold text-sky-100">
+            Cụm viral được giữ nguyên
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {allowedSamples.slice(0, 12).map((item, index) => (
+              <span
+                key={`${item.text || "allowed"}-${index}`}
+                className="rounded-full bg-sky-500/10 px-2 py-1 text-sky-100/90"
+              >
+                {item.chapterLabel ? `${item.chapterLabel}: ` : ""}“
+                {compactText(item.text, 90)}”
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function ChapterReportGrid({
   report,
-  mode = 'continue',
+  mode = "continue",
 }: {
-  report: ReturnType<typeof getJobChapterReport>
-  mode?: 'continue' | 'retry'
+  report: ReturnType<typeof getJobChapterReport>;
+  mode?: "continue" | "retry";
 }) {
   return (
     <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-slate-300 sm:grid-cols-2 lg:grid-cols-4">
       <div>
         <div className="text-slate-500">Tiến độ truyện</div>
-        <div className="font-semibold text-white">{report.progressLabel} chương</div>
+        <div className="font-semibold text-white">
+          {report.progressLabel} chương
+        </div>
       </div>
 
       <div>
@@ -169,8 +398,8 @@ function ChapterReportGrid({
         <div
           className={
             report.remaining > 0
-              ? 'font-semibold text-yellow-200'
-              : 'font-semibold text-emerald-300'
+              ? "font-semibold text-yellow-200"
+              : "font-semibold text-emerald-300"
           }
         >
           {report.remainingLabel}
@@ -179,58 +408,67 @@ function ChapterReportGrid({
 
       <div>
         <div className="text-slate-500">Chương tiếp theo</div>
-        <div className="font-semibold text-white">{report.nextChapterLabel}</div>
+        <div className="font-semibold text-white">
+          {report.nextChapterLabel}
+        </div>
       </div>
 
       <div>
         <div className="text-slate-500">
-          {mode === 'retry' ? 'Nếu chạy lại' : 'Nếu viết tiếp'}
+          {mode === "retry" ? "Nếu chạy lại" : "Nếu viết tiếp"}
         </div>
-        <div className="font-semibold text-cyan-200">{report.createRangeLabel}</div>
+        <div className="font-semibold text-cyan-200">
+          {report.createRangeLabel}
+        </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default function AIFactoryResultsPage() {
-  let snapshot: FactoryRunSnapshot | null = null
+  let snapshot: FactoryRunSnapshot | null = null;
 
   try {
-    const raw = localStorage.getItem(AI_FACTORY_STORAGE_KEY)
-    snapshot = raw ? (JSON.parse(raw) as FactoryRunSnapshot) : null
+    const raw = localStorage.getItem(AI_FACTORY_STORAGE_KEY);
+    snapshot = raw ? (JSON.parse(raw) as FactoryRunSnapshot) : null;
   } catch {
-    snapshot = null
+    snapshot = null;
   }
 
-  const jobs = snapshot?.jobs ?? []
-  const logs = snapshot?.logs ?? []
+  const jobs = snapshot?.jobs ?? [];
+  const logs = snapshot?.logs ?? [];
 
-  const successJobs = jobs.filter((job) => job.status === 'success')
-  const failedJobs = jobs.filter((job) => job.status === 'failed')
-  const stoppedJobs = jobs.filter((job) => job.status === 'stopped')
-  const unfinishedJobs = [...failedJobs, ...stoppedJobs]
+  const successJobs = jobs.filter((job) => job.status === "success");
+  const failedJobs = jobs.filter((job) => job.status === "failed");
+  const stoppedJobs = jobs.filter((job) => job.status === "stopped");
+  const unfinishedJobs = [...failedJobs, ...stoppedJobs];
 
   function getCreatedChapterCount(job: FactoryJob) {
-    return getJobChapterReport(job).current
+    return getJobChapterReport(job).current;
   }
 
   const totalCreatedChapters = successJobs.reduce(
     (sum, job) => sum + getCreatedChapterCount(job),
     0,
-  )
+  );
 
   const averageChaptersPerStory = successJobs.length
     ? Math.round((totalCreatedChapters / successJobs.length) * 10) / 10
-    : 0
+    : 0;
 
   return (
     <div className="min-h-screen bg-[#050609] text-white">
       <div className="border-b border-white/10 bg-[#151309]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <div className="text-sm font-bold text-yellow-300">Admin đang đăng nhập</div>
+          <div className="text-sm font-bold text-yellow-300">
+            Admin đang đăng nhập
+          </div>
 
           <div className="flex items-center gap-3 text-sm">
-            <Link className="text-yellow-300 hover:text-yellow-200" to="/admin/ai-factory">
+            <Link
+              className="text-yellow-300 hover:text-yellow-200"
+              to="/admin/ai-factory"
+            >
               AI Factory
             </Link>
             <Link className="text-slate-200 hover:text-white" to="/admin">
@@ -246,13 +484,15 @@ export default function AIFactoryResultsPage() {
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-yellow-300">Admin AI Factory</p>
+            <p className="text-sm font-medium text-yellow-300">
+              Admin AI Factory
+            </p>
             <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
               Kết quả lần chạy Factory
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400">
-              Trang này hiển thị riêng các truyện Factory vừa tạo, kèm trạng thái,
-              tiến độ chương và lỗi nếu có.
+              Trang này hiển thị riêng các truyện Factory vừa tạo, kèm trạng
+              thái, tiến độ chương và lỗi nếu có.
             </p>
           </div>
 
@@ -275,16 +515,21 @@ export default function AIFactoryResultsPage() {
 
         {!snapshot ? (
           <section className="rounded-2xl border border-white/10 bg-zinc-950/80 p-5">
-            <h2 className="text-lg font-bold text-white">Chưa có dữ liệu Factory</h2>
+            <h2 className="text-lg font-bold text-white">
+              Chưa có dữ liệu Factory
+            </h2>
             <p className="mt-2 text-sm text-slate-400">
-              Chưa tìm thấy kết quả lần chạy gần nhất. Hãy quay lại AI Factory và chạy thử trước.
+              Chưa tìm thấy kết quả lần chạy gần nhất. Hãy quay lại AI Factory
+              và chạy thử trước.
             </p>
           </section>
         ) : (
           <>
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4">
-                <div className="text-2xl font-black text-white">{jobs.length}</div>
+                <div className="text-2xl font-black text-white">
+                  {jobs.length}
+                </div>
                 <div className="text-sm text-slate-400">Tổng job</div>
               </div>
 
@@ -292,23 +537,31 @@ export default function AIFactoryResultsPage() {
                 <div className="text-2xl font-black text-emerald-100">
                   {successJobs.length}
                 </div>
-                <div className="text-sm text-emerald-200/80">Truyện thành công</div>
+                <div className="text-sm text-emerald-200/80">
+                  Truyện thành công
+                </div>
               </div>
 
               <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4">
                 <div className="text-2xl font-black text-cyan-100">
                   {totalCreatedChapters}
                 </div>
-                <div className="text-sm text-cyan-200/80">Chương đã có trong truyện</div>
+                <div className="text-sm text-cyan-200/80">
+                  Chương đã có trong truyện
+                </div>
               </div>
 
               <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
-                <div className="text-2xl font-black text-red-100">{failedJobs.length}</div>
+                <div className="text-2xl font-black text-red-100">
+                  {failedJobs.length}
+                </div>
                 <div className="text-sm text-red-200/80">Lỗi</div>
               </div>
 
               <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4">
-                <div className="text-2xl font-black text-orange-100">{stoppedJobs.length}</div>
+                <div className="text-2xl font-black text-orange-100">
+                  {stoppedJobs.length}
+                </div>
                 <div className="text-sm text-orange-200/80">Đã dừng</div>
               </div>
             </section>
@@ -316,11 +569,13 @@ export default function AIFactoryResultsPage() {
             <section className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 sm:p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-white">Truyện đã tạo thành công</h2>
+                  <h2 className="text-lg font-bold text-white">
+                    Truyện đã tạo thành công
+                  </h2>
                   <p className="mt-1 text-sm text-slate-400">
-                    Chỉ hiển thị các job có trạng thái success trong lần chạy gần nhất.
-                    Tổng {totalCreatedChapters} chương, trung bình {averageChaptersPerStory}{' '}
-                    chương/truyện.
+                    Chỉ hiển thị các job có trạng thái success trong lần chạy
+                    gần nhất. Tổng {totalCreatedChapters} chương, trung bình{" "}
+                    {averageChaptersPerStory} chương/truyện.
                   </p>
                 </div>
 
@@ -332,7 +587,7 @@ export default function AIFactoryResultsPage() {
               <div className="mt-4 space-y-3">
                 {successJobs.length ? (
                   successJobs.map((job) => {
-                    const report = getJobChapterReport(job)
+                    const report = getJobChapterReport(job);
 
                     return (
                       <div
@@ -342,15 +597,16 @@ export default function AIFactoryResultsPage() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0 flex-1">
                             <div className="text-base font-bold text-white">
-                              #{job.index} — {job.title || 'Chưa có title'}
+                              #{job.index} — {job.title || "Chưa có title"}
                             </div>
 
                             <div className="mt-1 text-sm text-slate-300">
-                              {job.genreLabel || 'Chưa có thể loại'} •{' '}
-                              {job.heroineLabel || 'Chưa có kiểu nữ chính'}
+                              {job.genreLabel || "Chưa có thể loại"} •{" "}
+                              {job.heroineLabel || "Chưa có kiểu nữ chính"}
                             </div>
 
                             <ChapterReportGrid report={report} />
+                            <VietnameseProseReportBlock job={job} />
 
                             <div className="mt-2 text-xs text-slate-400">
                               Cover: {job.coverStatus}
@@ -388,7 +644,7 @@ export default function AIFactoryResultsPage() {
                           </div>
                         </div>
                       </div>
-                    )
+                    );
                   })
                 ) : (
                   <div className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-500">
@@ -401,9 +657,12 @@ export default function AIFactoryResultsPage() {
             <section className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 sm:p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-white">Truyện lỗi / chưa hoàn tất</h2>
+                  <h2 className="text-lg font-bold text-white">
+                    Truyện lỗi / chưa hoàn tất
+                  </h2>
                   <p className="mt-1 text-sm text-slate-400">
-                    Các job failed hoặc stopped sẽ hiện ở đây để biết lỗi nào cần chạy lại.
+                    Các job failed hoặc stopped sẽ hiện ở đây để biết lỗi nào
+                    cần chạy lại.
                   </p>
                 </div>
 
@@ -415,7 +674,7 @@ export default function AIFactoryResultsPage() {
               <div className="mt-4 space-y-3">
                 {unfinishedJobs.length ? (
                   unfinishedJobs.map((job) => {
-                    const report = getJobChapterReport(job)
+                    const report = getJobChapterReport(job);
 
                     return (
                       <div
@@ -425,15 +684,17 @@ export default function AIFactoryResultsPage() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0 flex-1">
                             <div className="text-base font-bold text-white">
-                              #{job.index} — {job.title || 'Chưa tạo được title'}
+                              #{job.index} —{" "}
+                              {job.title || "Chưa tạo được title"}
                             </div>
 
                             <div className="mt-1 text-sm text-slate-300">
-                              {job.genreLabel || 'Chưa có thể loại'} •{' '}
-                              {job.heroineLabel || 'Chưa có kiểu nữ chính'}
+                              {job.genreLabel || "Chưa có thể loại"} •{" "}
+                              {job.heroineLabel || "Chưa có kiểu nữ chính"}
                             </div>
 
                             <ChapterReportGrid report={report} mode="retry" />
+                            <VietnameseProseReportBlock job={job} />
 
                             <div className="mt-2 text-xs text-slate-400">
                               Cover: {job.coverStatus}
@@ -455,7 +716,7 @@ export default function AIFactoryResultsPage() {
                           </span>
                         </div>
                       </div>
-                    )
+                    );
                   })
                 ) : (
                   <div className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-500">
@@ -475,7 +736,9 @@ export default function AIFactoryResultsPage() {
                       key={log.id}
                       className={`rounded-lg border px-3 py-2 text-sm ${getLogClass(log.type)}`}
                     >
-                      <span className="mr-2 text-xs opacity-70">[{log.time}]</span>
+                      <span className="mr-2 text-xs opacity-70">
+                        [{log.time}]
+                      </span>
                       {log.message}
                     </div>
                   ))
@@ -489,12 +752,12 @@ export default function AIFactoryResultsPage() {
 
         <button
           type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           className="fixed bottom-5 right-5 z-50 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-black/40 transition hover:border-yellow-300/60 hover:bg-zinc-800"
         >
           ↑ Lên đầu
         </button>
       </main>
     </div>
-  )
+  );
 }

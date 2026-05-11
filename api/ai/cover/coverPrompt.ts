@@ -25,7 +25,7 @@ const DEFAULT_STAKES =
   'danh dự, con cái, hôn nhân, thân phận, quyền lợi hoặc tương lai của nữ chính đang bị đe dọa'
 const DEFAULT_MOOD = 'căng thẳng, cuốn hút, đau lòng, bí mật, phản công, vỡ lở'
 
-type CoverCompositionPreset = 'auto' | 'story_scene_offset' | 'luxury_collage'
+type CoverCompositionPreset = 'auto' | 'wide_story_scene' | 'story_scene_offset' | 'luxury_collage'
 
 function asRecord(value: unknown): JsonRecord {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -92,133 +92,153 @@ function buildChapterHints(story: JsonRecord): string {
 }
 
 function normalizeCoverArtStyle(raw: unknown): CoverArtStyleKey {
-  const value = normalizeText(raw)
-  if (!value) return 'auto'
+  const value = normalizeText(raw);
+  if (!value) return "auto";
 
   if (
-    value === 'anime_cinematic' ||
-    value === 'anime-cinematic' ||
-    value === 'anime' ||
-    value === 'anime_glossy' ||
-    value === 'anime-glossy' ||
-    value.includes('anime cinematic') ||
-    value.includes('anime dien anh') ||
-    value.includes('anime webnovel') ||
-    value.includes('anime bong bay') ||
-    value.includes('anime bóng bẩy')
+    value === "anime_cinematic" ||
+    value === "anime-cinematic" ||
+    value === "anime" ||
+    value === "anime_glossy" ||
+    value === "anime-glossy" ||
+    value.includes("anime cinematic") ||
+    value.includes("anime dien anh") ||
+    value.includes("anime webnovel") ||
+    value.includes("anime bong bay") ||
+    value.includes("anime bóng bẩy")
   ) {
-    return 'anime_cinematic'
+    return "anime_cinematic";
   }
 
   if (
-    value === 'clean_webtoon_manhua' ||
-    value === 'clean-webtoon-manhua' ||
-    value.includes('clean webtoon') ||
-    value.includes('bright webtoon') ||
-    value.includes('webtoon sach') ||
-    value.includes('webtoon sạch') ||
-    value.includes('webtoon manhua') ||
-    value.includes('manhua sang') ||
-    value.includes('mau sang') ||
-    value.includes('màu sáng')
+    value === "clean_webtoon_manhua" ||
+    value === "clean-webtoon-manhua" ||
+    value.includes("clean webtoon") ||
+    value.includes("bright webtoon") ||
+    value.includes("webtoon sach") ||
+    value.includes("webtoon sạch") ||
+    value.includes("manhua sang") ||
+    value.includes("mau sang") ||
+    value.includes("màu sáng")
   ) {
-    return 'clean_webtoon_manhua'
+    return "clean_webtoon_manhua" as CoverArtStyleKey;
   }
 
   if (
-    value === 'manga_manhwa' ||
-    value === 'manga-manhwa' ||
-    value === 'manhwa_drama' ||
-    value === 'manhwa-drama' ||
-    value === 'manga' ||
-    value === 'manhwa' ||
-    value.includes('manga') ||
-    value.includes('manhwa') ||
-    value.includes('manhua')
+    value === "manga_manhwa" ||
+    value === "manga-manhwa" ||
+    value === "manhwa_drama" ||
+    value === "manhwa-drama" ||
+    value === "manga" ||
+    value === "manhwa" ||
+    value.includes("manga") ||
+    value.includes("manhwa") ||
+    value.includes("manhua")
   ) {
-    return 'manga_manhwa'
+    return "manga_manhwa";
   }
 
   if (
-    value === 'cinematic_realistic' ||
-    value === 'cinematic-realistic' ||
-    value === 'cinematic_semi_realistic' ||
-    value === 'cinematic-semi-realistic' ||
-    value === 'realistic' ||
-    value.includes('cinematic') ||
-    value.includes('realistic') ||
-    value.includes('giong that') ||
-    value.includes('poster phim')
+    value === "cinematic_realistic" ||
+    value === "cinematic-realistic" ||
+    value === "cinematic_semi_realistic" ||
+    value === "cinematic-semi-realistic" ||
+    value === "realistic" ||
+    value.includes("cinematic") ||
+    value.includes("realistic") ||
+    value.includes("giong that") ||
+    value.includes("poster phim")
   ) {
-    return 'cinematic_realistic'
+    return "cinematic_realistic";
   }
 
   if (
-    value === 'popular_webnovel_collage' ||
-    value === 'popular-webnovel-collage' ||
-    value === 'monochrome_collage' ||
-    value === 'monochrome-collage' ||
-    value === 'promo_poster' ||
-    value === 'promo-poster' ||
-    value.includes('collage') ||
-    value.includes('webnovel') ||
-    value.includes('tieu thuyet mang') ||
-    value.includes('ua chuong') ||
-    value.includes('poster quang ba') ||
-    value.includes('poster quảng bá')
+    value === "popular_webnovel_collage" ||
+    value === "popular-webnovel-collage" ||
+    value === "monochrome_collage" ||
+    value === "monochrome-collage" ||
+    value === "promo_poster" ||
+    value === "promo-poster" ||
+    value.includes("collage") ||
+    value.includes("webnovel") ||
+    value.includes("tieu thuyet mang") ||
+    value.includes("ua chuong") ||
+    value.includes("poster quang ba") ||
+    value.includes("poster quảng bá")
   ) {
-    return 'popular_webnovel_collage'
+    return "popular_webnovel_collage";
   }
 
-  return 'auto'
+  if (value === "ancient_chinese_cinematic_romance") {
+    return "ancient_chinese_cinematic_romance";
+  }
+
+  return "auto";
 }
 
 function normalizeCoverCompositionPreset(raw: unknown): CoverCompositionPreset {
-  const value = normalizeText(raw)
-  if (!value) return 'auto'
+  const value = normalizeText(raw);
+  if (!value) return "auto";
 
   if (
-    value === 'story_scene_offset' ||
-    value === 'story-scene-offset' ||
-    value === 'single_heroine_center' ||
-    value === 'single-heroine-center' ||
-    value === 'evidence_focus' ||
-    value === 'evidence-focus' ||
-    value === 'public_confrontation' ||
-    value === 'public-confrontation' ||
-    value === 'mother_child_protection' ||
-    value === 'mother-child-protection' ||
-    value === 'betrayal_triangle' ||
-    value === 'betrayal-triangle' ||
-    value.includes('background rong') ||
-    value.includes('lech khung') ||
-    value.includes('nhan vat trung tam') ||
-    value.includes('nhân vật trung tâm') ||
-    value.includes('vat chung') ||
-    value.includes('vật chứng') ||
-    value.includes('doi dau') ||
-    value.includes('đối đầu') ||
-    value.includes('me con') ||
-    value.includes('mẹ con') ||
-    value.includes('phan boi') ||
-    value.includes('phản bội')
+    value === "wide_story_scene" ||
+    value === "wide-story-scene" ||
+    value === "wide_scene" ||
+    value === "wide" ||
+    value.includes("boi canh rong") ||
+    value.includes("bối cảnh rộng") ||
+    value.includes("canh truyen mo") ||
+    value.includes("cảnh truyện mở") ||
+    value.includes("thay ro khong gian") ||
+    value.includes("thấy rõ không gian") ||
+    value.includes("wide scene") ||
+    value.includes("wide story")
   ) {
-    return 'story_scene_offset'
+    return "wide_story_scene";
   }
 
   if (
-    value === 'luxury_collage' ||
-    value === 'luxury-collage' ||
-    value === 'collage_story_poster' ||
-    value === 'collage-story-poster' ||
-    value.includes('collage') ||
-    value.includes('nhieu lop') ||
-    value.includes('nhiều lớp')
+    value === "story_scene_offset" ||
+    value === "story-scene-offset" ||
+    value === "single_heroine_center" ||
+    value === "single-heroine-center" ||
+    value === "evidence_focus" ||
+    value === "evidence-focus" ||
+    value === "public_confrontation" ||
+    value === "public-confrontation" ||
+    value === "mother_child_protection" ||
+    value === "mother-child-protection" ||
+    value === "betrayal_triangle" ||
+    value === "betrayal-triangle" ||
+    value.includes("background rong") ||
+    value.includes("lech khung") ||
+    value.includes("nhan vat trung tam") ||
+    value.includes("nhân vật trung tâm") ||
+    value.includes("vat chung") ||
+    value.includes("vật chứng") ||
+    value.includes("doi dau") ||
+    value.includes("đối đầu") ||
+    value.includes("me con") ||
+    value.includes("mẹ con") ||
+    value.includes("phan boi") ||
+    value.includes("phản bội")
   ) {
-    return 'luxury_collage'
+    return "story_scene_offset";
   }
 
-  return 'auto'
+  if (
+    value === "luxury_collage" ||
+    value === "luxury-collage" ||
+    value === "collage_story_poster" ||
+    value === "collage-story-poster" ||
+    value.includes("collage") ||
+    value.includes("nhieu lop") ||
+    value.includes("nhiều lớp")
+  ) {
+    return "luxury_collage";
+  }
+
+  return "auto";
 }
 
 function resolveFinalArtStyle(
@@ -532,12 +552,15 @@ function chooseCompositionMode(data: {
   sceneType: CoverSceneType
   coverArtStyle: CoverArtStyleKey
   compositionPreset: CoverCompositionPreset
-}): 'single_offset_scene' | 'luxury_collage' {
+}): 'wide_story_scene' | 'single_offset_scene' | 'luxury_collage' {
   if (data.compositionPreset === 'luxury_collage') return 'luxury_collage'
+  if (data.compositionPreset === 'wide_story_scene') return 'wide_story_scene'
   if (data.compositionPreset === 'story_scene_offset') return 'single_offset_scene'
+
   if (data.coverArtStyle === 'popular_webnovel_collage' || data.sceneType === 'collage_story_poster') {
     return 'luxury_collage'
   }
+
   return 'single_offset_scene'
 }
 
@@ -549,8 +572,9 @@ PRIMARY GOAL:
 This cover must visually tell the actual story.
 This must NOT be a glamour portrait, beauty portrait, face card, profile-card illustration, or generic pretty-girl poster.
 The viewer should understand the conflict from the image: setting, pressure, key evidence, and supporting characters must be visible.
+A wide, readable storytelling scene is preferred over a tight character portrait.
 Beauty is secondary. Story readability is the first priority.
-`.trim()
+`.trim();
 }
 
 function buildStoryCoreBlock(data: ReturnType<typeof buildPromptData>): string {
@@ -607,21 +631,21 @@ The cover should promise secrets, pain, and future confrontation without needing
 }
 
 function buildStyleBlock(style: CoverArtStyleKey): string {
-  switch (style) {
-    case 'clean_webtoon_manhua':
+  switch (String(style)) {
+    case "clean_webtoon_manhua":
       return `
 STYLE PRESET: CLEAN_WEBTOON_MANHUA.
-- clean premium webtoon / manhua romance-drama illustration
-- polished clean line art, crisp outlines, expressive faces, and readable body language
-- bright elegant interior lighting, soft luxury color, clear storytelling
-- suitable for wedding, hotel, banquet, restaurant, cashier counter, family confrontation, and public embarrassment scenes
+- clean premium webtoon / Chinese manhua romance-drama illustration
+- polished clean line art, crisp outlines, expressive faces, readable body language
+- bright elegant interiors, soft luxury color, clean cel-shading, smooth simple gradients
+- suitable for wedding, hotel, banquet, restaurant, cashier counter, office, school, factory, family confrontation, and public embarrassment scenes
 - allow 3 to 6 characters in one clear dramatic scene when the story supports it
-- not hyper-realistic, not gritty, not dark muddy cinematic realism
+- not hyper-realistic, not gritty, not horror, not dark muddy cinematic realism
 - not childish, not chibi, not flat low-detail cartoon
 - keep the final result commercially attractive, easy to read, and strongly story-driven
-- keep the setting, supporting cast, evidence object, and conflict clearly visible
-`.trim()
-    case 'manga_manhwa':
+- do not make the image a simple close-up portrait
+`.trim();
+    case "manga_manhwa":
       return `
 STYLE PRESET: MANGA_MANHWA.
 - polished Asian webtoon / manga-drama / manhua illustration
@@ -630,8 +654,8 @@ STYLE PRESET: MANGA_MANHWA.
 - not childish, not chibi, not comedic
 - colored or limited-palette dramatic finish is allowed, but it should still feel premium and story-rich
 - do not make the image a simple close-up portrait
-`.trim()
-    case 'cinematic_realistic':
+`.trim();
+    case "cinematic_realistic":
       return `
 STYLE PRESET: CINEMATIC_REALISTIC.
 - highly polished semi-realistic / near-realistic drama illustration
@@ -640,8 +664,8 @@ STYLE PRESET: CINEMATIC_REALISTIC.
 - not a stock photo, not overly plastic, not uncanny hyperrealism
 - beautiful but story-first
 - use a wider poster composition, not a headshot
-`.trim()
-    case 'popular_webnovel_collage':
+`.trim();
+    case "popular_webnovel_collage":
       return `
 STYLE PRESET: POPULAR_WEBNOVEL_COLLAGE.
 - high-performing Chinese web-novel cover style
@@ -649,8 +673,8 @@ STYLE PRESET: POPULAR_WEBNOVEL_COLLAGE.
 - emotional collage composition showing several story clues, memory fragments, conflicts, or evidence moments
 - dramatic, addictive, commercially attractive, very story-dense
 - the heroine must not become a giant face covering the entire poster
-`.trim()
-    case 'ancient_chinese_cinematic_romance':
+`.trim();
+    case "ancient_chinese_cinematic_romance":
       return `
 STYLE PRESET: ANCIENT_CHINESE_CINEMATIC_ROMANCE.
 - premium Chinese ancient-romance cover illustration
@@ -660,8 +684,8 @@ STYLE PRESET: ANCIENT_CHINESE_CINEMATIC_ROMANCE.
 - base palette must stay cool blue-gray, charcoal, misty teal, deep black, and desaturated silver
 - warm lantern light can be used only as a small accent; avoid yellow wash, sepia wash, muddy beige, and brown monochrome grading
 - this style changes the rendering language, color mood, and costume language, but must still follow the actual story conflict and key evidence
-`.trim()
-    case 'anime_cinematic':
+`.trim();
+    case "anime_cinematic":
     default:
       return `
 STYLE PRESET: ANIME_CINEMATIC.
@@ -671,14 +695,14 @@ STYLE PRESET: ANIME_CINEMATIC.
 - attractive, elegant, dramatic, web-novel-friendly
 - not too cartoony, not too flat, not children-anime style
 - do not make this a face-focused beauty portrait
-`.trim()
+`.trim();
   }
 }
 
 function buildReferenceLookBlock(data: ReturnType<typeof buildPromptData>): string {
   const collageMood = data.compositionPreset === 'luxury_collage' || data.coverArtStyle === 'popular_webnovel_collage'
 
-  if (data.coverArtStyle === 'clean_webtoon_manhua') {
+  if (String(data.coverArtStyle) === 'clean_webtoon_manhua') {
     return `
 REFERENCE LOOK TARGET:
 - The overall look should feel like a premium bright webtoon / manhua romance-drama cover.
@@ -744,7 +768,7 @@ function buildColorDiversityBlock(style: CoverArtStyleKey, sceneType: CoverScene
   const styleLine =
     style === 'ancient_chinese_cinematic_romance'
       ? 'For ancient romance, keep the base palette blue-gray / charcoal / misty teal; lantern orange may appear only as small rim light or background glow.'
-      : style === 'clean_webtoon_manhua'
+      : String(style) === 'clean_webtoon_manhua'
         ? 'For clean webtoon/manhua, bright luxury interior lighting is allowed: cream white, champagne, soft gold, warm gray, and clean skin tones. Avoid dirty yellow wash, sepia mud, and brown monochrome grading.'
         : 'For modern drama, prefer cool neutral cinematic color grading; avoid sepia, champagne beige, and yellow-brown webnovel filter.'
 
@@ -762,15 +786,17 @@ COLOR DIVERSITY LOCK:
 `.trim()
 }
 
-function buildCompositionPresetBlock(data: ReturnType<typeof buildPromptData>): string {
+function buildCompositionPresetBlock(
+  data: ReturnType<typeof buildPromptData>,
+): string {
   const compositionMode = chooseCompositionMode({
     title: data.title,
     sceneType: data.sceneType,
     coverArtStyle: data.coverArtStyle,
     compositionPreset: data.compositionPreset,
-  })
+  });
 
-  if (compositionMode === 'luxury_collage') {
+  if (compositionMode === "luxury_collage") {
     return `
 COMPOSITION PRESET LOCK: LUXURY_COLLAGE.
 - Match the feel of a premium Chinese webnovel luxury collage cover.
@@ -782,7 +808,22 @@ COMPOSITION PRESET LOCK: LUXURY_COLLAGE.
 - The overall image should feel dark-luxury, glossy, dramatic, emotionally dense, and highly commercial.
 - Keep the heroine readable, but let the surrounding scenes clearly show the story.
 - Do not turn this into manga panels with speech bubbles. This is still one premium cover illustration.
-`.trim()
+`.trim();
+  }
+
+  if (compositionMode === "wide_story_scene") {
+    return `
+COMPOSITION PRESET LOCK: WIDE_STORY_SCENE.
+- This preset has the highest priority for scene readability.
+- Pull the camera back clearly and show a roomy storytelling scene.
+- Use a wide medium shot, medium-long shot, or full half-body framing with a lot of visible environment.
+- The heroine should usually occupy only about 18% to 30% of the total image area.
+- Her face should not dominate the image and should not take more than about 14% to 18% of the image height.
+- Keep at least 45% to 60% of the image showing readable setting, furniture, machinery, room depth, tables, corridor, lobby, banquet hall, office, classroom, hospital space, factory floor, shop counter, restaurant, or another story-specific environment.
+- If the story supports it, show 3 to 6 supporting people clearly in the midground or background.
+- The viewer should instantly understand where the scene is happening, not just who the heroine is.
+- Make the image feel like one dramatic narrative frame from a story, not a beauty poster.
+`.trim();
   }
 
   return `
@@ -794,18 +835,20 @@ COMPOSITION PRESET LOCK: STORY_SCENE_OFFSET.
 - Do not let the heroine's face occupy more than about 16% to 22% of the image height.
 - Keep a lot of visible environment behind and beside her.
 - Show 2 to 5 supporting characters, witnesses, antagonists, or pressure figures in the background or midground when the story supports it.
-- The environment must read clearly: office, meeting room, school, hospital, hotel, event hall, lounge, or another story-specific space.
+- The environment must read clearly: office, meeting room, school, hospital, hotel, event hall, lounge, factory, studio, shop, restaurant, lobby, or another story-specific space.
 - Make the image feel like one strong dramatic moment, not a beauty portrait.
-`.trim()
+`.trim();
 }
 
-function buildCompositionHardLockBlock(data: ReturnType<typeof buildPromptData>): string {
+function buildCompositionHardLockBlock(
+  data: ReturnType<typeof buildPromptData>,
+): string {
   const compositionMode = chooseCompositionMode({
     title: data.title,
     sceneType: data.sceneType,
     coverArtStyle: data.coverArtStyle,
     compositionPreset: data.compositionPreset,
-  })
+  });
 
   return `
 COVER COMPOSITION HARD LOCK:
@@ -814,15 +857,20 @@ COVER COMPOSITION HARD LOCK:
 - Do not crop too close to the face.
 - Do not make a giant head, giant face, beauty close-up, bust portrait, ID-card portrait, or profile-card image.
 - Do not let the main female character occupy 60% to 70% of the frame.
+- Do not create the common failure mode: one woman in the foreground holding a paper while the background is tiny, blurry, or unimportant.
 - Keep setting, supporting cast, and story pressure visible.
 - Show depth with foreground, midground, and background.
 - The composition must contain at least three readable layers:
-  1. foreground: key evidence, table, phone, folder, hand, child item, or symbolic object;
+  1. foreground: key evidence, table, phone, folder, hand, child item, machine part, counter, document prop, or symbolic object;
   2. midground: female lead and main emotional action;
-  3. background: antagonist, witnesses, room, city, hospital, school, office, event hall, or another story space.
+  3. background: antagonist, witnesses, room, city, hospital, school, office, event hall, factory, shop, restaurant, or another story space.
 - The key evidence object can appear, but it must not dominate the entire image.
-- ${compositionMode === 'luxury_collage' ? 'Use a layered collage structure with one heroine anchor and multiple story fragments.' : 'Use one strong story scene with the heroine offset and the environment clearly readable.'}
-`.trim()
+- ${compositionMode === "luxury_collage"
+    ? "Use a layered collage structure with one heroine anchor and multiple story fragments."
+    : compositionMode === "wide_story_scene"
+      ? "Use a clearly pulled-back wide story scene. Prioritize visible environment, readable room depth, and supporting cast. The heroine must not dominate the frame."
+      : "Use one strong story scene with the heroine offset and the environment clearly readable."}
+`.trim();
 }
 
 function buildSceneSelectionBlock(sceneType: CoverSceneType, style: CoverArtStyleKey): string {
@@ -944,16 +992,19 @@ ${collageNote}
   }
 }
 
-function buildFramingAndCharacterBlock(style: CoverArtStyleKey): string {
+function buildFramingAndCharacterBlock(
+  style: CoverArtStyleKey,
+  compositionPreset: CoverCompositionPreset,
+): string {
   const appearanceLine =
-    style === 'ancient_chinese_cinematic_romance'
-      ? '- Characters must look like East Asian adults in an ancient-Chinese romance illustration style, with elegant historical styling and believable emotional presence.'
-      : '- Characters must look like modern East Asian adults, preferably modern Chinese urban-drama appearance.'
+    style === "ancient_chinese_cinematic_romance"
+      ? "- Characters must look like East Asian adults in an ancient-Chinese romance illustration style, with elegant historical styling and believable emotional presence."
+      : "- Characters must look like modern East Asian adults, preferably modern Chinese urban-drama appearance.";
 
   const costumeLine =
-    style === 'ancient_chinese_cinematic_romance'
-      ? '- Use flowing hanfu-inspired costume, period hair styling, and refined historical details only when they support the story.'
-      : '- Use modern fashion, urban-drama styling, or story-appropriate contemporary costume.'
+    style === "ancient_chinese_cinematic_romance"
+      ? "- Use flowing hanfu-inspired costume, period hair styling, and refined historical details only when they support the story."
+      : "- Use modern fashion, urban-drama styling, or story-appropriate contemporary costume.";
 
   return `
 CHARACTER / ETHNICITY / FRAMING RULES:
@@ -964,12 +1015,47 @@ ${costumeLine}
 - Do not create an extreme close-up portrait.
 - Do not create a bust-only beauty shot.
 - Prefer medium-long shot, 3/4 body, waist-up with visible room, or full upper-body framing.
-- The heroine should usually occupy about 22% to 36% of the total image area in single-scene covers.
+- If composition preset is wide_story_scene, the heroine should usually occupy only about 18% to 30% of the total image area.
+- In other single-scene covers, the heroine should usually occupy about 22% to 36% of the total image area.
 - For collage covers, the heroine anchor should usually occupy about 25% to 38% of the image area.
 - Leave enough room to show setting, supporting cast, and evidence.
 - Supporting characters should only be added when they strengthen the story.
 - The image must read like a story cover with visible environment, not like a profile-card illustration.
-`.trim()
+`.trim();
+}
+
+function buildBeautyExpressionLockBlock(
+  data: ReturnType<typeof buildPromptData>,
+): string {
+  const childContext =
+    `${data.keyEvidence} ${data.emotionalHook} ${data.stakes} ${data.setting}`.toLowerCase();
+  const hasChildTheme =
+    data.sceneType === "mother_child_protection" ||
+    data.sceneType === "school_parent_conflict" ||
+    childContext.includes("child") ||
+    childContext.includes("đứa trẻ") ||
+    childContext.includes("dua tre") ||
+    childContext.includes("con cái") ||
+    childContext.includes("con cai") ||
+    childContext.includes("quyền nuôi") ||
+    childContext.includes("quyen nuoi") ||
+    childContext.includes("nhận nuôi") ||
+    childContext.includes("nhan nuoi");
+
+  return `
+CHARACTER BEAUTY / EXPRESSION HARD LOCK:
+- The female lead must look beautiful, elegant, attractive, soft-serious, and commercially appealing.
+- Her expression should be emotionally controlled: calm, softly worried, quietly shocked, protective, wounded but graceful, or determined without anger.
+- Do not make the female lead ugly, harsh, furious, scary, old-looking, exhausted, bitter, judgmental, resentful, or constantly scowling.
+- Avoid deeply furrowed brows, clenched jaw, angry glare, villain-like face, stiff dead eyes, deadpan stare, bitter grimace, hostile expression, and tight angry lips.
+- Prefer soft but serious eyes, relaxed or only subtly tense eyebrows, clean facial features, natural lips, graceful posture, elegant hair, and restrained emotion.
+- The heroine can be under pressure, but she should still look like a polished webnovel cover heroine.
+- Emotional tension should come from body language, distance, witnesses, evidence, lighting, and composition — not from making her face angry.
+- Supporting antagonists can look shocked, guilty, nervous, arrogant, exposed, or pressured, but the heroine should remain visually appealing.
+- If the scene requires confrontation, show the heroine as calm and controlled rather than rageful.
+- If the scene requires sadness, show quiet pain, slightly sad eyes, or moist eyes rather than ugly crying or distorted facial expression.
+${hasChildTheme ? "- If a child appears, the child should look vulnerable, sad, confused, shy, or protected — not creepy, angry, stiff, or expressionless." : ""}
+`.trim();
 }
 
 function buildNoTextBlock(): string {
@@ -1006,6 +1092,7 @@ ANTI-GENERIC RULES:
 - Do not create a glamour portrait, headshot, face-card, profile-card, fashion portrait, or solo model poster.
 - Do not ignore the actual story conflict.
 - Do not make the cover depend only on a single face.
+- Do not create the common failure mode: one woman in the foreground holding a paper while the background is tiny, blurry, or unimportant.
 - Do not hide the evidence object.
 - Do not replace story-specific clues with random decorative props.
 - Do not create a children cartoon or unrelated sci-fi setting.
@@ -1035,36 +1122,38 @@ The final result must be a finished cover artwork illustration only, with zero t
 }
 
 function buildFallbackPrompt(data: ReturnType<typeof buildPromptData>): string {
-  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting must be clearly visible: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Composition preset: ${data.compositionPreset}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Not a close-up beauty shot. Pull the camera back. Show foreground, midground, and background. Show the environment, supporting figures, and conflict clearly. Keep the heroine off-center or use a luxury collage layout depending on the preset. Prefer medium-long shot, 3/4 body, or waist-up framing with visible setting. The main character must not fill the whole frame and must not occupy 60% to 70% of the image. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, and repeated yellow-brown cover palette. Use story-specific cool neutral cinematic color with warm accents only when needed.`
+  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting must be clearly visible: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Composition preset: ${data.compositionPreset}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Not a close-up beauty shot. Pull the camera back. Show foreground, midground, and background. Show the environment, supporting figures, and conflict clearly. Keep the heroine off-center or use a luxury collage layout depending on the preset. Prefer medium-long shot, 3/4 body, or waist-up framing with visible setting. The main character must not fill the whole frame and must not occupy 60% to 70% of the image. The heroine must look beautiful, elegant, emotionally controlled, and commercially appealing; avoid angry scowling face, harsh glare, ugly grimace, deeply furrowed brows, clenched jaw, stiff dead eyes, bitter expression, or villain-like face. Use restrained emotion: calm pain, quiet shock, protective determination, or controlled confidence. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, and repeated yellow-brown cover palette. Use story-specific cool neutral cinematic color with warm accents only when needed.`
 }
 
 export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): CoverBuildResult {
   const data = buildPromptData(input)
 
   const prompt = [
-    buildPrimaryGoalBlock(),
-    buildStoryCoreBlock(data),
-    buildStoryStageBlock(data.storyStage),
-    buildStyleBlock(data.coverArtStyle),
-    buildReferenceLookBlock(data),
-    buildColorDiversityBlock(data.coverArtStyle, data.sceneType),
-    buildSceneSelectionBlock(data.sceneType, data.coverArtStyle),
-    buildCompositionPresetBlock(data),
-    buildCompositionHardLockBlock(data),
-    buildFramingAndCharacterBlock(data.coverArtStyle),
-    buildNoTextBlock(),
-    buildAntiGenericBlock(data.sceneType, data.coverArtStyle),
-    buildFinalInstructionBlock(data.coverArtStyle),
-  ].join('\n\n')
+  buildPrimaryGoalBlock(),
+  buildStoryCoreBlock(data),
+  buildStoryStageBlock(data.storyStage),
+  buildStyleBlock(data.coverArtStyle),
+  buildReferenceLookBlock(data),
+  buildColorDiversityBlock(data.coverArtStyle, data.sceneType),
+  buildSceneSelectionBlock(data.sceneType, data.coverArtStyle),
+  buildCompositionPresetBlock(data),
+  buildCompositionHardLockBlock(data),
+  buildFramingAndCharacterBlock(data.coverArtStyle),
+  buildBeautyExpressionLockBlock(data),
+  buildNoTextBlock(),
+  buildAntiGenericBlock(data.sceneType, data.coverArtStyle),
+  buildFinalInstructionBlock(data.coverArtStyle),
+].join('\n\n')
 
   return {
     prompt,
     fallbackPrompt: buildFallbackPrompt(data),
     coverConcept: {
-      version: 'cover-storytelling-framing-v2',
+      version: 'cover-storytelling-framing-v3',
       coverArtStyle: data.coverArtStyle,
       sceneType: data.sceneType,
       storyStage: data.storyStage,
+      compositionPreset: data.compositionPreset,
       title: data.title,
       genre: data.genre,
       heroine: data.heroine,
