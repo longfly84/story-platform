@@ -566,14 +566,27 @@ function chooseCompositionMode(data: {
 
 function buildPrimaryGoalBlock(): string {
   return `
-Create one premium vertical web-novel cover illustration, aspect ratio 2:3.
+Create one premium vertical 2:3 Chinese commercial web-novel cover illustration.
 
-PRIMARY GOAL:
-This cover must visually tell the actual story.
-This must NOT be a glamour portrait, beauty portrait, face card, profile-card illustration, or generic pretty-girl poster.
-The viewer should understand the conflict from the image: setting, pressure, key evidence, and supporting characters must be visible.
-A wide, readable storytelling scene is preferred over a tight character portrait.
-Beauty is secondary. Story readability is the first priority.
+PRIMARY GOAL — ENVIRONMENT-FIRST STORY COVER:
+This cover must look like a pulled-back dramatic story scene, not a heroine portrait.
+The location, social pressure, evidence object, and supporting cast must be visible at first glance.
+
+Mandatory visual balance:
+- Environment / setting / room depth should take about 55% to 70% of the image.
+- Supporting people, witnesses, antagonist, child, staff, crowd, or background action should take about 15% to 30%.
+- The female lead should usually take only about 18% to 28% of the full image area.
+- The female lead must not fill the frame.
+- The camera must feel pulled back, like a cinematic key visual or webnovel scene poster.
+
+This must NOT be:
+- a close-up portrait
+- a glamour beauty shot
+- a centered full-frame heroine
+- one woman covering 60% to 70% of the cover
+- a generic pretty-girl poster with tiny background
+
+Beauty still matters, but story readability comes first.
 `.trim();
 }
 
@@ -635,44 +648,47 @@ function buildStyleBlock(style: CoverArtStyleKey): string {
     case "clean_webtoon_manhua":
       return `
 STYLE PRESET: CLEAN_WEBTOON_MANHUA.
-- clean premium webtoon / Chinese manhua romance-drama illustration
-- polished clean line art, crisp outlines, expressive faces, readable body language
-- bright elegant interiors, soft luxury color, clean cel-shading, smooth simple gradients
-- suitable for wedding, hotel, banquet, restaurant, cashier counter, office, school, factory, family confrontation, and public embarrassment scenes
-- allow 3 to 6 characters in one clear dramatic scene when the story supports it
-- not hyper-realistic, not gritty, not horror, not dark muddy cinematic realism
-- not childish, not chibi, not flat low-detail cartoon
-- keep the final result commercially attractive, easy to read, and strongly story-driven
+- premium bright Chinese manhua / webtoon romance-drama cover illustration
+- polished commercial manhua rendering, clean confident line art, elegant adult faces, attractive heroine design
+- crisp readable shapes, refined hair, graceful hands, stylish modern clothing, expressive but restrained faces
+- clean cel-shading plus soft gradients, cinematic daylight or polished interior lighting
+- the art must feel expensive and publication-ready, not cheap anime, not childish, not flat cartoon
+- use a wide scene composition with visible setting and multiple story elements
+- allow 3 to 8 characters in one clear dramatic scene when the story supports it
+- good for airport, factory, hotel, event hall, restaurant, school, office, public confrontation, and family drama scenes
 - do not make the image a simple close-up portrait
+- do not make the heroine huge in the frame
 `.trim();
     case "manga_manhwa":
       return `
 STYLE PRESET: MANGA_MANHWA.
-- polished Asian webtoon / manga-drama / manhua illustration
-- strong line work, crisp facial expressions, dramatic contrast
-- visually clear conflict, sharper storytelling, elegant panel-like energy
-- not childish, not chibi, not comedic
-- colored or limited-palette dramatic finish is allowed, but it should still feel premium and story-rich
-- do not make the image a simple close-up portrait
+- premium Asian manhwa / manga-drama / Chinese manhua illustration
+- high-end webnovel promotional cover quality, polished line work, beautiful adult characters
+- dramatic lighting, clean anatomy, elegant faces, refined clothing folds, cinematic background depth
+- sharper storytelling and strong emotional contrast without ugly expressions
+- not childish, not chibi, not comedic, not low-budget anime screenshot
+- use a wide story scene, not a face-focused beauty portrait
+- the environment must remain large and readable
 `.trim();
     case "cinematic_realistic":
       return `
 STYLE PRESET: CINEMATIC_REALISTIC.
-- highly polished semi-realistic / near-realistic drama illustration
-- premium modern Chinese drama key-visual feeling
-- cinematic lighting, believable human features, upscale atmosphere
-- not a stock photo, not overly plastic, not uncanny hyperrealism
-- beautiful but story-first
-- use a wider poster composition, not a headshot
+- premium semi-realistic Chinese drama key visual / webnovel poster illustration
+- beautiful but believable adult East Asian characters, refined facial features, natural skin, cinematic lighting
+- detailed modern environment, strong depth, realistic social pressure, polished commercial finish
+- not a stock photo, not uncanny hyperrealism, not plastic doll face
+- not a tight headshot or fashion model poster
+- use a pulled-back scene composition with visible location, supporting cast, evidence, and conflict
 `.trim();
     case "popular_webnovel_collage":
       return `
 STYLE PRESET: POPULAR_WEBNOVEL_COLLAGE.
-- high-performing Chinese web-novel cover style
-- one female lead anchor plus multiple supporting mini-scenes or layered fragments around her
-- emotional collage composition showing several story clues, memory fragments, conflicts, or evidence moments
-- dramatic, addictive, commercially attractive, very story-dense
-- the heroine must not become a giant face covering the entire poster
+- premium Chinese commercial webnovel cover collage
+- one female lead anchor plus multiple supporting scenes, evidence fragments, witnesses, public pressure, memory shards, and conflict clues
+- glossy, dramatic, addictive, expensive-looking, story-dense
+- heroine must remain beautiful and readable, but must not become a giant face covering the poster
+- supporting fragments and environment must occupy more visual space than the heroine alone
+- no comic panels, no speech bubbles, no typography
 `.trim();
     case "ancient_chinese_cinematic_romance":
       return `
@@ -684,17 +700,20 @@ STYLE PRESET: ANCIENT_CHINESE_CINEMATIC_ROMANCE.
 - base palette must stay cool blue-gray, charcoal, misty teal, deep black, and desaturated silver
 - warm lantern light can be used only as a small accent; avoid yellow wash, sepia wash, muddy beige, and brown monochrome grading
 - this style changes the rendering language, color mood, and costume language, but must still follow the actual story conflict and key evidence
+- use a wide cinematic scene; do not turn it into a giant beauty portrait
 `.trim();
     case "anime_cinematic":
     default:
       return `
 STYLE PRESET: ANIME_CINEMATIC.
-- polished premium anime-style / manhua-style urban-drama illustration
-- beautiful modern East Asian adult characters
-- cinematic lighting and emotional storytelling
-- attractive, elegant, dramatic, web-novel-friendly
-- not too cartoony, not too flat, not children-anime style
+- premium Chinese manhua / anime-cinematic urban-drama cover art
+- polished commercial webnovel key visual quality, beautiful modern East Asian adult characters
+- elegant heroine face, soft serious eyes, refined hair, stylish modern fashion, graceful body language
+- cinematic lighting, detailed environment, glossy high-end finish, not generic AI anime
+- composition must feel like a full story scene from a drama adaptation
+- not too cartoony, not flat, not children-anime style, not cheap mobile-game splash art
 - do not make this a face-focused beauty portrait
+- do not let the female lead dominate the whole frame
 `.trim();
   }
 }
@@ -798,45 +817,53 @@ function buildCompositionPresetBlock(
 
   if (compositionMode === "luxury_collage") {
     return `
-COMPOSITION PRESET LOCK: LUXURY_COLLAGE.
-- Match the feel of a premium Chinese webnovel luxury collage cover.
-- One main heroine anchors the image, but she must not become a giant centered portrait.
-- The heroine anchor should usually occupy only 25% to 38% of the image area.
-- Surround her with 4 to 7 supporting story fragments, mini-scenes, memory shards, evidence closeups, or emotional flashpoints.
-- The collage can use overlapping frames, broken-photo shapes, reflective fragments, layered scene windows, or elegant montage blocks.
-- At least 40% of the image must show supporting scenes, evidence, background space, or story context.
-- The overall image should feel dark-luxury, glossy, dramatic, emotionally dense, and highly commercial.
-- Keep the heroine readable, but let the surrounding scenes clearly show the story.
-- Do not turn this into manga panels with speech bubbles. This is still one premium cover illustration.
+COMPOSITION PRESET LOCK: LUXURY_COLLAGE — STORY-DENSE, NOT BIG-FACE.
+- Use a premium Chinese webnovel luxury collage cover layout.
+- One heroine may anchor the image, but she must not become a giant centered portrait.
+- The heroine anchor should occupy only about 20% to 32% of the image area.
+- At least 55% of the image must show supporting story fragments, environment, evidence, memories, witnesses, or conflict context.
+- Surround the heroine with 4 to 7 readable story fragments: evidence closeup, public confrontation, hotel corridor, hospital room, airport, factory floor, office, school, banquet, phone, vehicle, or family scene depending on the story.
+- Use overlapping reflective fragments, broken-photo shapes, glass reflections, layered scene windows, or elegant montage blocks.
+- Keep everything polished, glossy, expensive, dramatic, and commercial.
+- Do not create manga panels, speech bubbles, typography, or comic layout.
+- Do not crop into a giant face.
 `.trim();
   }
 
   if (compositionMode === "wide_story_scene") {
     return `
-COMPOSITION PRESET LOCK: WIDE_STORY_SCENE.
-- This preset has the highest priority for scene readability.
-- Pull the camera back clearly and show a roomy storytelling scene.
-- Use a wide medium shot, medium-long shot, or full half-body framing with a lot of visible environment.
-- The heroine should usually occupy only about 18% to 30% of the total image area.
-- Her face should not dominate the image and should not take more than about 14% to 18% of the image height.
-- Keep at least 45% to 60% of the image showing readable setting, furniture, machinery, room depth, tables, corridor, lobby, banquet hall, office, classroom, hospital space, factory floor, shop counter, restaurant, or another story-specific environment.
-- If the story supports it, show 3 to 6 supporting people clearly in the midground or background.
-- The viewer should instantly understand where the scene is happening, not just who the heroine is.
-- Make the image feel like one dramatic narrative frame from a story, not a beauty poster.
+COMPOSITION PRESET LOCK: WIDE_STORY_SCENE — MAXIMUM PRIORITY.
+- Pull the camera far back.
+- Use a wide cinematic establishing shot inside the actual story location.
+- The scene should feel like a full dramatic moment from a premium Chinese webnovel adaptation.
+- The heroine should occupy only about 15% to 25% of the total image area.
+- Her face should not take more than about 10% to 14% of the image height.
+- The environment must occupy at least 60% of the image.
+- Show clear room depth: foreground, midground, and background.
+- Use visible setting details: airport glass wall, runway, hotel lobby, factory machines, meeting table, banquet hall, hospital corridor, school office, shop counter, restaurant, car showroom, event stage, or story-specific location.
+- If the story supports it, include 3 to 8 supporting people in the scene.
+- Supporting people can be witnesses, staff, relatives, antagonists, security, reporters, coworkers, parents, clients, or guests.
+- Place the heroine off-center, preferably on the left or right third.
+- Do not put her huge in the middle.
+- Do not crop above the waist unless the environment is still very large and readable.
+- Prefer full-body, 3/4 body, or medium-long shot.
+- The viewer must understand the location before noticing facial details.
 `.trim();
   }
 
   return `
-COMPOSITION PRESET LOCK: STORY_SCENE_OFFSET.
-- Match the feel of a premium Chinese urban-drama cover with a wide story scene.
-- Pull the camera back. Use medium shot, medium-long shot, 3/4 body, or waist-up with visible surroundings.
-- Put the heroine off-center on the left or right third, not dead-center.
-- The heroine should usually occupy about 22% to 36% of the total image area.
-- Do not let the heroine's face occupy more than about 16% to 22% of the image height.
-- Keep a lot of visible environment behind and beside her.
-- Show 2 to 5 supporting characters, witnesses, antagonists, or pressure figures in the background or midground when the story supports it.
-- The environment must read clearly: office, meeting room, school, hospital, hotel, event hall, lounge, factory, studio, shop, restaurant, lobby, or another story-specific space.
-- Make the image feel like one strong dramatic moment, not a beauty portrait.
+COMPOSITION PRESET LOCK: STORY_SCENE_OFFSET — PULLED-BACK COMMERCIAL COVER.
+- Use a wide story scene, not a portrait.
+- Pull the camera back clearly.
+- Place the heroine off-center on the left or right third.
+- The heroine should occupy only about 18% to 30% of the total image area.
+- Her face should not take more than about 12% to 16% of the image height.
+- At least 55% of the image must remain visible setting, room depth, background action, evidence, and supporting cast.
+- Show 2 to 6 supporting characters, witnesses, antagonists, staff, family members, coworkers, guests, or bystanders when the story supports it.
+- Use a real story location: office, meeting room, school, hospital, hotel, event hall, airport, factory, studio, shop, restaurant, lobby, warehouse, courtroom-like room, or public space.
+- The evidence object should be visible in the foreground or midground, but it must not become the whole image.
+- Make the composition feel like a cinematic scene poster.
+- Do not make a simple beautiful woman sitting/standing with a blurred background.
 `.trim();
 }
 
@@ -851,25 +878,34 @@ function buildCompositionHardLockBlock(
   });
 
   return `
-COVER COMPOSITION HARD LOCK:
-- This must be a storytelling cover, not a centered character portrait.
-- Do not place one heroine dead-center blocking most of the background.
-- Do not crop too close to the face.
-- Do not make a giant head, giant face, beauty close-up, bust portrait, ID-card portrait, or profile-card image.
-- Do not let the main female character occupy 60% to 70% of the frame.
-- Do not create the common failure mode: one woman in the foreground holding a paper while the background is tiny, blurry, or unimportant.
-- Keep setting, supporting cast, and story pressure visible.
-- Show depth with foreground, midground, and background.
-- The composition must contain at least three readable layers:
-  1. foreground: key evidence, table, phone, folder, hand, child item, machine part, counter, document prop, or symbolic object;
-  2. midground: female lead and main emotional action;
-  3. background: antagonist, witnesses, room, city, hospital, school, office, event hall, factory, shop, restaurant, or another story space.
-- The key evidence object can appear, but it must not dominate the entire image.
-- ${compositionMode === "luxury_collage"
-    ? "Use a layered collage structure with one heroine anchor and multiple story fragments."
+COVER COMPOSITION HARD LOCK — PREVENT GIANT HEROINE FAILURE:
+- This must be a storytelling scene cover, not a character poster.
+- Never create one oversized heroine occupying most of the frame.
+- Never create a centered heroine blocking the whole background.
+- Never create a giant head, giant face, bust portrait, ID-card portrait, beauty close-up, selfie-like pose, fashion model poster, or profile-card image.
+- Never let the main female character occupy 50%, 60%, or 70% of the frame.
+- Never crop the image so tightly that the location disappears.
+- Never make the background tiny, vague, empty, or useless.
+- Never create the common failure mode: one woman in the foreground holding a paper while the background is blurred and unimportant.
+
+Required scene structure:
+1. Foreground: evidence object, phone, bracelet, ticket, folder, bag, table, machine part, suitcase, child item, envelope, counter, vehicle detail, or symbolic prop.
+2. Midground: female lead plus the main emotional action.
+3. Background: antagonist, witnesses, staff, crowd, room, airport, factory, hotel, hospital, school, office, event hall, restaurant, shop, street, or another story-specific environment.
+
+Camera and layout:
+- Use cinematic wide framing.
+- Prefer 24mm to 35mm lens feeling.
+- Prefer full-body, 3/4 body, or medium-long shot.
+- Leave visible air, architecture, floor, ceiling, windows, furniture, machinery, counters, tables, or crowd space.
+- Show depth and scale.
+- The heroine can be beautiful, but the cover must first read as a dramatic story event.
+
+${compositionMode === "luxury_collage"
+    ? "Use a layered collage structure where story fragments and evidence occupy more total space than the heroine."
     : compositionMode === "wide_story_scene"
-      ? "Use a clearly pulled-back wide story scene. Prioritize visible environment, readable room depth, and supporting cast. The heroine must not dominate the frame."
-      : "Use one strong story scene with the heroine offset and the environment clearly readable."}
+      ? "Use a clearly pulled-back wide establishing scene. Environment and supporting cast must dominate the frame."
+      : "Use one strong offset story scene. Heroine should be off-center and smaller than the visible environment."}
 `.trim();
 }
 
@@ -994,33 +1030,40 @@ ${collageNote}
 
 function buildFramingAndCharacterBlock(
   style: CoverArtStyleKey,
-  compositionPreset: CoverCompositionPreset,
+  compositionPreset: CoverCompositionPreset = 'auto',
 ): string {
   const appearanceLine =
     style === "ancient_chinese_cinematic_romance"
       ? "- Characters must look like East Asian adults in an ancient-Chinese romance illustration style, with elegant historical styling and believable emotional presence."
-      : "- Characters must look like modern East Asian adults, preferably modern Chinese urban-drama appearance.";
+      : "- Characters must look like modern East Asian adults, preferably premium Chinese urban-drama / manhua appearance.";
 
   const costumeLine =
     style === "ancient_chinese_cinematic_romance"
       ? "- Use flowing hanfu-inspired costume, period hair styling, and refined historical details only when they support the story."
-      : "- Use modern fashion, urban-drama styling, or story-appropriate contemporary costume.";
+      : "- Use modern fashion, urban-drama styling, workplace uniforms, event outfits, airport clothing, factory uniforms, or story-appropriate contemporary costume.";
+
+  const ratioLine =
+    compositionPreset === "wide_story_scene"
+      ? "- Wide preset ratio: heroine should occupy only 15% to 25% of the image area. Environment must occupy at least 60%."
+      : compositionPreset === "luxury_collage"
+        ? "- Collage ratio: heroine anchor should occupy only 20% to 32% of the image area. Supporting fragments must occupy more total space."
+        : "- Single scene ratio: heroine should occupy only 18% to 30% of the image area. Visible setting must be larger than the heroine.";
 
   return `
 CHARACTER / ETHNICITY / FRAMING RULES:
 ${appearanceLine}
 ${costumeLine}
 - One clear female lead must anchor the image, but she must not swallow the frame.
+${ratioLine}
 - Do not make the female lead too large.
 - Do not create an extreme close-up portrait.
 - Do not create a bust-only beauty shot.
-- Prefer medium-long shot, 3/4 body, waist-up with visible room, or full upper-body framing.
-- If composition preset is wide_story_scene, the heroine should usually occupy only about 18% to 30% of the total image area.
-- In other single-scene covers, the heroine should usually occupy about 22% to 36% of the total image area.
-- For collage covers, the heroine anchor should usually occupy about 25% to 38% of the image area.
-- Leave enough room to show setting, supporting cast, and evidence.
-- Supporting characters should only be added when they strengthen the story.
+- Do not crop at only the head and shoulders.
+- Prefer medium-long shot, full body, 3/4 body, seated full figure, or waist-up only when the room remains very large and readable.
+- Leave enough room to show setting, supporting cast, evidence, and story pressure.
+- Add supporting characters when they strengthen the story: antagonist, witnesses, staff, guests, coworkers, family members, child, security, reporters, or bystanders.
 - The image must read like a story cover with visible environment, not like a profile-card illustration.
+- The heroine face should look polished and attractive, but it should not be the biggest visual object in the entire cover.
 `.trim();
 }
 
@@ -1122,7 +1165,7 @@ The final result must be a finished cover artwork illustration only, with zero t
 }
 
 function buildFallbackPrompt(data: ReturnType<typeof buildPromptData>): string {
-  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting must be clearly visible: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Composition preset: ${data.compositionPreset}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Not a close-up beauty shot. Pull the camera back. Show foreground, midground, and background. Show the environment, supporting figures, and conflict clearly. Keep the heroine off-center or use a luxury collage layout depending on the preset. Prefer medium-long shot, 3/4 body, or waist-up framing with visible setting. The main character must not fill the whole frame and must not occupy 60% to 70% of the image. The heroine must look beautiful, elegant, emotionally controlled, and commercially appealing; avoid angry scowling face, harsh glare, ugly grimace, deeply furrowed brows, clenched jaw, stiff dead eyes, bitter expression, or villain-like face. Use restrained emotion: calm pain, quiet shock, protective determination, or controlled confidence. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, and repeated yellow-brown cover palette. Use story-specific cool neutral cinematic color with warm accents only when needed.`
+  return `Vertical 2:3 premium Chinese commercial webnovel cover illustration. Create a pulled-back wide story scene, not a heroine portrait. Modern East Asian female lead, beautiful and elegant but small enough to show the whole setting. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting must be clearly visible and should take more visual space than the heroine: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Composition preset: ${data.compositionPreset}. Mandatory layout: heroine only about 18% to 28% of image area, environment about 55% to 70%, supporting people and background action about 15% to 30%. Pull the camera back, use wide cinematic framing, 24mm to 35mm lens feeling, full-body or 3/4 body, visible foreground, midground, background. Show architecture, floor, windows, tables, machines, counters, luggage, crowd, staff, witnesses, antagonist, or location-specific details. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Not a close-up beauty shot. Not one woman covering 50%, 60%, or 70% of the frame. Not a giant face. Not a blurred tiny background. The heroine must look beautiful, elegant, emotionally controlled, and commercially appealing; avoid angry scowling face, harsh glare, ugly grimace, deeply furrowed brows, clenched jaw, stiff dead eyes, bitter expression, or villain-like face. Use restrained emotion: calm pain, quiet shock, protective determination, or controlled confidence. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, and repeated yellow-brown cover palette. Use polished premium manhua / cinematic drama rendering with story-specific cool neutral cinematic color and small warm accents only when needed.`
 }
 
 export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): CoverBuildResult {
@@ -1138,7 +1181,7 @@ export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): Cove
   buildSceneSelectionBlock(data.sceneType, data.coverArtStyle),
   buildCompositionPresetBlock(data),
   buildCompositionHardLockBlock(data),
-  buildFramingAndCharacterBlock(data.coverArtStyle),
+  buildFramingAndCharacterBlock(data.coverArtStyle, data.compositionPreset),
   buildBeautyExpressionLockBlock(data),
   buildNoTextBlock(),
   buildAntiGenericBlock(data.sceneType, data.coverArtStyle),
@@ -1149,7 +1192,7 @@ export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): Cove
     prompt,
     fallbackPrompt: buildFallbackPrompt(data),
     coverConcept: {
-      version: 'cover-storytelling-framing-v3',
+      version: 'cover-wide-scene-premium-v4',
       coverArtStyle: data.coverArtStyle,
       sceneType: data.sceneType,
       storyStage: data.storyStage,

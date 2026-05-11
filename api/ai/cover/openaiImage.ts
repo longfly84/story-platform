@@ -51,15 +51,18 @@ function isModerationBlockedError(error: unknown) {
 
 function buildEmergencyFallbackPrompt() {
   return `
-Vertical 2:3 premium modern East Asian web-novel cover illustration.
+Vertical 2:3 premium modern Chinese web-novel cover illustration.
 
 Scene:
-A resilient adult East Asian woman stands in a modern city night environment, luxury hotel corridor or glass office background, rain on window, reflective floor, cold blue and warm amber cinematic lighting. Blurred silhouettes far behind her suggest betrayal, secrets, pressure, and hidden truth.
+A pulled-back wide cinematic story scene in a modern East Asian urban-drama setting: airport lounge, hotel lobby, glass office, event hall, factory floor, hospital corridor, school office, or another large readable public/interior space. The environment must occupy most of the image. Show foreground evidence, midground heroine, and background witnesses or pressure figures. The adult East Asian female lead is elegant and emotionally controlled, placed off-center, full body or 3/4 body, occupying only about 18% to 28% of the frame. Supporting silhouettes, staff, bystanders, antagonist figure, luggage, tables, machines, windows, corridor depth, or city lights help tell the story.
 
 Style:
-Polished anime / manhwa inspired cinematic cover art, premium drama poster, elegant composition, medium shot or 3/4 body, background and atmosphere clearly visible.
+Premium Chinese commercial webnovel / manhua cinematic cover art, polished and expensive-looking, beautiful but story-first. Wide scene composition, detailed background, refined faces, graceful body language, soft-serious heroine expression.
 
-Strict rules:
+Strict composition rules:
+Not a close-up portrait. Not a giant face. Not one woman covering most of the frame. Not a blurred tiny background. The viewer should understand the location before noticing facial details.
+
+Strict safety/text rules:
 No text, no title, no letters, no typography, no logo, no watermark.
 No blood, no weapons, no knife, no gun, no corpse, no dead body, no wounds, no gore, no explicit violence, no self-harm.
 Represent conflict only through symbolic emotional tension, shadows, reflections, distance, blank documents, turned-away phones, and lighting.
