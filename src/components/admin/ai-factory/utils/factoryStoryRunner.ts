@@ -68,37 +68,114 @@ function normalizeCoverArtStyle(value: unknown): CoverArtStyle {
 
   if (
     raw === 'auto' ||
+    raw === 'anime_glossy' ||
+    raw === 'manhwa_drama' ||
+    raw === 'cinematic_semi_realistic' ||
+    raw === 'cinematic_realistic' ||
+    raw === 'monochrome_collage' ||
+    raw === 'promo_poster' ||
     raw === 'anime_cinematic' ||
     raw === 'manga_manhwa' ||
-    raw === 'cinematic_realistic' ||
-    raw === 'popular_webnovel_collage'
+    raw === 'popular_webnovel_collage' ||
+    raw === 'ancient_chinese_cinematic_romance'
   ) {
     return raw
   }
 
   // Map key cũ còn lưu trong localStorage / config cũ sang key mới.
-  if (raw === 'anime-cinematic') return 'anime_cinematic'
-  if (raw === 'modern-manhwa') return 'manga_manhwa'
-  if (raw === 'manga-drama') return 'manga_manhwa'
-  if (raw === 'semi-realistic') return 'cinematic_realistic'
-  if (raw === 'movie-poster') return 'popular_webnovel_collage'
+  if (raw === 'anime-cinematic') return 'anime_glossy'
+  if (raw === 'anime_cinematic') return 'anime_glossy'
+  if (raw === 'modern-manhwa') return 'manhwa_drama'
+  if (raw === 'manga-drama') return 'manhwa_drama'
+  if (raw === 'manga_manhwa') return 'manhwa_drama'
+  if (raw === 'semi-realistic') return 'cinematic_semi_realistic'
+  if (raw === 'movie-poster') return 'cinematic_realistic'
+  if (raw === 'popular-webnovel-collage') return 'monochrome_collage'
+  if (raw === 'popular_webnovel_collage') return 'monochrome_collage'
 
   return 'auto'
 }
 
 function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
   switch (normalizeCoverArtStyle(style)) {
-    case 'anime_cinematic':
-      return 'Anime — Chinese commercial webnovel cover, glossy mature anime-inspired Chinese webnovel beauty, luxury urban drama color'
-    case 'manga_manhwa':
-      return 'Manga — Chinese commercial webnovel cover, polished manga/manhua-inspired line art, luxury full-color rendering'
-    case 'popular_webnovel_collage':
-      return 'Chinese manhua luxury collage, layered storytelling, 3 to 7 story fragments, glossy premium Chinese webnovel cover'
+    case 'anime_glossy':
+      return 'Anime webnovel bóng bẩy — glossy Chinese webnovel anime/manhua cover, đẹp nhưng vẫn ưu tiên kể chuyện'
+    case 'manhwa_drama':
+      return 'Manhwa / Manhua drama — nét rõ, giàu cảm xúc, hợp bìa truyện drama'
+    case 'cinematic_semi_realistic':
+      return 'Cinematic semi-realistic — poster phim minh họa, gần thật nhưng vẫn là tranh'
     case 'cinematic_realistic':
-      return 'Siêu thực — ultra-realistic Chinese urban drama premium poster illustration, luxury cinematic realism'
+      return 'Cinematic realistic — poster phim đô thị cao cấp, thật hơn anime'
+    case 'monochrome_collage':
+      return 'Collage đơn sắc — nhiều mảnh truyện, tông u tối / drama'
+    case 'promo_poster':
+      return 'Poster quảng bá nhiều lớp — webnovel marketing poster, giàu tình tiết'
+    case 'ancient_chinese_cinematic_romance':
+      return 'Cổ phong ngôn tình điện ảnh'
+    case 'anime_cinematic':
+      return 'Anime cinematic cũ — tự map gần anime webnovel bóng bẩy'
+    case 'manga_manhwa':
+      return 'Manga / Manhwa cũ — tự map gần manhwa drama'
+    case 'popular_webnovel_collage':
+      return 'Webnovel collage cũ — tự map gần collage nhiều lớp'
     case 'auto':
     default:
-      return 'premium Chinese commercial webnovel cover, automatically matched to story content'
+      return 'Tự động theo nội dung truyện'
+  }
+}
+
+function normalizeCoverCompositionPreset(
+  value: unknown,
+): AIFactoryConfig['coverCompositionPreset'] {
+  const raw = String(value || '').trim()
+
+  if (
+    raw === 'auto' ||
+    raw === 'single_heroine_center' ||
+    raw === 'public_confrontation' ||
+    raw === 'evidence_focus' ||
+    raw === 'mother_child_protection' ||
+    raw === 'betrayal_triangle' ||
+    raw === 'collage_story_poster' ||
+    raw === 'story_scene_offset' ||
+    raw === 'luxury_collage'
+  ) {
+    return raw as AIFactoryConfig['coverCompositionPreset']
+  }
+
+  if (raw === 'single-heroine-center') return 'single_heroine_center'
+  if (raw === 'public-reveal' || raw === 'public') return 'public_confrontation'
+  if (raw === 'evidence') return 'evidence_focus'
+  if (raw === 'mother-child' || raw === 'mother_child' || raw === 'custody') return 'mother_child_protection'
+  if (raw === 'betrayal' || raw === 'private-betrayal') return 'betrayal_triangle'
+  if (raw === 'collage' || raw === 'story_collage' || raw === 'luxury-collage') return 'collage_story_poster'
+
+  if (raw === 'story-scene-offset') return 'story_scene_offset'
+  if (raw === 'luxury-collage') return 'luxury_collage'
+
+  return 'auto'
+}
+
+function mapCompositionPresetToSceneType(
+  value: AIFactoryConfig['coverCompositionPreset'],
+): AIFactoryConfig['coverSceneType'] {
+  switch (normalizeCoverCompositionPreset(value)) {
+    case 'collage_story_poster':
+    case 'luxury_collage':
+      return 'collage_story_poster'
+    case 'mother_child_protection':
+      return 'mother_child_protection'
+    case 'evidence_focus':
+      return 'evidence_discovery_scene'
+    case 'public_confrontation':
+      return 'public_reveal_confrontation'
+    case 'betrayal_triangle':
+      return 'private_betrayal_confrontation'
+    case 'single_heroine_center':
+    case 'story_scene_offset':
+    case 'auto':
+    default:
+      return 'auto_story_scene'
   }
 }
 
@@ -770,9 +847,20 @@ export async function generateAndAttachFactoryCover(params: {
   heroineLabel: string
   storySeed?: FactoryStorySeed | null
 }) {
-  const normalizedCoverArtStyle = normalizeCoverArtStyle(params.config.coverArtStyle)
-  const normalizedCoverCompositionPreset = params.config.coverCompositionPreset || 'auto'
-  const normalizedCoverSceneType = normalizeCoverSceneType(params.config.coverSceneType)
+    const normalizedCoverArtStyle = normalizeCoverArtStyle(params.config.coverArtStyle)
+  const normalizedCoverCompositionPreset = normalizeCoverCompositionPreset(
+    params.config.coverCompositionPreset || 'auto',
+  )
+
+  const sceneTypeFromComposition = mapCompositionPresetToSceneType(
+    normalizedCoverCompositionPreset,
+  )
+
+  const normalizedCoverSceneType = normalizeCoverSceneType(
+    params.config.coverSceneType && params.config.coverSceneType !== 'auto_story_scene'
+      ? params.config.coverSceneType
+      : sceneTypeFromComposition,
+  )
 
   const storyDna = params.storySeed
     ? {

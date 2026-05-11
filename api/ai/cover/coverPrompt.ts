@@ -99,8 +99,13 @@ function normalizeCoverArtStyle(raw: unknown): CoverArtStyleKey {
     value === 'anime_cinematic' ||
     value === 'anime-cinematic' ||
     value === 'anime' ||
+    value === 'anime_glossy' ||
+    value === 'anime-glossy' ||
     value.includes('anime cinematic') ||
-    value.includes('anime dien anh')
+    value.includes('anime dien anh') ||
+    value.includes('anime webnovel') ||
+    value.includes('anime bong bay') ||
+    value.includes('anime bóng bẩy')
   ) {
     return 'anime_cinematic'
   }
@@ -108,10 +113,13 @@ function normalizeCoverArtStyle(raw: unknown): CoverArtStyleKey {
   if (
     value === 'manga_manhwa' ||
     value === 'manga-manhwa' ||
+    value === 'manhwa_drama' ||
+    value === 'manhwa-drama' ||
     value === 'manga' ||
     value === 'manhwa' ||
     value.includes('manga') ||
-    value.includes('manhwa')
+    value.includes('manhwa') ||
+    value.includes('manhua')
   ) {
     return 'manga_manhwa'
   }
@@ -119,6 +127,8 @@ function normalizeCoverArtStyle(raw: unknown): CoverArtStyleKey {
   if (
     value === 'cinematic_realistic' ||
     value === 'cinematic-realistic' ||
+    value === 'cinematic_semi_realistic' ||
+    value === 'cinematic-semi-realistic' ||
     value === 'realistic' ||
     value.includes('cinematic') ||
     value.includes('realistic') ||
@@ -131,10 +141,16 @@ function normalizeCoverArtStyle(raw: unknown): CoverArtStyleKey {
   if (
     value === 'popular_webnovel_collage' ||
     value === 'popular-webnovel-collage' ||
+    value === 'monochrome_collage' ||
+    value === 'monochrome-collage' ||
+    value === 'promo_poster' ||
+    value === 'promo-poster' ||
     value.includes('collage') ||
     value.includes('webnovel') ||
     value.includes('tieu thuyet mang') ||
-    value.includes('ua chuong')
+    value.includes('ua chuong') ||
+    value.includes('poster quang ba') ||
+    value.includes('poster quảng bá')
   ) {
     return 'popular_webnovel_collage'
   }
@@ -146,18 +162,55 @@ function normalizeCoverCompositionPreset(raw: unknown): CoverCompositionPreset {
   const value = normalizeText(raw)
   if (!value) return 'auto'
 
-  if (value === 'story_scene_offset' || value === 'story-scene-offset' || value.includes('background rong') || value.includes('lech khung')) {
+  if (
+    value === 'story_scene_offset' ||
+    value === 'story-scene-offset' ||
+    value === 'single_heroine_center' ||
+    value === 'single-heroine-center' ||
+    value === 'evidence_focus' ||
+    value === 'evidence-focus' ||
+    value === 'public_confrontation' ||
+    value === 'public-confrontation' ||
+    value === 'mother_child_protection' ||
+    value === 'mother-child-protection' ||
+    value === 'betrayal_triangle' ||
+    value === 'betrayal-triangle' ||
+    value.includes('background rong') ||
+    value.includes('lech khung') ||
+    value.includes('nhan vat trung tam') ||
+    value.includes('nhân vật trung tâm') ||
+    value.includes('vat chung') ||
+    value.includes('vật chứng') ||
+    value.includes('doi dau') ||
+    value.includes('đối đầu') ||
+    value.includes('me con') ||
+    value.includes('mẹ con') ||
+    value.includes('phan boi') ||
+    value.includes('phản bội')
+  ) {
     return 'story_scene_offset'
   }
 
-  if (value === 'luxury_collage' || value === 'luxury-collage' || value.includes('collage') || value.includes('nhieu lop') || value.includes('nhiều lớp')) {
+  if (
+    value === 'luxury_collage' ||
+    value === 'luxury-collage' ||
+    value === 'collage_story_poster' ||
+    value === 'collage-story-poster' ||
+    value.includes('collage') ||
+    value.includes('nhieu lop') ||
+    value.includes('nhiều lớp')
+  ) {
     return 'luxury_collage'
   }
 
   return 'auto'
 }
 
-function resolveFinalArtStyle(style: CoverArtStyleKey, sceneType: CoverSceneType, compositionPreset: CoverCompositionPreset): CoverArtStyleKey {
+function resolveFinalArtStyle(
+  style: CoverArtStyleKey,
+  sceneType: CoverSceneType,
+  compositionPreset: CoverCompositionPreset,
+): CoverArtStyleKey {
   if (style !== 'auto') return style
 
   if (compositionPreset === 'luxury_collage' || sceneType === 'collage_story_poster') {
@@ -473,37 +526,125 @@ function chooseCompositionMode(data: {
   return 'single_offset_scene'
 }
 
-function buildCompositionPresetBlock(data: ReturnType<typeof buildPromptData>): string {
-  const compositionMode = chooseCompositionMode({
-    title: data.title,
-    sceneType: data.sceneType,
-    coverArtStyle: data.coverArtStyle,
-    compositionPreset: data.compositionPreset,
-  })
+function buildPrimaryGoalBlock(): string {
+  return `
+Create one premium vertical web-novel cover illustration, aspect ratio 2:3.
 
-  if (compositionMode === 'luxury_collage') {
-    return `
-COMPOSITION PRESET LOCK: LUXURY_COLLAGE.
-- Match the feel of a premium Chinese webnovel luxury collage cover.
-- One main heroine anchors the image, but not as a plain centered portrait.
-- Surround her with 4 to 7 supporting story fragments, mini-scenes, memory shards, or emotional flashpoints.
-- The collage can use overlapping frames, broken-photo shapes, reflective fragments, layered scene windows, or elegant montage blocks.
-- The overall image should feel dark-luxury, glossy, dramatic, emotionally dense, and highly commercial.
-- Keep the heroine beautiful and readable, but let the surrounding scenes clearly show the story.
-- Do not turn this into manga panels with speech bubbles. This is still one premium cover illustration.
+PRIMARY GOAL:
+This cover must visually tell the actual story.
+This must NOT be a glamour portrait, beauty portrait, face card, profile-card illustration, or generic pretty-girl poster.
+The viewer should understand the conflict from the image: setting, pressure, key evidence, and supporting characters must be visible.
+Beauty is secondary. Story readability is the first priority.
+`.trim()
+}
+
+function buildStoryCoreBlock(data: ReturnType<typeof buildPromptData>): string {
+  return `
+STORY CORE — highest priority:
+- Title: "${data.title}"
+- Genre: ${data.genre}
+- Female lead: ${data.heroine}
+- Antagonist / opposing force: ${data.antagonist}
+- Core relationship / conflict: ${data.relationshipCore}
+- Main setting: ${data.setting}
+- Key evidence object: ${data.keyEvidence}
+- Emotional hook: ${data.emotionalHook}
+- Stakes: ${data.stakes}
+- Mood keywords: ${data.moodKeywords}
+- Existing chapter hints: ${data.chapterHints || 'chưa có gợi ý chương rõ ràng'}
+
+STORY CONTENT LOCK:
+- The image must look specific to THIS story.
+- The key evidence object must be visible, readable as an object shape, and story-relevant.
+- The scene must show why the story is tense, painful, and addictive.
+- Use environment, supporting characters, posture, gaze, distance, and evidence objects to tell the plot.
+- Do not replace the key evidence with a generic blank paper prop unless the story itself is about a document.
+- Do not make the background empty, decorative, or blurred beyond recognition.
+`.trim()
+}
+
+function buildStoryStageBlock(stage: CoverStoryStage): string {
+  switch (stage) {
+    case 'mid-escalation':
+      return `
+STORY STAGE RULE:
+The story appears to be in the middle phase.
+Choose the strongest active conflict or major escalation scene.
+Do not invent a final ending image too early.
+Show the current pressure, danger, or reveal that is already emotionally active.
+`.trim()
+    case 'late-payoff':
+      return `
+STORY STAGE RULE:
+The story appears to be near the late phase.
+Choose a payoff-heavy cover moment: confrontation, reveal, protection, power reversal, or truth surfacing.
+The image may feel more decisive and emotionally heavier.
+`.trim()
+    case 'early-hook':
+    default:
+      return `
+STORY STAGE RULE:
+The story appears to be in the early hook phase.
+Choose the best inciting incident or discovery moment.
+The cover should promise secrets, pain, and future confrontation without needing the full ending.
 `.trim()
   }
+}
 
-  return `
-COMPOSITION PRESET LOCK: STORY_SCENE_OFFSET.
-- Match the feel of a premium Chinese urban-drama cover with a wide story scene.
-- Put the heroine off-center on the left or right third, not dead-center.
-- Keep a lot of visible environment behind and beside her.
-- Show 2 to 5 supporting characters, witnesses, or pressure figures in the background or midground when the story supports it.
-- The environment must read clearly: office, meeting room, school, hospital, hotel, event hall, lounge, or another story-specific space.
-- Prefer medium-long shot or 3/4 body framing. The heroine should not fill the whole frame.
-- Make the image feel like one strong dramatic moment, not a beauty portrait.
+function buildStyleBlock(style: CoverArtStyleKey): string {
+  switch (style) {
+    case 'manga_manhwa':
+      return `
+STYLE PRESET: MANGA_MANHWA.
+- polished Asian webtoon / manga-drama / manhua illustration
+- strong line work, crisp facial expressions, dramatic contrast
+- visually clear conflict, sharper storytelling, elegant panel-like energy
+- not childish, not chibi, not comedic
+- colored or limited-palette dramatic finish is allowed, but it should still feel premium and story-rich
+- do not make the image a simple close-up portrait
 `.trim()
+    case 'cinematic_realistic':
+      return `
+STYLE PRESET: CINEMATIC_REALISTIC.
+- highly polished semi-realistic / near-realistic drama illustration
+- premium modern Chinese drama key-visual feeling
+- cinematic lighting, believable human features, upscale atmosphere
+- not a stock photo, not overly plastic, not uncanny hyperrealism
+- beautiful but story-first
+- use a wider poster composition, not a headshot
+`.trim()
+    case 'popular_webnovel_collage':
+      return `
+STYLE PRESET: POPULAR_WEBNOVEL_COLLAGE.
+- high-performing Chinese web-novel cover style
+- one female lead anchor plus multiple supporting mini-scenes or layered fragments around her
+- emotional collage composition showing several story clues, memory fragments, conflicts, or evidence moments
+- dramatic, addictive, commercially attractive, very story-dense
+- the heroine must not become a giant face covering the entire poster
+`.trim()
+    case 'ancient_chinese_cinematic_romance':
+      return `
+STYLE PRESET: ANCIENT_CHINESE_CINEMATIC_ROMANCE.
+- premium Chinese ancient-romance cover illustration
+- xianxia / wuxia / historical-romance inspired mood, but still story-first
+- semi-realistic cinematic digital painting, not flat anime
+- elegant East Asian features, flowing hair, refined hanfu-inspired costume, lantern-lit atmosphere
+- base palette must stay cool blue-gray, charcoal, misty teal, deep black, and desaturated silver
+- warm lantern light can be used only as a small accent; avoid yellow wash, sepia wash, muddy beige, and brown monochrome grading
+- this style changes the rendering language, color mood, and costume language, but must still follow the actual story conflict and key evidence
+`.trim()
+    case 'anime_cinematic':
+    default:
+      return `
+STYLE PRESET: ANIME_CINEMATIC.
+- polished premium anime-style / manhua-style urban-drama illustration
+- beautiful modern East Asian adult characters
+- cinematic lighting and emotional storytelling
+- attractive, elegant, dramatic, web-novel-friendly
+- not too cartoony, not too flat, not children-anime style
+- do not make this a face-focused beauty portrait
+`.trim()
+  }
 }
 
 function buildReferenceLookBlock(data: ReturnType<typeof buildPromptData>): string {
@@ -528,7 +669,7 @@ ${collageMood ? '- Because this uses a collage-forward look, allow layered emoti
   return `
 REFERENCE LOOK TARGET:
 - The overall look should feel close to premium Chinese commercial webnovel cover art.
-- Refined modern East Asian faces, adult cast, elegant fashion styling, glossy hair, luminous skin, polished dramatic rendering.
+- Refined modern East Asian adult faces, elegant fashion styling, glossy but controlled rendering, polished dramatic finish.
 - Keep the mood mature, luxurious, emotionally heavy, and visually addictive.
 - Prefer cool charcoal, smoke gray, midnight blue, steel blue, neutral gray, slate black, soft silver, and clean cinematic contrast.
 - Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, over-warm skin tint, brown monochrome color, and vintage faded poster color.
@@ -577,6 +718,43 @@ COLOR DIVERSITY LOCK:
 `.trim()
 }
 
+function buildCompositionPresetBlock(data: ReturnType<typeof buildPromptData>): string {
+  const compositionMode = chooseCompositionMode({
+    title: data.title,
+    sceneType: data.sceneType,
+    coverArtStyle: data.coverArtStyle,
+    compositionPreset: data.compositionPreset,
+  })
+
+  if (compositionMode === 'luxury_collage') {
+    return `
+COMPOSITION PRESET LOCK: LUXURY_COLLAGE.
+- Match the feel of a premium Chinese webnovel luxury collage cover.
+- One main heroine anchors the image, but she must not become a giant centered portrait.
+- The heroine anchor should usually occupy only 25% to 38% of the image area.
+- Surround her with 4 to 7 supporting story fragments, mini-scenes, memory shards, evidence closeups, or emotional flashpoints.
+- The collage can use overlapping frames, broken-photo shapes, reflective fragments, layered scene windows, or elegant montage blocks.
+- At least 40% of the image must show supporting scenes, evidence, background space, or story context.
+- The overall image should feel dark-luxury, glossy, dramatic, emotionally dense, and highly commercial.
+- Keep the heroine readable, but let the surrounding scenes clearly show the story.
+- Do not turn this into manga panels with speech bubbles. This is still one premium cover illustration.
+`.trim()
+  }
+
+  return `
+COMPOSITION PRESET LOCK: STORY_SCENE_OFFSET.
+- Match the feel of a premium Chinese urban-drama cover with a wide story scene.
+- Pull the camera back. Use medium shot, medium-long shot, 3/4 body, or waist-up with visible surroundings.
+- Put the heroine off-center on the left or right third, not dead-center.
+- The heroine should usually occupy about 22% to 36% of the total image area.
+- Do not let the heroine's face occupy more than about 16% to 22% of the image height.
+- Keep a lot of visible environment behind and beside her.
+- Show 2 to 5 supporting characters, witnesses, antagonists, or pressure figures in the background or midground when the story supports it.
+- The environment must read clearly: office, meeting room, school, hospital, hotel, event hall, lounge, or another story-specific space.
+- Make the image feel like one strong dramatic moment, not a beauty portrait.
+`.trim()
+}
+
 function buildCompositionHardLockBlock(data: ReturnType<typeof buildPromptData>): string {
   const compositionMode = chooseCompositionMode({
     title: data.title,
@@ -590,136 +768,24 @@ COVER COMPOSITION HARD LOCK:
 - This must be a storytelling cover, not a centered character portrait.
 - Do not place one heroine dead-center blocking most of the background.
 - Do not crop too close to the face.
+- Do not make a giant head, giant face, beauty close-up, bust portrait, ID-card portrait, or profile-card image.
+- Do not let the main female character occupy 60% to 70% of the frame.
 - Keep setting, supporting cast, and story pressure visible.
 - Show depth with foreground, midground, and background.
-- The heroine should usually occupy about 30% to 42% of the frame width.
+- The composition must contain at least three readable layers:
+  1. foreground: key evidence, table, phone, folder, hand, child item, or symbolic object;
+  2. midground: female lead and main emotional action;
+  3. background: antagonist, witnesses, room, city, hospital, school, office, event hall, or another story space.
 - The key evidence object can appear, but it must not dominate the entire image.
 - ${compositionMode === 'luxury_collage' ? 'Use a layered collage structure with one heroine anchor and multiple story fragments.' : 'Use one strong story scene with the heroine offset and the environment clearly readable.'}
 `.trim()
 }
 
-function buildPrimaryGoalBlock(): string {
-  return `
-Create a premium vertical web-novel cover illustration, aspect ratio 2:3.
-
-PRIMARY GOAL:
-This cover must visually tell the actual story.
-Do NOT create a generic beauty portrait.
-Do NOT create a random fashionable character image disconnected from the plot.
-The cover must clearly communicate the core conflict, emotional pressure, and most important evidence object.
-`.trim()
-}
-
-function buildStoryCoreBlock(data: ReturnType<typeof buildPromptData>): string {
-  return `
-STORY CORE — highest priority:
-- Title: "${data.title}"
-- Genre: ${data.genre}
-- Female lead: ${data.heroine}
-- Antagonist / opposing force: ${data.antagonist}
-- Core relationship / conflict: ${data.relationshipCore}
-- Main setting: ${data.setting}
-- Key evidence object: ${data.keyEvidence}
-- Emotional hook: ${data.emotionalHook}
-- Stakes: ${data.stakes}
-- Mood keywords: ${data.moodKeywords}
-- Existing chapter hints: ${data.chapterHints || 'chưa có gợi ý chương rõ ràng'}
-
-STORY CONTENT LOCK:
-- The image must look specific to THIS story.
-- The key evidence object must be visible and story-relevant.
-- The scene must show why the story is tense, painful, and addictive.
-- Use environment, supporting characters, posture, gaze, distance, and evidence objects to tell the plot.
-- Do not replace the key evidence with a generic blank paper prop unless the story itself is about a document.
-`.trim()
-}
-
-function buildStoryStageBlock(stage: CoverStoryStage): string {
-  switch (stage) {
-    case 'mid-escalation':
-      return `
-STORY STAGE RULE:
-The story appears to be in the middle phase.
-Choose the strongest active conflict or major escalation scene.
-Do not invent a final ending image too early.
-Show the current pressure, danger, or reveal that is already emotionally active.
-`.trim()
-    case 'late-payoff':
-      return `
-STORY STAGE RULE:
-The story appears to be near the late phase.
-Choose a payoff-heavy cover moment: confrontation, reveal, protection, power reversal, or truth surfacing.
-The image may feel more decisive and emotionally heavier.
-`.trim()
-    case 'early-hook':
-    default:
-      return `
-STORY STAGE RULE:
-The story appears to be in the early hook phase.
-Choose the best inciting incident or discovery moment.
-The cover should promise secrets, pain, and future confrontation without needing the full ending.
-`.trim()
-  }
-}
-
-function buildStyleBlock(style: CoverArtStyleKey): string {
-  switch (style) {
-    case 'manga_manhwa':
-      return `
-STYLE PRESET: MANGA_MANHWA.
-- polished Asian webtoon / manga-drama illustration
-- strong line work, crisp facial expressions, dramatic contrast
-- visually clear conflict, sharper storytelling, elegant panel-like energy
-- not childish, not chibi, not comedic
-- colored or limited-palette dramatic finish is allowed, but it should still feel premium and story-rich
-`.trim()
-    case 'cinematic_realistic':
-      return `
-STYLE PRESET: CINEMATIC_REALISTIC.
-- highly polished semi-realistic / near-realistic drama illustration
-- premium modern Chinese drama key-visual feeling
-- cinematic lighting, believable human features, upscale atmosphere
-- not a stock photo, not overly plastic, not uncanny hyperrealism
-- beautiful but story-first
-`.trim()
-    case 'popular_webnovel_collage':
-      return `
-STYLE PRESET: POPULAR_WEBNOVEL_COLLAGE.
-- high-performing Chinese web-novel cover style
-- central heroine as the main anchor
-- multiple supporting mini-scenes or layered fragments around her
-- emotional collage composition showing several story clues or memory fragments
-- dramatic, addictive, commercially attractive, very story-dense
-`.trim()
-    case 'ancient_chinese_cinematic_romance':
-      return `
-STYLE PRESET: ANCIENT_CHINESE_CINEMATIC_ROMANCE.
-- premium Chinese ancient-romance cover illustration
-- xianxia / wuxia / historical-romance inspired mood, but still story-first
-- semi-realistic cinematic digital painting, not flat anime
-- elegant East Asian features, flowing hair, refined hanfu-inspired costume, lantern-lit atmosphere
-- base palette must stay cool blue-gray, charcoal, misty teal, deep black, and desaturated silver
-- warm lantern light can be used only as a small accent; avoid yellow wash, sepia wash, muddy beige, and brown monochrome grading
-- this style changes the rendering language, color mood, and costume language, but must still follow the actual story conflict and key evidence
-`.trim()
-    case 'anime_cinematic':
-    default:
-      return `
-STYLE PRESET: ANIME_CINEMATIC.
-- polished premium anime-style urban-drama illustration
-- beautiful modern East Asian characters
-- cinematic lighting and emotional storytelling
-- attractive, elegant, dramatic, web-novel-friendly
-- not too cartoony, not too flat, not children-anime style
-`.trim()
-  }
-}
-
 function buildSceneSelectionBlock(sceneType: CoverSceneType, style: CoverArtStyleKey): string {
   const collageNote =
     style === 'popular_webnovel_collage'
-      ? 'Because the selected style is collage-oriented, use one central heroine plus 3 to 6 supporting story fragments around her.'
-      : 'Prefer one dominant main scene. You may add limited supporting figures or one subtle secondary layer, but keep the composition clean.'
+      ? 'Because the selected style is collage-oriented, use one heroine anchor plus 3 to 6 supporting story fragments around her.'
+      : 'Prefer one dominant main scene with a pulled-back camera. You may add supporting figures or one subtle secondary layer, but keep the composition clean and readable.'
 
   switch (sceneType) {
     case 'mother_child_protection':
@@ -727,8 +793,9 @@ function buildSceneSelectionBlock(sceneType: CoverSceneType, style: CoverArtStyl
 COVER SCENE MODE: MOTHER_CHILD_PROTECTION.
 ${collageNote}
 - The emotional center is a woman protecting a child or child-related truth.
-- Show the child clearly, or show a strongly implied child presence through teddy bear, school item, adoption clue, child photo, or small body language.
-- Supporting antagonists or pressure figures should appear behind or around them.
+- Show the mother and child clearly enough to read their relationship.
+- Do not crop so tightly that the child disappears.
+- Show antagonists, pressure figures, school staff, relatives, or silent witnesses behind or around them when relevant.
 - The cover must communicate protection, threat, and maternal pain.
 `.trim()
 
@@ -740,6 +807,7 @@ ${collageNote}
 - The female lead must feel emotionally pressured yet controlled.
 - A school-related clue should appear: student item, school folder, parent meeting setting, child-related document, or child silhouette.
 - The conflict should read as adult power pressure affecting a child.
+- Avoid a simple portrait; show the room and social pressure.
 `.trim()
 
     case 'hospital_legal_suspense':
@@ -749,6 +817,7 @@ ${collageNote}
 - Show hospital, clinic, medical corridor, consultation room, or legal-pressure setting linked to a medical truth.
 - Key props can include prescription, test result folder, medical envelope, or phone showing an unreadable hospital-related image.
 - The cover should feel cold, modern, tense, and evidence-driven.
+- Avoid turning it into a generic woman holding paper.
 `.trim()
 
     case 'airport_secret_tension':
@@ -758,6 +827,7 @@ ${collageNote}
 - Show airport lounge, departure gate, large glass window, runway, luggage, or boarding atmosphere.
 - The female lead should feel like she is carrying a secret, leaving with truth, or catching someone trying to escape.
 - The evidence object must be near the hand, table, bag, or suitcase.
+- The airport space must remain clearly visible.
 `.trim()
 
     case 'public_reveal_confrontation':
@@ -767,6 +837,8 @@ ${collageNote}
 - Show a public reveal moment at a banquet, party, media event, livestream-like setting, or public confrontation.
 - The female lead is exposing proof or controlling the moment.
 - Background reactions must help tell the story: shock, fear, humiliation, pressure, or reversal.
+- Show at least 3 supporting people if the setting allows it.
+- Do not zoom into only the female lead's face.
 `.trim()
 
     case 'private_betrayal_confrontation':
@@ -777,16 +849,18 @@ ${collageNote}
 - Good settings: hotel, elegant apartment, bedroom-adjacent corridor, living room, or intimate interior.
 - Include at least one opposing figure and make the emotional rupture visually obvious.
 - The key evidence should feel personal: photo, room card, phone, letter, or private proof.
+- Keep enough background space to show the betrayal scene instead of only the heroine.
 `.trim()
 
     case 'family_banquet_confrontation':
       return `
 COVER SCENE MODE: FAMILY_BANQUET_CONFRONTATION.
 ${collageNote}
-- Show wealthy family dining, banquet, or villa confrontation.
+- Show wealthy family dining, banquet, villa confrontation, or a formal interior with visible table / room / relatives.
 - Multiple family members can appear, but the female lead must remain the emotional center.
 - Beauty on the surface, poison underneath.
 - Table setting, tea, dishes, and evidence object should help tell the story.
+- Use a wider confrontation composition, not a solo portrait.
 `.trim()
 
     case 'boardroom_evidence_reveal':
@@ -797,16 +871,18 @@ ${collageNote}
 - The female lead should feel pressured but not broken.
 - The evidence object should look decisive and tied to power, ownership, betrayal, or control.
 - Background supporting cast should read as executives, family power, or silent witnesses.
+- Show table, documents, phone, folder, or screen as part of the foreground/midground story.
 `.trim()
 
     case 'collage_story_poster':
       return `
 COVER SCENE MODE: COLLAGE_STORY_POSTER.
 - Use a strong commercial web-novel collage layout.
-- One central female lead.
+- One central female lead anchor, but she must not cover the whole image.
 - 3 to 6 supporting mini-scenes or image fragments around her.
 - Use the fragments to show relationship damage, evidence, memory, betrayal, child danger, hidden truth, or public conflict.
 - Make the collage easy to read, elegant, and emotionally heavy.
+- Do not add speech bubbles, readable text, title typography, or fake document text.
 `.trim()
 
     case 'evidence_discovery_scene':
@@ -815,9 +891,11 @@ COVER SCENE MODE: COLLAGE_STORY_POSTER.
 COVER SCENE MODE: EVIDENCE_DISCOVERY_SCENE.
 ${collageNote}
 - Show the female lead actively holding, opening, discovering, or presenting the key evidence.
+- The evidence must be visible but unreadable if it is a document or screen.
 - The surrounding environment should reveal the story context.
 - Supporting figures can be placed behind, reflected, seated, or partially visible to create pressure.
 - This must feel like the exact moment a dangerous truth begins to surface.
+- Do not turn the scene into a close-up portrait with a random paper prop.
 `.trim()
   }
 }
@@ -837,11 +915,13 @@ function buildFramingAndCharacterBlock(style: CoverArtStyleKey): string {
 CHARACTER / ETHNICITY / FRAMING RULES:
 ${appearanceLine}
 ${costumeLine}
-- One clear female lead must anchor the image.
+- One clear female lead must anchor the image, but she must not swallow the frame.
 - Do not make the female lead too large.
 - Do not create an extreme close-up portrait.
-- Prefer medium-long shot, 3/4 body, or elegant waist-up framing over tight close portrait.
-- The heroine should usually occupy about 30% to 42% of the frame, not the whole frame.
+- Do not create a bust-only beauty shot.
+- Prefer medium-long shot, 3/4 body, waist-up with visible room, or full upper-body framing.
+- The heroine should usually occupy about 22% to 36% of the total image area in single-scene covers.
+- For collage covers, the heroine anchor should usually occupy about 25% to 38% of the image area.
 - Leave enough room to show setting, supporting cast, and evidence.
 - Supporting characters should only be added when they strengthen the story.
 - The image must read like a story cover with visible environment, not like a profile-card illustration.
@@ -879,6 +959,7 @@ function buildAntiGenericBlock(sceneType: CoverSceneType, style: CoverArtStyleKe
   return `
 ANTI-GENERIC RULES:
 - Do not create a generic beautiful-woman poster.
+- Do not create a glamour portrait, headshot, face-card, profile-card, fashion portrait, or solo model poster.
 - Do not ignore the actual story conflict.
 - Do not make the cover depend only on a single face.
 - Do not hide the evidence object.
@@ -896,8 +977,8 @@ ${sceneSpecificLines.join('\n')}
 function buildFinalInstructionBlock(style: CoverArtStyleKey): string {
   const styleCompositionLine =
     style === 'popular_webnovel_collage'
-      ? '- Because the selected style is popular webnovel collage, the final image should feel more layered and story-dense.'
-      : '- Keep the composition clear and story-focused rather than overly busy.'
+      ? '- Because the selected style is popular webnovel collage, the final image should feel layered and story-dense, but not unreadably crowded.'
+      : '- Keep the composition clear, wide enough, and story-focused rather than a close-up portrait.'
 
   return `
 FINAL OUTPUT INSTRUCTION:
@@ -910,7 +991,7 @@ The final result must be a finished cover artwork illustration only, with zero t
 }
 
 function buildFallbackPrompt(data: ReturnType<typeof buildPromptData>): string {
-  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Composition preset: ${data.compositionPreset}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Show the environment, supporting figures, and conflict clearly. Keep the heroine off-center or use a luxury collage layout depending on the preset. Prefer medium-long shot or 3/4 body framing. The character must not fill the whole frame. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, and repeated yellow-brown cover palette. Use story-specific cool neutral cinematic color with warm accents only when needed.`
+  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Modern East Asian female lead. Story-specific evidence must be visible: ${data.keyEvidence}. Main setting must be clearly visible: ${data.setting}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Composition preset: ${data.compositionPreset}. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Not a close-up beauty shot. Pull the camera back. Show foreground, midground, and background. Show the environment, supporting figures, and conflict clearly. Keep the heroine off-center or use a luxury collage layout depending on the preset. Prefer medium-long shot, 3/4 body, or waist-up framing with visible setting. The main character must not fill the whole frame and must not occupy 60% to 70% of the image. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, and repeated yellow-brown cover palette. Use story-specific cool neutral cinematic color with warm accents only when needed.`
 }
 
 export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): CoverBuildResult {
@@ -936,7 +1017,7 @@ export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): Cove
     prompt,
     fallbackPrompt: buildFallbackPrompt(data),
     coverConcept: {
-      version: 'cover-scene-style-router-v1',
+      version: 'cover-storytelling-framing-v2',
       coverArtStyle: data.coverArtStyle,
       sceneType: data.sceneType,
       storyStage: data.storyStage,

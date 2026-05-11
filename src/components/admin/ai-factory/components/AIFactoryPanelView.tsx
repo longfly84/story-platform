@@ -23,10 +23,17 @@ const COVER_ART_STYLE_OPTIONS: Array<{
   label: string
 }> = [
   { value: 'auto', label: 'Tự động theo nội dung truyện' },
-  { value: 'anime_cinematic', label: 'Anime — Chinese commercial webnovel cover' },
-  { value: 'manga_manhwa', label: 'Manga — Chinese commercial webnovel cover' },
-  { value: 'popular_webnovel_collage', label: 'Chinese manhua luxury collage' },
-  { value: 'cinematic_realistic', label: 'Urban drama premium poster illustration' },
+  { value: 'anime_glossy', label: 'Anime webnovel bóng bẩy' },
+  { value: 'manhwa_drama', label: 'Manhwa / Manhua drama' },
+  { value: 'cinematic_semi_realistic', label: 'Cinematic semi-realistic' },
+  { value: 'cinematic_realistic', label: 'Cinematic realistic / poster phim' },
+  { value: 'monochrome_collage', label: 'Collage đơn sắc / drama u tối' },
+  { value: 'promo_poster', label: 'Poster quảng bá nhiều lớp' },
+
+  // Legacy options giữ để đọc config/localStorage cũ không bị mất nhãn.
+  { value: 'anime_cinematic', label: 'Anime cinematic cũ' },
+  { value: 'manga_manhwa', label: 'Manga / Manhwa cũ' },
+  { value: 'popular_webnovel_collage', label: 'Webnovel collage cũ' },
   { value: 'ancient_chinese_cinematic_romance', label: 'Cổ phong ngôn tình điện ảnh' },
 ]
 
@@ -35,27 +42,16 @@ const COVER_COMPOSITION_OPTIONS: Array<{
   label: string
 }> = [
   { value: 'auto', label: 'Tự động theo nội dung truyện' },
-  { value: 'story_scene_offset', label: 'Bố cục ảnh 1 — nhân vật lệch khung, background rộng' },
-  { value: 'luxury_collage', label: 'Bố cục ảnh 2 — collage nhiều lớp, nhiều mảnh truyện' },
-]
+  { value: 'single_heroine_center', label: 'Nhân vật trung tâm nhưng không zoom mặt' },
+  { value: 'public_confrontation', label: 'Đối đầu công khai / nhiều nhân vật' },
+  { value: 'evidence_focus', label: 'Vật chứng foreground / bằng chứng rõ' },
+  { value: 'mother_child_protection', label: 'Mẹ con bảo vệ / áp lực phía sau' },
+  { value: 'betrayal_triangle', label: 'Tam giác phản bội / bắt quả tang' },
+  { value: 'collage_story_poster', label: 'Collage nhiều cảnh / nhiều lớp truyện' },
 
-
-
-const COVER_SCENE_OPTIONS: Array<{
-  value: AIFactoryConfig['coverSceneType']
-  label: string
-}> = [
-  { value: 'auto_story_scene', label: 'Tự động theo nội dung truyện' },
-  { value: 'evidence_discovery_scene', label: 'Vật chứng / manh mối / lật bí mật' },
-  { value: 'public_reveal_confrontation', label: 'Công khai vả mặt / họp báo / livestream' },
-  { value: 'private_betrayal_confrontation', label: 'Phản bội tình cảm / bắt gian / tiểu tam' },
-  { value: 'mother_child_protection', label: 'Mẹ con / quyền nuôi / bảo vệ con' },
-  { value: 'hospital_legal_suspense', label: 'Bệnh viện / ADN / hồ sơ bí mật' },
-  { value: 'school_parent_conflict', label: 'Trường học / phụ huynh / hiểu lầm' },
-  { value: 'airport_secret_tension', label: 'Khách sạn / sân bay / chia ly bí mật' },
-  { value: 'family_banquet_confrontation', label: 'Hào môn gia đình / bàn ăn / trưởng bối áp lực' },
-  { value: 'boardroom_evidence_reveal', label: 'Thương chiến / hợp đồng / họp hội đồng' },
-  { value: 'collage_story_poster', label: 'Poster collage / nhiều tuyến drama' },
+  // Legacy options giữ để đọc config/localStorage cũ.
+  { value: 'story_scene_offset', label: 'Bố cục cũ — cảnh chính lệch khung' },
+  { value: 'luxury_collage', label: 'Bố cục cũ — luxury collage' },
 ]
 
 const STORY_EDITOR_MODE_OPTIONS: Array<{
@@ -76,10 +72,9 @@ const STORY_EDITOR_MODE_OPTIONS: Array<{
   {
     value: 'careful',
     label: 'Kỹ chọn lọc',
-    hint: 'Editor + audit bằng code. Chỉ gọi repair AI khi phát hiện câu gượng/sai tai.',
+    hint: 'Editor + audit bằng code. Chỉ gọi repair AI khi phát hiện câu gượng/sai.',
   },
 ]
-
 
 function getOptionLabel<T extends string>(
   options: Array<{ value: T; label: string }>,
@@ -101,12 +96,31 @@ function getCoverArtStyleLabel(value: AIFactoryConfig['coverArtStyle'] | undefin
   return getOptionLabel(COVER_ART_STYLE_OPTIONS, value ?? 'auto', 'Tự động theo nội dung truyện')
 }
 
-function getCoverSceneLabel(value: AIFactoryConfig['coverSceneType'] | undefined): string {
-  return getOptionLabel(COVER_SCENE_OPTIONS, value ?? 'auto_story_scene', 'Tự động theo nội dung truyện')
-}
-
 function getCoverCompositionLabel(value: AIFactoryConfig['coverCompositionPreset'] | undefined): string {
   return getOptionLabel(COVER_COMPOSITION_OPTIONS, value ?? 'auto', 'Tự động theo nội dung truyện')
+}
+
+function mapCompositionToLegacySceneType(
+  value: AIFactoryConfig['coverCompositionPreset'],
+): AIFactoryConfig['coverSceneType'] {
+  switch (value) {
+    case 'collage_story_poster':
+    case 'luxury_collage':
+      return 'collage_story_poster'
+    case 'mother_child_protection':
+      return 'mother_child_protection'
+    case 'evidence_focus':
+      return 'evidence_discovery_scene'
+    case 'public_confrontation':
+      return 'public_reveal_confrontation'
+    case 'betrayal_triangle':
+      return 'private_betrayal_confrontation'
+    case 'single_heroine_center':
+    case 'story_scene_offset':
+    case 'auto':
+    default:
+      return 'auto_story_scene'
+  }
 }
 
 type AIFactoryPanelViewProps = {
@@ -210,6 +224,11 @@ export default function AIFactoryPanelView({
       'chapterLengthLabel',
       `Tùy chỉnh — khoảng ${safeMin}–${safeMax} ký tự` as AIFactoryConfig['chapterLengthLabel'],
     )
+  }
+
+  function updateCoverCompositionPreset(nextValue: AIFactoryConfig['coverCompositionPreset']) {
+    updateConfig('coverCompositionPreset', nextValue)
+    updateConfig('coverSceneType', mapCompositionToLegacySceneType(nextValue))
   }
 
   return (
@@ -607,7 +626,7 @@ export default function AIFactoryPanelView({
                   {config.generateCover ? (
                     <div className="mt-4 grid gap-3">
                       <div>
-                        <FieldLabel>Phong cách vẽ ảnh bìa</FieldLabel>
+                        <FieldLabel>Dạng vẽ ảnh bìa</FieldLabel>
                         <select
                           disabled={isRunning}
                           value={config.coverArtStyle ?? 'auto'}
@@ -623,28 +642,7 @@ export default function AIFactoryPanelView({
                           ))}
                         </select>
                         <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                          Chất vẽ / rendering style tổng thể của bìa.
-                        </p>
-                      </div>
-
-                      <div>
-                        <FieldLabel>Mô típ bìa</FieldLabel>
-                        <select
-                          disabled={isRunning}
-                          value={config.coverSceneType ?? 'auto_story_scene'}
-                          onChange={(event) =>
-                            updateConfig('coverSceneType', event.target.value as AIFactoryConfig['coverSceneType'])
-                          }
-                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                        >
-                          {COVER_SCENE_OPTIONS.map((item) => (
-                            <option key={item.value} value={item.value}>
-                              {item.label}
-                            </option>
-                          ))}
-                        </select>
-                        <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                          Dòng drama / vibe nội dung thể hiện trên bìa. Không thay thế bố cục.
+                          Chọn chất vẽ tổng thể: anime, manhwa, cinematic, collage hoặc poster.
                         </p>
                       </div>
 
@@ -654,8 +652,7 @@ export default function AIFactoryPanelView({
                           disabled={isRunning}
                           value={config.coverCompositionPreset ?? 'auto'}
                           onChange={(event) =>
-                            updateConfig(
-                              'coverCompositionPreset',
+                            updateCoverCompositionPreset(
                               event.target.value as AIFactoryConfig['coverCompositionPreset'],
                             )
                           }
@@ -668,20 +665,19 @@ export default function AIFactoryPanelView({
                           ))}
                         </select>
                         <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                          Layout / dàn khung ảnh: poster cảnh chính hoặc collage nhiều lớp.
+                          Điều khiển khung hình: không để nữ chính zoom quá lớn, ưu tiên bối cảnh, vật chứng và nhân vật phụ.
                         </p>
                       </div>
 
                       <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-xs leading-relaxed text-yellow-50/90">
                         <div className="font-bold text-yellow-100">Option ảnh đang chọn</div>
-                        <div className="mt-1">Phong cách: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
-                        <div>Mô típ: {getCoverSceneLabel(config.coverSceneType)}</div>
+                        <div className="mt-1">Dạng vẽ: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
                         <div>Bố cục: {getCoverCompositionLabel(config.coverCompositionPreset)}</div>
                       </div>
                     </div>
                   ) : (
                     <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-relaxed text-slate-500">
-                      Generate cover đang tắt nên phần chọn phong cách / mô típ / bố cục ảnh được ẩn để đỡ rối.
+                      Generate cover đang tắt nên phần chọn dạng vẽ / bố cục ảnh được ẩn để đỡ rối.
                     </div>
                   )}
                 </div>
@@ -840,8 +836,7 @@ export default function AIFactoryPanelView({
                       <div>Generate cover: {config.generateCover ? 'Bật' : 'Tắt'}</div>
                       {config.generateCover ? (
                         <>
-                          <div>Phong cách vẽ ảnh bìa: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
-                          <div>Mô típ bìa: {getCoverSceneLabel(config.coverSceneType)}</div>
+                          <div>Dạng vẽ ảnh bìa: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
                           <div>Bố cục ảnh bìa: {getCoverCompositionLabel(config.coverCompositionPreset)}</div>
                         </>
                       ) : null}

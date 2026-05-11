@@ -5,17 +5,38 @@ export type FactoryStoryEditorMode = 'off' | 'standard' | 'careful'
 
 export type CoverArtStyle =
   | 'auto'
+
+  // New UI names — Dạng vẽ ảnh bìa
+  | 'anime_glossy'
+  | 'manhwa_drama'
+  | 'cinematic_semi_realistic'
+  | 'cinematic_realistic'
+  | 'monochrome_collage'
+  | 'promo_poster'
+
+  // Legacy/internal compatibility
   | 'anime_cinematic'
   | 'manga_manhwa'
-  | 'cinematic_realistic'
   | 'popular_webnovel_collage'
   | 'ancient_chinese_cinematic_romance'
 
 export type CoverCompositionPreset =
   | 'auto'
+
+  // New UI names — Bố cục ảnh bìa
+  | 'single_heroine_center'
+  | 'public_confrontation'
+  | 'evidence_focus'
+  | 'mother_child_protection'
+  | 'betrayal_triangle'
+  | 'collage_story_poster'
+
+  // Legacy/internal compatibility
   | 'story_scene_offset'
   | 'luxury_collage'
 
+// Giữ lại tạm để tương thích code cũ.
+// UI mới sẽ bỏ dropdown “Mô típ bìa”, nhưng một số luồng cover cũ vẫn có thể đọc field này.
 export type CoverSceneType =
   | 'auto_story_scene'
   | 'collage_story_poster'
@@ -66,9 +87,15 @@ export type AIFactoryConfig = {
   delayMs: number
   generateCover: boolean
   storyEditorMode: FactoryStoryEditorMode
+
+  // Cover UI mới:
+  // - coverArtStyle = Dạng vẽ ảnh bìa
+  // - coverCompositionPreset = Bố cục ảnh bìa
+  // - coverSceneType giữ tạm để tương thích, không còn cần hiển thị riêng trong UI.
   coverArtStyle: CoverArtStyle
   coverCompositionPreset: CoverCompositionPreset
   coverSceneType: CoverSceneType
+
   storyStatus: 'draft'
   chapterStatus: 'draft'
   chapterLengthLabel: string
