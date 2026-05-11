@@ -62,6 +62,55 @@ function normalizeVietnameseProseArtifacts(input: string) {
   let text = String(input || '')
 
   const replacements: Array<[RegExp, string]> = [
+    // v37.2 cleanup từ các truyện test mới nhất
+    [/Đó là dữ kiện rõ ràng\.?/gi, 'Câu đó đủ khiến cả phòng im xuống.'],
+    [
+      /Trong khoảnh khắc đó,\s*quyền lực dịch chuyển:\s*từ người định dàn xếp sang người có nghi vấn\.?/gi,
+      'Lúc đó, người đang vội dàn xếp không còn giữ được vẻ chắc thắng như ban đầu.',
+    ],
+    [/quyền lực dịch chuyển/gi, 'tình thế bắt đầu đổi khác'],
+    [/Cả phòng lạnh đi vài giây\.?/gi, 'Không ai nói gì trong vài giây.'],
+    [/cả phòng lạnh đi vài giây/gi, 'không ai nói gì trong vài giây'],
+    [
+      /Chưa thắng,\s*nhưng có đường để đi\.?/gi,
+      'Tôi chưa thắng. Nhưng ít nhất, họ không thể ép tôi ký ngay lúc này.',
+    ],
+    [
+      /Hạn chót của ngày vẫn ở ngoài kia,\s*nhưng ít nhất bây giờ,\s*tôi không còn là người duy nhất đưa ra quyết định trong căn phòng này\.?/gi,
+      'Phòng công chứng sắp hết giờ làm việc. Nhưng ít nhất lúc này, họ không thể ép tôi ký ngay nữa.',
+    ],
+    [/Hạn chót của ngày vẫn ở ngoài kia/gi, 'Phòng công chứng sắp hết giờ làm việc'],
+    [/hạn chót của ngày vẫn ở ngoài kia/gi, 'phòng công chứng sắp hết giờ làm việc'],
+    [/Mọi ánh mắt quẹo sang tôi/gi, 'Mọi người trong phòng đều quay sang nhìn tôi'],
+    [/mọi ánh mắt quẹo sang tôi/gi, 'mọi người trong phòng đều quay sang nhìn tôi'],
+    [/nụ cười cố ý khinh/gi, 'khóe miệng nhếch lên như đã nắm chắc kết quả'],
+    [/đặt ấn xuống bàn/gi, 'đặt mạnh xuống bàn'],
+    [/Đèn trong phòng xét nghiệm chớp nhè nhẹ/gi, 'Đèn trong phòng xét nghiệm sáng trắng đến nhức mắt'],
+    [/đèn trong phòng xét nghiệm chớp nhè nhẹ/gi, 'đèn trong phòng xét nghiệm sáng trắng đến nhức mắt'],
+    [/thoáng chểnh/gi, 'im bớt'],
+    [
+      /Áp lực từ phía anh có vẻ khác\s*[—-]\s*không ồn ào như Trình,\s*mà là cái nhìn khiến những người xung quanh im bớt\.?/gi,
+      'Sự xuất hiện của anh ta khiến mấy người trong phòng lập tức im bớt. Ngay cả Trình Thiệu Hành cũng liếc sang một cái.',
+    ],
+    [
+      /Áp lực từ phía anh có vẻ khác\s*[—-]\s*không ồn ào như Trình,\s*mà là cái nhìn khiến những người xung quanh thoáng chểnh\.?/gi,
+      'Sự xuất hiện của anh ta khiến mấy người trong phòng lập tức im bớt. Ngay cả Trình Thiệu Hành cũng liếc sang một cái.',
+    ],
+    [
+      /Cảm giác chiếc ghim như kim nhỏ găm vào việc tôi vun giữ cho con\.?/gi,
+      'Tôi nhìn chiếc ghim bạc, cổ họng nghẹn lại. Chỉ một thứ nhỏ như vậy cũng đủ để họ biến tôi thành người không có quyền ở lại bên con.',
+    ],
+    [
+      /và vì một chiếc ghim nhỏ trên trang cũ sẽ là đầu mối dẫn tôi tới ai đã tráo hồ sơ\.?/gi,
+      'Tôi nhìn chiếc ghim bạc trên trang giấy cũ. Chỉ cần tìm được người đã ghim tờ mới vào, tôi sẽ biết ai đứng sau chuyện này.',
+    ],
+    [/dẫn tôi tới ai đã tráo hồ sơ/gi, 'giúp tôi tìm ra người đã tráo hồ sơ'],
+    [
+      /dáng đi như người đã đến đúng lúc để dập tắt mọi chuyện/gi,
+      'anh ta bước vào rất đúng lúc, như chỉ chờ cảnh này xảy ra',
+    ],
+
+    // v37 cleanup
     [/Từ góc vực đông người/gi, 'Từ phía đám đông'],
     [/ở góc vực đông người/gi, 'ở phía đám đông'],
     [/góc vực đông người/gi, 'phía đám đông'],
@@ -198,7 +247,6 @@ function findVietnameseNaturalnessIssues(input: string) {
       'cụm v32 còn giọng AI/câu slogan cần soi thủ công',
     ],
     [/mở ra khả năng|đêm còn dài/gi, 'câu tổng kết/kịch hóa cuối cảnh nên viết cụ thể hơn'],
-
     [
       /nơi tôi che chắn nhất/gi,
       'cụm “nơi tôi che chắn nhất” còn trừu tượng, nên đổi thành điều nhân vật muốn bảo vệ cụ thể',
@@ -207,9 +255,9 @@ function findVietnameseNaturalnessIssues(input: string) {
       /chuông vẫn vang trong đầu/gi,
       'cụm “chuông vẫn vang trong đầu” dễ thành biểu tượng văn chương, nên viết thành nhân vật nhớ rõ âm thanh',
     ],
-    [/hạn chót đã có/gi, 'câu “hạn chót đã có” giống slogan cuối chương'],
+    [/hạn chót đã có|hạn chót của ngày/gi, 'câu “hạn chót” giống slogan cuối chương'],
     [/không định bỏ lỡ/gi, 'cụm “không định bỏ lỡ” dễ thành câu slogan AI'],
-    [/quyền lực chao đảo/gi, 'cụm “quyền lực chao đảo” sân khấu hóa, nên viết cụ thể ai bị ảnh hưởng'],
+    [/quyền lực chao đảo|quyền lực dịch chuyển/gi, 'cụm quyền lực sân khấu hóa, nên viết cụ thể ai bị ảnh hưởng'],
     [/nụ cười mỏng lại/gi, 'cụm “nụ cười mỏng lại” hơi convert/AI'],
     [/nước mắt lăn không thành tiếng/gi, 'cụm “nước mắt lăn không thành tiếng” sáo và gượng'],
     [/mắt dán vào[^.\n]{0,80}như bị hút/gi, 'cụm “mắt dán vào... như bị hút” còn giọng AI'],
@@ -220,6 +268,19 @@ function findVietnameseNaturalnessIssues(input: string) {
     [
       /dấu tay mà tôi sẽ dùng để lần theo/gi,
       'cụm dấu tay suy luận hơi phi logic, nên viết rõ cần kiểm tra vật chứng để tìm dấu vân tay',
+    ],
+    [/Đó là dữ kiện rõ ràng/gi, 'câu “Đó là dữ kiện rõ ràng” là giọng phân tích, không nên lọt vào bản đọc'],
+    [/Mọi ánh mắt quẹo sang tôi/gi, 'cụm “ánh mắt quẹo sang” sai collocation'],
+    [/đặt ấn xuống bàn/gi, 'cụm “đặt ấn xuống bàn” Hán Việt/gượng'],
+    [/thoáng chểnh/gi, 'cụm “thoáng chểnh” sai tai'],
+    [/Đèn trong phòng xét nghiệm chớp nhè nhẹ/gi, 'cụm đèn xét nghiệm chớp nhè nhẹ hơi phim hóa/gượng'],
+    [
+      /chiếc ghim như kim nhỏ găm|kim nhỏ găm vào việc tôi vun giữ/gi,
+      'ẩn dụ chiếc ghim/kim còn gượng, nên viết thành phản ứng cụ thể của nhân vật',
+    ],
+    [
+      /dẫn tôi tới ai đã tráo hồ sơ/gi,
+      'cụm “dẫn tôi tới ai” sai tai, nên viết “giúp tôi tìm ra người...”',
     ],
   ]
 
