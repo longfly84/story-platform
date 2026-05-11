@@ -89,6 +89,28 @@ export function useAIFactoryPanelController() {
     motifTexts: [],
   })
 
+  const AI_ADMIN_TOKEN_STORAGE_KEY = 'story-platform-ai-admin-token'
+
+  function getAIAdminToken() {
+    if (typeof window === 'undefined') return ''
+
+    return window.localStorage
+      .getItem(AI_ADMIN_TOKEN_STORAGE_KEY)
+      ?.trim() || ''
+  }
+
+  function getAIAdminHeaders(): Record<string, string> {
+    const token = getAIAdminToken()
+
+    if (!token) {
+      return {}
+    }
+
+    return {
+      'x-ai-admin-token': token,
+    }
+  }
+
   const [jobs, setJobs] = useState<FactoryJob[]>([])
   const [logs, setLogs] = useState<FactoryLog[]>([])
   const [status, setStatus] = useState<FactoryStatus>('idle')
@@ -594,6 +616,7 @@ Yêu cầu:
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getAIAdminHeaders(),
       },
       body: JSON.stringify(payload),
     })
@@ -775,6 +798,7 @@ Yêu cầu:
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getAIAdminHeaders(),
       },
       body: JSON.stringify({
         provider: 'openai',
