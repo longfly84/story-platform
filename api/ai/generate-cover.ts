@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import type { JsonRecord } from './cover/coverTypes.js'
+import type { CoverImageQuality, JsonRecord } from './cover/coverTypes.js'
 import { setCors } from './cover/coverHttp.js'
 import { safeString } from './cover/coverText.js'
 import { extractStoryInput } from './cover/storyInput.js'
@@ -15,6 +15,17 @@ function parseBody(req: VercelRequest): JsonRecord {
   }
 
   return (req.body || {}) as JsonRecord
+}
+
+function asRecord(value: unknown): JsonRecord {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : {}
+}
+
+function normalizeCoverImageQuality(value: unknown): CoverImageQuality {
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'high' ? 'high' : 'medium'
 }
 
 function shouldReturnBase64Fallback(body: JsonRecord, publicUrl: string | null) {
@@ -54,6 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const body = parseBody(req)
     const story = extractStoryInput(body)
+    const storyPayload = asRecord(body.story)
 
     if (!story.title) {
       return res.status(400).json({
@@ -62,8 +74,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
+    const requestedQuality = normalizeCoverImageQuality(
+      body.coverQuality ||
+        body.imageQuality ||
+        body.quality ||
+        storyPayload.coverQuality ||
+        storyPayload.imageQuality ||
+        storyPayload.quality,
+    )
+
     const { prompt, fallbackPrompt, coverConcept } = buildCoverPrompt(story)
-    const imageResult = await generateCoverImage(prompt, fallbackPrompt)
+
+    console.info('[generate-cover] cover concept:', {
+      title: story.title,
+      coverArtStyle: (coverConcept as any)?.coverArtStyle,
+      sceneType: (coverConcept as any)?.sceneType,
+      storyStage: (coverConcept as any)?.storyStage,
+    })
+    
+    const imageResult = await generateCoverImage(prompt, fallbackPrompt, requestedQuality)
     const imageBuffer = Buffer.from(imageResult.b64, 'base64')
 
     const uploadEnabled = body.uploadToSupabase !== false
@@ -124,6 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       coverConcept,
       currentChapterCount: story.currentChapterCount || 0,
       targetChapters: story.targetChapters || 0,
+      imageQualityUsed: imageResult.imageQualityUsed || requestedQuality,
 
       publicUrl,
       imageUrl: publicUrl,

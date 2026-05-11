@@ -9,6 +9,7 @@ export type CoverArtStyle =
   // New UI names — Dạng vẽ ảnh bìa
   | 'anime_glossy'
   | 'manhwa_drama'
+  | 'clean_webtoon_manhua'
   | 'cinematic_semi_realistic'
   | 'cinematic_realistic'
   | 'monochrome_collage'
@@ -37,6 +38,8 @@ export type CoverCompositionPreset =
 
 // Giữ lại tạm để tương thích code cũ.
 // UI mới sẽ bỏ dropdown “Mô típ bìa”, nhưng một số luồng cover cũ vẫn có thể đọc field này.
+export type CoverImageQuality = 'medium' | 'high'
+
 export type CoverSceneType =
   | 'auto_story_scene'
   | 'collage_story_poster'
@@ -95,6 +98,7 @@ export type AIFactoryConfig = {
   coverArtStyle: CoverArtStyle
   coverCompositionPreset: CoverCompositionPreset
   coverSceneType: CoverSceneType
+  coverImageQuality?: CoverImageQuality
 
   storyStatus: 'draft'
   chapterStatus: 'draft'

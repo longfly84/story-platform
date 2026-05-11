@@ -62,7 +62,6 @@ function normalizeVietnameseProseArtifacts(input: string) {
   let text = String(input || '')
 
   const replacements: Array<[RegExp, string]> = [
-    // v37.2 cleanup từ các truyện test mới nhất
     [/Đó là dữ kiện rõ ràng\.?/gi, 'Câu đó đủ khiến cả phòng im xuống.'],
     [
       /Trong khoảnh khắc đó,\s*quyền lực dịch chuyển:\s*từ người định dàn xếp sang người có nghi vấn\.?/gi,
@@ -110,7 +109,6 @@ function normalizeVietnameseProseArtifacts(input: string) {
       'anh ta bước vào rất đúng lúc, như chỉ chờ cảnh này xảy ra',
     ],
 
-    // v37 cleanup
     [/Từ góc vực đông người/gi, 'Từ phía đám đông'],
     [/ở góc vực đông người/gi, 'ở phía đám đông'],
     [/góc vực đông người/gi, 'phía đám đông'],
@@ -295,6 +293,32 @@ function findVietnameseNaturalnessIssues(input: string) {
   return [...new Set(issues)].slice(0, 10)
 }
 
+function getEditorPassTimeoutMs() {
+  const raw = Number(process.env.OPENAI_EDITOR_TIMEOUT_MS || 18000)
+  if (!Number.isFinite(raw)) return 18000
+  return Math.max(8000, Math.min(25000, Math.floor(raw)))
+}
+
+function getErrorMessage(error: any) {
+  return error?.message || error?.error?.message || String(error || 'Unknown error')
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(message))
+    }, timeoutMs)
+  })
+
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -398,12 +422,17 @@ export default async function handler(req: any, res: any) {
 
         await moderateTextOrThrow(editorPrompt, 'story editor input')
 
-        const editorPass = await callOpenAIText({
-          apiKey,
-          model,
-          prompt: editorPrompt,
-          maxOutputTokens: lengthRule.maxOutputTokens,
-        })
+        const editorTimeoutMs = getEditorPassTimeoutMs()
+        const editorPass = await withTimeout(
+          callOpenAIText({
+            apiKey,
+            model,
+            prompt: editorPrompt,
+            maxOutputTokens: lengthRule.maxOutputTokens,
+          }),
+          editorTimeoutMs,
+          `Story editor pass timed out after ${editorTimeoutMs}ms`,
+        )
 
         if (editorPass.response.ok && !editorPass.data?.__nonJson && editorPass.text) {
           finalText = editorPass.text
@@ -415,10 +444,14 @@ export default async function handler(req: any, res: any) {
             editorPass.data?.error?.message ||
             editorPass.data?.preview ||
             `Story editor pass failed with status ${editorPass.response.status}`
+
+          finalText = draftText
         }
       } catch (editorErrorRaw: any) {
         editorPassFailed = true
-        editorError = editorErrorRaw?.message || 'Story editor pass failed'
+        editorError = getErrorMessage(editorErrorRaw) || 'Story editor pass failed'
+
+        finalText = draftText
       }
     }
 

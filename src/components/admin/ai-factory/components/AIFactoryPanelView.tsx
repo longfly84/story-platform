@@ -25,6 +25,7 @@ const COVER_ART_STYLE_OPTIONS: Array<{
   { value: 'auto', label: 'Tự động theo nội dung truyện' },
   { value: 'anime_glossy', label: 'Anime webnovel bóng bẩy' },
   { value: 'manhwa_drama', label: 'Manhwa / Manhua drama' },
+  { value: 'clean_webtoon_manhua', label: 'Webtoon / Manhua sạch màu sáng' },
   { value: 'cinematic_semi_realistic', label: 'Cinematic semi-realistic' },
   { value: 'cinematic_realistic', label: 'Cinematic realistic / poster phim' },
   { value: 'monochrome_collage', label: 'Collage đơn sắc / drama u tối' },
@@ -98,6 +99,14 @@ function getCoverArtStyleLabel(value: AIFactoryConfig['coverArtStyle'] | undefin
 
 function getCoverCompositionLabel(value: AIFactoryConfig['coverCompositionPreset'] | undefined): string {
   return getOptionLabel(COVER_COMPOSITION_OPTIONS, value ?? 'auto', 'Tự động theo nội dung truyện')
+}
+
+function getCoverImageQualityLabel(
+  value: AIFactoryConfig['coverImageQuality'] | undefined,
+): string {
+  return value === 'high'
+    ? 'High — đẹp hơn, tốn tiền hơn'
+    : 'Medium — mặc định, cân bằng chi phí'
 }
 
 function mapCompositionToLegacySceneType(
@@ -669,10 +678,37 @@ export default function AIFactoryPanelView({
                         </p>
                       </div>
 
+
+                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                        <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-200">
+                          <input
+                            type="checkbox"
+                            disabled={isRunning}
+                            checked={(config.coverImageQuality ?? 'medium') === 'high'}
+                            onChange={(event) =>
+                              updateConfig(
+                                'coverImageQuality',
+                                (event.target.checked ? 'high' : 'medium') as AIFactoryConfig['coverImageQuality'],
+                              )
+                            }
+                            className="mt-1 h-4 w-4 accent-yellow-300"
+                          />
+                          <span>
+                            <span className="block font-bold text-slate-100">
+                              Dùng chất lượng High cho ảnh bìa
+                            </span>
+                            <span className="mt-1 block text-xs leading-relaxed text-slate-400">
+                              Bỏ tick = Medium mặc định, rẻ hơn. Tick = High, ảnh đẹp hơn nhưng tốn phí hơn.
+                            </span>
+                          </span>
+                        </label>
+                      </div>
+
                       <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-xs leading-relaxed text-yellow-50/90">
                         <div className="font-bold text-yellow-100">Option ảnh đang chọn</div>
                         <div className="mt-1">Dạng vẽ: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
                         <div>Bố cục: {getCoverCompositionLabel(config.coverCompositionPreset)}</div>
+                        <div>Chất lượng ảnh: {getCoverImageQualityLabel(config.coverImageQuality)}</div>
                       </div>
                     </div>
                   ) : (
@@ -838,6 +874,7 @@ export default function AIFactoryPanelView({
                         <>
                           <div>Dạng vẽ ảnh bìa: {getCoverArtStyleLabel(config.coverArtStyle)}</div>
                           <div>Bố cục ảnh bìa: {getCoverCompositionLabel(config.coverCompositionPreset)}</div>
+                          <div>Chất lượng ảnh bìa: {getCoverImageQualityLabel(config.coverImageQuality)}</div>
                         </>
                       ) : null}
                     </div>

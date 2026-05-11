@@ -2,6 +2,7 @@ import type {
   AIFactoryConfig,
   AvoidLibrary,
   CoverArtStyle,
+  CoverImageQuality,
   FactoryGenreOption,
   FactoryHeroineOption,
   FactoryLog,
@@ -70,6 +71,7 @@ function normalizeCoverArtStyle(value: unknown): CoverArtStyle {
     raw === 'auto' ||
     raw === 'anime_glossy' ||
     raw === 'manhwa_drama' ||
+    raw === 'clean_webtoon_manhua' ||
     raw === 'cinematic_semi_realistic' ||
     raw === 'cinematic_realistic' ||
     raw === 'monochrome_collage' ||
@@ -88,6 +90,11 @@ function normalizeCoverArtStyle(value: unknown): CoverArtStyle {
   if (raw === 'modern-manhwa') return 'manhwa_drama'
   if (raw === 'manga-drama') return 'manhwa_drama'
   if (raw === 'manga_manhwa') return 'manhwa_drama'
+  if (raw === 'clean-webtoon-manhua') return 'clean_webtoon_manhua'
+  if (raw === 'bright_webtoon') return 'clean_webtoon_manhua'
+  if (raw === 'bright-webtoon') return 'clean_webtoon_manhua'
+  if (raw === 'wedding_drama_manhua') return 'clean_webtoon_manhua'
+  if (raw === 'wedding-drama-manhua') return 'clean_webtoon_manhua'
   if (raw === 'semi-realistic') return 'cinematic_semi_realistic'
   if (raw === 'movie-poster') return 'cinematic_realistic'
   if (raw === 'popular-webnovel-collage') return 'monochrome_collage'
@@ -96,12 +103,19 @@ function normalizeCoverArtStyle(value: unknown): CoverArtStyle {
   return 'auto'
 }
 
+function normalizeCoverImageQuality(value: unknown): CoverImageQuality {
+  const raw = String(value || '').trim().toLowerCase()
+  return raw === 'high' ? 'high' : 'medium'
+}
+
 function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
   switch (normalizeCoverArtStyle(style)) {
     case 'anime_glossy':
       return 'Anime webnovel bóng bẩy — glossy Chinese webnovel anime/manhua cover, đẹp nhưng vẫn ưu tiên kể chuyện'
     case 'manhwa_drama':
       return 'Manhwa / Manhua drama — nét rõ, giàu cảm xúc, hợp bìa truyện drama'
+    case 'clean_webtoon_manhua':
+      return 'Clean Webtoon / Manhua — nét sạch, màu sáng, biểu cảm rõ, hợp drama hào môn / cưới hỏi / đối đầu công khai'
     case 'cinematic_semi_realistic':
       return 'Cinematic semi-realistic — poster phim minh họa, gần thật nhưng vẫn là tranh'
     case 'cinematic_realistic':
@@ -861,6 +875,9 @@ export async function generateAndAttachFactoryCover(params: {
       ? params.config.coverSceneType
       : sceneTypeFromComposition,
   )
+  const normalizedCoverImageQuality = normalizeCoverImageQuality(
+    params.config.coverImageQuality,
+  )
 
   const storyDna = params.storySeed
     ? {
@@ -903,10 +920,15 @@ export async function generateAndAttachFactoryCover(params: {
       visual_style: normalizedCoverArtStyle,
       style: normalizedCoverArtStyle,
       styleLabel: getCoverArtStyleLabel(normalizedCoverArtStyle),
+      coverStyleLabel: getCoverArtStyleLabel(normalizedCoverArtStyle),
+      coverLayoutKey: normalizedCoverCompositionPreset,
       coverCompositionPreset: normalizedCoverCompositionPreset,
       cover_composition_preset: normalizedCoverCompositionPreset,
       suggestedCoverSceneType: normalizedCoverSceneType,
       suggested_cover_scene_type: normalizedCoverSceneType,
+      coverQuality: normalizedCoverImageQuality,
+      imageQuality: normalizedCoverImageQuality,
+      quality: normalizedCoverImageQuality,
       aspectRatio: '2:3',
     }),
   })

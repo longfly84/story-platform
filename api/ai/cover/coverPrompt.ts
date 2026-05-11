@@ -111,6 +111,21 @@ function normalizeCoverArtStyle(raw: unknown): CoverArtStyleKey {
   }
 
   if (
+    value === 'clean_webtoon_manhua' ||
+    value === 'clean-webtoon-manhua' ||
+    value.includes('clean webtoon') ||
+    value.includes('bright webtoon') ||
+    value.includes('webtoon sach') ||
+    value.includes('webtoon sạch') ||
+    value.includes('webtoon manhua') ||
+    value.includes('manhua sang') ||
+    value.includes('mau sang') ||
+    value.includes('màu sáng')
+  ) {
+    return 'clean_webtoon_manhua'
+  }
+
+  if (
     value === 'manga_manhwa' ||
     value === 'manga-manhwa' ||
     value === 'manhwa_drama' ||
@@ -593,6 +608,19 @@ The cover should promise secrets, pain, and future confrontation without needing
 
 function buildStyleBlock(style: CoverArtStyleKey): string {
   switch (style) {
+    case 'clean_webtoon_manhua':
+      return `
+STYLE PRESET: CLEAN_WEBTOON_MANHUA.
+- clean premium webtoon / manhua romance-drama illustration
+- polished clean line art, crisp outlines, expressive faces, and readable body language
+- bright elegant interior lighting, soft luxury color, clear storytelling
+- suitable for wedding, hotel, banquet, restaurant, cashier counter, family confrontation, and public embarrassment scenes
+- allow 3 to 6 characters in one clear dramatic scene when the story supports it
+- not hyper-realistic, not gritty, not dark muddy cinematic realism
+- not childish, not chibi, not flat low-detail cartoon
+- keep the final result commercially attractive, easy to read, and strongly story-driven
+- keep the setting, supporting cast, evidence object, and conflict clearly visible
+`.trim()
     case 'manga_manhwa':
       return `
 STYLE PRESET: MANGA_MANHWA.
@@ -650,6 +678,20 @@ STYLE PRESET: ANIME_CINEMATIC.
 function buildReferenceLookBlock(data: ReturnType<typeof buildPromptData>): string {
   const collageMood = data.compositionPreset === 'luxury_collage' || data.coverArtStyle === 'popular_webnovel_collage'
 
+  if (data.coverArtStyle === 'clean_webtoon_manhua') {
+    return `
+REFERENCE LOOK TARGET:
+- The overall look should feel like a premium bright webtoon / manhua romance-drama cover.
+- Use clean line art, polished full color, expressive faces, elegant fashion, and readable multi-character storytelling.
+- The image can use warm luxury interior lighting, cream-white, champagne, soft gold, warm gray, and balanced contrast.
+- Good fits: wedding banquet, hotel lobby, restaurant counter, family confrontation, public humiliation, betrayal reveal, and billing/payment scenes.
+- Keep the characters attractive and dramatic, but do not make the image feel like a beauty portrait only.
+- Show the room, background people, evidence object, and main conflict clearly.
+- Avoid muddy dark realism, heavy film grain, horror lighting, dirty yellow wash, or over-detailed oil-painting texture.
+- This should feel cleaner, brighter, and more readable than the default anime cinematic style.
+`.trim()
+  }
+
   if (data.coverArtStyle === 'ancient_chinese_cinematic_romance') {
     return `
 REFERENCE LOOK TARGET:
@@ -702,7 +744,9 @@ function buildColorDiversityBlock(style: CoverArtStyleKey, sceneType: CoverScene
   const styleLine =
     style === 'ancient_chinese_cinematic_romance'
       ? 'For ancient romance, keep the base palette blue-gray / charcoal / misty teal; lantern orange may appear only as small rim light or background glow.'
-      : 'For modern drama, prefer cool neutral cinematic color grading; avoid sepia, champagne beige, and yellow-brown webnovel filter.'
+      : style === 'clean_webtoon_manhua'
+        ? 'For clean webtoon/manhua, bright luxury interior lighting is allowed: cream white, champagne, soft gold, warm gray, and clean skin tones. Avoid dirty yellow wash, sepia mud, and brown monochrome grading.'
+        : 'For modern drama, prefer cool neutral cinematic color grading; avoid sepia, champagne beige, and yellow-brown webnovel filter.'
 
   return `
 COLOR DIVERSITY LOCK:

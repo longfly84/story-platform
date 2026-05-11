@@ -3,7 +3,9 @@ const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1'
 const OPENAI_IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE || '1024x1536'
 const OPENAI_MODERATION_MODEL = process.env.OPENAI_MODERATION_MODEL || 'omni-moderation-latest'
 
-function normalizeImageQuality(value: string) {
+type OpenAIImageQuality = 'low' | 'medium' | 'high'
+
+function normalizeImageQuality(value: unknown): OpenAIImageQuality {
   const normalized = String(value || '')
     .trim()
     .toLowerCase()
@@ -15,7 +17,7 @@ function normalizeImageQuality(value: string) {
   return 'medium'
 }
 
-const OPENAI_IMAGE_QUALITY = normalizeImageQuality(process.env.OPENAI_IMAGE_QUALITY || 'medium')
+const DEFAULT_OPENAI_IMAGE_QUALITY = normalizeImageQuality(process.env.OPENAI_IMAGE_QUALITY || 'medium')
 
 function safeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
@@ -170,7 +172,7 @@ async function moderatePromptOrThrow(prompt: string) {
   return data
 }
 
-async function requestOpenAIImage(prompt: string) {
+async function requestOpenAIImage(prompt: string, requestedQuality?: unknown) {
   if (!OPENAI_API_KEY) {
     throw new Error('Missing OPENAI_API_KEY')
   }
@@ -180,6 +182,10 @@ async function requestOpenAIImage(prompt: string) {
   if (!safePrompt) {
     throw new Error('Missing cover prompt')
   }
+
+  const imageQuality = normalizeImageQuality(
+    requestedQuality || DEFAULT_OPENAI_IMAGE_QUALITY,
+  )
 
   await moderatePromptOrThrow(safePrompt)
 
@@ -193,7 +199,7 @@ async function requestOpenAIImage(prompt: string) {
       model: OPENAI_IMAGE_MODEL,
       prompt: safePrompt,
       size: OPENAI_IMAGE_SIZE,
-      quality: OPENAI_IMAGE_QUALITY,
+      quality: imageQuality,
     }),
   })
 
@@ -240,11 +246,12 @@ async function requestOpenAIImage(prompt: string) {
     b64,
     revisedPrompt,
     raw: data,
+    imageQualityUsed: imageQuality,
   }
 }
 
-async function requestBestEffortNoTextImage(prompt: string) {
-  const first = await requestOpenAIImage(prompt)
+async function requestBestEffortNoTextImage(prompt: string, requestedQuality?: unknown) {
+  const first = await requestOpenAIImage(prompt, requestedQuality)
 
   if (!containsTypographyRisk(first.revisedPrompt || '')) {
     return {
@@ -254,7 +261,7 @@ async function requestBestEffortNoTextImage(prompt: string) {
   }
 
   const rescuePrompt = buildUltraNoTextRescuePrompt(prompt)
-  const rescue = await requestOpenAIImage(rescuePrompt)
+  const rescue = await requestOpenAIImage(rescuePrompt, requestedQuality)
 
   return {
     ...rescue,
@@ -263,16 +270,20 @@ async function requestBestEffortNoTextImage(prompt: string) {
   }
 }
 
-export async function generateCoverImage(primaryPrompt: string, fallbackPrompt: string) {
+export async function generateCoverImage(
+  primaryPrompt: string,
+  fallbackPrompt: string,
+  requestedQuality?: unknown,
+) {
   const safePrimaryPrompt = safeString(primaryPrompt)
   const safeFallbackPrompt = safeString(fallbackPrompt) || buildEmergencyFallbackPrompt()
 
   try {
-    const result = await requestBestEffortNoTextImage(safePrimaryPrompt)
+    const result = await requestBestEffortNoTextImage(safePrimaryPrompt, requestedQuality)
 
     return {
       ...result,
-      promptUsed: result.promptUsedOverride || safePrimaryPrompt,
+      promptUsed: (result as any).promptUsedOverride || safePrimaryPrompt,
       fallbackUsed: false,
       emergencyFallbackUsed: false,
       primaryError: null as string | null,
@@ -286,11 +297,11 @@ export async function generateCoverImage(primaryPrompt: string, fallbackPrompt: 
     )
 
     try {
-      const result = await requestBestEffortNoTextImage(safeFallbackPrompt)
+      const result = await requestBestEffortNoTextImage(safeFallbackPrompt, requestedQuality)
 
       return {
         ...result,
-        promptUsed: result.promptUsedOverride || safeFallbackPrompt,
+        promptUsed: (result as any).promptUsedOverride || safeFallbackPrompt,
         fallbackUsed: true,
         emergencyFallbackUsed: false,
         primaryError: primaryError?.message || 'Primary prompt failed',
@@ -311,11 +322,11 @@ export async function generateCoverImage(primaryPrompt: string, fallbackPrompt: 
         throw fallbackError
       }
 
-      const result = await requestBestEffortNoTextImage(emergencyPrompt)
+      const result = await requestBestEffortNoTextImage(emergencyPrompt, requestedQuality)
 
       return {
         ...result,
-        promptUsed: result.promptUsedOverride || emergencyPrompt,
+        promptUsed: (result as any).promptUsedOverride || emergencyPrompt,
         fallbackUsed: true,
         emergencyFallbackUsed: true,
         primaryError: primaryError?.message || 'Primary prompt failed',
