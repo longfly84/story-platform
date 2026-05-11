@@ -1,5 +1,3 @@
-import { userVietnameseProseReplacementRules, userVietnameseProseWarningRules } from './vietnameseProseUserRules.js'
-
 export type VietnameseProseRuleCategory =
   | 'output_cleanup'
   | 'ai_metaphor'
@@ -419,15 +417,16 @@ const warningRules: VietnameseProseRule[] = [
 ]
 
 function applyRule(text: string, rule: VietnameseProseRule, appliedFixes: VietnameseProseAppliedFix[]) {
-  if (!rule.replacement) return text
+  const ruleReplacement = rule.replacement
+  if (!ruleReplacement) return text
 
   return text.replace(rule.pattern, (...args: any[]) => {
     const match = String(args[0] || '')
     const captures = args.slice(1, -2).map((value) => String(value || ''))
     const replacement =
-      typeof rule.replacement === 'function'
-        ? rule.replacement(match, captures)
-        : expandReplacement(rule.replacement, captures)
+      typeof ruleReplacement === 'function'
+        ? ruleReplacement(match, captures)
+        : expandReplacement(ruleReplacement, captures)
 
     if (replacement !== match) {
       appliedFixes.push({
@@ -447,7 +446,7 @@ function findIssues(text: string, appliedFixes: VietnameseProseAppliedFix[]) {
   const issues: VietnameseProseIssue[] = []
   const fixedIds = new Set(appliedFixes.map((fix) => fix.id))
 
-  for (const rule of [...replacementRules, ...userVietnameseProseReplacementRules, ...warningRules, ...userVietnameseProseWarningRules]) {
+  for (const rule of [...replacementRules, ...warningRules]) {
     if (rule.mode !== 'warning' && fixedIds.has(rule.id)) continue
 
     const freshPattern = new RegExp(rule.pattern.source, rule.pattern.flags)
@@ -476,7 +475,7 @@ export function runVietnameseProseQualityPipeline(input: string): VietnamesePros
   let text = String(input || '')
   const appliedFixes: VietnameseProseAppliedFix[] = []
 
-  for (const rule of [...replacementRules, ...userVietnameseProseReplacementRules]) {
+  for (const rule of replacementRules) {
     text = applyRule(text, rule, appliedFixes)
   }
 
