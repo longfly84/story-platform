@@ -63,12 +63,52 @@ import { resolvePanelStoryTitle } from '../utils/factoryPanelTitle'
 import {
   buildCleanFactoryStoryDescription,
   buildFactoryStorySlug,
+  isDuplicateStorySlugError,
   resolvePublicGenreSlugs,
 } from '../utils/factoryPanelStoryMeta'
 import {
   buildNaturalVietnameseProseInstruction,
   buildPanelChapterSeedLockInstruction,
 } from '../prompts/factoryPanelPrompts'
+
+
+type VietnameseRepairAppliedFixLog = {
+  id?: string
+  category?: string
+  before?: string
+  after?: string
+  message?: string
+}
+
+type VietnameseRepairStatsLog = {
+  fixedCount?: number
+  warningCount?: number
+  allowedCount?: number
+  fixedSamples?: VietnameseRepairAppliedFixLog[]
+  warningSamples?: Array<{
+    id?: string
+    category?: string
+    severity?: string
+    message?: string
+    sample?: string
+    genericSuggestion?: string
+  }>
+  allowedSamples?: string[]
+}
+
+type GenerateChapterResult = {
+  text: string
+  vietnameseRepairUsed?: boolean
+  vietnameseRepairIssues?: string[]
+  vietnameseRepairAppliedFixes?: VietnameseRepairAppliedFixLog[]
+  vietnameseRepairStats?: VietnameseRepairStatsLog
+}
+
+function compactFactoryLogText(value: unknown, maxLength = 140) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim()
+  if (text.length <= maxLength) return text
+  return `${text.slice(0, maxLength).trim()}...`
+}
 
 
 export function useAIFactoryPanelController() {
@@ -205,6 +245,61 @@ export function useAIFactoryPanelController() {
       },
       ...prev,
     ])
+  }
+
+
+  function logVietnameseProseQuality(label: string, result: GenerateChapterResult) {
+    const stats = result.vietnameseRepairStats || {}
+    const fixedCount = Number(stats.fixedCount || result.vietnameseRepairAppliedFixes?.length || 0)
+    const warningCount = Number(stats.warningCount || result.vietnameseRepairIssues?.length || 0)
+    const allowedCount = Number(stats.allowedCount || stats.allowedSamples?.length || 0)
+
+    if (!fixedCount && !warningCount && !allowedCount) {
+      addLog(`${label}: kiểm tra văn phong — sạch, không có câu phải sửa/cảnh báo.`, 'success')
+      return
+    }
+
+    addLog(
+      `${label}: kiểm tra văn phong — tự sửa ${fixedCount} câu, cảnh báo ${warningCount} câu, giữ ${allowedCount} cụm viral hợp gu.`,
+      warningCount ? 'warning' : 'success',
+    )
+
+    const fixedSamples =
+      Array.isArray(stats.fixedSamples) && stats.fixedSamples.length
+        ? stats.fixedSamples
+        : result.vietnameseRepairAppliedFixes || []
+
+    fixedSamples.slice(0, 5).forEach((fix, index) => {
+      const before = compactFactoryLogText(fix.before)
+      const after = compactFactoryLogText(fix.after)
+      addLog(
+        `  Auto fix ${index + 1}: “${before}” → “${after}”`,
+        'success',
+      )
+    })
+
+    const warningSamples =
+      Array.isArray(stats.warningSamples) && stats.warningSamples.length
+        ? stats.warningSamples.map((issue) => {
+            const sample = issue.sample ? `“${compactFactoryLogText(issue.sample)}”` : ''
+            const suggestion = issue.genericSuggestion
+              ? ` Gợi ý: ${compactFactoryLogText(issue.genericSuggestion, 180)}`
+              : ''
+            return `${sample}${sample ? ' — ' : ''}${issue.message || 'Câu/cụm cần soi lại.'}${suggestion}`.trim()
+          })
+        : result.vietnameseRepairIssues || []
+
+    warningSamples.slice(0, 5).forEach((issue, index) => {
+      addLog(`  Warning ${index + 1}: ${compactFactoryLogText(issue, 260)}`, 'warning')
+    })
+
+    const allowedSamples = Array.isArray(stats.allowedSamples) ? stats.allowedSamples : []
+    if (allowedSamples.length) {
+      addLog(
+        `  Viral allowed: ${allowedSamples.slice(0, 5).map((sample) => `“${compactFactoryLogText(sample, 80)}”`).join(' | ')}`,
+        'info',
+      )
+    }
   }
 
   function updateJob(jobId: string, patch: Partial<FactoryJob>) {
@@ -546,12 +641,25 @@ export function useAIFactoryPanelController() {
   }) {
     if (params.provider === 'mock') {
       await sleep(500)
-      return buildMockChapterOutput({
-        chapterNumber: params.chapterNumber,
-        genreLabel: params.genreLabel,
-        heroineLabel: params.heroineLabel,
-        runShortId: params.runShortId,
-      })
+      return {
+        text: buildMockChapterOutput({
+          chapterNumber: params.chapterNumber,
+          genreLabel: params.genreLabel,
+          heroineLabel: params.heroineLabel,
+          runShortId: params.runShortId,
+        }),
+        vietnameseRepairUsed: false,
+        vietnameseRepairIssues: [],
+        vietnameseRepairAppliedFixes: [],
+        vietnameseRepairStats: {
+          fixedCount: 0,
+          warningCount: 0,
+          allowedCount: 0,
+          fixedSamples: [],
+          warningSamples: [],
+          allowedSamples: [],
+        },
+      }
     }
 
     const finalChapterInstruction = params.isFinalChapter
@@ -633,7 +741,30 @@ Yêu cầu:
       throw new Error('API không trả về text hợp lệ.')
     }
 
-    return text
+    return {
+      text,
+      vietnameseRepairUsed: Boolean(data?.vietnameseRepairUsed),
+      vietnameseRepairIssues: Array.isArray(data?.vietnameseRepairIssues)
+        ? data.vietnameseRepairIssues
+        : [],
+      vietnameseRepairAppliedFixes: Array.isArray(data?.vietnameseRepairAppliedFixes)
+        ? data.vietnameseRepairAppliedFixes
+        : [],
+      vietnameseRepairStats: data?.vietnameseRepairStats || {
+        fixedCount: Array.isArray(data?.vietnameseRepairAppliedFixes)
+          ? data.vietnameseRepairAppliedFixes.length
+          : 0,
+        warningCount: Array.isArray(data?.vietnameseRepairIssues)
+          ? data.vietnameseRepairIssues.length
+          : 0,
+        allowedCount: 0,
+        fixedSamples: Array.isArray(data?.vietnameseRepairAppliedFixes)
+          ? data.vietnameseRepairAppliedFixes.slice(0, 8)
+          : [],
+        warningSamples: [],
+        allowedSamples: [],
+      },
+    }
   }
 
   async function insertStoryDraft(params: {
@@ -696,14 +827,17 @@ Yêu cầu:
       storySeed: params.storySeed,
     })
     const finalStoryTitle = safeString(params.parsed.storyTitle) || params.storySeed?.title || 'Truyện AI'
-    const finalStorySlug = buildFactoryStorySlug(
-      finalStoryTitle,
-      `${params.factoryRunId}-${params.storyIndex}`,
-    )
+    const baseSlugSuffix = `${params.factoryRunId}-${params.storyIndex}`
 
-    const fullPayload = {
+    const buildSlugForAttempt = (attempt: number) =>
+      buildFactoryStorySlug(
+        finalStoryTitle,
+        attempt <= 0 ? baseSlugSuffix : `${baseSlugSuffix}-${attempt}-${makeId().slice(0, 6)}`,
+      )
+
+    const buildFullPayload = (slug: string) => ({
       title: finalStoryTitle,
-      slug: finalStorySlug,
+      slug,
       description: params.parsed.storyDescription,
       author: 'Sưu Tầm',
       status: params.config.storyStatus,
@@ -714,29 +848,70 @@ Yêu cầu:
       story_memory: params.technicalReport,
       current_arc: 'Factory draft — chapter 1 generated',
       emotion_tags: [params.genre.label, params.heroine.label],
-    }
+    })
 
-    let result = await supabase.from('stories').insert(fullPayload).select('id, title, slug').single()
+    const buildMinimalPayload = (slug: string) => ({
+      title: finalStoryTitle,
+      slug,
+      description: params.parsed.storyDescription,
+      author: 'Sưu Tầm',
+      status: params.config.storyStatus,
+      genres: publicGenreSlugs,
+    })
 
-    if (result.error) {
+    let result: any = null
+    let finalStorySlug = buildSlugForAttempt(0)
+    const maxInsertAttempts = 5
+
+    for (let attempt = 0; attempt < maxInsertAttempts; attempt += 1) {
+      finalStorySlug = buildSlugForAttempt(attempt)
+
+      result = await supabase
+        .from('stories')
+        .insert(buildFullPayload(finalStorySlug))
+        .select('id, title, slug')
+        .single()
+
+      if (!result.error && result.data?.id) {
+        if (attempt > 0) {
+          addLog(`Insert story thành công sau khi đổi slug: ${finalStorySlug}`, 'success')
+        }
+        break
+      }
+
+      if (isDuplicateStorySlugError(result.error)) {
+        addLog(
+          `Slug story bị trùng (${finalStorySlug}), thử slug khác lần ${attempt + 1}/${maxInsertAttempts - 1}.`,
+          'warning',
+        )
+        continue
+      }
+
       addLog(`Insert story mở rộng lỗi, thử insert tối thiểu: ${result.error.message}`, 'warning')
 
       result = await supabase
         .from('stories')
-        .insert({
-          title: finalStoryTitle,
-          slug: finalStorySlug,
-          description: params.parsed.storyDescription,
-          author: 'Sưu Tầm',
-          status: params.config.storyStatus,
-          genres: publicGenreSlugs,
-        })
+        .insert(buildMinimalPayload(finalStorySlug))
         .select('id, title, slug')
         .single()
+
+      if (!result.error && result.data?.id) {
+        break
+      }
+
+      if (isDuplicateStorySlugError(result.error)) {
+        addLog(
+          `Slug story tối thiểu bị trùng (${finalStorySlug}), thử slug khác lần ${attempt + 1}/${maxInsertAttempts - 1}.`,
+          'warning',
+        )
+        continue
+      }
+
+      break
     }
 
-    if (result.error || !result.data?.id) {
-      throw new Error(result.error?.message || 'Không insert được story draft.')
+    if (result?.error || !result?.data?.id) {
+      throw new Error(result?.error?.message || 'Không insert được story draft.')
     }
 
     return result.data as { id: string; title: string; slug: string }
@@ -1109,7 +1284,7 @@ Yêu cầu:
             let validationErrors: string[] = []
 
             for (let attempt = 1; attempt <= 2; attempt += 1) {
-              output = await generateChapter({
+              const generatedChapter = await generateChapter({
                 provider: config.provider,
                 modelKey: config.modelKey,
                 storyTitle,
@@ -1124,6 +1299,9 @@ Yêu cầu:
                 factoryPromptIdea: '',
                 runShortId: `${storyId}-${nextChapterNumber}`,
               })
+
+              output = generatedChapter.text
+              logVietnameseProseQuality(`${storyTitle} chương ${nextChapterNumber}`, generatedChapter)
 
               parsed = parseChapterOutput({
                 output,
@@ -1437,7 +1615,7 @@ Yêu cầu:
             let validationErrors: string[] = []
 
             for (let attempt = 1; attempt <= 2; attempt += 1) {
-              output = await generateChapter({
+              const generatedChapter = await generateChapter({
                 provider: config.provider,
                 modelKey: config.modelKey,
                 storyTitle: createdStory?.title || '',
@@ -1453,6 +1631,9 @@ Yêu cầu:
                 runShortId,
                 storySeed,
               })
+
+              output = generatedChapter.text
+              logVietnameseProseQuality(`Story ${storyIndex} chương ${chapterNumber}`, generatedChapter)
 
               parsed = parseChapterOutput({
                 output,

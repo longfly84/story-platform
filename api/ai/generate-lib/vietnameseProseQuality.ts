@@ -1,3 +1,5 @@
+import { userVietnameseProseReplacementRules, userVietnameseProseWarningRules } from './vietnameseProseUserRules.js'
+
 export type VietnameseProseRuleCategory =
   | 'output_cleanup'
   | 'ai_metaphor'
@@ -44,10 +46,20 @@ export type VietnameseProseRule = {
   }>
 }
 
+export type VietnameseProseQualityStats = {
+  fixedCount: number
+  warningCount: number
+  allowedCount: number
+  fixedSamples: VietnameseProseAppliedFix[]
+  warningSamples: VietnameseProseIssue[]
+  allowedSamples: string[]
+}
+
 export type VietnameseProseQualityResult = {
   text: string
   issues: VietnameseProseIssue[]
   appliedFixes: VietnameseProseAppliedFix[]
+  stats: VietnameseProseQualityStats
 }
 
 function cleanSnippet(input: string, maxLength = 180) {
@@ -416,6 +428,37 @@ const warningRules: VietnameseProseRule[] = [
   },
 ]
 
+
+const viralAllowedPatterns: RegExp[] = [
+  /tôi\s+bật\s+cười\s+lạnh/giu,
+  /\bđược\s+lắm\b/giu,
+  /\bhay\s+thật\b/giu,
+  /anh\s+ta\s+tính\s+sai\s+rồi/giu,
+  /một\s+cuộc\.\s*hai\s+cuộc\.\s*ba\s+cuộc/giu,
+  /tôi\s+đã\s+chết\s+tâm/giu,
+  /người\s+dưng\s+nước\s+lã/giu,
+  /vỡ\s+phòng\s+ngự/giu,
+  /tuyến\s+phòng\s+thủ\s+cuối\s+cùng\s+trong\s+lòng\s+tôi\s+cũng\s+sụp\s+đổ/giu,
+  /điện\s+thoại[^.!?\n]{0,50}nổ\s+máy/giu,
+  /ví\s+WeChat\s+hết\s+tiền/giu,
+]
+
+function findViralAllowedSamples(text: string) {
+  const samples: string[] = []
+
+  for (const pattern of viralAllowedPatterns) {
+    const freshPattern = new RegExp(pattern.source, pattern.flags)
+    let match: RegExpExecArray | null
+
+    while ((match = freshPattern.exec(text)) && samples.length < 12) {
+      samples.push(cleanSnippet(match[0]))
+      if (!freshPattern.global) break
+    }
+  }
+
+  return Array.from(new Set(samples)).slice(0, 12)
+}
+
 function applyRule(text: string, rule: VietnameseProseRule, appliedFixes: VietnameseProseAppliedFix[]) {
   const ruleReplacement = rule.replacement
   if (!ruleReplacement) return text
@@ -446,7 +489,7 @@ function findIssues(text: string, appliedFixes: VietnameseProseAppliedFix[]) {
   const issues: VietnameseProseIssue[] = []
   const fixedIds = new Set(appliedFixes.map((fix) => fix.id))
 
-  for (const rule of [...replacementRules, ...warningRules]) {
+  for (const rule of [...replacementRules, ...userVietnameseProseReplacementRules, ...warningRules, ...userVietnameseProseWarningRules]) {
     if (rule.mode !== 'warning' && fixedIds.has(rule.id)) continue
 
     const freshPattern = new RegExp(rule.pattern.source, rule.pattern.flags)
@@ -475,13 +518,26 @@ export function runVietnameseProseQualityPipeline(input: string): VietnamesePros
   let text = String(input || '')
   const appliedFixes: VietnameseProseAppliedFix[] = []
 
-  for (const rule of replacementRules) {
+  for (const rule of [...replacementRules, ...userVietnameseProseReplacementRules]) {
     text = applyRule(text, rule, appliedFixes)
   }
 
+  const issues = findIssues(text, appliedFixes)
+  const allowedSamples = findViralAllowedSamples(text)
+  const visibleAppliedFixes = appliedFixes.slice(0, 30)
+  const visibleIssues = issues.slice(0, 12)
+
   return {
     text,
-    appliedFixes: appliedFixes.slice(0, 30),
-    issues: findIssues(text, appliedFixes),
+    appliedFixes: visibleAppliedFixes,
+    issues: visibleIssues,
+    stats: {
+      fixedCount: appliedFixes.length,
+      warningCount: issues.length,
+      allowedCount: allowedSamples.length,
+      fixedSamples: visibleAppliedFixes.slice(0, 8),
+      warningSamples: visibleIssues.slice(0, 8),
+      allowedSamples: allowedSamples.slice(0, 8),
+    },
   }
 }

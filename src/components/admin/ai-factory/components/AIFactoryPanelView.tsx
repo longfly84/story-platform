@@ -43,6 +43,7 @@ const COVER_COMPOSITION_OPTIONS: Array<{
   label: string
 }> = [
   { value: 'auto', label: 'Tự động theo nội dung truyện' },
+  { value: 'wide_story_scene', label: 'Bối cảnh rộng / cảnh truyện mở / thấy rõ không gian' },
   { value: 'single_heroine_center', label: 'Nhân vật trung tâm nhưng không zoom mặt' },
   { value: 'public_confrontation', label: 'Đối đầu công khai / nhiều nhân vật' },
   { value: 'evidence_focus', label: 'Vật chứng foreground / bằng chứng rõ' },
@@ -116,6 +117,8 @@ function mapCompositionToLegacySceneType(
     case 'collage_story_poster':
     case 'luxury_collage':
       return 'collage_story_poster'
+    case 'wide_story_scene':
+      return 'auto_story_scene'
     case 'mother_child_protection':
       return 'mother_child_protection'
     case 'evidence_focus':
@@ -1019,6 +1022,9 @@ export default function AIFactoryPanelView({
       </div>
 
       <Section title="Progress Log">
+        <div className="mb-3 rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-xs leading-relaxed text-cyan-100/90">
+          Kiểm tra văn phong chỉ hiện ở log/admin debug: số câu tự sửa, số cảnh báo và cụm viral được giữ nguyên. Nội dung chương đăng cho độc giả không bị chèn warning.
+        </div>
         <div className="max-h-[420px] space-y-2 overflow-auto rounded-xl bg-black/50 p-3">
           {logs.length ? (
             logs.map((log) => (
