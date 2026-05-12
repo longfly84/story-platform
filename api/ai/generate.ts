@@ -33,6 +33,104 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
   }
 }
 
+
+function getOpenAIRetryCount() {
+  const raw = Number(process.env.OPENAI_RETRY_COUNT || 3)
+  if (!Number.isFinite(raw)) return 3
+  return Math.max(0, Math.min(5, Math.floor(raw)))
+}
+
+function getOpenAIRetryBaseDelayMs() {
+  const raw = Number(process.env.OPENAI_RETRY_BASE_DELAY_MS || 1200)
+  if (!Number.isFinite(raw)) return 1200
+  return Math.max(300, Math.min(5000, Math.floor(raw)))
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function getRetryStatus(error: any) {
+  return Number(
+    error?.status ||
+      error?.response?.status ||
+      error?.cause?.status ||
+      error?.detail?.status ||
+      error?.error?.status ||
+      0,
+  )
+}
+
+function isRetryableOpenAIStatus(status: number) {
+  return status === 408 || status === 409 || status === 425 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504
+}
+
+function isRetryableOpenAIError(error: any) {
+  const status = getRetryStatus(error)
+  if (isRetryableOpenAIStatus(status)) return true
+
+  const message = getErrorMessage(error).toLowerCase()
+  return (
+    message.includes('fetch failed') ||
+    message.includes('network') ||
+    message.includes('econnreset') ||
+    message.includes('etimedout') ||
+    message.includes('timeout') ||
+    message.includes('socket') ||
+    message.includes('502') ||
+    message.includes('503') ||
+    message.includes('504') ||
+    message.includes('429')
+  )
+}
+
+function getRetryDelayMs(attemptIndex: number) {
+  const baseDelayMs = getOpenAIRetryBaseDelayMs()
+  const exponentialDelayMs = baseDelayMs * Math.pow(2, Math.max(0, attemptIndex - 1))
+  const jitterMs = Math.floor(Math.random() * 350)
+  return Math.min(10_000, exponentialDelayMs + jitterMs)
+}
+
+async function withOpenAIRetry<T>(label: string, run: () => Promise<T>, shouldRetryResult?: (result: T) => boolean): Promise<T> {
+  const maxRetries = getOpenAIRetryCount()
+  let lastError: any = null
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const result = await run()
+      if (!shouldRetryResult || !shouldRetryResult(result)) return result
+
+      if (attempt >= maxRetries) return result
+
+      const delayMs = getRetryDelayMs(attempt + 1)
+      console.warn(`[${label}] OpenAI retryable response, retry ${attempt + 1}/${maxRetries} after ${delayMs}ms`)
+      await sleep(delayMs)
+      continue
+    } catch (error: any) {
+      lastError = error
+      if (attempt >= maxRetries || !isRetryableOpenAIError(error)) throw error
+
+      const delayMs = getRetryDelayMs(attempt + 1)
+      console.warn(`[${label}] ${getErrorMessage(error)}, retry ${attempt + 1}/${maxRetries} after ${delayMs}ms`)
+      await sleep(delayMs)
+    }
+  }
+
+  throw lastError || new Error(`${label} failed after retry`)
+}
+
+function isRetryableOpenAITextResult(result: Awaited<ReturnType<typeof callOpenAIText>>) {
+  return isRetryableOpenAIStatus(result.response.status) || Boolean(result.data?.__nonJson && result.response.status >= 500)
+}
+
+async function callOpenAITextWithRetry(label: string, args: Parameters<typeof callOpenAIText>[0]) {
+  return withOpenAIRetry(label, () => callOpenAIText(args), isRetryableOpenAITextResult)
+}
+
+async function moderateTextOrThrowWithRetry(input: string, label: string) {
+  return withOpenAIRetry(`moderation:${label}`, () => moderateTextOrThrow(input, label))
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -83,13 +181,13 @@ export default async function handler(req: any, res: any) {
       .filter(Boolean)
       .join('\n\n')
 
-    await moderateTextOrThrow(moderationInput, 'story generation input')
+    await moderateTextOrThrowWithRetry(moderationInput, 'story generation input')
 
     const prompt = buildPrompt(payload)
     const lengthRule = getLengthRule(payload.chapterLengthLabel)
     const model = getTextModel(payload)
 
-    const firstPass = await callOpenAIText({
+    const firstPass = await callOpenAITextWithRetry('first-pass', {
       apiKey,
       model,
       prompt,
@@ -132,11 +230,11 @@ export default async function handler(req: any, res: any) {
       try {
         const editorPrompt = buildStoryEditorPrompt(payload, draftText)
 
-        await moderateTextOrThrow(editorPrompt, 'story editor input')
+        await moderateTextOrThrowWithRetry(editorPrompt, 'story editor input')
 
         const editorTimeoutMs = getEditorPassTimeoutMs()
         const editorPass = await withTimeout(
-          callOpenAIText({
+          callOpenAITextWithRetry('editor-pass', {
             apiKey,
             model,
             prompt: editorPrompt,
@@ -186,7 +284,7 @@ export default async function handler(req: any, res: any) {
     // - rule chắc chắn thì tự sửa
     // - rule cần ngữ cảnh thì trả warning để soi thủ công
 
-    await moderateTextOrThrow(finalText, 'story generation output')
+    await moderateTextOrThrowWithRetry(finalText, 'story generation output')
 
     const proseReport = {
       textChanged: vietnameseRepairUsed,
