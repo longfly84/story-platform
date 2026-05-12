@@ -51,24 +51,23 @@ function isModerationBlockedError(error: unknown) {
 
 function buildEmergencyFallbackPrompt() {
   return `
-Vertical 2:3 premium modern Chinese web-novel cover illustration.
+Vertical 2:3 premium modern East Asian web-novel cover illustration.
 
 Scene:
-A pulled-back wide cinematic story scene in a modern East Asian urban-drama setting: airport lounge, hotel lobby, glass office, event hall, factory floor, hospital corridor, school office, or another large readable public/interior space. The environment must occupy most of the image. Show foreground evidence, midground heroine, and background witnesses or pressure figures. The adult East Asian female lead is elegant and emotionally controlled, placed off-center, full body or 3/4 body, occupying only about 18% to 28% of the frame. Supporting silhouettes, staff, bystanders, antagonist figure, luggage, tables, machines, windows, corridor depth, or city lights help tell the story.
+A wide pulled-back cinematic story scene in a modern city environment, luxury hotel lobby, glass office atrium, airport hall, hospital corridor, factory floor, or event hall. The environment dominates the image with visible architecture, floor, ceiling, windows, furniture, crowd space, and depth. The adult East Asian female lead is small and off-center, full-body or 3/4 body, only about 8% to 16% of the frame. Several blurred but readable supporting figures stand at different distances, suggesting betrayal, secrets, pressure, and hidden truth. Evidence objects such as a blank folder, phone, suitcase, counter, bracelet, or document prop appear in the foreground or midground.
 
 Style:
-Premium Chinese commercial webnovel / manhua cinematic cover art, polished and expensive-looking, beautiful but story-first. Wide scene composition, detailed background, refined faces, graceful body language, soft-serious heroine expression.
+Polished premium Chinese manhua / webnovel cinematic cover art, elegant lighting, detailed environment design, commercial drama poster quality, wide establishing shot, scenic composition, not a portrait.
 
-Strict composition rules:
-Not a close-up portrait. Not a giant face. Not one woman covering most of the frame. Not a blurred tiny background. The viewer should understand the location before noticing facial details.
-
-Strict safety/text rules:
+Strict rules:
+No close-up portrait, no bust portrait, no giant heroine, no centered character blocking the background, no cramped room, no narrow corridor-only framing, no blurred useless background.
 No text, no title, no letters, no typography, no logo, no watermark.
 No blood, no weapons, no knife, no gun, no corpse, no dead body, no wounds, no gore, no explicit violence, no self-harm.
 Represent conflict only through symbolic emotional tension, shadows, reflections, distance, blank documents, turned-away phones, and lighting.
 Safe public social media cover art.
 `.trim()
 }
+
 
 function buildUltraNoTextRescuePrompt(prompt: string) {
   return `${safeString(prompt)}
@@ -80,6 +79,7 @@ ULTRA NO-TEXT RESCUE:
 - No readable or unreadable script-like marks.
 - All papers, phones, monitors, folders, books, signs, tickets, and documents must be blank, dark, blurred, covered, turned away, or abstract.
 - This is scene illustration only, not a poster with typography.
+- Keep the camera pulled far back. The heroine must stay small inside a large readable environment.
 - If the model tends to add any title or writing, remove it completely and keep only the illustration.`.trim()
 }
 
