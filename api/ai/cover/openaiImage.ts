@@ -51,24 +51,24 @@ function isModerationBlockedError(error: unknown) {
 
 function buildEmergencyFallbackPrompt() {
   return `
-Vertical 2:3 premium Chinese manhua / anime modern East Asian web-novel cover illustration.
+Vertical 2:3 premium Chinese manhua / Korean webtoon / high-end anime urban-drama webnovel cover illustration.
 
 Scene:
-A wide pulled-back cinematic story scene in a modern city environment, luxury hotel lobby, glass office atrium, airport hall, hospital corridor, factory floor, or event hall. The environment dominates the image with visible architecture, floor, ceiling, windows, furniture, crowd space, and depth. The adult East Asian female lead is small and off-center, full-body or 3/4 body, only about 8% to 16% of the frame. Several blurred but readable supporting figures stand at different distances, suggesting betrayal, secrets, pressure, and hidden truth. Evidence objects such as a blank folder, phone, suitcase, counter, bracelet, or document prop appear in the foreground or midground.
+A beautiful adult East Asian heroine in a bright modern story location, such as an airport hall, hotel lobby, glass office, event hall, factory floor, school office, hospital corridor, restaurant, shop, or public interior. Medium-wide composition, camera 2.5 to 5 meters away. The heroine occupies about 28% to 42% of the image, with a clear readable environment around her. Supporting figures in the background suggest witnesses, pressure, secrets, betrayal, and hidden truth.
 
 Style:
-Polished premium Chinese manhua / high-end anime webnovel cinematic cover art. Beautiful adult East Asian heroine with soft luminous eyes, glossy hair, refined pretty face, elegant modern outfit, graceful emotional expression. Clean crisp line art, luminous skin, soft painterly gradients, bright commercial color, detailed environment design, commercial drama poster quality, wide establishing shot, scenic composition, not a portrait.
-Avoid ugly dull semi-realistic AI poster, harsh realistic office-worker face, dead eyes, plastic mannequin skin, muddy gray-brown lighting, cheap 3D render, low-budget mobile game NPC look.
+Premium 2D Chinese manhua / Korean webtoon / high-end anime light novel cover art. Clean line art, beautiful face, luminous eyes, glossy hair, smooth skin, elegant modern clothing, bright commercial color, clear cel-shading with soft painterly gradients, polished dramatic promotional cover finish.
 
-Strict rules:
-No close-up portrait, no bust portrait, no giant heroine, no centered character blocking the background, no cramped room, no narrow corridor-only framing, no blurred useless background.
+Strict quality rules:
+Do not use photorealism, live-action drama still, gritty realism, muddy dark office lighting, low-budget 3D render, mobile game NPC art, harsh realistic face, dead eyes, plastic mannequin skin, or ugly semi-realistic AI poster style.
+
+Strict safety/text rules:
 No text, no title, no letters, no typography, no logo, no watermark.
 No blood, no weapons, no knife, no gun, no corpse, no dead body, no wounds, no gore, no explicit violence, no self-harm.
 Represent conflict only through symbolic emotional tension, shadows, reflections, distance, blank documents, turned-away phones, and lighting.
 Safe public social media cover art.
 `.trim()
 }
-
 
 function buildUltraNoTextRescuePrompt(prompt: string) {
   return `${safeString(prompt)}
