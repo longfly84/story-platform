@@ -17,16 +17,49 @@ export function getFactorySeedEvidence(storySeed?: FactoryStorySeed | null) {
 }
 
 export function titleCaseFactoryEvidence(input: string) {
-  return input
+  return safeString(input)
     .replace(/\s+/g, ' ')
     .trim()
     .split(' ')
     .map((word) => {
       if (!word) return word
-      if (/^(USB|QR|ADN|CEO|VIP)$/i.test(word)) return word.toUpperCase()
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+
+      const keepUpper = /^(USB|QR|ADN|CEO|VIP|PR|IP|ID|AI)$/i
+      if (keepUpper.test(word)) return word.toUpperCase()
+
+      const parts = word.split(/([\-/])/g)
+      return parts
+        .map((part) => {
+          if (!part || part === '-' || part === '/') return part
+          if (keepUpper.test(part)) return part.toUpperCase()
+          return part.charAt(0).toLocaleUpperCase('vi-VN') + part.slice(1).toLocaleLowerCase('vi-VN')
+        })
+        .join('')
     })
     .join(' ')
+}
+
+export function normalizeFactoryStoryTitleForDisplay(input: unknown) {
+  const clean = stripTechnicalTitleNotes(safeString(input))
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!clean) return ''
+
+  const titled = titleCaseFactoryEvidence(clean)
+
+  return titled
+    .replace(/\bbị\b/giu, 'Bị')
+    .replace(/\bcó\b/giu, 'Có')
+    .replace(/\bđược\b/giu, 'Được')
+    .replace(/\bkhông\b/giu, 'Không')
+    .replace(/\btrong\b/giu, 'Trong')
+    .replace(/\btrên\b/giu, 'Trên')
+    .replace(/\bdưới\b/giu, 'Dưới')
+    .replace(/\bsau\b/giu, 'Sau')
+    .replace(/\btrước\b/giu, 'Trước')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export function hasFactoryEvidenceState(input: string) {
@@ -174,13 +207,13 @@ function trimFactoryTitleToSafeLength(title: string) {
 export function makePanelTitleFromEvidence(storySeed?: FactoryStorySeed | null) {
   const evidence = getFactorySeedEvidence(storySeed)
   const clean = cleanFactoryEvidenceForTitle(evidence)
-  const title = trimFactoryTitleToSafeLength(titleCaseFactoryEvidence(clean))
+  const title = trimFactoryTitleToSafeLength(normalizeFactoryStoryTitleForDisplay(clean))
 
   if (title && !isBadFactoryStoryTitle(title)) {
     return hasFactoryEvidenceState(title) ? title : `${title} Bị Lộ`
   }
 
-  const seedTitle = trimFactoryTitleToSafeLength(titleCaseFactoryEvidence(cleanFactoryEvidenceForTitle((storySeed as any)?.title)))
+  const seedTitle = trimFactoryTitleToSafeLength(normalizeFactoryStoryTitleForDisplay(cleanFactoryEvidenceForTitle((storySeed as any)?.title)))
   if (seedTitle && !isBadFactoryStoryTitle(seedTitle)) {
     return hasFactoryEvidenceState(seedTitle) ? seedTitle : `${seedTitle} Bị Lộ`
   }
@@ -192,8 +225,8 @@ export function resolvePanelStoryTitle(params: {
   storySeed?: FactoryStorySeed | null
   parsedTitle: string
 }) {
-  const seedTitle = trimFactoryTitleToSafeLength(titleCaseFactoryEvidence(cleanFactoryEvidenceForTitle(params.storySeed?.title || '')))
-  const parsedTitle = trimFactoryTitleToSafeLength(titleCaseFactoryEvidence(cleanFactoryEvidenceForTitle(params.parsedTitle)))
+  const seedTitle = trimFactoryTitleToSafeLength(normalizeFactoryStoryTitleForDisplay(cleanFactoryEvidenceForTitle(params.storySeed?.title || '')))
+  const parsedTitle = trimFactoryTitleToSafeLength(normalizeFactoryStoryTitleForDisplay(cleanFactoryEvidenceForTitle(params.parsedTitle)))
   const evidenceTitle = makePanelTitleFromEvidence(params.storySeed)
 
   const chosen =

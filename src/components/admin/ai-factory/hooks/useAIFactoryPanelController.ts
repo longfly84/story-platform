@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "../../../../lib/supabase";
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { supabase } from '../../../../lib/supabase'
 import type {
   AIFactoryConfig,
   AvoidLibrary,
@@ -13,7 +13,7 @@ import type {
   FactoryStorySeed,
   ParsedChapterOutput,
   StoryMotifRegistryItem,
-} from "../aiFactoryTypes";
+} from '../aiFactoryTypes'
 import {
   AI_FACTORY_STORAGE_KEY,
   DEFAULT_FACTORY_GENRES,
@@ -29,14 +29,9 @@ import {
   randomInt,
   sleep,
   validateChapterOutput,
-} from "../aiFactoryUtils";
+} from '../aiFactoryUtils'
 
-import type {
-  ContinueStatusFilter,
-  ExistingChapterRow,
-  FactoryMode,
-  IncompleteStory,
-} from "../types/factoryPanelTypes";
+import type { ContinueStatusFilter, ExistingChapterRow, FactoryMode, IncompleteStory } from '../types/factoryPanelTypes'
 import {
   base64ToBlob,
   buildPublicChapterSummary,
@@ -45,349 +40,86 @@ import {
   getStoryHeroineLabel,
   getTargetChapters,
   safeJson,
-} from "../utils/factoryPanelHelpers";
-import { getFactoryChapterProgress } from "../utils/factoryProgress";
+} from '../utils/factoryPanelHelpers'
+import { getFactoryChapterProgress } from '../utils/factoryProgress'
 import {
   attachMotifToSeed,
   extractMotifRegistryItemsFromStories,
-} from "../utils/motifFingerprint";
+} from '../utils/motifFingerprint'
 import {
   formatMotifSimilarityForLog,
   shouldRejectMotif,
-} from "../utils/motifSimilarity";
-import { buildFactoryPublicStoryDescription } from "../utils/factoryPublicDescription";
-import {
-  defaultConfig,
-  STORY_SEED_MAX_ATTEMPTS,
-} from "../constants/factoryPanelDefaults";
+} from '../utils/motifSimilarity'
+import { buildFactoryPublicStoryDescription } from '../utils/factoryPublicDescription'
+import { defaultConfig, STORY_SEED_MAX_ATTEMPTS } from '../constants/factoryPanelDefaults'
 import {
   getCoverArtStyleLabel,
   getCoverCompositionPresetLabel,
   normalizeCoverArtStyle,
   normalizeCoverCompositionPreset,
-} from "../utils/factoryPanelCover";
-import { safeString } from "../utils/factoryPanelText";
-import { resolvePanelStoryTitle } from "../utils/factoryPanelTitle";
+} from '../utils/factoryPanelCover'
+import { safeString } from '../utils/factoryPanelText'
+import { resolvePanelStoryTitle } from '../utils/factoryPanelTitle'
 import {
   buildCleanFactoryStoryDescription,
   buildFactoryStorySlug,
   isDuplicateStorySlugError,
   resolvePublicGenreSlugs,
-} from "../utils/factoryPanelStoryMeta";
+} from '../utils/factoryPanelStoryMeta'
 import {
   buildNaturalVietnameseProseInstruction,
   buildPanelChapterSeedLockInstruction,
-} from "../prompts/factoryPanelPrompts";
+} from '../prompts/factoryPanelPrompts'
+
 
 type VietnameseRepairAppliedFixLog = {
-  id?: string;
-  category?: string;
-  before?: string;
-  after?: string;
-  message?: string;
-};
+  id?: string
+  category?: string
+  before?: string
+  after?: string
+  message?: string
+}
 
 type VietnameseRepairStatsLog = {
-  fixedCount?: number;
-  warningCount?: number;
-  allowedCount?: number;
-  fixedSamples?: VietnameseRepairAppliedFixLog[];
+  fixedCount?: number
+  warningCount?: number
+  allowedCount?: number
+  fixedSamples?: VietnameseRepairAppliedFixLog[]
   warningSamples?: Array<{
-    id?: string;
-    category?: string;
-    severity?: string;
-    message?: string;
-    sample?: string;
-    genericSuggestion?: string;
-  }>;
-  allowedSamples?: string[];
-};
+    id?: string
+    category?: string
+    severity?: string
+    message?: string
+    sample?: string
+    genericSuggestion?: string
+  }>
+  allowedSamples?: string[]
+}
 
 type GenerateChapterResult = {
-  text: string;
-  vietnameseRepairUsed?: boolean;
-  vietnameseRepairIssues?: string[];
-  vietnameseRepairAppliedFixes?: VietnameseRepairAppliedFixLog[];
-  vietnameseRepairIssuesStructured?: Array<{
-    id?: string;
-    category?: string;
-    severity?: string;
-    message?: string;
-    sample?: string;
-    genericSuggestion?: string;
-  }>;
-  vietnameseRepairStats?: VietnameseRepairStatsLog;
-};
-
-type VietnameseProseJobReport = {
-  fixedCount: number;
-  warningCount: number;
-  allowedCount: number;
-  autoFixes: Array<VietnameseRepairAppliedFixLog & { chapterLabel?: string }>;
-  warnings: Array<{
-    id?: string;
-    category?: string;
-    severity?: string;
-    message?: string;
-    sample?: string;
-    genericSuggestion?: string;
-    chapterLabel?: string;
-  }>;
-  allowedSamples: Array<{ text: string; chapterLabel?: string }>;
-};
+  text: string
+  vietnameseRepairUsed?: boolean
+  vietnameseRepairIssues?: string[]
+  vietnameseRepairAppliedFixes?: VietnameseRepairAppliedFixLog[]
+  vietnameseRepairStats?: VietnameseRepairStatsLog
+}
 
 function compactFactoryLogText(value: unknown, maxLength = 140) {
-  const text = String(value || "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength).trim()}...`;
-}
-
-
-function normalizeFactoryTitleForCompare(value: unknown) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "d")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function cleanFactoryTitleCandidate(value: unknown) {
-  return String(value || "")
-    .replace(/^[\s"'“”‘’]+|[\s"'“”‘’]+$/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function titleAlreadyExistsInList(title: string, titles: string[]) {
-  const key = normalizeFactoryTitleForCompare(title);
-  if (!key) return false;
-  return titles.some((item) => normalizeFactoryTitleForCompare(item) === key);
-}
-
-function trimFactoryTitleWords(title: string, maxWords = 7) {
-  const words = cleanFactoryTitleCandidate(title).split(/\s+/).filter(Boolean);
-  if (words.length <= maxWords) return words.join(" ");
-  return words.slice(0, maxWords).join(" ");
-}
-
-function buildFactoryTitleVariantCandidates(
-  baseTitle: string,
-  storySeed?: FactoryStorySeed | null,
-) {
-  const clean = cleanFactoryTitleCandidate(baseTitle) || "Truyện AI";
-  const variants = new Set<string>([clean]);
-
-  const replacements: Array<[RegExp, string]> = [
-    [/\bĐược\s+Ghim\b/giu, "Bị Kẹp"],
-    [/\bĐược\s+Gài\b/giu, "Bị Gài"],
-    [/\bBị\s+In\s+Lệch\b/giu, "In Sai"],
-    [/\bBị\s+Đổi\s+Màu\b/giu, "Đổi Màu Lạ"],
-    [/\bBị\s+Đặt\s+Sai\b/giu, "Nằm Sai Chỗ"],
-    [/\bSau\b/giu, "Dưới"],
-    [/\bTrên\b/giu, "Ở"],
-    [/\bCũ\b/giu, "Bị Bỏ Lại"],
-    [/\bMột\s+Ký\s+Tự\b/giu, "Một Chữ"],
-  ];
-
-  replacements.forEach(([pattern, replacement]) => {
-    const next = cleanFactoryTitleCandidate(clean.replace(pattern, replacement));
-    if (next && normalizeFactoryTitleForCompare(next) !== normalizeFactoryTitleForCompare(clean)) {
-      variants.add(next);
-    }
-  });
-
-  const evidence = cleanFactoryTitleCandidate(storySeed?.evidenceObject || "");
-  if (evidence) {
-    variants.add(`${trimFactoryTitleWords(evidence, 5)} Bị Đặt Sai`);
-    variants.add(`${trimFactoryTitleWords(evidence, 5)} Lộ Dấu Bất Thường`);
-  }
-
-  const shortBase = trimFactoryTitleWords(clean, 6);
-  [
-    "Dấu Vết Thứ Hai",
-    "Ở Góc Khuất",
-    "Trước Giờ Công Bố",
-    "Trong Lần Đối Chất",
-    "Dưới Ánh Đèn Cũ",
-    "Khi Bị Gọi Tên",
-  ].forEach((suffix) => variants.add(`${shortBase} ${suffix}`));
-
-  return Array.from(variants)
-    .map(cleanFactoryTitleCandidate)
-    .filter(Boolean)
-    .filter((item) => item.length <= 90);
-}
-
-
-function stringifyCoverSeedValue(value: unknown): string {
-  if (value == null) return "";
-  if (typeof value === "string") return value.trim();
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => stringifyCoverSeedValue(item))
-      .filter(Boolean)
-      .slice(0, 8)
-      .join(" | ");
-  }
-
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    return [
-      record.title,
-      record.name,
-      record.label,
-      record.value,
-      record.text,
-      record.summary,
-      record.description,
-      record.motifText,
-      record.motif,
-    ]
-      .map((item) => stringifyCoverSeedValue(item))
-      .filter(Boolean)
-      .slice(0, 6)
-      .join(" | ");
-  }
-
-  return "";
-}
-
-
-function getFactorySeedStoryPlan(seed: FactoryStorySeed | null | undefined) {
-  if (!seed || typeof seed !== "object") return null;
-  const record = seed as Record<string, unknown>;
-  const plan = record.storyPlan ?? record.locked_story_plan ?? null;
-  if (!plan || typeof plan !== "object" || Array.isArray(plan)) return null;
-  return plan as { chapterPlan?: unknown[] };
-}
-
-function pickCoverSeedText(seed: FactoryStorySeed | null | undefined, keys: string[]) {
-  if (!seed || typeof seed !== "object") return "";
-
-  const record = seed as Record<string, unknown>;
-  for (const key of keys) {
-    const direct = stringifyCoverSeedValue(record[key]);
-    if (direct) return direct;
-  }
-
-  return "";
-}
-
-function buildFactoryCoverBrief(params: {
-  storyTitle: string;
-  storyDescription: string;
-  genreLabel: string;
-  heroineLabel: string;
-  storySeed?: FactoryStorySeed | null;
-}) {
-  const seed = params.storySeed;
-  const concept =
-    seed && typeof seed === "object"
-      ? (seed as Record<string, unknown>).coverConcept
-      : null;
-  const conceptRecord =
-    concept && typeof concept === "object" && !Array.isArray(concept)
-      ? (concept as Record<string, unknown>)
-      : {};
-
-  const conceptText = [
-    conceptRecord.scene,
-    conceptRecord.mainScene,
-    conceptRecord.visualScene,
-    conceptRecord.setting,
-    conceptRecord.location,
-    conceptRecord.evidence,
-    conceptRecord.keyEvidence,
-    conceptRecord.characters,
-    conceptRecord.conflict,
-    conceptRecord.mood,
-  ]
-    .map((item) => stringifyCoverSeedValue(item))
-    .filter(Boolean)
-    .join(" | ");
-
-  const arena = pickCoverSeedText(seed, [
-    "openingArena",
-    "mainArena",
-    "arena",
-    "setting",
-    "location",
-    "stage",
-  ]);
-
-  const evidence = pickCoverSeedText(seed, [
-    "keyEvidence",
-    "signatureObject",
-    "evidenceObject",
-    "evidenceType",
-    "motifText",
-    "motifFingerprint",
-  ]);
-
-  const conflict = pickCoverSeedText(seed, [
-    "coreConflict",
-    "relationshipCore",
-    "relationshipConflict",
-    "emotionalHook",
-    "hook",
-    "stakes",
-  ]);
-
-  const antagonist = pickCoverSeedText(seed, [
-    "antagonist",
-    "villain",
-    "pressureSource",
-    "opposingForce",
-  ]);
-
-  const heroine = pickCoverSeedText(seed, [
-    "heroine",
-    "femaleLead",
-    "coverHeroine",
-    "heroineProfile",
-  ]);
-
-  return [
-    "Create the cover from this exact story, not from a generic template.",
-    `Title: ${params.storyTitle}`,
-    `Story summary: ${params.storyDescription}`,
-    `Genre: ${params.genreLabel}`,
-    `Female lead type: ${heroine || params.heroineLabel}`,
-    arena ? `Main visible location / arena: ${arena}` : "",
-    evidence ? `Key visible evidence object: ${evidence}` : "",
-    antagonist ? `Opposing characters / pressure source: ${antagonist}` : "",
-    conflict ? `Central conflict to show visually: ${conflict}` : "",
-    conceptText ? `Existing cover concept / visual seed: ${conceptText}` : "",
-    "Art direction: beautiful premium Chinese manhua / Korean webtoon commercial webnovel cover, bright clean polished faces, attractive heroine, cinematic but still clearly 2D illustrated.",
-    "Composition direction: heroine should be appealing and readable, but include a real story scene around her: location, witnesses, antagonist, evidence, and emotional pressure.",
-    "Avoid: ugly semi-realistic AI drama poster, dull grey lighting, stiff NPC faces, old-looking heroine, cramped hallway-only composition, generic woman holding paper.",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const text = String(value || '').replace(/\s+/g, ' ').trim()
+  if (text.length <= maxLength) return text
+  return `${text.slice(0, maxLength).trim()}...`
 }
 
 
 export function useAIFactoryPanelController() {
-  const stopRequestedRef = useRef(false);
-  const currentRunTitleKeysRef = useRef<Set<string>>(new Set());
-  const factoryHistoryUnavailableRef = useRef(false);
+  const stopRequestedRef = useRef(false)
 
-  const [config, setConfig] = useState<AIFactoryConfig>(defaultConfig);
-  const [selectedGenres, setSelectedGenres] = useState<FactoryGenreOption[]>(
-    DEFAULT_FACTORY_GENRES,
-  );
-  const [selectedHeroines, setSelectedHeroines] = useState<
-    FactoryHeroineOption[]
-  >(DEFAULT_HEROINE_OPTIONS);
+  const [config, setConfig] = useState<AIFactoryConfig>(defaultConfig)
+  const [selectedGenres, setSelectedGenres] = useState<FactoryGenreOption[]>(DEFAULT_FACTORY_GENRES)
+  const [selectedHeroines, setSelectedHeroines] =
+    useState<FactoryHeroineOption[]>(DEFAULT_HEROINE_OPTIONS)
 
-  const [existingStories, setExistingStories] = useState<ExistingStory[]>([]);
+  const [existingStories, setExistingStories] = useState<ExistingStory[]>([])
   const [avoidLibrary, setAvoidLibrary] = useState<AvoidLibrary>({
     titles: [],
     motifs: [],
@@ -395,120 +127,101 @@ export function useAIFactoryPanelController() {
     companyNames: [],
     motifFingerprints: [],
     motifTexts: [],
-  });
+  })
 
-  const AI_ADMIN_TOKEN_STORAGE_KEY = "story-platform-ai-admin-token";
+  const AI_ADMIN_TOKEN_STORAGE_KEY = 'story-platform-ai-admin-token'
 
   function getAIAdminToken() {
-    if (typeof window === "undefined") return "";
+    if (typeof window === 'undefined') return ''
 
-    return (
-      window.localStorage.getItem(AI_ADMIN_TOKEN_STORAGE_KEY)?.trim() || ""
-    );
+    return window.localStorage
+      .getItem(AI_ADMIN_TOKEN_STORAGE_KEY)
+      ?.trim() || ''
   }
 
   function getAIAdminHeaders(): Record<string, string> {
-    const token = getAIAdminToken();
+    const token = getAIAdminToken()
 
     if (!token) {
-      return {};
+      return {}
     }
 
     return {
-      "x-ai-admin-token": token,
-    };
+      'x-ai-admin-token': token,
+    }
   }
 
-  const [jobs, setJobs] = useState<FactoryJob[]>([]);
-  const [logs, setLogs] = useState<FactoryLog[]>([]);
-  const [status, setStatus] = useState<FactoryStatus>("idle");
-  const [currentAction, setCurrentAction] = useState("Chưa chạy");
-  const [openaiConfirmed, setOpenaiConfirmed] = useState(false);
-  const [factoryMode, setFactoryMode] = useState<FactoryMode>("create-new");
-  const [continueStoryLimit, setContinueStoryLimit] = useState(5);
-  const [continueChaptersPerStory, setContinueChaptersPerStory] = useState(3);
-  const [continueStatusFilter, setContinueStatusFilter] =
-    useState<ContinueStatusFilter>("draft");
-  const [selectedContinueStoryId, setSelectedContinueStoryId] =
-    useState("auto");
-  const [expensiveModelConfirmed, setExpensiveModelConfirmed] = useState(false);
-  const [incompleteStories, setIncompleteStories] = useState<IncompleteStory[]>(
-    [],
-  );
+  const [jobs, setJobs] = useState<FactoryJob[]>([])
+  const [logs, setLogs] = useState<FactoryLog[]>([])
+  const [status, setStatus] = useState<FactoryStatus>('idle')
+  const [currentAction, setCurrentAction] = useState('Chưa chạy')
+  const [openaiConfirmed, setOpenaiConfirmed] = useState(false)
+  const [factoryMode, setFactoryMode] = useState<FactoryMode>('create-new')
+  const [continueStoryLimit, setContinueStoryLimit] = useState(5)
+  const [continueChaptersPerStory, setContinueChaptersPerStory] = useState(3)
+  const [continueStatusFilter, setContinueStatusFilter] = useState<ContinueStatusFilter>('draft')
+  const [selectedContinueStoryId, setSelectedContinueStoryId] = useState('auto')
+  const [expensiveModelConfirmed, setExpensiveModelConfirmed] = useState(false)
+  const [incompleteStories, setIncompleteStories] = useState<IncompleteStory[]>([])
 
-  const isRunning = status === "running";
+  const isRunning = status === 'running'
 
-  const safeBatchSize =
-    Number.isFinite(config.batchSize) && config.batchSize > 0
-      ? config.batchSize
-      : 5;
+  const safeBatchSize = Number.isFinite(config.batchSize) && config.batchSize > 0 ? config.batchSize : 5
   const averageTargetChapters = Math.round(
     (config.minTargetChapters + config.maxTargetChapters) / 2,
-  );
+  )
   const createNewTextRequests = config.autoCompleteByTarget
     ? config.storyCount * averageTargetChapters
-    : config.storyCount * config.chaptersToGenerateNow;
-  const selectedContinueStoryCount =
-    selectedContinueStoryId === "auto" ? Math.max(1, continueStoryLimit) : 1;
+    : config.storyCount * config.chaptersToGenerateNow
+  const selectedContinueStoryCount = selectedContinueStoryId === 'auto' ? Math.max(1, continueStoryLimit) : 1
   const totalTextRequests =
-    factoryMode === "create-new"
+    factoryMode === 'create-new'
       ? createNewTextRequests
-      : selectedContinueStoryCount * Math.max(1, continueChaptersPerStory);
-  const totalCoverRequests =
-    factoryMode === "create-new" && config.generateCover
-      ? config.storyCount
-      : 0;
-  const totalRequests = totalTextRequests + totalCoverRequests;
-  const totalBatches = Math.ceil(config.storyCount / safeBatchSize);
+      : selectedContinueStoryCount * Math.max(1, continueChaptersPerStory)
+  const totalCoverRequests = factoryMode === 'create-new' && config.generateCover ? config.storyCount : 0
+  const totalRequests = totalTextRequests + totalCoverRequests
+  const totalBatches = Math.ceil(config.storyCount / safeBatchSize)
   const expensiveModelRequiresConfirmation =
-    config.provider === "openai" &&
-    (config.modelKey === "premium" || config.modelKey === "auto");
+    config.provider === 'openai' && (config.modelKey === 'premium' || config.modelKey === 'auto')
 
   const canStart =
     !isRunning &&
-    (factoryMode === "create-new"
+    (factoryMode === 'create-new'
       ? selectedGenres.length > 0 && selectedHeroines.length > 0
       : true) &&
-    (config.provider === "mock" || openaiConfirmed) &&
-    (!expensiveModelRequiresConfirmation || expensiveModelConfirmed);
+    (config.provider === 'mock' || openaiConfirmed) &&
+    (!expensiveModelRequiresConfirmation || expensiveModelConfirmed)
 
   const progressText = useMemo(() => {
-    if (!jobs.length) return "0%";
-    const done = jobs.filter((job) =>
-      ["success", "failed", "stopped"].includes(job.status),
-    ).length;
-    return `${Math.round((done / jobs.length) * 100)}%`;
-  }, [jobs]);
+    if (!jobs.length) return '0%'
+    const done = jobs.filter((job) => ['success', 'failed', 'stopped'].includes(job.status)).length
+    return `${Math.round((done / jobs.length) * 100)}%`
+  }, [jobs])
 
   useEffect(() => {
-    const raw = localStorage.getItem(AI_FACTORY_STORAGE_KEY);
-    if (!raw) return;
+    const raw = localStorage.getItem(AI_FACTORY_STORAGE_KEY)
+    if (!raw) return
 
     try {
-      const snapshot = JSON.parse(raw) as FactoryRunSnapshot;
+      const snapshot = JSON.parse(raw) as FactoryRunSnapshot
       if (snapshot.config) {
         setConfig({
           ...defaultConfig,
           ...snapshot.config,
-          coverArtStyle: normalizeCoverArtStyle(
-            (snapshot.config as any).coverArtStyle,
-          ),
+          coverArtStyle: normalizeCoverArtStyle((snapshot.config as any).coverArtStyle),
           coverCompositionPreset: normalizeCoverCompositionPreset(
             (snapshot.config as any).coverCompositionPreset,
           ),
-          autoCompleteByTarget: Boolean(
-            (snapshot.config as any).autoCompleteByTarget,
-          ),
-        });
+          autoCompleteByTarget: Boolean((snapshot.config as any).autoCompleteByTarget),
+        })
       }
-      if (Array.isArray(snapshot.jobs)) setJobs(snapshot.jobs);
-      if (Array.isArray(snapshot.logs)) setLogs(snapshot.logs);
-      if (snapshot.status && snapshot.status !== "running")
-        setStatus(snapshot.status);
+      if (Array.isArray(snapshot.jobs)) setJobs(snapshot.jobs)
+      if (Array.isArray(snapshot.logs)) setLogs(snapshot.logs)
+      if (snapshot.status && snapshot.status !== 'running') setStatus(snapshot.status)
     } catch {
       // ignore broken localStorage
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     const snapshot: FactoryRunSnapshot = {
@@ -516,630 +229,225 @@ export function useAIFactoryPanelController() {
       jobs,
       logs,
       status,
-      finishedAt: status === "running" ? undefined : new Date().toISOString(),
-    };
+      finishedAt: status === 'running' ? undefined : new Date().toISOString(),
+    }
 
-    localStorage.setItem(AI_FACTORY_STORAGE_KEY, JSON.stringify(snapshot));
-  }, [config, jobs, logs, status]);
+    localStorage.setItem(AI_FACTORY_STORAGE_KEY, JSON.stringify(snapshot))
+  }, [config, jobs, logs, status])
 
-  function addLog(message: string, type: FactoryLog["type"] = "info") {
+  function addLog(message: string, type: FactoryLog['type'] = 'info') {
     setLogs((prev) => [
       {
-        id: makeId("log"),
+        id: makeId('log'),
         time: getLogTime(),
         message,
         type,
       },
       ...prev,
-    ]);
+    ])
   }
 
 
-  function isFactoryHistoryMissingError(error: unknown) {
-    const message = String((error as any)?.message || error || "");
-    return /ai_factory_history|relation .* does not exist|does not exist|schema cache|could not find/i.test(
-      message,
-    );
-  }
-
-  function markFactoryHistoryUnavailable(error: unknown) {
-    if (!factoryHistoryUnavailableRef.current) {
-      addLog(
-        `Chưa có bảng ai_factory_history, tạm fallback scan stories hiện tại. Tạo bảng bằng SQL patch để né cả truyện đã xóa. (${String(
-          (error as any)?.message || error || "unknown",
-        ).slice(0, 120)})`,
-        "warning",
-      );
-    }
-
-    factoryHistoryUnavailableRef.current = true;
-  }
-
-  function factoryHistoryRowToExistingStory(row: any): ExistingStory {
-    const rawStoryDna =
-      row?.story_dna && typeof row.story_dna === "object" ? row.story_dna : {};
-    const rawSeed =
-      rawStoryDna?.factory_seed && typeof rawStoryDna.factory_seed === "object"
-        ? rawStoryDna.factory_seed
-        : {};
-    const motifFingerprint =
-      rawSeed?.motifFingerprint ||
-      rawStoryDna?.motifFingerprint ||
-      (row?.motif_fingerprint ? { fingerprint: row.motif_fingerprint } : null);
-    const motifText =
-      row?.motif_text || rawSeed?.motifText || rawStoryDna?.motifText || "";
-    const motifEmbedding =
-      row?.motif_embedding || rawSeed?.motifEmbedding || rawStoryDna?.motifEmbedding;
-
-    return {
-      id: row?.story_id || row?.id || makeId("history-story"),
-      title: row?.title || rawSeed?.title || "",
-      description: row?.description || row?.core_premise || rawSeed?.corePremise || "",
-      genres: Array.isArray(row?.genres)
-        ? row.genres
-        : row?.genre_label
-          ? [row.genre_label]
-          : [],
-      story_dna: {
-        ...rawStoryDna,
-        source: rawStoryDna?.source || "ai-factory-history",
-        factory_seed: {
-          ...rawSeed,
-          title: row?.title || rawSeed?.title,
-          corePremise: row?.core_premise || rawSeed?.corePremise,
-          evidenceObject: row?.evidence_object || rawSeed?.evidenceObject,
-          heroineArc: row?.heroine_label || rawSeed?.heroineArc,
-          motifFingerprint,
-          motifText,
-          motifEmbedding,
-        },
-        motifFingerprint,
-        motifText,
-        motifEmbedding,
-      },
-      story_memory: row?.story_memory || "",
-      created_at: row?.created_at || new Date().toISOString(),
-    } as ExistingStory;
-  }
-
-  async function scanFactoryHistoryStories() {
-    if (factoryHistoryUnavailableRef.current) return [] as ExistingStory[];
-
-    const result = await supabase
-      .from("ai_factory_history")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(500);
-
-    if (result.error) {
-      if (isFactoryHistoryMissingError(result.error)) {
-        markFactoryHistoryUnavailable(result.error);
-      } else {
-        addLog(
-          `Không quét được ai_factory_history, fallback scan stories: ${result.error.message}`,
-          "warning",
-        );
-      }
-      return [] as ExistingStory[];
-    }
-
-    return ((result.data ?? []) as any[]).map(factoryHistoryRowToExistingStory);
-  }
-
-  async function checkStoryTitleExistsInFactoryHistory(title: string) {
-    if (factoryHistoryUnavailableRef.current) return false;
-
-    const clean = cleanFactoryTitleCandidate(title);
-    const normalized = normalizeFactoryTitleForCompare(clean);
-    if (!normalized) return false;
-
-    const result = await supabase
-      .from("ai_factory_history")
-      .select("id, title, normalized_title")
-      .eq("normalized_title", normalized)
-      .limit(10);
-
-    if (result.error) {
-      if (isFactoryHistoryMissingError(result.error)) {
-        markFactoryHistoryUnavailable(result.error);
-      } else {
-        addLog(
-          `Không check được title trong ai_factory_history: ${result.error.message}`,
-          "warning",
-        );
-      }
-      return false;
-    }
-
-    const rows = Array.isArray(result.data) ? result.data : [];
-    return rows.some(
-      (row: any) =>
-        normalizeFactoryTitleForCompare(row?.normalized_title || row?.title) ===
-        normalized,
-    );
-  }
-
-  async function recordFactoryHistory(params: {
-    story: { id: string; title: string; slug: string };
-    storyDescription: string;
-    storyDna: any;
-    storyMemory: string;
-    genre: FactoryGenreOption;
-    heroine: FactoryHeroineOption;
-    config: AIFactoryConfig;
-    factoryRunId: string;
-    storyIndex: number;
-    targetChapters: number;
-    storySeed?: FactoryStorySeed | null;
-  }) {
-    if (factoryHistoryUnavailableRef.current) return;
-
-    const seed = params.storySeed;
-    const fingerprint = seed?.motifFingerprint;
-    const payload = {
-      story_id: params.story.id,
-      story_slug: params.story.slug,
-      title: params.story.title,
-      normalized_title: normalizeFactoryTitleForCompare(params.story.title),
-      description: params.storyDescription,
-      genres: [params.genre.slug],
-      status: "generated",
-      story_status: params.config.storyStatus,
-      completion_status: params.config.autoCompleteByTarget ? "full" : "ongoing",
-      target_chapters: params.targetChapters,
-      generated_chapters_now: params.config.autoCompleteByTarget
-        ? params.targetChapters
-        : params.config.chaptersToGenerateNow,
-      genre_key: params.genre.key,
-      genre_label: params.genre.label,
-      heroine_key: params.heroine.key,
-      heroine_label: params.heroine.label,
-      evidence_object: seed?.evidenceObject || null,
-      core_premise: seed?.corePremise || null,
-      opening_scene: seed?.openingScene || null,
-      inciting_incident: seed?.incitingIncident || null,
-      villain_attack_type: fingerprint?.villainAttackType || null,
-      heroine_counter_type: fingerprint?.heroineCounterType || null,
-      hidden_truth_type: fingerprint?.hiddenTruthType || null,
-      public_pressure: fingerprint?.publicPressure || null,
-      power_structure: fingerprint?.powerStructure || null,
-      motif_fingerprint: fingerprint?.fingerprint || seed?.shortFingerprint || null,
-      motif_text: seed?.motifText || seed?.shortFingerprint || null,
-      motif_embedding: seed?.motifEmbedding || null,
-      story_dna: params.storyDna,
-      story_memory: params.storyMemory,
-      factory_run_id: params.factoryRunId,
-      story_index: params.storyIndex,
-    };
-
-    const result = await supabase.from("ai_factory_history").insert(payload);
-
-    if (result.error) {
-      if (isFactoryHistoryMissingError(result.error)) {
-        markFactoryHistoryUnavailable(result.error);
-      } else {
-        addLog(
-          `Không ghi được ai_factory_history: ${result.error.message}`,
-          "warning",
-        );
-      }
-      return;
-    }
-
-    addLog(
-      `Đã ghi history chống lặp: ${params.story.title}`,
-      "success",
-    );
-  }
-
-
-  async function checkStoryTitleExistsInDatabase(title: string) {
-    const clean = cleanFactoryTitleCandidate(title);
-    if (!clean) return false;
-
-    const result = await supabase
-      .from("stories")
-      .select("id, title")
-      .ilike("title", clean)
-      .limit(5);
-
-    if (result.error) {
-      addLog(
-        `Không check được title trùng trong Supabase: ${result.error.message}`,
-        "warning",
-      );
-      return false;
-    }
-
-    const rows = Array.isArray(result.data) ? result.data : [];
-    const existsInStories = rows.some(
-      (row: any) =>
-        normalizeFactoryTitleForCompare(row?.title) ===
-        normalizeFactoryTitleForCompare(clean),
-    );
-
-    if (existsInStories) return true;
-
-    return checkStoryTitleExistsInFactoryHistory(clean);
-  }
-
-  async function resolveUniqueStoryTitleForInsert(params: {
-    requestedTitle: string;
-    avoidTitles?: string[];
-    storySeed?: FactoryStorySeed | null;
-    storyIndex: number;
-  }) {
-    const baseTitle = cleanFactoryTitleCandidate(params.requestedTitle) ||
-      cleanFactoryTitleCandidate(params.storySeed?.title) ||
-      "Truyện AI";
-    const candidateTitles = buildFactoryTitleVariantCandidates(
-      baseTitle,
-      params.storySeed,
-    );
-    const avoidTitles = params.avoidTitles || [];
-
-    for (const candidate of candidateTitles) {
-      const key = normalizeFactoryTitleForCompare(candidate);
-      if (!key) continue;
-
-      if (currentRunTitleKeysRef.current.has(key)) continue;
-      if (titleAlreadyExistsInList(candidate, avoidTitles)) continue;
-
-      const existsInDatabase = await checkStoryTitleExistsInDatabase(candidate);
-      if (existsInDatabase) continue;
-
-      currentRunTitleKeysRef.current.add(key);
-
-      if (normalizeFactoryTitleForCompare(candidate) !== normalizeFactoryTitleForCompare(baseTitle)) {
-        addLog(
-          `Title final gate đổi để tránh trùng: "${baseTitle}" → "${candidate}"`,
-          "warning",
-        );
-      }
-
-      return candidate;
-    }
-
-    const fallbackTitle = cleanFactoryTitleCandidate(
-      `${trimFactoryTitleWords(baseTitle, 6)} Dấu Vết ${params.storyIndex}`,
-    );
-    currentRunTitleKeysRef.current.add(
-      normalizeFactoryTitleForCompare(fallbackTitle),
-    );
-    addLog(
-      `Title final gate dùng fallback để tránh trùng: "${baseTitle}" → "${fallbackTitle}"`,
-      "warning",
-    );
-    return fallbackTitle;
-  }
-
-  function logVietnameseProseQuality(
-    label: string,
-    result: GenerateChapterResult,
-  ) {
-    const stats = result.vietnameseRepairStats || {};
-    const fixedCount = Number(
-      stats.fixedCount || result.vietnameseRepairAppliedFixes?.length || 0,
-    );
-    const warningCount = Number(
-      stats.warningCount || result.vietnameseRepairIssues?.length || 0,
-    );
-    const allowedCount = Number(
-      stats.allowedCount || stats.allowedSamples?.length || 0,
-    );
+  function logVietnameseProseQuality(label: string, result: GenerateChapterResult) {
+    const stats = result.vietnameseRepairStats || {}
+    const fixedCount = Number(stats.fixedCount || result.vietnameseRepairAppliedFixes?.length || 0)
+    const warningCount = Number(stats.warningCount || result.vietnameseRepairIssues?.length || 0)
+    const allowedCount = Number(stats.allowedCount || stats.allowedSamples?.length || 0)
 
     if (!fixedCount && !warningCount && !allowedCount) {
-      addLog(
-        `${label}: kiểm tra văn phong — sạch, không có câu phải sửa/cảnh báo.`,
-        "success",
-      );
-      return;
+      addLog(`${label}: kiểm tra văn phong — sạch, không có câu phải sửa/cảnh báo.`, 'success')
+      return
     }
 
     addLog(
       `${label}: kiểm tra văn phong — tự sửa ${fixedCount} câu, cảnh báo ${warningCount} câu, giữ ${allowedCount} cụm viral hợp gu.`,
-      warningCount ? "warning" : "success",
-    );
+      warningCount ? 'warning' : 'success',
+    )
 
     const fixedSamples =
       Array.isArray(stats.fixedSamples) && stats.fixedSamples.length
         ? stats.fixedSamples
-        : result.vietnameseRepairAppliedFixes || [];
+        : result.vietnameseRepairAppliedFixes || []
 
     fixedSamples.slice(0, 5).forEach((fix, index) => {
-      const before = compactFactoryLogText(fix.before);
-      const after = compactFactoryLogText(fix.after);
-      addLog(`  Auto fix ${index + 1}: “${before}” → “${after}”`, "success");
-    });
+      const before = compactFactoryLogText(fix.before)
+      const after = compactFactoryLogText(fix.after)
+      addLog(
+        `  Auto fix ${index + 1}: “${before}” → “${after}”`,
+        'success',
+      )
+    })
 
     const warningSamples =
       Array.isArray(stats.warningSamples) && stats.warningSamples.length
         ? stats.warningSamples.map((issue) => {
-            const sample = issue.sample
-              ? `“${compactFactoryLogText(issue.sample)}”`
-              : "";
+            const sample = issue.sample ? `“${compactFactoryLogText(issue.sample)}”` : ''
             const suggestion = issue.genericSuggestion
               ? ` Gợi ý: ${compactFactoryLogText(issue.genericSuggestion, 180)}`
-              : "";
-            return `${sample}${sample ? " — " : ""}${issue.message || "Câu/cụm cần soi lại."}${suggestion}`.trim();
+              : ''
+            return `${sample}${sample ? ' — ' : ''}${issue.message || 'Câu/cụm cần soi lại.'}${suggestion}`.trim()
           })
-        : result.vietnameseRepairIssues || [];
+        : result.vietnameseRepairIssues || []
 
     warningSamples.slice(0, 5).forEach((issue, index) => {
-      addLog(
-        `  Warning ${index + 1}: ${compactFactoryLogText(issue, 260)}`,
-        "warning",
-      );
-    });
+      addLog(`  Warning ${index + 1}: ${compactFactoryLogText(issue, 260)}`, 'warning')
+    })
 
-    const allowedSamples = Array.isArray(stats.allowedSamples)
-      ? stats.allowedSamples
-      : [];
+    const allowedSamples = Array.isArray(stats.allowedSamples) ? stats.allowedSamples : []
     if (allowedSamples.length) {
       addLog(
-        `  Viral allowed: ${allowedSamples
-          .slice(0, 5)
-          .map((sample) => `“${compactFactoryLogText(sample, 80)}”`)
-          .join(" | ")}`,
-        "info",
-      );
+        `  Viral allowed: ${allowedSamples.slice(0, 5).map((sample) => `“${compactFactoryLogText(sample, 80)}”`).join(' | ')}`,
+        'info',
+      )
     }
-  }
-
-  function buildVietnameseProseJobReport(
-    previous: VietnameseProseJobReport | undefined,
-    chapterLabel: string,
-    result: GenerateChapterResult,
-  ): VietnameseProseJobReport {
-    const stats = result.vietnameseRepairStats || {};
-    const fixedCount = Number(
-      stats.fixedCount || result.vietnameseRepairAppliedFixes?.length || 0,
-    );
-    const warningCount = Number(
-      stats.warningCount || result.vietnameseRepairIssues?.length || 0,
-    );
-    const allowedCount = Number(
-      stats.allowedCount || stats.allowedSamples?.length || 0,
-    );
-
-    const fixedSamples =
-      Array.isArray(stats.fixedSamples) && stats.fixedSamples.length
-        ? stats.fixedSamples
-        : result.vietnameseRepairAppliedFixes || [];
-
-    const structuredWarnings =
-      Array.isArray(stats.warningSamples) && stats.warningSamples.length
-        ? stats.warningSamples
-        : Array.isArray(result.vietnameseRepairIssuesStructured) &&
-            result.vietnameseRepairIssuesStructured.length
-          ? result.vietnameseRepairIssuesStructured
-          : (result.vietnameseRepairIssues || []).map((message) => ({
-              message,
-            }));
-
-    const allowedSamples = Array.isArray(stats.allowedSamples)
-      ? stats.allowedSamples
-      : [];
-
-    const base: VietnameseProseJobReport = previous || {
-      fixedCount: 0,
-      warningCount: 0,
-      allowedCount: 0,
-      autoFixes: [],
-      warnings: [],
-      allowedSamples: [],
-    };
-
-    return {
-      fixedCount: base.fixedCount + fixedCount,
-      warningCount: base.warningCount + warningCount,
-      allowedCount: base.allowedCount + allowedCount,
-      autoFixes: [
-        ...base.autoFixes,
-        ...fixedSamples.slice(0, 20).map((fix) => ({ ...fix, chapterLabel })),
-      ].slice(-80),
-      warnings: [
-        ...base.warnings,
-        ...structuredWarnings
-          .slice(0, 20)
-          .map((issue) => ({ ...issue, chapterLabel })),
-      ].slice(-80),
-      allowedSamples: [
-        ...base.allowedSamples,
-        ...allowedSamples.slice(0, 20).map((text) => ({ text, chapterLabel })),
-      ].slice(-80),
-    };
-  }
-
-  function appendJobVietnameseProseReport(
-    jobId: string,
-    chapterLabel: string,
-    result: GenerateChapterResult,
-  ) {
-    setJobs((prev) =>
-      prev.map((job) => {
-        if (job.id !== jobId) return job;
-
-        const vietnameseProseReport = buildVietnameseProseJobReport(
-          (job as any).vietnameseProseReport,
-          chapterLabel,
-          result,
-        );
-
-        return {
-          ...job,
-          vietnameseProseReport,
-          vietnameseRepairStats: {
-            fixedCount: vietnameseProseReport.fixedCount,
-            warningCount: vietnameseProseReport.warningCount,
-            allowedCount: vietnameseProseReport.allowedCount,
-            fixedSamples: vietnameseProseReport.autoFixes.slice(-8),
-            warningSamples: vietnameseProseReport.warnings.slice(-8),
-            allowedSamples: vietnameseProseReport.allowedSamples
-              .slice(-8)
-              .map((item) => item.text),
-          },
-        } as FactoryJob;
-      }),
-    );
   }
 
   function updateJob(jobId: string, patch: Partial<FactoryJob>) {
-    setJobs((prev) =>
-      prev.map((job) => (job.id === jobId ? { ...job, ...patch } : job)),
-    );
+    setJobs((prev) => prev.map((job) => (job.id === jobId ? { ...job, ...patch } : job)))
   }
 
-  function updateConfig<K extends keyof AIFactoryConfig>(
-    key: K,
-    value: AIFactoryConfig[K],
-  ) {
-    if (key === "modelKey" || key === "provider") {
-      setExpensiveModelConfirmed(false);
+  function updateConfig<K extends keyof AIFactoryConfig>(key: K, value: AIFactoryConfig[K]) {
+    if (key === 'modelKey' || key === 'provider') {
+      setExpensiveModelConfirmed(false)
     }
 
-    setConfig((prev) => ({ ...prev, [key]: value }));
+    setConfig((prev) => ({ ...prev, [key]: value }))
   }
 
   async function uploadCoverToStorage(params: {
-    storyId: string;
-    storySlug: string;
-    fileBlob: Blob;
+    storyId: string
+    storySlug: string
+    fileBlob: Blob
   }) {
-    const filePath = `ai-factory/${params.storyId}/${Date.now()}-${params.storySlug}.png`;
+    const filePath = `ai-factory/${params.storyId}/${Date.now()}-${params.storySlug}.png`
 
     const uploadResult = await supabase.storage
-      .from("story-covers")
+      .from('story-covers')
       .upload(filePath, params.fileBlob, {
-        contentType: "image/png",
+        contentType: 'image/png',
         upsert: true,
-      });
+      })
 
     if (uploadResult.error) {
-      throw new Error(`Upload cover lỗi: ${uploadResult.error.message}`);
+      throw new Error(`Upload cover lỗi: ${uploadResult.error.message}`)
     }
 
-    const publicUrlResult = supabase.storage
-      .from("story-covers")
-      .getPublicUrl(filePath);
-    const publicUrl = publicUrlResult.data?.publicUrl;
+    const publicUrlResult = supabase.storage.from('story-covers').getPublicUrl(filePath)
+    const publicUrl = publicUrlResult.data?.publicUrl
 
     if (!publicUrl) {
-      throw new Error("Không lấy được public URL của cover.");
+      throw new Error('Không lấy được public URL của cover.')
     }
 
-    return publicUrl;
+    return publicUrl
   }
 
   async function updateStoryCover(params: {
-    storyId: string;
-    coverUrl: string;
+    storyId: string
+    coverUrl: string
   }) {
     const updateBoth = await supabase
-      .from("stories")
+      .from('stories')
       .update({
         cover_image: params.coverUrl,
         cover_url: params.coverUrl,
       })
-      .eq("id", params.storyId);
+      .eq('id', params.storyId)
 
-    if (!updateBoth.error) return;
+    if (!updateBoth.error) return
 
     const updateCoverImage = await supabase
-      .from("stories")
+      .from('stories')
       .update({
         cover_image: params.coverUrl,
       })
-      .eq("id", params.storyId);
+      .eq('id', params.storyId)
 
-    if (!updateCoverImage.error) return;
+    if (!updateCoverImage.error) return
 
     const updateCoverUrl = await supabase
-      .from("stories")
+      .from('stories')
       .update({
         cover_url: params.coverUrl,
       })
-      .eq("id", params.storyId);
+      .eq('id', params.storyId)
 
-    if (!updateCoverUrl.error) return;
+    if (!updateCoverUrl.error) return
 
     throw new Error(
       `Update story cover lỗi: ${updateBoth.error.message} | ${updateCoverImage.error.message} | ${updateCoverUrl.error.message}`,
-    );
+    )
   }
 
+
   async function embedMotifTexts(texts: string[]) {
-    const cleanTexts = texts.map((text) => text.trim()).filter(Boolean);
+    const cleanTexts = texts.map((text) => text.trim()).filter(Boolean)
 
-    if (!cleanTexts.length) return [];
+    if (!cleanTexts.length) return []
 
-    const response = await fetch("/api/ai/embed-motif", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await fetch('/api/ai/embed-motif', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ texts: cleanTexts }),
-    });
+    })
 
-    const rawText = await response.text();
-    let data: any = null;
+    const rawText = await response.text()
+    let data: any = null
 
     try {
-      data = rawText ? JSON.parse(rawText) : null;
+      data = rawText ? JSON.parse(rawText) : null
     } catch {
       throw new Error(
         `Embed motif trả về không phải JSON. Status: ${response.status}. Preview: ${rawText.slice(0, 180)}`,
-      );
+      )
     }
 
     if (!response.ok) {
-      throw new Error(data?.error || `Embed motif lỗi HTTP ${response.status}`);
+      throw new Error(data?.error || `Embed motif lỗi HTTP ${response.status}`)
     }
 
-    const embeddings = Array.isArray(data?.embeddings) ? data.embeddings : [];
+    const embeddings = Array.isArray(data?.embeddings) ? data.embeddings : []
 
-    return embeddings.filter(Array.isArray) as number[][];
+    return embeddings.filter(Array.isArray) as number[][]
   }
 
   async function evaluateStorySeedMotif(params: {
-    seed: FactoryStorySeed;
-    existingMotifs: StoryMotifRegistryItem[];
-    provider: AIFactoryConfig["provider"];
-    targetChapters?: number;
+    seed: FactoryStorySeed
+    existingMotifs: StoryMotifRegistryItem[]
+    provider: AIFactoryConfig['provider']
   }) {
-    const enrichedSeed = attachMotifToSeed(params.seed);
+    const enrichedSeed = attachMotifToSeed(params.seed)
 
     const candidate: StoryMotifRegistryItem = {
       title: enrichedSeed.title,
       fingerprint: enrichedSeed.motifFingerprint!,
       motifText: enrichedSeed.motifText || enrichedSeed.shortFingerprint,
-      source: "generated",
-    };
+      source: 'generated',
+    }
 
-    const comparisonPool = params.existingMotifs.slice(0, 40);
+    const comparisonPool = params.existingMotifs.slice(0, 40)
 
-    if (params.provider === "openai" && comparisonPool.length > 0) {
+    if (params.provider === 'openai' && comparisonPool.length > 0) {
       try {
         const textsToEmbed = [
           candidate.motifText,
           ...comparisonPool.map((item) => item.motifText).filter(Boolean),
-        ];
+        ]
 
-        const embeddings = await embedMotifTexts(textsToEmbed);
+        const embeddings = await embedMotifTexts(textsToEmbed)
 
-        candidate.embedding = embeddings[0];
+        candidate.embedding = embeddings[0]
 
         comparisonPool.forEach((item, index) => {
           if (!item.embedding && embeddings[index + 1]) {
-            item.embedding = embeddings[index + 1];
+            item.embedding = embeddings[index + 1]
           }
-        });
+        })
 
-        enrichedSeed.motifEmbedding = candidate.embedding;
+        enrichedSeed.motifEmbedding = candidate.embedding
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(
-          `Embedding motif lỗi, fallback sang field similarity: ${message}`,
-          "warning",
-        );
+        const message = error instanceof Error ? error.message : String(error)
+        addLog(`Embedding motif lỗi, fallback sang field similarity: ${message}`, 'warning')
       }
     }
 
@@ -1147,72 +455,68 @@ export function useAIFactoryPanelController() {
       candidate,
       existing: comparisonPool,
       threshold: 0.62,
-    });
+    })
 
-    enrichedSeed.motifSimilarity = rejectResult.best;
+    enrichedSeed.motifSimilarity = rejectResult.best
 
     return {
       seed: enrichedSeed,
       candidate,
       rejectResult,
-    };
+    }
   }
 
   async function buildUniqueStorySeed(params: {
-    genreLabel: string;
-    heroineLabel: string;
-    avoidLibrary: AvoidLibrary;
-    factoryRunId: string;
-    storyIndex: number;
-    premiseSeed: string;
-    provider: AIFactoryConfig["provider"];
-    targetChapters?: number;
+    genreLabel: string
+    heroineLabel: string
+    avoidLibrary: AvoidLibrary
+    factoryRunId: string
+    storyIndex: number
+    premiseSeed: string
+    provider: AIFactoryConfig['provider']
   }) {
-    const existingMotifs = params.avoidLibrary.motifFingerprints || [];
-    let lastRejected: Awaited<
-      ReturnType<typeof evaluateStorySeedMotif>
-    > | null = null;
-    const rejectedHints: string[] = [];
+    const existingMotifs = params.avoidLibrary.motifFingerprints || []
+    let lastRejected: Awaited<ReturnType<typeof evaluateStorySeedMotif>> | null = null
+    const rejectedHints: string[] = []
 
     for (let attempt = 1; attempt <= STORY_SEED_MAX_ATTEMPTS; attempt += 1) {
-      const retryHint = rejectedHints.slice(-3).join("__avoid__");
+      const retryHint = rejectedHints.slice(-3).join('__avoid__')
       const rawSeed = buildMockStorySeed({
         genreLabel: params.genreLabel,
         heroineLabel: params.heroineLabel,
         avoidLibrary: params.avoidLibrary,
         seed: `${params.factoryRunId}-${params.storyIndex}-${params.premiseSeed}-motif-${attempt}-${retryHint}`,
-        targetChapters: params.targetChapters,
-      });
+      })
 
       const evaluated = await evaluateStorySeedMotif({
         seed: rawSeed,
         existingMotifs,
         provider: params.provider,
-      });
+      })
 
       if (!evaluated.rejectResult.reject) {
         if (evaluated.rejectResult.best) {
           addLog(
             `Motif check pass attempt ${attempt}/${STORY_SEED_MAX_ATTEMPTS}: ${formatMotifSimilarityForLog(evaluated.rejectResult.best)}`,
-            "success",
-          );
+            'success',
+          )
         } else {
           addLog(
             `Motif check pass attempt ${attempt}/${STORY_SEED_MAX_ATTEMPTS}: chưa có motif cũ đủ dữ liệu để so.`,
-            "success",
-          );
+            'success',
+          )
         }
 
-        return evaluated.seed;
+        return evaluated.seed
       }
 
-      lastRejected = evaluated;
+      lastRejected = evaluated
 
-      const best = evaluated.rejectResult.best;
-      const fingerprint = evaluated.seed.motifFingerprint;
+      const best = evaluated.rejectResult.best
+      const fingerprint = evaluated.seed.motifFingerprint
       rejectedHints.push(
         [
-          best?.item?.title || "unknown-title",
+          best?.item?.title || 'unknown-title',
           fingerprint?.openingArena,
           fingerprint?.mainArena,
           fingerprint?.villainAttackType,
@@ -1222,63 +526,60 @@ export function useAIFactoryPanelController() {
           fingerprint?.deadlineStyle,
         ]
           .filter(Boolean)
-          .join("|"),
-      );
+          .join('|'),
+      )
 
       addLog(
         `Reject story seed attempt ${attempt}/${STORY_SEED_MAX_ATTEMPTS} vì motif quá giống: ${formatMotifSimilarityForLog(
           evaluated.rejectResult.best,
         )}`,
-        "warning",
-      );
+        'warning',
+      )
     }
 
     throw new Error(
       `Không tạo được story seed đủ khác motif sau ${STORY_SEED_MAX_ATTEMPTS} lần. ${
         lastRejected?.rejectResult.best
           ? formatMotifSimilarityForLog(lastRejected.rejectResult.best)
-          : ""
+          : ''
       }`,
-    );
+    )
   }
 
   async function scanExistingStories() {
-    setCurrentAction("Đang quét kho truyện...");
-    addLog("Quét kho truyện gần nhất từ Supabase...");
+    setCurrentAction('Đang quét kho truyện...')
+    addLog('Quét kho truyện gần nhất từ Supabase...')
 
     const extendedSelect =
-      "id, title, description, genres, story_dna, story_memory, completion_status, target_chapters, created_at";
+      'id, title, description, genres, story_dna, story_memory, completion_status, target_chapters, created_at'
 
     let result: {
-      data: ExistingStory[] | null;
-      error: { message: string } | null;
+      data: ExistingStory[] | null
+      error: { message: string } | null
     } = await supabase
-      .from("stories")
+      .from('stories')
       .select(extendedSelect)
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .order('created_at', { ascending: false })
+      .limit(100)
 
     if (result.error) {
-      addLog(
-        `Select mở rộng lỗi, thử select tối thiểu: ${result.error.message}`,
-        "warning",
-      );
+      addLog(`Select mở rộng lỗi, thử select tối thiểu: ${result.error.message}`, 'warning')
 
       const fallbackResult = await supabase
-        .from("stories")
-        .select("id, title, description, genres, created_at")
-        .order("created_at", { ascending: false })
-        .limit(100);
+        .from('stories')
+        .select('id, title, description, genres, created_at')
+        .order('created_at', { ascending: false })
+        .limit(100)
 
       result = {
         data: (fallbackResult.data ?? []) as ExistingStory[],
         error: fallbackResult.error,
-      };
+      }
     }
 
     if (result.error) {
-      addLog(`Không quét được kho truyện: ${result.error.message}`, "error");
-      setCurrentAction("Quét kho truyện thất bại");
+      addLog(`Không quét được kho truyện: ${result.error.message}`, 'error')
+      setCurrentAction('Quét kho truyện thất bại')
       return {
         stories: [] as ExistingStory[],
         avoid: {
@@ -1289,55 +590,57 @@ export function useAIFactoryPanelController() {
           motifFingerprints: [],
           motifTexts: [],
         } satisfies AvoidLibrary,
-      };
+      }
     }
 
-    const stories = (result.data ?? []) as ExistingStory[];
-    const historyStories = await scanFactoryHistoryStories();
-    const avoidSourceStories = [...historyStories, ...stories] as ExistingStory[];
-    const motifItems = extractMotifRegistryItemsFromStories(avoidSourceStories);
+    const stories = (result.data ?? []) as ExistingStory[]
+    const motifItems = extractMotifRegistryItemsFromStories(stories)
     const avoid = {
-      ...buildAvoidLibrary(avoidSourceStories),
+      ...buildAvoidLibrary(stories),
       motifFingerprints: motifItems,
       motifTexts: motifItems.map((item) => item.motifText).filter(Boolean),
-    };
+    }
 
-    setExistingStories(stories);
-    setAvoidLibrary(avoid);
+    setExistingStories(stories)
+    setAvoidLibrary(avoid)
 
     addLog(
-      `Đã quét ${stories.length} truyện hiện có + ${historyStories.length} history. Gom ${avoid.titles.length} title, ${avoid.motifs.length} motif, ${motifItems.length} motif DNA.`,
-      "success",
-    );
+      `Đã quét ${stories.length} truyện. Gom ${avoid.titles.length} title, ${avoid.motifs.length} motif, ${motifItems.length} motif DNA.`,
+      'success',
+    )
 
-    setCurrentAction("Đã quét xong kho truyện");
+    setCurrentAction('Đã quét xong kho truyện')
 
-    return { stories, avoid };
+    return { stories, avoid }
   }
 
+
+
+
+
   async function generateChapter(params: {
-    provider: AIFactoryConfig["provider"];
-    modelKey: AIFactoryConfig["modelKey"];
-    storyTitle: string;
-    storyDescription: string;
-    genreLabel: string;
-    heroineLabel: string;
-    chapterNumber: number;
-    targetChapters: number;
-    isFinalChapter?: boolean;
+    provider: AIFactoryConfig['provider']
+    modelKey: AIFactoryConfig['modelKey']
+    storyTitle: string
+    storyDescription: string
+    genreLabel: string
+    heroineLabel: string
+    chapterNumber: number
+    targetChapters: number
+    isFinalChapter?: boolean
     recentChapters: Array<{
-      chapter_number: number;
-      title: string;
-      content: string;
-      summary?: string;
-    }>;
-    storyMemory: string;
-    factoryPromptIdea: string;
-    runShortId: string;
-    storySeed?: FactoryStorySeed | null;
+      chapter_number: number
+      title: string
+      content: string
+      summary?: string
+    }>
+    storyMemory: string
+    factoryPromptIdea: string
+    runShortId: string
+    storySeed?: FactoryStorySeed | null
   }) {
-    if (params.provider === "mock") {
-      await sleep(500);
+    if (params.provider === 'mock') {
+      await sleep(500)
       return {
         text: buildMockChapterOutput({
           chapterNumber: params.chapterNumber,
@@ -1356,7 +659,7 @@ export function useAIFactoryPanelController() {
           warningSamples: [],
           allowedSamples: [],
         },
-      };
+      }
     }
 
     const finalChapterInstruction = params.isFinalChapter
@@ -1383,13 +686,13 @@ Yêu cầu:
 - Không cho phản diện sụp đổ hoàn toàn quá sớm.
 - Vẫn phải giữ mạch để đọc tiếp chương sau.
 - Trong bản kỹ thuật ghi completion_status = ongoing.
-`;
+`
 
     const payload = {
-      mode: "chapter",
+      mode: 'chapter',
       provider: params.provider,
       modelKey: params.modelKey,
-      moduleId: "female-urban-viral",
+      moduleId: 'female-urban-viral',
       title: params.storyTitle,
       storySummary: params.storyDescription,
       promptIdea: [
@@ -1398,11 +701,11 @@ Yêu cầu:
           storySeed: params.storySeed,
         }),
         buildNaturalVietnameseProseInstruction(),
-        params.chapterNumber === 1 ? params.factoryPromptIdea : "",
-        params.isFinalChapter ? finalChapterInstruction : "",
+        params.chapterNumber === 1 ? params.factoryPromptIdea : '',
+        params.isFinalChapter ? finalChapterInstruction : '',
       ]
         .filter(Boolean)
-        .join("\n\n"),
+        .join('\n\n'),
       genreLabel: params.genreLabel,
       mainCharacterStyleLabel: params.heroineLabel,
       chapterLengthLabel: config.chapterLengthLabel,
@@ -1414,32 +717,28 @@ Yêu cầu:
       isFinalChapter: Boolean(params.isFinalChapter),
       storySeed: params.storySeed ?? null,
       recentChapters: params.recentChapters,
-      storyMemory: [params.storyMemory, finalChapterInstruction]
-        .filter(Boolean)
-        .join("\n\n---\n\n"),
-    };
+      storyMemory: [params.storyMemory, finalChapterInstruction].filter(Boolean).join('\n\n---\n\n'),
+    }
 
-    const response = await fetch("/api/ai/generate", {
-      method: "POST",
+    const response = await fetch('/api/ai/generate', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         ...getAIAdminHeaders(),
       },
       body: JSON.stringify(payload),
-    });
+    })
 
-    const data = await response.json().catch(() => null);
+    const data = await response.json().catch(() => null)
 
     if (!response.ok) {
-      throw new Error(
-        data?.error || data?.message || "OpenAI generate request failed",
-      );
+      throw new Error(data?.error || data?.message || 'OpenAI generate request failed')
     }
 
-    const text = data?.text || data?.output_text || data?.content;
+    const text = data?.text || data?.output_text || data?.content
 
-    if (!text || typeof text !== "string") {
-      throw new Error("API không trả về text hợp lệ.");
+    if (!text || typeof text !== 'string') {
+      throw new Error('API không trả về text hợp lệ.')
     }
 
     return {
@@ -1448,61 +747,45 @@ Yêu cầu:
       vietnameseRepairIssues: Array.isArray(data?.vietnameseRepairIssues)
         ? data.vietnameseRepairIssues
         : [],
-      vietnameseRepairAppliedFixes: Array.isArray(
-        data?.vietnameseRepairAppliedFixes,
-      )
+      vietnameseRepairAppliedFixes: Array.isArray(data?.vietnameseRepairAppliedFixes)
         ? data.vietnameseRepairAppliedFixes
         : [],
-      vietnameseRepairIssuesStructured: Array.isArray(
-        data?.vietnameseRepairIssuesStructured,
-      )
-        ? data.vietnameseRepairIssuesStructured
-        : Array.isArray(data?.proseReport?.warnings)
-          ? data.proseReport.warnings
+      vietnameseRepairStats: data?.vietnameseRepairStats || {
+        fixedCount: Array.isArray(data?.vietnameseRepairAppliedFixes)
+          ? data.vietnameseRepairAppliedFixes.length
+          : 0,
+        warningCount: Array.isArray(data?.vietnameseRepairIssues)
+          ? data.vietnameseRepairIssues.length
+          : 0,
+        allowedCount: 0,
+        fixedSamples: Array.isArray(data?.vietnameseRepairAppliedFixes)
+          ? data.vietnameseRepairAppliedFixes.slice(0, 8)
           : [],
-      vietnameseRepairStats: data?.vietnameseRepairStats ||
-        data?.proseReport?.stats || {
-          fixedCount: Array.isArray(data?.vietnameseRepairAppliedFixes)
-            ? data.vietnameseRepairAppliedFixes.length
-            : 0,
-          warningCount: Array.isArray(data?.vietnameseRepairIssues)
-            ? data.vietnameseRepairIssues.length
-            : 0,
-          allowedCount: 0,
-          fixedSamples: Array.isArray(data?.vietnameseRepairAppliedFixes)
-            ? data.vietnameseRepairAppliedFixes.slice(0, 8)
-            : [],
-          warningSamples: Array.isArray(data?.vietnameseRepairIssuesStructured)
-            ? data.vietnameseRepairIssuesStructured.slice(0, 12)
-            : Array.isArray(data?.proseReport?.warnings)
-              ? data.proseReport.warnings.slice(0, 12)
-              : [],
-          allowedSamples: [],
-        },
-    };
+        warningSamples: [],
+        allowedSamples: [],
+      },
+    }
   }
 
   async function insertStoryDraft(params: {
-    parsed: ParsedChapterOutput;
-    genre: FactoryGenreOption;
-    heroine: FactoryHeroineOption;
-    config: AIFactoryConfig;
-    factoryRunId: string;
-    storyIndex: number;
-    targetChapters: number;
-    technicalReport: string;
-    premiseSeed: string;
-    nameSeed: string;
-    storySeed?: FactoryStorySeed | null;
-    avoidTitles?: string[];
+    parsed: ParsedChapterOutput
+    genre: FactoryGenreOption
+    heroine: FactoryHeroineOption
+    config: AIFactoryConfig
+    factoryRunId: string
+    storyIndex: number
+    targetChapters: number
+    technicalReport: string
+    premiseSeed: string
+    nameSeed: string
+    storySeed?: FactoryStorySeed | null
   }) {
     const generatedChaptersNow = params.config.autoCompleteByTarget
       ? params.targetChapters
-      : params.config.chaptersToGenerateNow;
-    const lockedStoryPlan = getFactorySeedStoryPlan(params.storySeed);
+      : params.config.chaptersToGenerateNow
 
     const storyDna = {
-      source: "ai-factory",
+      source: 'ai-factory',
       factory_run_id: params.factoryRunId,
       story_index: params.storyIndex,
       genre_key: params.genre.key,
@@ -1511,11 +794,9 @@ Yêu cầu:
       heroine_style_key: params.heroine.key,
       heroine_style_label: params.heroine.label,
       model_key: params.config.modelKey,
-      module_id: "female-urban-viral",
+      module_id: 'female-urban-viral',
       target_chapters: params.targetChapters,
       factory_seed: params.storySeed ?? null,
-      locked_story_plan: lockedStoryPlan,
-      locked_story_plan_chapters: lockedStoryPlan?.chapterPlan ?? [],
       motifFingerprint: params.storySeed?.motifFingerprint ?? null,
       motifText: params.storySeed?.motifText ?? null,
       motifEmbedding: params.storySeed?.motifEmbedding ?? null,
@@ -1523,9 +804,9 @@ Yêu cầu:
       generated_chapters_now: generatedChaptersNow,
       auto_complete_by_target: params.config.autoCompleteByTarget,
       chapter_length_label: params.config.chapterLengthLabel,
-      cliffhanger_type_key: "auto",
-      humiliation_level: "random_3_5",
-      revenge_intensity: "random_3_5",
+      cliffhanger_type_key: 'auto',
+      humiliation_level: 'random_3_5',
+      revenge_intensity: 'random_3_5',
       premise_seed: params.premiseSeed,
       name_seed: params.nameSeed,
       avoid_context_used: {
@@ -1538,147 +819,123 @@ Yêu cầu:
       },
       character_names: [],
       company_names: [],
-    };
+    }
 
     const publicGenreSlugs = await resolvePublicGenreSlugs({
       genreLabel: params.genre.label,
       genreSlug: params.genre.slug,
       storySeed: params.storySeed,
-    });
-    const requestedStoryTitle =
-      safeString(params.parsed.storyTitle) ||
-      params.storySeed?.title ||
-      "Truyện AI";
-    const finalStoryTitle = await resolveUniqueStoryTitleForInsert({
-      requestedTitle: requestedStoryTitle,
-      avoidTitles: params.avoidTitles,
+    })
+    const resolvedTitle = resolvePanelStoryTitle({
       storySeed: params.storySeed,
-      storyIndex: params.storyIndex,
-    });
-    const baseSlugSuffix = `${params.factoryRunId}-${params.storyIndex}`;
+      parsedTitle: safeString(params.parsed.storyTitle) || safeString(params.storySeed?.title) || 'Truyện AI',
+    })
+    const finalStoryTitle = resolvedTitle.title
+
+    if (resolvedTitle.changed) {
+      addLog(
+        `Panel title gate changed: "${resolvedTitle.original}" → "${finalStoryTitle}"`,
+        'warning',
+      )
+    }
+    const baseSlugSuffix = `${params.factoryRunId}-${params.storyIndex}`
 
     const buildSlugForAttempt = (attempt: number) =>
       buildFactoryStorySlug(
         finalStoryTitle,
-        attempt <= 0
-          ? baseSlugSuffix
-          : `${baseSlugSuffix}-${attempt}-${makeId().slice(0, 6)}`,
-      );
+        attempt <= 0 ? baseSlugSuffix : `${baseSlugSuffix}-${attempt}-${makeId().slice(0, 6)}`,
+      )
 
     const buildFullPayload = (slug: string) => ({
       title: finalStoryTitle,
       slug,
       description: params.parsed.storyDescription,
-      author: "Sưu Tầm",
+      author: 'Sưu Tầm',
       status: params.config.storyStatus,
-      completion_status: "ongoing",
+      completion_status: 'ongoing',
       target_chapters: params.targetChapters,
       genres: publicGenreSlugs,
       story_dna: storyDna,
       story_memory: params.technicalReport,
-      current_arc: "Factory draft — chapter 1 generated",
+      current_arc: 'Factory draft — chapter 1 generated',
       emotion_tags: [params.genre.label, params.heroine.label],
-    });
+    })
 
     const buildMinimalPayload = (slug: string) => ({
       title: finalStoryTitle,
       slug,
       description: params.parsed.storyDescription,
-      author: "Sưu Tầm",
+      author: 'Sưu Tầm',
       status: params.config.storyStatus,
       genres: publicGenreSlugs,
-    });
+    })
 
-    let result: any = null;
-    let finalStorySlug = buildSlugForAttempt(0);
-    const maxInsertAttempts = 5;
+    let result: any = null
+    let finalStorySlug = buildSlugForAttempt(0)
+    const maxInsertAttempts = 5
 
     for (let attempt = 0; attempt < maxInsertAttempts; attempt += 1) {
-      finalStorySlug = buildSlugForAttempt(attempt);
+      finalStorySlug = buildSlugForAttempt(attempt)
 
       result = await supabase
-        .from("stories")
+        .from('stories')
         .insert(buildFullPayload(finalStorySlug))
-        .select("id, title, slug")
-        .single();
+        .select('id, title, slug')
+        .single()
 
       if (!result.error && result.data?.id) {
         if (attempt > 0) {
-          addLog(
-            `Insert story thành công sau khi đổi slug: ${finalStorySlug}`,
-            "success",
-          );
+          addLog(`Insert story thành công sau khi đổi slug: ${finalStorySlug}`, 'success')
         }
-        break;
+        break
       }
 
       if (isDuplicateStorySlugError(result.error)) {
         addLog(
           `Slug story bị trùng (${finalStorySlug}), thử slug khác lần ${attempt + 1}/${maxInsertAttempts - 1}.`,
-          "warning",
-        );
-        continue;
+          'warning',
+        )
+        continue
       }
 
-      addLog(
-        `Insert story mở rộng lỗi, thử insert tối thiểu: ${result.error.message}`,
-        "warning",
-      );
+      addLog(`Insert story mở rộng lỗi, thử insert tối thiểu: ${result.error.message}`, 'warning')
 
       result = await supabase
-        .from("stories")
+        .from('stories')
         .insert(buildMinimalPayload(finalStorySlug))
-        .select("id, title, slug")
-        .single();
+        .select('id, title, slug')
+        .single()
 
       if (!result.error && result.data?.id) {
-        break;
+        break
       }
 
       if (isDuplicateStorySlugError(result.error)) {
         addLog(
           `Slug story tối thiểu bị trùng (${finalStorySlug}), thử slug khác lần ${attempt + 1}/${maxInsertAttempts - 1}.`,
-          "warning",
-        );
-        continue;
+          'warning',
+        )
+        continue
       }
 
-      break;
+      break
     }
 
     if (result?.error || !result?.data?.id) {
-      throw new Error(
-        result?.error?.message || "Không insert được story draft.",
-      );
+      throw new Error(result?.error?.message || 'Không insert được story draft.')
     }
 
-    const insertedStory = result.data as { id: string; title: string; slug: string };
-
-    await recordFactoryHistory({
-      story: insertedStory,
-      storyDescription: params.parsed.storyDescription,
-      storyDna,
-      storyMemory: params.technicalReport,
-      genre: params.genre,
-      heroine: params.heroine,
-      config: params.config,
-      factoryRunId: params.factoryRunId,
-      storyIndex: params.storyIndex,
-      targetChapters: params.targetChapters,
-      storySeed: params.storySeed,
-    });
-
-    return insertedStory;
+    return result.data as { id: string; title: string; slug: string }
   }
 
   async function insertChapterDraft(params: {
-    storyId: string;
-    parsed: ParsedChapterOutput;
-    chapterNumber: number;
-    status: "draft";
+    storyId: string
+    parsed: ParsedChapterOutput
+    chapterNumber: number
+    status: 'draft'
   }) {
     let result = await supabase
-      .from("chapters")
+      .from('chapters')
       .insert({
         story_id: params.storyId,
         title: params.parsed.chapterTitle,
@@ -1688,17 +945,14 @@ Yêu cầu:
         chapter_number: params.chapterNumber,
         status: params.status,
       })
-      .select("id, title, chapter_number")
-      .single();
+      .select('id, title, chapter_number')
+      .single()
 
     if (result.error) {
-      addLog(
-        `Insert chapter có status lỗi, thử bỏ status: ${result.error.message}`,
-        "warning",
-      );
+      addLog(`Insert chapter có status lỗi, thử bỏ status: ${result.error.message}`, 'warning')
 
       result = await supabase
-        .from("chapters")
+        .from('chapters')
         .insert({
           story_id: params.storyId,
           title: params.parsed.chapterTitle,
@@ -1707,45 +961,37 @@ Yêu cầu:
           summary: buildPublicChapterSummary(params.parsed.readerOnly),
           chapter_number: params.chapterNumber,
         })
-        .select("id, title, chapter_number")
-        .single();
+        .select('id, title, chapter_number')
+        .single()
     }
 
     if (result.error || !result.data?.id) {
-      throw new Error(
-        result.error?.message || "Không insert được chapter draft.",
-      );
+      throw new Error(result.error?.message || 'Không insert được chapter draft.')
     }
 
-    return result.data as { id: string; title: string; chapter_number: number };
+    return result.data as { id: string; title: string; chapter_number: number }
   }
 
   async function generateAndAttachCover(params: {
-    storyId: string;
-    storyTitle: string;
-    storySlug: string;
-    storyDescription: string;
-    genreLabel: string;
-    heroineLabel: string;
-    storySeed?: FactoryStorySeed | null;
+    storyId: string
+    storyTitle: string
+    storySlug: string
+    storyDescription: string
+    genreLabel: string
+    heroineLabel: string
+    storySeed?: FactoryStorySeed | null
   }) {
-    const coverBrief = buildFactoryCoverBrief(params);
-
-    const response = await fetch("/api/ai/generate-cover", {
-      method: "POST",
+    const response = await fetch('/api/ai/generate-cover', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         ...getAIAdminHeaders(),
       },
       body: JSON.stringify({
-        provider: "openai",
+        provider: 'openai',
         modelKey: config.modelKey,
         title: params.storyTitle,
         storySummary: params.storyDescription,
-        summary: coverBrief,
-        description: coverBrief,
-        coverBrief,
-        cover_brief: coverBrief,
         genreLabel: params.genreLabel,
         heroineLabel: params.heroineLabel,
         story_dna: params.storySeed
@@ -1756,30 +1002,21 @@ Yêu cầu:
               motifText: params.storySeed.motifText ?? null,
               coverConcept: (params.storySeed as any).coverConcept ?? null,
               coverArtStyle: normalizeCoverArtStyle(config.coverArtStyle),
-              coverCompositionPreset: normalizeCoverCompositionPreset(
-                config.coverCompositionPreset,
-              ),
+              coverCompositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
             }
           : {
               coverArtStyle: normalizeCoverArtStyle(config.coverArtStyle),
-              coverCompositionPreset: normalizeCoverCompositionPreset(
-                config.coverCompositionPreset,
-              ),
+              coverCompositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
             },
         story: {
           id: params.storyId,
           title: params.storyTitle,
           slug: params.storySlug,
-          summary: coverBrief,
-          description: coverBrief,
-          coverBrief,
-          cover_brief: coverBrief,
+          summary: params.storyDescription,
           genreLabel: params.genreLabel,
           tags: [params.genreLabel, params.heroineLabel].filter(Boolean),
           coverArtStyle: normalizeCoverArtStyle(config.coverArtStyle),
-          coverCompositionPreset: normalizeCoverCompositionPreset(
-            config.coverCompositionPreset,
-          ),
+          coverCompositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
           story_dna: params.storySeed
             ? {
                 ...params.storySeed,
@@ -1788,147 +1025,123 @@ Yêu cầu:
                 motifText: params.storySeed.motifText ?? null,
                 coverConcept: (params.storySeed as any).coverConcept ?? null,
                 coverArtStyle: normalizeCoverArtStyle(config.coverArtStyle),
-                coverCompositionPreset: normalizeCoverCompositionPreset(
-                  config.coverCompositionPreset,
-                ),
+                coverCompositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
               }
             : {
                 coverArtStyle: normalizeCoverArtStyle(config.coverArtStyle),
-                coverCompositionPreset: normalizeCoverCompositionPreset(
-                  config.coverCompositionPreset,
-                ),
+                coverCompositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
               },
         },
         cover_art_style: normalizeCoverArtStyle(config.coverArtStyle),
         visual_style: normalizeCoverArtStyle(config.coverArtStyle),
         style: normalizeCoverArtStyle(config.coverArtStyle),
         styleLabel: getCoverArtStyleLabel(config.coverArtStyle),
-        cover_composition_preset: normalizeCoverCompositionPreset(
-          config.coverCompositionPreset,
-        ),
-        compositionPreset: normalizeCoverCompositionPreset(
-          config.coverCompositionPreset,
-        ),
-        compositionLabel: getCoverCompositionPresetLabel(
-          config.coverCompositionPreset,
-        ),
-        aspectRatio: "2:3",
+        cover_composition_preset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
+        compositionPreset: normalizeCoverCompositionPreset(config.coverCompositionPreset),
+        compositionLabel: getCoverCompositionPresetLabel(config.coverCompositionPreset),
+        aspectRatio: '2:3',
       }),
-    });
+    })
 
-    const data = await response.json().catch(() => null);
+    const data = await response.json().catch(() => null)
 
     if (!response.ok) {
-      throw new Error(
-        data?.error || data?.message || "Generate cover API failed.",
-      );
+      throw new Error(data?.error || data?.message || 'Generate cover API failed.')
     }
 
-    if (data?.publicUrl && typeof data.publicUrl === "string") {
+    if (data?.publicUrl && typeof data.publicUrl === 'string') {
       await updateStoryCover({
         storyId: params.storyId,
         coverUrl: data.publicUrl,
-      });
-      return data.publicUrl as string;
+      })
+      return data.publicUrl as string
     }
 
-    if (data?.imageUrl && typeof data.imageUrl === "string") {
+    if (data?.imageUrl && typeof data.imageUrl === 'string') {
       await updateStoryCover({
         storyId: params.storyId,
         coverUrl: data.imageUrl,
-      });
-      return data.imageUrl as string;
+      })
+      return data.imageUrl as string
     }
 
-    let imageBlob: Blob | null = null;
+    let imageBlob: Blob | null = null
 
-    if (data?.b64_json && typeof data.b64_json === "string") {
-      imageBlob = base64ToBlob(data.b64_json, "image/png");
-    } else if (data?.dataUrl && typeof data.dataUrl === "string") {
-      imageBlob = dataUrlToBlob(data.dataUrl);
+    if (data?.b64_json && typeof data.b64_json === 'string') {
+      imageBlob = base64ToBlob(data.b64_json, 'image/png')
+    } else if (data?.dataUrl && typeof data.dataUrl === 'string') {
+      imageBlob = dataUrlToBlob(data.dataUrl)
     }
 
     if (!imageBlob) {
-      throw new Error(
-        "API cover không trả imageUrl/publicUrl/b64_json/dataUrl hợp lệ.",
-      );
+      throw new Error('API cover không trả imageUrl/publicUrl/b64_json/dataUrl hợp lệ.')
     }
 
     const publicUrl = await uploadCoverToStorage({
       storyId: params.storyId,
       storySlug: params.storySlug,
       fileBlob: imageBlob,
-    });
+    })
 
     await updateStoryCover({
       storyId: params.storyId,
       coverUrl: publicUrl,
-    });
+    })
 
-    return publicUrl;
+    return publicUrl
   }
 
   async function scanIncompleteStories() {
-    setCurrentAction("Đang quét truyện dang dở...");
-    addLog("Quét truyện chưa đủ số chương mục tiêu...");
+    setCurrentAction('Đang quét truyện dang dở...')
+    addLog('Quét truyện chưa đủ số chương mục tiêu...')
 
     let query = supabase
-      .from("stories")
+      .from('stories')
       .select(
-        "id, title, slug, description, status, completion_status, target_chapters, genres, story_dna, story_memory, created_at",
+        'id, title, slug, description, status, completion_status, target_chapters, genres, story_dna, story_memory, created_at',
       )
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .order('created_at', { ascending: false })
+      .limit(100)
 
-    if (continueStatusFilter !== "all") {
-      query = query.eq("status", continueStatusFilter);
+    if (continueStatusFilter !== 'all') {
+      query = query.eq('status', continueStatusFilter)
     }
 
-    const storiesResult = await query;
+    const storiesResult = await query
 
     if (storiesResult.error) {
-      addLog(
-        `Không quét được truyện dang dở: ${storiesResult.error.message}`,
-        "error",
-      );
-      setCurrentAction("Quét truyện dang dở thất bại");
-      setIncompleteStories([]);
-      return [] as IncompleteStory[];
+      addLog(`Không quét được truyện dang dở: ${storiesResult.error.message}`, 'error')
+      setCurrentAction('Quét truyện dang dở thất bại')
+      setIncompleteStories([])
+      return [] as IncompleteStory[]
     }
 
-    const storyRows = (storiesResult.data ?? []) as ExistingStory[];
-    const incomplete: IncompleteStory[] = [];
+    const storyRows = (storiesResult.data ?? []) as ExistingStory[]
+    const incomplete: IncompleteStory[] = []
 
     for (const story of storyRows) {
-      const storyId = (story as any).id;
-      if (!storyId) continue;
+      const storyId = (story as any).id
+      if (!storyId) continue
 
       const chaptersResult = await supabase
-        .from("chapters")
-        .select(
-          "id, story_id, title, slug, content, summary, chapter_number, created_at",
-        )
-        .eq("story_id", storyId)
-        .order("chapter_number", { ascending: true });
+        .from('chapters')
+        .select('id, story_id, title, slug, content, summary, chapter_number, created_at')
+        .eq('story_id', storyId)
+        .order('chapter_number', { ascending: true })
 
       if (chaptersResult.error) {
-        addLog(
-          `Không đọc được chapters của ${story.title}: ${chaptersResult.error.message}`,
-          "warning",
-        );
-        continue;
+        addLog(`Không đọc được chapters của ${story.title}: ${chaptersResult.error.message}`, 'warning')
+        continue
       }
 
-      const chapters = (chaptersResult.data ?? []) as ExistingChapterRow[];
-      const targetChapters = getTargetChapters(story, config.maxTargetChapters);
-      const currentChapters = chapters.length;
+      const chapters = (chaptersResult.data ?? []) as ExistingChapterRow[]
+      const targetChapters = getTargetChapters(story, config.maxTargetChapters)
+      const currentChapters = chapters.length
       const maxChapterNumber = chapters.reduce((max, chapter, index) => {
-        const chapterNumber = Number(chapter.chapter_number ?? index + 1);
-        return Number.isFinite(chapterNumber)
-          ? Math.max(max, chapterNumber)
-          : max;
-      }, 0);
-      const missingChapters = Math.max(0, targetChapters - currentChapters);
+        const chapterNumber = Number(chapter.chapter_number ?? index + 1)
+        return Number.isFinite(chapterNumber) ? Math.max(max, chapterNumber) : max
+      }, 0)
+      const missingChapters = Math.max(0, targetChapters - currentChapters)
 
       if (missingChapters > 0) {
         incomplete.push({
@@ -1938,194 +1151,155 @@ Yêu cầu:
           missingChapters,
           nextChapterNumber: maxChapterNumber + 1,
           chapters,
-        });
+        })
       }
     }
 
-    setIncompleteStories(incomplete);
-    setCurrentAction(`Đã quét ${incomplete.length} truyện dang dở`);
-    addLog(
-      `Tìm thấy ${incomplete.length} truyện chưa hoàn thành.`,
-      incomplete.length ? "success" : "warning",
-    );
+    setIncompleteStories(incomplete)
+    setCurrentAction(`Đã quét ${incomplete.length} truyện dang dở`)
+    addLog(`Tìm thấy ${incomplete.length} truyện chưa hoàn thành.`, incomplete.length ? 'success' : 'warning')
 
     incomplete.slice(0, 10).forEach((story) => {
       const progress = getFactoryChapterProgress({
         currentChapters: story.currentChapters,
         targetChapters: story.targetChapters,
         maxCreateNow: continueChaptersPerStory,
-      });
+      })
 
       addLog(
-        `${story.title || "Truyện chưa có tên"}: ${progress.progressLabel} chương, ${progress.remainingLabel}. ${progress.createRangeLabel}.`,
-        progress.isFull ? "info" : "success",
-      );
-    });
+        `${story.title || 'Truyện chưa có tên'}: ${progress.progressLabel} chương, ${progress.remainingLabel}. ${progress.createRangeLabel}.`,
+        progress.isFull ? 'info' : 'success',
+      )
+    })
 
-    return incomplete;
+    return incomplete
   }
 
   async function continueExistingStories() {
-    stopRequestedRef.current = false;
-    setStatus("running");
-    setCurrentAction("Chuẩn bị viết tiếp truyện dang dở");
-    setLogs([]);
+    stopRequestedRef.current = false
+    setStatus('running')
+    setCurrentAction('Chuẩn bị viết tiếp truyện dang dở')
+    setLogs([])
 
     addLog(
-      selectedContinueStoryId === "auto"
+      selectedContinueStoryId === 'auto'
         ? `Factory sẽ viết tiếp tối đa ${continueStoryLimit} truyện, mỗi truyện thêm tối đa ${continueChaptersPerStory} chương.`
         : `Factory sẽ viết tiếp truyện đã chọn, thêm tối đa ${continueChaptersPerStory} chương.`,
-      "info",
-    );
+      'info',
+    )
 
     try {
-      const scannedStories = await scanIncompleteStories();
+      const scannedStories = await scanIncompleteStories()
       const candidates =
-        selectedContinueStoryId === "auto"
+        selectedContinueStoryId === 'auto'
           ? scannedStories.slice(0, Math.max(1, continueStoryLimit))
-          : scannedStories.filter(
-              (story) => String((story as any).id) === selectedContinueStoryId,
-            );
+          : scannedStories.filter((story) => String((story as any).id) === selectedContinueStoryId)
 
       if (!candidates.length) {
-        setStatus("success");
-        setCurrentAction("Không có truyện dang dở cần viết tiếp");
+        setStatus('success')
+        setCurrentAction('Không có truyện dang dở cần viết tiếp')
         addLog(
-          selectedContinueStoryId === "auto"
-            ? "Không có truyện nào thiếu chương theo target."
-            : "Truyện đã chọn không còn thiếu chương hoặc không tìm thấy trong danh sách scan.",
-          "warning",
-        );
-        setJobs([]);
-        return;
+          selectedContinueStoryId === 'auto'
+            ? 'Không có truyện nào thiếu chương theo target.'
+            : 'Truyện đã chọn không còn thiếu chương hoặc không tìm thấy trong danh sách scan.',
+          'warning',
+        )
+        setJobs([])
+        return
       }
 
       const initialJobs: FactoryJob[] = candidates.map((story, index) => ({
-        id: makeId("job"),
+        id: makeId('job'),
         index: index + 1,
-        title: story.title || "Truyện chưa có tên",
+        title: story.title || 'Truyện chưa có tên',
         genreLabel: getStoryGenreLabel(story),
         genreSlug: Array.isArray((story as any).genres)
-          ? String((story as any).genres[0] ?? "")
-          : String((story as any).genres ?? ""),
+          ? String((story as any).genres[0] ?? '')
+          : String((story as any).genres ?? ''),
         heroineLabel: getStoryHeroineLabel(story),
-        status: "pending",
+        status: 'pending',
         storyId: String((story as any).id),
-        storySlug: String((story as any).slug || ""),
+        storySlug: String((story as any).slug || ''),
         chapterProgress: `${story.currentChapters}/${story.targetChapters}`,
-        coverStatus: "off",
+        coverStatus: 'off',
         targetChapters: story.targetChapters,
         createdChapters: story.currentChapters,
-        completionStatus: "ongoing",
-      }));
+        completionStatus: 'ongoing',
+      }))
 
-      setJobs(initialJobs);
+      setJobs(initialJobs)
 
-      for (
-        let storyIndex = 0;
-        storyIndex < candidates.length;
-        storyIndex += 1
-      ) {
+      for (let storyIndex = 0; storyIndex < candidates.length; storyIndex += 1) {
         if (stopRequestedRef.current) {
-          addLog("Đã nhận lệnh stop. Dừng trước truyện tiếp theo.", "warning");
-          break;
+          addLog('Đã nhận lệnh stop. Dừng trước truyện tiếp theo.', 'warning')
+          break
         }
 
-        const story = candidates[storyIndex];
-        const job = initialJobs[storyIndex];
-        const storyId = String((story as any).id);
-        const storyTitle = story.title || "Truyện chưa có tên";
-        const genreLabel = getStoryGenreLabel(story);
-        const heroineLabel = getStoryHeroineLabel(story);
+        const story = candidates[storyIndex]
+        const job = initialJobs[storyIndex]
+        const storyId = String((story as any).id)
+        const storyTitle = story.title || 'Truyện chưa có tên'
+        const genreLabel = getStoryGenreLabel(story)
+        const heroineLabel = getStoryHeroineLabel(story)
         const chaptersToCreate = Math.min(
           Math.max(1, continueChaptersPerStory),
           story.missingChapters,
-        );
+        )
         const continueProgress = getFactoryChapterProgress({
           currentChapters: story.currentChapters,
           targetChapters: story.targetChapters,
           maxCreateNow: chaptersToCreate,
-        });
+        })
         let storyMemory =
-          typeof (story as any).story_memory === "string"
+          typeof (story as any).story_memory === 'string'
             ? (story as any).story_memory
-            : safeJson((story as any).story_memory);
-        const storyDna = (story as any).story_dna || {};
-        const continuedStorySeed =
-          (storyDna?.factory_seed as FactoryStorySeed | undefined) ||
-          (storyDna?.storySeed as FactoryStorySeed | undefined) ||
-          null;
-
-        const continuedStoryPlan = getFactorySeedStoryPlan(continuedStorySeed);
-
-        if (continuedStoryPlan?.chapterPlan?.length) {
-          addLog(
-            `${storyTitle}: dùng lại outline đã lưu ${continuedStoryPlan.chapterPlan.length} chương để viết tiếp.`,
-            "info",
-          );
-        } else {
-          addLog(
-            `${storyTitle}: chưa thấy outline đã lưu trong story_dna; sẽ viết tiếp bằng memory + chương gần nhất.`,
-            "warning",
-          );
-        }
-
-        const recentChapters = story.chapters
-          .slice(-5)
-          .map((chapter, index) => ({
-            chapter_number: Number(
-              chapter.chapter_number ?? story.nextChapterNumber - 5 + index,
-            ),
-            title:
-              chapter.title || `Chương ${chapter.chapter_number ?? index + 1}`,
-            content: chapter.content || "",
-            summary: chapter.summary || "",
-          }));
-        let nextChapterNumber = story.nextChapterNumber;
+            : safeJson((story as any).story_memory)
+        const recentChapters = story.chapters.slice(-5).map((chapter, index) => ({
+          chapter_number: Number(chapter.chapter_number ?? story.nextChapterNumber - 5 + index),
+          title: chapter.title || `Chương ${chapter.chapter_number ?? index + 1}`,
+          content: chapter.content || '',
+          summary: chapter.summary || '',
+        }))
+        let nextChapterNumber = story.nextChapterNumber
 
         updateJob(job.id, {
-          status: "running",
+          status: 'running',
           chapterProgress: `${story.currentChapters}/${story.targetChapters}`,
-        });
+        })
 
         addLog(
           `Viết tiếp ${storyTitle}: ${continueProgress.progressLabel}, ${continueProgress.remainingLabel}. ${continueProgress.createRangeLabel}.`,
-          "info",
-        );
+          'info',
+        )
 
         try {
           for (let offset = 0; offset < chaptersToCreate; offset += 1) {
             if (stopRequestedRef.current) {
               updateJob(job.id, {
-                status: "stopped",
+                status: 'stopped',
                 chapterProgress: `${story.currentChapters + offset}/${story.targetChapters}`,
-              });
-              addLog(
-                `Dừng sau request hiện tại tại truyện ${storyTitle}.`,
-                "warning",
-              );
-              break;
+              })
+              addLog(`Dừng sau request hiện tại tại truyện ${storyTitle}.`, 'warning')
+              break
             }
 
-            const isFinalChapter = nextChapterNumber >= story.targetChapters;
+            const isFinalChapter = nextChapterNumber >= story.targetChapters
 
-            setCurrentAction(
-              `${storyTitle}: generate chương ${nextChapterNumber}`,
-            );
+            setCurrentAction(`${storyTitle}: generate chương ${nextChapterNumber}`)
             addLog(
-              `${storyTitle}: generate chương ${nextChapterNumber}${isFinalChapter ? " — chương cuối" : ""}...`,
-            );
+              `${storyTitle}: generate chương ${nextChapterNumber}${isFinalChapter ? ' — chương cuối' : ''}...`,
+            )
 
-            let output = "";
-            let parsed: ParsedChapterOutput | null = null;
-            let validationErrors: string[] = [];
+            let output = ''
+            let parsed: ParsedChapterOutput | null = null
+            let validationErrors: string[] = []
 
             for (let attempt = 1; attempt <= 2; attempt += 1) {
               const generatedChapter = await generateChapter({
                 provider: config.provider,
                 modelKey: config.modelKey,
                 storyTitle,
-                storyDescription: (story as any).description || "",
+                storyDescription: (story as any).description || '',
                 genreLabel,
                 heroineLabel,
                 chapterNumber: nextChapterNumber,
@@ -2133,61 +1307,38 @@ Yêu cầu:
                 isFinalChapter,
                 recentChapters,
                 storyMemory,
-                factoryPromptIdea: continuedStorySeed
-                  ? buildFactoryPromptIdea({
-                      genreLabel,
-                      heroineLabel,
-                      targetChapters: story.targetChapters,
-                      avoidLibrary: buildAvoidLibrary([]),
-                      premiseSeed: `${storyId}-continue`,
-                      storySeed: continuedStorySeed,
-                    })
-                  : "",
+                factoryPromptIdea: '',
                 runShortId: `${storyId}-${nextChapterNumber}`,
-                storySeed: continuedStorySeed,
-              });
+              })
 
-              output = generatedChapter.text;
-              logVietnameseProseQuality(
-                `${storyTitle} chương ${nextChapterNumber}`,
-                generatedChapter,
-              );
-              appendJobVietnameseProseReport(
-                job.id,
-                `Chương ${nextChapterNumber}`,
-                generatedChapter,
-              );
+              output = generatedChapter.text
+              logVietnameseProseQuality(`${storyTitle} chương ${nextChapterNumber}`, generatedChapter)
 
               parsed = parseChapterOutput({
                 output,
                 genreLabel,
                 chapterNumber: nextChapterNumber,
                 runShortId: `${storyId}-${nextChapterNumber}`,
-              });
+              })
 
               const validation = validateChapterOutput({
                 output,
                 readerOnly: parsed.readerOnly,
                 chapterNumber: nextChapterNumber,
                 storyTitle,
-              });
+              })
 
               if (validation.ok) {
-                validationErrors = [];
-                break;
+                validationErrors = []
+                break
               }
 
-              validationErrors = validation.errors;
-              addLog(
-                `Validate fail lần ${attempt}: ${validation.errors.join(" | ")}`,
-                "warning",
-              );
+              validationErrors = validation.errors
+              addLog(`Validate fail lần ${attempt}: ${validation.errors.join(' | ')}`, 'warning')
             }
 
             if (!parsed || validationErrors.length) {
-              throw new Error(
-                `Output không đạt validation: ${validationErrors.join(" | ")}`,
-              );
+              throw new Error(`Output không đạt validation: ${validationErrors.join(' | ')}`)
             }
 
             await insertChapterDraft({
@@ -2195,206 +1346,180 @@ Yêu cầu:
               parsed,
               chapterNumber: nextChapterNumber,
               status: config.chapterStatus,
-            });
+            })
 
             recentChapters.push({
               chapter_number: nextChapterNumber,
               title: parsed.chapterTitle,
               content: parsed.readerOnly,
               summary: buildPublicChapterSummary(parsed.readerOnly),
-            });
+            })
 
-            while (recentChapters.length > 5) recentChapters.shift();
+            while (recentChapters.length > 5) recentChapters.shift()
 
-            storyMemory = [storyMemory, parsed.technicalReport]
-              .filter(Boolean)
-              .join("\n\n---\n\n");
+            storyMemory = [storyMemory, parsed.technicalReport].filter(Boolean).join('\n\n---\n\n')
 
             await supabase
-              .from("stories")
+              .from('stories')
               .update({
                 story_memory: storyMemory,
                 current_arc: `Factory continue — chapter ${nextChapterNumber} generated`,
               })
-              .eq("id", storyId);
+              .eq('id', storyId)
 
             updateJob(job.id, {
               chapterProgress: `${story.currentChapters + offset + 1}/${story.targetChapters}`,
               createdChapters: story.currentChapters + offset + 1,
               targetChapters: story.targetChapters,
-            });
+            })
 
-            addLog(`Insert chương ${nextChapterNumber} thành công`, "success");
-            nextChapterNumber += 1;
+            addLog(`Insert chương ${nextChapterNumber} thành công`, 'success')
+            nextChapterNumber += 1
 
             if (offset < chaptersToCreate - 1 && config.delayMs > 0) {
-              addLog(`Delay ${config.delayMs}ms trước request tiếp theo...`);
-              await sleep(config.delayMs);
+              addLog(`Delay ${config.delayMs}ms trước request tiếp theo...`)
+              await sleep(config.delayMs)
             }
           }
 
           if (!stopRequestedRef.current) {
-            const finalChapterCount = Math.min(
-              story.currentChapters + chaptersToCreate,
-              story.targetChapters,
-            );
-            const isStoryFull = finalChapterCount >= story.targetChapters;
+            const finalChapterCount = Math.min(story.currentChapters + chaptersToCreate, story.targetChapters)
+            const isStoryFull = finalChapterCount >= story.targetChapters
 
             await supabase
-              .from("stories")
+              .from('stories')
               .update({
                 story_memory: storyMemory,
                 current_arc: isStoryFull
                   ? `Factory continue — completed at chapter ${finalChapterCount}`
                   : `Factory continue — chapter ${finalChapterCount} generated`,
-                completion_status: isStoryFull ? "full" : "ongoing",
+                completion_status: isStoryFull ? 'full' : 'ongoing',
                 target_chapters: story.targetChapters,
               })
-              .eq("id", storyId);
+              .eq('id', storyId)
 
             updateJob(job.id, {
-              status: "success",
+              status: 'success',
               chapterProgress: `${finalChapterCount}/${story.targetChapters}`,
               createdChapters: finalChapterCount,
               targetChapters: story.targetChapters,
-              completionStatus: isStoryFull ? "full" : "ongoing",
-            });
+              completionStatus: isStoryFull ? 'full' : 'ongoing',
+            })
 
             addLog(
               isStoryFull
                 ? `Xong viết tiếp ${storyTitle} — truyện đã Full.`
                 : `Xong viết tiếp ${storyTitle}`,
-              "success",
-            );
+              'success',
+            )
           }
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
+          const message = error instanceof Error ? error.message : String(error)
           updateJob(job.id, {
-            status: "failed",
+            status: 'failed',
             error: message,
-          });
-          addLog(`Viết tiếp ${storyTitle} lỗi: ${message}`, "error");
+          })
+          addLog(`Viết tiếp ${storyTitle} lỗi: ${message}`, 'error')
         }
       }
 
       if (stopRequestedRef.current) {
-        setStatus("stopped");
-        setCurrentAction("Factory đã dừng theo yêu cầu");
-        addLog("Factory đã dừng.", "warning");
+        setStatus('stopped')
+        setCurrentAction('Factory đã dừng theo yêu cầu')
+        addLog('Factory đã dừng.', 'warning')
       } else {
-        setStatus("success");
-        setCurrentAction("Factory viết tiếp truyện xong");
-        addLog("Factory viết tiếp truyện xong toàn bộ job.", "success");
+        setStatus('success')
+        setCurrentAction('Factory viết tiếp truyện xong')
+        addLog('Factory viết tiếp truyện xong toàn bộ job.', 'success')
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setStatus("failed");
-      setCurrentAction("Factory viết tiếp lỗi");
-      addLog(`Factory viết tiếp lỗi: ${message}`, "error");
+      const message = error instanceof Error ? error.message : String(error)
+      setStatus('failed')
+      setCurrentAction('Factory viết tiếp lỗi')
+      addLog(`Factory viết tiếp lỗi: ${message}`, 'error')
     }
   }
 
   async function startFactory() {
-    if (!canStart) return;
+    if (!canStart) return
 
-    if (factoryMode === "continue-existing") {
-      await continueExistingStories();
-      return;
+    if (factoryMode === 'continue-existing') {
+      await continueExistingStories()
+      return
     }
 
-    stopRequestedRef.current = false;
-    setStatus("running");
-    setCurrentAction("Chuẩn bị chạy Factory");
-    setLogs([]);
+    stopRequestedRef.current = false
+    setStatus('running')
+    setCurrentAction('Chuẩn bị chạy Factory')
+    setLogs([])
 
-    const factoryRunId = makeId("factory");
-    currentRunTitleKeysRef.current = new Set();
-    const totalBatchesForRun = Math.ceil(
-      config.storyCount / Math.max(1, config.batchSize),
-    );
+    const factoryRunId = makeId('factory')
+    const totalBatchesForRun = Math.ceil(config.storyCount / Math.max(1, config.batchSize))
 
     addLog(
       `Factory sẽ tạo ${config.storyCount} truyện, chia thành ${totalBatchesForRun} batch, mỗi batch tối đa ${config.batchSize} truyện.`,
-      "info",
-    );
+      'info',
+    )
 
     if (config.autoCompleteByTarget) {
       addLog(
         `Đang bật full target mode: mỗi truyện sẽ random ${config.minTargetChapters}-${config.maxTargetChapters} chương và tạo đủ để kết truyện.`,
-        "warning",
-      );
+        'warning',
+      )
     }
 
-    const initialJobs: FactoryJob[] = Array.from({
-      length: config.storyCount,
-    }).map((_, index) => ({
-      id: makeId("job"),
+    const initialJobs: FactoryJob[] = Array.from({ length: config.storyCount }).map((_, index) => ({
+      id: makeId('job'),
       index: index + 1,
-      title: "Chưa tạo",
-      genreLabel: "Chưa chọn",
-      genreSlug: "",
-      heroineLabel: "Chưa chọn",
-      status: "pending",
+      title: 'Chưa tạo',
+      genreLabel: 'Chưa chọn',
+      genreSlug: '',
+      heroineLabel: 'Chưa chọn',
+      status: 'pending',
       chapterProgress: config.autoCompleteByTarget
         ? `0/${config.minTargetChapters}-${config.maxTargetChapters}`
         : `0/${config.chaptersToGenerateNow}`,
-      coverStatus: config.generateCover
-        ? config.provider === "openai"
-          ? "pending"
-          : "skipped"
-        : "off",
-      completionStatus: "ongoing",
-    }));
+      coverStatus: config.generateCover ? (config.provider === 'openai' ? 'pending' : 'skipped') : 'off',
+      completionStatus: 'ongoing',
+    }))
 
-    setJobs(initialJobs);
+    setJobs(initialJobs)
 
     try {
-      const scanResult = await scanExistingStories();
-      let activeAvoidLibrary = scanResult.avoid;
-      let generatedStoriesForAvoid: ExistingStory[] = [];
+      const scanResult = await scanExistingStories()
+      let activeAvoidLibrary = scanResult.avoid
 
-      for (
-        let storyIndex = 1;
-        storyIndex <= config.storyCount;
-        storyIndex += 1
-      ) {
-        const currentBatch = Math.ceil(
-          storyIndex / Math.max(1, config.batchSize),
-        );
-        const indexInBatch =
-          ((storyIndex - 1) % Math.max(1, config.batchSize)) + 1;
+      for (let storyIndex = 1; storyIndex <= config.storyCount; storyIndex += 1) {
+        const currentBatch = Math.ceil(storyIndex / Math.max(1, config.batchSize))
+        const indexInBatch = ((storyIndex - 1) % Math.max(1, config.batchSize)) + 1
 
         if (indexInBatch === 1) {
-          addLog(`Bắt đầu batch ${currentBatch}/${totalBatchesForRun}`, "info");
+          addLog(`Bắt đầu batch ${currentBatch}/${totalBatchesForRun}`, 'info')
         }
 
         if (stopRequestedRef.current) {
-          addLog("Đã nhận lệnh stop. Dừng trước story tiếp theo.", "warning");
-          break;
+          addLog('Đã nhận lệnh stop. Dừng trước story tiếp theo.', 'warning')
+          break
         }
 
-        const job = initialJobs[storyIndex - 1];
-        const genre = pickOne(selectedGenres, DEFAULT_FACTORY_GENRES[0]);
-        const heroine = pickOne(selectedHeroines, DEFAULT_HEROINE_OPTIONS[0]);
-        const targetChapters = randomInt(
-          config.minTargetChapters,
-          config.maxTargetChapters,
-        );
+        const job = initialJobs[storyIndex - 1]
+        const genre = pickOne(selectedGenres, DEFAULT_FACTORY_GENRES[0])
+        const heroine = pickOne(selectedHeroines, DEFAULT_HEROINE_OPTIONS[0])
+        const targetChapters = randomInt(config.minTargetChapters, config.maxTargetChapters)
         const chaptersToCreate = config.autoCompleteByTarget
           ? targetChapters
-          : config.chaptersToGenerateNow;
+          : config.chaptersToGenerateNow
         const createProgress = getFactoryChapterProgress({
           currentChapters: 0,
           targetChapters,
           maxCreateNow: chaptersToCreate,
-        });
+        })
         const runShortId = `${new Date().getMonth() + 1}${new Date().getDate()}${storyIndex}${Math.random()
           .toString(36)
-          .slice(2, 5)}`;
-        const premiseSeed = makeId("premise");
-        const nameSeed = makeId("name");
-        let storySeed: FactoryStorySeed;
+          .slice(2, 5)}`
+        const premiseSeed = makeId('premise')
+        const nameSeed = makeId('name')
+        let storySeed: FactoryStorySeed
 
         try {
           storySeed = await buildUniqueStorySeed({
@@ -2405,103 +1530,87 @@ Yêu cầu:
             storyIndex,
             premiseSeed,
             provider: config.provider,
-            targetChapters,
-          });
+          })
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
+          const message = error instanceof Error ? error.message : String(error)
 
           updateJob(job.id, {
-            status: "failed",
+            status: 'failed',
             genreLabel: genre.label,
             genreSlug: genre.slug,
             heroineLabel: heroine.label,
             chapterProgress: `0/${targetChapters}`,
             targetChapters,
             createdChapters: 0,
-            completionStatus: "ongoing",
+            completionStatus: 'ongoing',
             error: `Seed lỗi: ${message}`,
-          });
+          })
 
           addLog(
             `Story ${storyIndex}: bỏ qua vì không tạo được seed đủ khác motif sau ${STORY_SEED_MAX_ATTEMPTS} lần. Factory sẽ chạy tiếp story sau.`,
-            "error",
-          );
-          addLog(`Chi tiết seed lỗi: ${message}`, "warning");
+            'error',
+          )
+          addLog(`Chi tiết seed lỗi: ${message}`, 'warning')
 
           if (storyIndex < config.storyCount && config.delayMs > 0) {
-            await sleep(config.delayMs);
+            await sleep(config.delayMs)
           }
 
-          continue;
+          continue
         }
 
         updateJob(job.id, {
-          status: "running",
+          status: 'running',
           genreLabel: genre.label,
           genreSlug: genre.slug,
           heroineLabel: heroine.label,
           chapterProgress: `0/${targetChapters}`,
           targetChapters,
           createdChapters: 0,
-          completionStatus: "ongoing",
-        });
+          completionStatus: 'ongoing',
+        })
 
         addLog(
           `Batch ${currentBatch}/${totalBatchesForRun} — bắt đầu story ${storyIndex}/${config.storyCount}: ${genre.label}. Target: ${targetChapters} chương. ${createProgress.createRangeLabel}.`,
-          "info",
-        );
-
-        addLog(`Story seed fingerprint: ${storySeed.shortFingerprint}`, "info");
+          'info',
+        )
+        
+        addLog(`Story seed fingerprint: ${storySeed.shortFingerprint}`, 'info')
         if (storySeed.motifFingerprint?.fingerprint) {
-          addLog(
-            `Motif fingerprint: ${storySeed.motifFingerprint.fingerprint}`,
-            "info",
-          );
+          addLog(`Motif fingerprint: ${storySeed.motifFingerprint.fingerprint}`, 'info')
         }
 
         setCurrentAction(
           `Batch ${currentBatch}/${totalBatchesForRun} — đang tạo story ${storyIndex}/${config.storyCount}`,
-        );
+        )
 
-        let createdStory: { id: string; title: string; slug: string } | null =
-          null;
-        let storyMemory = "";
-        let createdChapterCount = 0;
+        let createdStory: { id: string; title: string; slug: string } | null = null
+        let storyMemory = ''
+        let createdChapterCount = 0
         const recentChapters: Array<{
-          chapter_number: number;
-          title: string;
-          content: string;
-          summary?: string;
-        }> = [];
+          chapter_number: number
+          title: string
+          content: string
+          summary?: string
+        }> = []
 
         try {
-          for (
-            let chapterNumber = 1;
-            chapterNumber <= chaptersToCreate;
-            chapterNumber += 1
-          ) {
+          for (let chapterNumber = 1; chapterNumber <= chaptersToCreate; chapterNumber += 1) {
             if (stopRequestedRef.current) {
               updateJob(job.id, {
-                status: "stopped",
+                status: 'stopped',
                 chapterProgress: `${chapterNumber - 1}/${targetChapters}`,
-              });
-              addLog(
-                `Dừng sau request hiện tại tại story ${storyIndex}.`,
-                "warning",
-              );
-              break;
+              })
+              addLog(`Dừng sau request hiện tại tại story ${storyIndex}.`, 'warning')
+              break
             }
 
-            const isFinalChapter =
-              config.autoCompleteByTarget && chapterNumber === chaptersToCreate;
+            const isFinalChapter = config.autoCompleteByTarget && chapterNumber === chaptersToCreate
 
-            setCurrentAction(
-              `Story ${storyIndex}: generate chương ${chapterNumber}`,
-            );
+            setCurrentAction(`Story ${storyIndex}: generate chương ${chapterNumber}`)
             addLog(
-              `Story ${storyIndex}: generate chương ${chapterNumber}${isFinalChapter ? " — chương cuối" : ""}...`,
-            );
+              `Story ${storyIndex}: generate chương ${chapterNumber}${isFinalChapter ? ' — chương cuối' : ''}...`,
+            )
 
             const factoryPromptIdea = buildFactoryPromptIdea({
               genreLabel: genre.label,
@@ -2510,18 +1619,18 @@ Yêu cầu:
               avoidLibrary: activeAvoidLibrary,
               premiseSeed,
               storySeed,
-            });
+            })
 
-            let output = "";
-            let parsed: ParsedChapterOutput | null = null;
-            let validationErrors: string[] = [];
+            let output = ''
+            let parsed: ParsedChapterOutput | null = null
+            let validationErrors: string[] = []
 
             for (let attempt = 1; attempt <= 2; attempt += 1) {
               const generatedChapter = await generateChapter({
                 provider: config.provider,
                 modelKey: config.modelKey,
-                storyTitle: createdStory?.title || "",
-                storyDescription: "",
+                storyTitle: createdStory?.title || '',
+                storyDescription: '',
                 genreLabel: genre.label,
                 heroineLabel: heroine.label,
                 chapterNumber,
@@ -2532,93 +1641,81 @@ Yêu cầu:
                 factoryPromptIdea,
                 runShortId,
                 storySeed,
-              });
+              })
 
-              output = generatedChapter.text;
-              logVietnameseProseQuality(
-                `Story ${storyIndex} chương ${chapterNumber}`,
-                generatedChapter,
-              );
-              appendJobVietnameseProseReport(
-                job.id,
-                `Chương ${chapterNumber}`,
-                generatedChapter,
-              );
+              output = generatedChapter.text
+              logVietnameseProseQuality(`Story ${storyIndex} chương ${chapterNumber}`, generatedChapter)
 
               parsed = parseChapterOutput({
                 output,
                 genreLabel: genre.label,
                 chapterNumber,
                 runShortId,
-              });
+              })
 
               const validation = validateChapterOutput({
                 output,
                 readerOnly: parsed.readerOnly,
                 chapterNumber,
                 storyTitle: parsed.storyTitle,
-              });
+              })
 
               if (validation.ok) {
-                validationErrors = [];
-                break;
+                validationErrors = []
+                break
               }
 
-              validationErrors = validation.errors;
+              validationErrors = validation.errors
               addLog(
-                `Validate fail lần ${attempt}: ${validation.errors.join(" | ")}`,
-                "warning",
-              );
+                `Validate fail lần ${attempt}: ${validation.errors.join(' | ')}`,
+                'warning',
+              )
 
               if (attempt < 2) {
-                addLog("Thử regenerate thêm 1 lần...", "warning");
+                addLog('Thử regenerate thêm 1 lần...', 'warning')
               }
             }
 
             if (!parsed || validationErrors.length) {
-              throw new Error(
-                `Output không đạt validation: ${validationErrors.join(" | ")}`,
-              );
+              throw new Error(`Output không đạt validation: ${validationErrors.join(' | ')}`)
             }
 
             if (chapterNumber === 1) {
-              addLog(`Parse title: ${parsed.storyTitle}`, "success");
+              addLog(`Parse title: ${parsed.storyTitle}`, 'success')
 
               const panelStoryTitle = resolvePanelStoryTitle({
                 storySeed,
                 parsedTitle: parsed.storyTitle,
-              });
+              })
 
               addLog(
-                `Panel title gate final: "${panelStoryTitle.title}" | seed="${storySeed.title || ""}" | parsed="${parsed.storyTitle}" | evidence="${panelStoryTitle.evidenceTitle}"`,
-                panelStoryTitle.changed ? "warning" : "success",
-              );
+                `Panel title gate final: "${panelStoryTitle.title}" | seed="${storySeed.title || ''}" | parsed="${parsed.storyTitle}" | evidence="${panelStoryTitle.evidenceTitle}"`,
+                panelStoryTitle.changed ? 'warning' : 'success',
+              )
 
               if (panelStoryTitle.changed) {
                 addLog(
                   `Panel title gate changed: "${panelStoryTitle.original}" → "${panelStoryTitle.title}"`,
-                  "warning",
-                );
+                  'warning',
+                )
               }
 
-              setCurrentAction(`Insert story draft: ${panelStoryTitle.title}`);
+              setCurrentAction(`Insert story draft: ${panelStoryTitle.title}`)
 
-              const publicStoryDescription = buildFactoryPublicStoryDescription(
-                {
-                  parsed: {
-                    ...parsed,
-                    storyTitle: panelStoryTitle.title,
-                  },
-                  genreLabel: genre.label,
-                  heroineLabel: heroine.label,
-                  storySeed,
+              const publicStoryDescription = buildFactoryPublicStoryDescription({
+                parsed: {
+                  ...parsed,
+                  storyTitle: panelStoryTitle.title,
                 },
-              );
+                genreLabel: genre.label,
+                heroineLabel: heroine.label,
+                storySeed,
+              })
               const cleanStoryDescription = buildCleanFactoryStoryDescription({
                 parsedDescription: parsed.storyDescription,
                 publicDescription: publicStoryDescription,
                 storySeed,
-              });
+              })
 
               createdStory = await insertStoryDraft({
                 parsed: {
@@ -2636,257 +1733,229 @@ Yêu cầu:
                 premiseSeed,
                 nameSeed,
                 storySeed,
-                avoidTitles: activeAvoidLibrary.titles,
-              });
+              })
 
               updateJob(job.id, {
                 title: createdStory.title,
                 storyId: createdStory.id,
                 storySlug: createdStory.slug,
-              });
+              })
 
-              addLog(
-                `Insert story draft thành công: ${createdStory.title}`,
-                "success",
-              );
+              addLog(`Insert story draft thành công: ${createdStory.title}`, 'success')
             }
 
             if (!createdStory) {
-              throw new Error("Không có storyId để insert chapter.");
+              throw new Error('Không có storyId để insert chapter.')
             }
 
-            setCurrentAction(`Insert chapter ${chapterNumber}`);
+            setCurrentAction(`Insert chapter ${chapterNumber}`)
             await insertChapterDraft({
               storyId: createdStory.id,
               parsed,
               chapterNumber,
               status: config.chapterStatus,
-            });
+            })
 
             recentChapters.push({
               chapter_number: chapterNumber,
               title: parsed.chapterTitle,
               content: parsed.readerOnly,
               summary: buildPublicChapterSummary(parsed.readerOnly),
-            });
+            })
 
-            storyMemory = [storyMemory, parsed.technicalReport]
-              .filter(Boolean)
-              .join("\n\n---\n\n");
-            createdChapterCount = chapterNumber;
+            storyMemory = [storyMemory, parsed.technicalReport].filter(Boolean).join('\n\n---\n\n')
+            createdChapterCount = chapterNumber
 
             updateJob(job.id, {
               chapterProgress: `${chapterNumber}/${targetChapters}`,
               createdChapters: chapterNumber,
               targetChapters,
               completionStatus:
-                config.autoCompleteByTarget && chapterNumber >= chaptersToCreate
-                  ? "full"
-                  : "ongoing",
-            });
+                config.autoCompleteByTarget && chapterNumber >= chaptersToCreate ? 'full' : 'ongoing',
+            })
 
-            addLog(`Insert chapter ${chapterNumber} thành công`, "success");
+            addLog(`Insert chapter ${chapterNumber} thành công`, 'success')
 
             if (chapterNumber < chaptersToCreate && config.delayMs > 0) {
-              addLog(`Delay ${config.delayMs}ms trước request tiếp theo...`);
-              await sleep(config.delayMs);
+              addLog(`Delay ${config.delayMs}ms trước request tiếp theo...`)
+              await sleep(config.delayMs)
             }
           }
 
           if (createdStory) {
-            const isStoryFull =
-              config.autoCompleteByTarget &&
-              createdChapterCount >= targetChapters;
+            const isStoryFull = config.autoCompleteByTarget && createdChapterCount >= targetChapters
 
             await supabase
-              .from("stories")
+              .from('stories')
               .update({
                 story_memory: storyMemory,
                 current_arc: isStoryFull
                   ? `Factory completed — full at chapter ${createdChapterCount}/${targetChapters}`
                   : `Factory draft — chapter ${createdChapterCount}/${targetChapters} generated`,
-                completion_status: isStoryFull ? "full" : "ongoing",
+                completion_status: isStoryFull ? 'full' : 'ongoing',
                 target_chapters: targetChapters,
               })
-              .eq("id", createdStory.id);
+              .eq('id', createdStory.id)
 
             addLog(
               isStoryFull
                 ? `Story ${storyIndex}: đã tạo đủ ${targetChapters}/${targetChapters} chương và đánh dấu Full.`
                 : `Story ${storyIndex}: lưu trạng thái ongoing ${createdChapterCount}/${targetChapters}.`,
-              isStoryFull ? "success" : "info",
-            );
+              isStoryFull ? 'success' : 'info',
+            )
           }
 
           if (config.generateCover) {
-            if (config.provider === "mock") {
-              updateJob(job.id, { coverStatus: "skipped" });
-              addLog("Mock mode: skip cover generation.", "warning");
+            if (config.provider === 'mock') {
+              updateJob(job.id, { coverStatus: 'skipped' })
+              addLog('Mock mode: skip cover generation.', 'warning')
             } else if (createdStory) {
               try {
-                updateJob(job.id, { coverStatus: "pending" });
-                setCurrentAction(`Story ${storyIndex}: generate cover`);
-                addLog(`Story ${storyIndex}: generate cover...`);
+                updateJob(job.id, { coverStatus: 'pending' })
+                setCurrentAction(`Story ${storyIndex}: generate cover`)
+                addLog(`Story ${storyIndex}: generate cover...`)
 
                 const coverUrl = await generateAndAttachCover({
                   storyId: createdStory.id,
                   storyTitle: createdStory.title,
                   storySlug: createdStory.slug,
-                  storyDescription:
-                    recentChapters[0]?.content?.slice(0, 500) || "",
+                  storyDescription: recentChapters[0]?.content?.slice(0, 500) || '',
                   genreLabel: genre.label,
                   heroineLabel: heroine.label,
                   storySeed,
-                });
+                })
 
                 updateJob(job.id, {
-                  coverStatus: "success",
+                  coverStatus: 'success',
                   coverUrl,
-                });
+                })
 
-                addLog(`Generate cover thành công`, "success");
+                addLog(`Generate cover thành công`, 'success')
               } catch (error) {
-                const message =
-                  error instanceof Error ? error.message : String(error);
+                const message = error instanceof Error ? error.message : String(error)
 
                 updateJob(job.id, {
-                  coverStatus: "failed",
+                  coverStatus: 'failed',
                   error: `Cover lỗi: ${message}`,
-                });
+                })
 
-                addLog(`Generate cover lỗi: ${message}`, "error");
+                addLog(`Generate cover lỗi: ${message}`, 'error')
               }
             }
           }
 
           if (stopRequestedRef.current) {
-            updateJob(job.id, { status: "stopped" });
+            updateJob(job.id, { status: 'stopped' })
           } else {
-            const isStoryFull =
-              config.autoCompleteByTarget &&
-              createdChapterCount >= targetChapters;
+            const isStoryFull = config.autoCompleteByTarget && createdChapterCount >= targetChapters
 
             updateJob(job.id, {
-              status: "success",
+              status: 'success',
               chapterProgress: `${createdChapterCount}/${targetChapters}`,
               createdChapters: createdChapterCount,
               targetChapters,
-              completionStatus: isStoryFull ? "full" : "ongoing",
-            });
-            addLog(`Xong story ${storyIndex}/${config.storyCount}`, "success");
+              completionStatus: isStoryFull ? 'full' : 'ongoing',
+            })
+            addLog(`Xong story ${storyIndex}/${config.storyCount}`, 'success')
           }
 
           {
-            const justCreatedStoryForAvoid = {
-              id: createdStory?.id || makeId("story"),
-              title: createdStory?.title || "",
-              description: recentChapters[0]?.content?.slice(0, 260) || "",
-              genres: [genre.slug],
-              story_dna: {
-                factory_seed: storySeed,
-                motifFingerprint: storySeed.motifFingerprint ?? null,
-                motifText: storySeed.motifText ?? null,
-                motifEmbedding: storySeed.motifEmbedding ?? null,
-              },
-              story_memory: storyMemory,
-              created_at: new Date().toISOString(),
-            } as ExistingStory;
-
-            generatedStoriesForAvoid = [
-              justCreatedStoryForAvoid,
-              ...generatedStoriesForAvoid,
-            ];
-
             const updatedStoriesForAvoid = [
-              ...generatedStoriesForAvoid,
+              {
+                id: createdStory?.id || makeId('story'),
+                title: createdStory?.title || '',
+                description: recentChapters[0]?.content?.slice(0, 260) || '',
+                genres: [genre.slug],
+                story_dna: {
+                  factory_seed: storySeed,
+                  motifFingerprint: storySeed.motifFingerprint ?? null,
+                  motifText: storySeed.motifText ?? null,
+                  motifEmbedding: storySeed.motifEmbedding ?? null,
+                },
+                story_memory: storyMemory,
+                created_at: new Date().toISOString(),
+              },
               ...scanResult.stories,
-            ] as ExistingStory[];
+            ] as ExistingStory[]
 
-            const motifItems = extractMotifRegistryItemsFromStories(
-              updatedStoriesForAvoid,
-            );
+            const motifItems = extractMotifRegistryItemsFromStories(updatedStoriesForAvoid)
 
             activeAvoidLibrary = {
               ...buildAvoidLibrary(updatedStoriesForAvoid),
               motifFingerprints: motifItems,
-              motifTexts: motifItems
-                .map((item) => item.motifText)
-                .filter(Boolean),
-            };
-            setAvoidLibrary(activeAvoidLibrary);
+              motifTexts: motifItems.map((item) => item.motifText).filter(Boolean),
+            }
           }
 
           if (storyIndex < config.storyCount && config.delayMs > 0) {
-            const isEndOfBatch =
-              storyIndex % Math.max(1, config.batchSize) === 0;
+            const isEndOfBatch = storyIndex % Math.max(1, config.batchSize) === 0
 
             if (isEndOfBatch) {
               addLog(
                 `Xong batch ${currentBatch}/${totalBatchesForRun}. Delay ${config.delayMs}ms trước batch tiếp theo...`,
-                "info",
-              );
+                'info',
+              )
             }
 
-            await sleep(config.delayMs);
+            await sleep(config.delayMs)
           }
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
+          const message = error instanceof Error ? error.message : String(error)
 
           updateJob(job.id, {
-            status: "failed",
+            status: 'failed',
             error: message,
-          });
+          })
 
-          addLog(`Story ${storyIndex} lỗi: ${message}`, "error");
+          addLog(`Story ${storyIndex} lỗi: ${message}`, 'error')
         }
       }
 
       if (stopRequestedRef.current) {
-        setStatus("stopped");
-        setCurrentAction("Factory đã dừng theo yêu cầu");
-        addLog("Factory đã dừng.", "warning");
+        setStatus('stopped')
+        setCurrentAction('Factory đã dừng theo yêu cầu')
+        addLog('Factory đã dừng.', 'warning')
       } else {
-        setStatus("success");
-        setCurrentAction("Factory chạy xong");
-        addLog("Factory chạy xong toàn bộ job.", "success");
+        setStatus('success')
+        setCurrentAction('Factory chạy xong')
+        addLog('Factory chạy xong toàn bộ job.', 'success')
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setStatus("failed");
-      setCurrentAction("Factory lỗi");
-      addLog(`Factory lỗi: ${message}`, "error");
+      const message = error instanceof Error ? error.message : String(error)
+      setStatus('failed')
+      setCurrentAction('Factory lỗi')
+      addLog(`Factory lỗi: ${message}`, 'error')
     }
   }
 
   function stopFactory() {
-    stopRequestedRef.current = true;
-    addLog("Đã yêu cầu stop. Factory sẽ dừng sau request hiện tại.", "warning");
-    setCurrentAction("Đang chờ dừng sau request hiện tại");
+    stopRequestedRef.current = true
+    addLog('Đã yêu cầu stop. Factory sẽ dừng sau request hiện tại.', 'warning')
+    setCurrentAction('Đang chờ dừng sau request hiện tại')
   }
 
   function clearLog() {
-    setLogs([]);
-    setJobs([]);
-    setStatus("idle");
-    setCurrentAction("Đã clear log");
-    localStorage.removeItem(AI_FACTORY_STORAGE_KEY);
+    setLogs([])
+    setJobs([])
+    setStatus('idle')
+    setCurrentAction('Đã clear log')
+    localStorage.removeItem(AI_FACTORY_STORAGE_KEY)
   }
 
   function toggleGenre(item: FactoryGenreOption) {
     setSelectedGenres((prev) => {
-      const exists = prev.some((genre) => genre.key === item.key);
-      if (exists) return prev.filter((genre) => genre.key !== item.key);
-      return [...prev, item];
-    });
+      const exists = prev.some((genre) => genre.key === item.key)
+      if (exists) return prev.filter((genre) => genre.key !== item.key)
+      return [...prev, item]
+    })
   }
 
   function toggleHeroine(item: FactoryHeroineOption) {
     setSelectedHeroines((prev) => {
-      const exists = prev.some((heroine) => heroine.key === item.key);
-      if (exists) return prev.filter((heroine) => heroine.key !== item.key);
-      return [...prev, item];
-    });
+      const exists = prev.some((heroine) => heroine.key === item.key)
+      if (exists) return prev.filter((heroine) => heroine.key !== item.key)
+      return [...prev, item]
+    })
   }
 
   return {
@@ -2930,5 +1999,5 @@ Yêu cầu:
     currentAction,
     jobs,
     logs,
-  };
+  }
 }
