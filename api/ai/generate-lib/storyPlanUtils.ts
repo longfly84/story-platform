@@ -107,7 +107,7 @@ export function formatStoryPlanForPrompt(plan?: FactoryStoryPlan, currentChapter
     })
     .map((chapter) => {
       const marker = chapter.chapterNumber === chapterNumber ? ' <= CHƯƠNG ĐANG VIẾT' : ''
-      return `Chương ${chapter.chapterNumber}${marker}: ${chapter.title} | Mission: ${chapter.mission} | Power shift: ${chapter.powerShift}`
+      return `Chương ${chapter.chapterNumber}${marker}: ${chapter.title} | Mission: ${chapter.mission} | Evidence step: ${chapter.evidenceBeat} | Heroine move: ${chapter.heroineMove} | Power shift: ${chapter.powerShift}`
     })
     .join('\n')
 
@@ -153,6 +153,8 @@ RULE:
 - Nếu mode là viết chương, chương này phải hoàn thành đúng mission của chapterNumber hiện tại.
 - Nếu đang ở chương cuối theo targetChapters, phải nén payoff cuối vào chương này thay vì treo tiếp.
 - Không được bỏ qua power shift. Nếu không có power shift thật, chương bị xem là lỗi.
+- Không được dùng lại tiêu đề chương trước hoặc một tiêu đề cùng nghĩa. Tiêu đề phải phản ánh evidence step/state change mới của chương.
+- Evidence step của chương hiện tại phải khác chương trước: khác nguồn xác minh, khác người liên quan, khác hậu quả hoặc khác chức năng bằng chứng.
 `.trim()
 }
 

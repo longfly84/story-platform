@@ -2271,7 +2271,7 @@ function makeChapterTitle(params: {
     case 3:
       return titleCaseFirst(setting.length <= 34 ? setting : pressure) || "Địa Điểm Thứ Hai";
     case 4:
-      return altEvidenceTitle;
+      return titleCaseFirst(`Nguồn Gốc Của ${altEvidenceTitle || evidenceTitle}`.slice(0, 58)) || "Nguồn Gốc Bằng Chứng Phụ";
     case 5:
       return "Cú Vả Mặt Đầu Tiên";
     case 6:
@@ -2718,8 +2718,9 @@ function buildFactoryStoryPlan(params: {
 
   const evidencePlan = [
     `Chương 1 cài vật chứng chính: ${candidate.evidenceObject}, trong một tình huống cụ thể của genre; không dùng công thức vật chứng rơi ra đúng lúc chung chung.`,
-    `Chương 2–3 cho vật chứng bị bẻ nghĩa bằng áp lực đời sống/cảm xúc của genre, không mặc định phong tỏa/niêm phong/pháp lý.`,
-    `Chương 4–5 đưa vật chứng phụ: ${alternateEvidence}, nhưng phải khác loại và khác chức năng với vật chứng chính.`,
+    `Chương 2 cho vật chứng bị bẻ nghĩa bằng áp lực đời sống/cảm xúc của genre, đồng thời mở một nguồn xác minh mới; không mặc định phong tỏa/niêm phong/pháp lý.`,
+    `Chương 3 phải tạo hậu quả thật rồi đổi lại một manh mối mới; không được chỉ nhắc lại ${candidate.evidenceObject}.`,
+    `Chương 4–5 đưa vật chứng phụ: ${alternateEvidence}, nhưng phải khác loại, khác nguồn xác minh và khác chức năng với vật chứng chính.`,
     `Chương 6–8 hé một mảnh của hidden truth: ${candidate.hiddenTruth}, chưa xả hết.`,
     `Chương 9–11 gom chứng cứ thành bẫy ngược, buộc phản diện chính tự lộ dấu tay.`,
     `Chương cuối payoff toàn bộ vật chứng, không giải quyết bằng kể tóm tắt.`,
@@ -2750,24 +2751,24 @@ function buildFactoryStoryPlan(params: {
       evidenceBeat: `Cài ${candidate.evidenceObject}, chỉ cho thấy 1 điểm lệch logic.`,
       villainBeat: `Phản diện tung cú đánh đầu tiên qua ${candidate.publicPressure}, có dấu tay cá nhân rõ.`,
       heroineMove:
-        "Nữ chính không khóc lóc, bình tĩnh giữ lại bản sao/chứng cứ nhỏ.",
+        "Nữ chính không khóc lóc; cô giữ lại bản sao/chứng cứ nhỏ và làm một phản đòn ngay tại chỗ khiến quy trình/đám đông phải khựng lại.",
       emotionalBeat: candidate.emotionalHook,
       powerShift:
-        "Nữ chính bị đẩy vào thế yếu công khai, nhưng có được manh mối đầu tiên.",
+        "Nữ chính bị đẩy vào thế yếu công khai, nhưng giữ được vật chứng và khiến ít nhất một người trung lập phải tạm nghi ngờ phản diện.",
       endingHook: "Một người/thứ tưởng ngoài lề bị kéo vào làm áp lực thật.",
     },
     {
       chapterNumber: 2,
       title: makeChapterTitle({ chapterNumber: 2, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
-        "Không lặp thủ tục/pháp lý/log/camera. Chương này phải cho hậu quả chạm vào người thân, công việc, danh dự hoặc quan hệ theo đúng genre.",
+        "Không lặp thủ tục/pháp lý/log/camera. Chương này phải cho hậu quả chạm vào người thân, công việc, danh dự hoặc quan hệ theo đúng genre, đồng thời mở một evidence step mới khác chương 1.",
       sceneType: "emotional cost / villain pressure",
       mainScene: alternateSetting,
-      evidenceBeat: `Vật chứng chính bị phản diện bẻ nghĩa; chưa giải thích hết ${candidate.evidenceObject}.`,
+      evidenceBeat: `Vật chứng chính bị phản diện bẻ nghĩa, nhưng nữ chính lần ra một nguồn xác minh mới liên quan ${alternateEvidence}; chưa giải thích hết ${candidate.evidenceObject}.`,
       villainBeat:
         "Phản diện chính gửi lời đe dọa hoặc xuất hiện ngắn, thể hiện mục tiêu cá nhân.",
       heroineMove:
-        "Nữ chính chọn một hành động cụ thể để bảo vệ người yếu thế trước khi phản công.",
+        "Nữ chính chọn một hành động cụ thể để bảo vệ người yếu thế trước khi phản công: khóa/giữ một quyền, yêu cầu người có thẩm quyền xác minh, hoặc khiến một nhân chứng buộc phải trả lời.",
       emotionalBeat:
         "Một câu hỏi/ánh nhìn/tin nhắn khiến nữ chính đau nhưng không gục.",
       powerShift:
@@ -2777,7 +2778,7 @@ function buildFactoryStoryPlan(params: {
     {
       chapterNumber: 3,
       title: makeChapterTitle({ chapterNumber: 3, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission: `Chuyển trọng tâm sang ${alternatePressure} hoặc đối thoại trực diện, tạo scene mới khác chương trước, không dùng lại nhịp bị chặn bằng giấy tờ/log.`,
+      mission: `Chuyển trọng tâm sang ${alternatePressure} hoặc đối thoại trực diện, tạo scene mới khác chương trước, không dùng lại nhịp bị chặn bằng giấy tờ/log; phản diện phải gây thiệt hại thật nhưng cũng lộ một đường dẫn mới.`,
       sceneType: "direct confrontation / social pressure",
       mainScene: alternatePressure,
       evidenceBeat: `Hé ${alternateEvidence} như vật chứng phụ, không thay thế vật chứng chính.`,
@@ -2795,11 +2796,11 @@ function buildFactoryStoryPlan(params: {
       chapterNumber: 4,
       title: makeChapterTitle({ chapterNumber: 4, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
       mission:
-        "Đẩy tuyến phản bội/đổi phe bằng chi tiết đời sống hoặc quan hệ; không biến chương này thành giám định/log/thủ tục thuần túy.",
+        "Đổi chiến trường và đẩy tuyến phản bội/đổi phe bằng chi tiết đời sống hoặc quan hệ; không biến chương này thành giám định/log/thủ tục thuần túy, không dùng lại evidence step của chương 2.",
       sceneType: "betrayal / witness scene",
       mainScene: "một không gian kín có đối thoại căng",
       evidenceBeat:
-        "Một nhân chứng hoặc dữ liệu phụ xác nhận có người bên trong động tay.",
+        "Một nhân chứng hoặc dữ liệu phụ từ nguồn mới xác nhận có người bên trong động tay; đây phải là mẩu mới, không phải bản lặp của ảnh/file/phiếu đã dùng ở chương 2.",
       villainBeat:
         "Phản diện phụ cố che, nhưng phản diện chính phải có dấu tay/lời nhắn/áp lực riêng.",
       heroineMove:
@@ -2949,7 +2950,7 @@ function buildFactoryStoryPlan(params: {
   return {
     plannerVersion: "story-planner-v1",
     totalPlannedChapters: chapterPlan.length,
-    plannerGoal: `Outline cố định cho ${params.title}: evidence plan + villain curve + emotional/payoff. Writer phải bám mission từng chương, không tự trôi về nhịp thủ tục lặp.`,
+    plannerGoal: `Outline cố định cho ${params.title}: evidence plan + villain curve + emotional/payoff. Writer phải bám mission từng chương, mỗi chương có evidence step mới và payoff nhỏ; không tự trôi về nhịp thủ tục lặp hoặc title chương trùng ý.`,
     evidencePlan,
     villainCurve,
     payoffPlan,

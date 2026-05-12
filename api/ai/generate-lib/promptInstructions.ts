@@ -595,9 +595,10 @@ CHAPTER MISSION LOCK:
     return `
 CHAPTER MISSION LOCK:
 - Đây là Chương 1.
-- Nhiệm vụ chương này: mở biến cố chính, giới thiệu nữ chính, giới thiệu áp lực chính, cài 1 vật chứng chủ đạo.
+- Nhiệm vụ chương này: mở biến cố chính trong 3 đoạn đầu, giới thiệu nữ chính, áp lực chính, vật chứng chủ đạo và cái giá nếu cô thua.
+- Trong chương 1 phải có một cú phản đòn nhỏ có kết quả nhìn thấy được: hoãn ký, khóa/giữ vật chứng, buộc người kia mở lịch sử, khiến nhóm chat/căn phòng im, hoặc khiến một người trung lập đổi thái độ.
 - Không được giải thích toàn bộ âm mưu.
-- Không được cho nữ chính thắng sạch.
+- Không được cho nữ chính thắng sạch, nhưng không được để cô chỉ chịu nhục rồi hứa tìm sự thật.
 `.trim()
   }
 
@@ -605,7 +606,8 @@ CHAPTER MISSION LOCK:
     return `
 CHAPTER MISSION LOCK:
 - Đây là Chương 2.
-- Nhiệm vụ chương này: kiểm chứng hậu quả của biến cố Chương 1 hoặc gặp người/địa điểm có thể xác minh vật chứng.
+- Nhiệm vụ chương này: mở một hậu quả đời sống mới từ biến cố Chương 1, hoặc gặp người/địa điểm có thể xác minh vật chứng.
+- Bắt buộc có một evidence step mới: nguồn in, người giao ca, camera hành lang, người nhận tiền, bản gốc, nhân chứng, tin nhắn gốc, danh sách giao nhận... Không được chỉ nhắc lại vật chứng cũ bằng tên khác.
 - Phải có ít nhất một cảnh mới không trùng địa điểm chính của Chương 1.
 - Không được viết lại cảnh phát hiện vật chứng như mới xảy ra lần đầu.
 - Không được chỉ ngồi một chỗ gọi điện/đọc lại file.
@@ -618,6 +620,7 @@ CHAPTER MISSION LOCK:
 - Đây là Chương 3.
 - Nhiệm vụ chương này: phản diện phản công thật, khiến nữ chính mất một lợi thế hoặc bị đẩy vào thế khó mới.
 - Phản công phải có hậu quả cụ thể: tài khoản bị khóa, quyền vào công ty bị chặn, con/người thân bị đe dọa, hợp đồng bị lộ, cổ phần bị phong tỏa, trường học/bệnh viện/công ty bị tác động.
+- Chương 3 phải có một cú dopamine ngược: nữ chính mất một thứ, nhưng đổi lại lấy được tên người/nguồn gốc/địa điểm tiếp theo.
 - Không được chỉ là lời dọa qua điện thoại.
 `.trim()
   }
@@ -626,9 +629,10 @@ CHAPTER MISSION LOCK:
     return `
 CHAPTER MISSION LOCK:
 - Đây là Chương 4.
-- Nhiệm vụ chương này: đổi chiến trường.
-- Phải chuyển sang một địa điểm/cảnh hành động mới: văn phòng luật, bệnh viện, trường học, phòng họp hội đồng, công ty PR, nhà gia tộc, hầm xe, trụ sở tập đoàn, hoặc nơi giữ nhân chứng.
-- Nữ chính phải tự đưa ra quyết định nguy hiểm hoặc chiến thuật mới.
+- Nhiệm vụ chương này: đổi chiến trường và dùng một bằng chứng/nhân chứng mới, không được xoay tiếp quanh cùng ảnh/file/phiếu đã nói ở chương 2.
+- Phải chuyển sang một địa điểm/cảnh hành động mới: văn phòng luật, bệnh viện, trường học, phòng họp hội đồng, công ty PR, nhà gia tộc, hầm xe, trụ sở tập đoàn, phòng in, kho lưu trữ, hoặc nơi giữ nhân chứng.
+- Tiêu đề Chương 4 không được trùng hoặc gần trùng tiêu đề Chương 2.
+- Nữ chính phải tự đưa ra quyết định nguy hiểm hoặc chiến thuật mới, tạo state change thật.
 `.trim()
   }
 
@@ -670,6 +674,7 @@ CHAPTER ADVANCEMENT LOCK:
 - Cấm nhiều chương liên tiếp chỉ xoay quanh cùng 1 file PDF, cùng 1 thẻ nhớ, cùng 1 phong thư, cùng 1 metadata.
 - Nếu vẫn cần dùng vật chứng cũ, nó chỉ được làm nền; chương phải có hành động mới hoặc hậu quả mới.
 - Mỗi chương chỉ có tối đa 1 vật chứng chính + 1 vật chứng phụ.
+- Mỗi chương phải có một NEW EVIDENCE STEP: vật chứng cũ được kiểm chứng ở nguồn mới, lộ người mới, lộ thời điểm mới, hoặc dẫn tới hậu quả mới. Nếu không có bước mới, chương bị coi là lặp.
 - Chương này phải trả lời câu hỏi: "Sau chương này, tình thế đã thay đổi ở điểm nào?"
 `.trim()
 }
@@ -700,7 +705,8 @@ Mỗi chương mới phải có:
 2. một hành động chủ động mới của nữ chính,
 3. một thông tin mới làm đổi cách hiểu vụ việc,
 4. một cảnh có con người bị ảnh hưởng, không chỉ giấy tờ,
-5. một hook cuối chương cụ thể dẫn sang chương sau.
+5. một hook cuối chương cụ thể dẫn sang chương sau,
+6. một payoff nhỏ ngay trong chương: người kia khựng lại, đám đông đổi thái độ, giấy tờ bị tạm dừng, quyền bị khóa, nhân chứng chịu nói, hoặc phản diện bị buộc lộ một sơ hở.
 `.trim()
 }
 
@@ -721,6 +727,7 @@ Các chức năng được phép:
 
 Cấm 2 chương liên tiếp dùng cùng chức năng chính.
 Cấm chương mới chỉ lặp lại: xem hồ sơ → chụp ảnh → bị niêm phong → gọi luật sư → bị nhắn 48 giờ.
+Cấm 2 chương dùng tiêu đề giống nhau hoặc cùng công thức title như “Ảnh Xóa Vội”, “Bản Gốc”, “Tin Nhắn” nếu state change khác nhau không rõ.
 Nếu chương trước đã là Evidence Verification ở cô nhi viện/bệnh viện/phòng lưu trữ, chương sau bắt buộc phải là Real Loss, Emotional Cost, Boardroom/Public Confrontation hoặc Trap Reversal.
 Nếu chương trước đã là Legal Countermove ở văn phòng luật, chương sau bắt buộc phải ra khỏi văn phòng luật.
 `.trim()
