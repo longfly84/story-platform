@@ -259,6 +259,15 @@ function stringifyCoverSeedValue(value: unknown): string {
   return "";
 }
 
+
+function getFactorySeedStoryPlan(seed: FactoryStorySeed | null | undefined) {
+  if (!seed || typeof seed !== "object") return null;
+  const record = seed as Record<string, unknown>;
+  const plan = record.storyPlan ?? record.locked_story_plan ?? null;
+  if (!plan || typeof plan !== "object" || Array.isArray(plan)) return null;
+  return plan as { chapterPlan?: unknown[] };
+}
+
 function pickCoverSeedText(seed: FactoryStorySeed | null | undefined, keys: string[]) {
   if (!seed || typeof seed !== "object") return "";
 
@@ -1094,6 +1103,7 @@ export function useAIFactoryPanelController() {
     seed: FactoryStorySeed;
     existingMotifs: StoryMotifRegistryItem[];
     provider: AIFactoryConfig["provider"];
+    targetChapters?: number;
   }) {
     const enrichedSeed = attachMotifToSeed(params.seed);
 
@@ -1156,6 +1166,7 @@ export function useAIFactoryPanelController() {
     storyIndex: number;
     premiseSeed: string;
     provider: AIFactoryConfig["provider"];
+    targetChapters?: number;
   }) {
     const existingMotifs = params.avoidLibrary.motifFingerprints || [];
     let lastRejected: Awaited<
@@ -1170,6 +1181,7 @@ export function useAIFactoryPanelController() {
         heroineLabel: params.heroineLabel,
         avoidLibrary: params.avoidLibrary,
         seed: `${params.factoryRunId}-${params.storyIndex}-${params.premiseSeed}-motif-${attempt}-${retryHint}`,
+        targetChapters: params.targetChapters,
       });
 
       const evaluated = await evaluateStorySeedMotif({
@@ -1487,6 +1499,7 @@ Yêu cầu:
     const generatedChaptersNow = params.config.autoCompleteByTarget
       ? params.targetChapters
       : params.config.chaptersToGenerateNow;
+    const lockedStoryPlan = getFactorySeedStoryPlan(params.storySeed);
 
     const storyDna = {
       source: "ai-factory",
@@ -1501,6 +1514,8 @@ Yêu cầu:
       module_id: "female-urban-viral",
       target_chapters: params.targetChapters,
       factory_seed: params.storySeed ?? null,
+      locked_story_plan: lockedStoryPlan,
+      locked_story_plan_chapters: lockedStoryPlan?.chapterPlan ?? [],
       motifFingerprint: params.storySeed?.motifFingerprint ?? null,
       motifText: params.storySeed?.motifText ?? null,
       motifEmbedding: params.storySeed?.motifEmbedding ?? null,
@@ -2035,6 +2050,26 @@ Yêu cầu:
           typeof (story as any).story_memory === "string"
             ? (story as any).story_memory
             : safeJson((story as any).story_memory);
+        const storyDna = (story as any).story_dna || {};
+        const continuedStorySeed =
+          (storyDna?.factory_seed as FactoryStorySeed | undefined) ||
+          (storyDna?.storySeed as FactoryStorySeed | undefined) ||
+          null;
+
+        const continuedStoryPlan = getFactorySeedStoryPlan(continuedStorySeed);
+
+        if (continuedStoryPlan?.chapterPlan?.length) {
+          addLog(
+            `${storyTitle}: dùng lại outline đã lưu ${continuedStoryPlan.chapterPlan.length} chương để viết tiếp.`,
+            "info",
+          );
+        } else {
+          addLog(
+            `${storyTitle}: chưa thấy outline đã lưu trong story_dna; sẽ viết tiếp bằng memory + chương gần nhất.`,
+            "warning",
+          );
+        }
+
         const recentChapters = story.chapters
           .slice(-5)
           .map((chapter, index) => ({
@@ -2098,8 +2133,18 @@ Yêu cầu:
                 isFinalChapter,
                 recentChapters,
                 storyMemory,
-                factoryPromptIdea: "",
+                factoryPromptIdea: continuedStorySeed
+                  ? buildFactoryPromptIdea({
+                      genreLabel,
+                      heroineLabel,
+                      targetChapters: story.targetChapters,
+                      avoidLibrary: buildAvoidLibrary([]),
+                      premiseSeed: `${storyId}-continue`,
+                      storySeed: continuedStorySeed,
+                    })
+                  : "",
                 runShortId: `${storyId}-${nextChapterNumber}`,
+                storySeed: continuedStorySeed,
               });
 
               output = generatedChapter.text;
@@ -2360,6 +2405,7 @@ Yêu cầu:
             storyIndex,
             premiseSeed,
             provider: config.provider,
+            targetChapters,
           });
         } catch (error) {
           const message =
