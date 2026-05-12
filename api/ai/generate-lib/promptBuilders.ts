@@ -11,6 +11,7 @@ import {
   getHeroineInstruction,
   getHumanCostInstruction,
   getLibraryAvoidanceInstruction,
+  getLongRunPacingInstruction,
   getModuleInstruction,
   getNameDiversityInstruction,
   getOpenAIAntiRepeatInstruction,
@@ -568,8 +569,11 @@ export function buildStoryPlanPrompt(payload: NormalizedGeneratePayload) {
   const titleNamingInstruction = getTitleNamingInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
+  const longRunPacingInstruction = getLongRunPacingInstruction(payload)
   const cliffhangerRule = getCliffhangerRule(payload)
   const viralDopamineWebNovelInstruction = getViralDopamineWebNovelInstruction()
+  const outlineTarget = Math.max(10, Math.min(30, Math.floor(Number(payload.chapterTarget || 10))))
+  const outlineLines = Array.from({ length: outlineTarget }, (_, index) => `Chương ${index + 1}:`).join('\n')
 
   return `
 Bạn là Master Story Engine Core v3.2 chuyên thiết kế nữ tần đô thị mở rộng nhiều thể loại cho độc giả Việt.
@@ -613,6 +617,8 @@ ${titleNamingInstruction}
 ${heroineInstruction}
 
 ${urbanFemaleScaleLockInstruction}
+
+${longRunPacingInstruction}
 
 ${viralDopamineWebNovelInstruction}
 
@@ -697,17 +703,8 @@ OUTPUT BẮT BUỘC:
 ## Bản đồ kết chương
 [Phân bổ kiểu kết chương phù hợp từng giai đoạn]
 
-## Outline 10 chương
-Chương 1:
-Chương 2:
-Chương 3:
-Chương 4:
-Chương 5:
-Chương 6:
-Chương 7:
-Chương 8:
-Chương 9:
-Chương 10:
+## Outline ${outlineTarget} chương
+${outlineLines}
 
 ## Cover Prompt Seed
 [Tóm tắt hình ảnh bìa truyện nên vẽ]
@@ -730,6 +727,7 @@ export function buildChapterPrompt(payload: NormalizedGeneratePayload) {
   const titleNamingInstruction = getTitleNamingInstruction(payload)
   const heroineInstruction = getHeroineInstruction(payload.mainCharacterStyleLabel)
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
+  const longRunPacingInstruction = getLongRunPacingInstruction(payload)
   const storyContext = buildStoryContext(payload)
   const technicalReport = getTechnicalReportInstruction()
   const cliffhangerRule = getCliffhangerRule(payload)
@@ -794,6 +792,8 @@ ${titleNamingInstruction}
 ${heroineInstruction}
 
 ${urbanFemaleScaleLockInstruction}
+
+${longRunPacingInstruction}
 
 ${storyContext}
 
@@ -1095,6 +1095,7 @@ export function buildStoryEditorPrompt(payload: NormalizedGeneratePayload, draft
     (chapter) => chapter.chapterNumber === chapterNumber + 1,
   )
   const urbanFemaleScaleLockInstruction = getUrbanFemaleScaleLockInstruction(payload)
+  const longRunPacingInstruction = getLongRunPacingInstruction(payload)
   const vietnameseEditorHardGateInstruction = getVietnameseEditorHardGateInstruction()
   const vietnameseSemanticLogicGateInstruction = getVietnameseSemanticLogicGateInstruction()
   const antiAIStyleRulesInstruction = getAntiAIStyleRulesInstruction()
@@ -1135,6 +1136,8 @@ THÔNG TIN TRUYỆN:
 - Emotional hook: ${storySeed?.emotionalHook || 'Không có'}
 
 ${urbanFemaleScaleLockInstruction}
+
+${longRunPacingInstruction}
 
 ${vietnameseEditorHardGateInstruction}
 

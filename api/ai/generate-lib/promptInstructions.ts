@@ -654,6 +654,61 @@ CHAPTER MISSION LOCK:
 `.trim()
 }
 
+
+
+export function getLongRunPacingInstruction(payload: NormalizedGeneratePayload) {
+  const chapter = Math.max(1, Math.floor(Number(payload.nextChapterNumber || 1)))
+  const target = Math.max(0, Math.floor(Number(payload.chapterTarget || 0)))
+  const progress = target > 0 ? chapter / target : 0
+
+  let phase = 'mở truyện'
+  let phaseRule = `
+- Giai đoạn mở truyện: dựng cú vu oan/cú ép đầu tiên, vật chứng trung tâm và cái giá nếu nữ chính thua.
+- Không xả toàn bộ âm mưu, chỉ cho một cú phản đòn nhỏ đủ gây dopamine.
+- Kết chương phải để lại việc cần làm ngay, không chỉ để lại cảm xúc.`
+
+  if (target > 0 && progress >= 0.8) {
+    phase = 'cao trào / payoff cuối'
+    phaseRule = `
+- Giai đoạn cao trào: trả các bằng chứng đã cài, buộc phản diện mất quyền/lộ mặt/trả giá cụ thể.
+- Không mở thêm tuyến bí mật lớn nếu không trả được trong 1–2 chương sau.
+- Mỗi chương phải có ít nhất một payoff công khai: người đổi phe, nhóm/căn phòng quay chiều, quyết định bị hủy, phản diện bị gọi tên, tài khoản/hợp đồng/quyền lực bị khóa.
+- Không kéo dài bằng việc “sắp công bố”, “đợi kiểm tra”, “ngày mai có kết quả” quá một lần.`
+  } else if (target > 0 && progress >= 0.55) {
+    phase = 'đẩy ngược / phản công lớn'
+    phaseRule = `
+- Giai đoạn đẩy ngược: nữ chính không chỉ đi xác minh nữa; cô phải chủ động đặt bẫy hoặc công khai một phần chứng cứ.
+- Phản diện phải trả đòn bằng hậu quả thật, nhưng mỗi lần trả đòn cũng để lại sơ hở mới.
+- Không viết thêm chương chỉ gồm đi lấy thêm header/metadata/camera. Nếu cần dữ liệu kỹ thuật, phải gắn với cảnh người thật: bị chặn cửa, nhân viên khai thật, người thân bị kéo vào, hội đồng đổi thái độ.
+- Cứ 2 chương phải có một cú vả mặt nhỏ hoặc một quyết định chính thức đổi chiều.`
+  } else if (target > 0 && progress >= 0.25) {
+    phase = 'leo thang giữa truyện'
+    phaseRule = `
+- Giai đoạn giữa truyện: mở rộng hậu quả và đổi chiến trường, không lặp lại cú vu oan ban đầu.
+- Mỗi chương phải chọn một trong ba việc: phản diện đánh vào đời sống thật, nữ chính kéo ra nhân chứng mới, hoặc một người trung lập đổi phe.
+- Không để nữ chính chỉ “thu thập thêm” 3 chương liên tiếp. Phải có ít nhất một hành động khiến đối phương mất thế ngay trong cảnh.
+- Địa điểm nên luân phiên: nhà/gia tộc → công ty/trường/bệnh viện → nơi giữ vật chứng/nhân chứng → cảnh công khai.`
+  }
+
+  const milestone = target > 0
+    ? `- Vị trí hiện tại: chương ${chapter}/${target}, pha: ${phase}.`
+    : `- Vị trí hiện tại: chương ${chapter}, pha suy luận: ${phase}.`
+
+  return `
+LONG-RUN PACING LOCK — CHỐNG MỎI TRUYỆN 10–15 CHƯƠNG:
+${milestone}
+${phaseRule}
+
+Luật chống lặp dài hơi:
+- Không dùng cùng công thức chương quá 2 lần trong cả truyện: bị tố → kiểm tra giấy/file → phát hiện metadata/header → tin nhắn đe dọa.
+- Không để 3 chương liên tiếp đều kết bằng “có thêm một đầu mối”. Phải xen kẽ mất mát thật, thắng lợi nhỏ, người đổi phe, hoặc phản diện bị ép ra mặt.
+- Không để vật chứng kỹ thuật chiếm hết truyện. Vật chứng phải kéo theo con người: ai ký, ai nói dối, ai bị ép, ai hưởng lợi, ai chịu thiệt.
+- Mỗi chương chỉ cần 1 vật chứng chính. Nếu đã có quá nhiều giấy/email/log/camera, chương mới phải ưu tiên đối chất trực tiếp hoặc hậu quả đời sống.
+- Cứ mỗi 4 chương phải có một mini-payoff rõ: công khai một phần sự thật, lấy lại một quyền, làm phản diện mất đồng minh, hoặc khiến một quyết định bất lợi bị hủy.
+- Cảnh cuối phải ném độc giả sang chương sau bằng hành động cụ thể: một người đến, một cửa bị khóa, một hồ sơ được đưa ra, một cuộc họp bị ép diễn ra, một nhân chứng đổi lời. Không kết bằng câu quyết tâm.`.trim()
+}
+
+
 export function getChapterAdvancementInstruction(payload: NormalizedGeneratePayload) {
   return `
 CHAPTER ADVANCEMENT LOCK:
