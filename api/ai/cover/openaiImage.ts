@@ -51,13 +51,13 @@ function isModerationBlockedError(error: unknown) {
 
 function buildEmergencyFallbackPrompt() {
   return `
-Vertical 2:3 premium Chinese manhua / Korean webtoon / high-end anime urban-drama webnovel cover illustration.
+Vertical 2:3 premium bright Chinese manhua / Korean webtoon / high-end anime urban-drama webnovel cover illustration, beautiful ChatGPT-style polished commercial key visual.
 
 Scene:
-A beautiful adult East Asian heroine in a bright modern story location, such as an airport hall, hotel lobby, glass office, event hall, factory floor, school office, hospital corridor, restaurant, shop, or public interior. Medium-wide composition, camera 2.5 to 5 meters away. The heroine occupies about 28% to 42% of the image, with a clear readable environment around her. Supporting figures in the background suggest witnesses, pressure, secrets, betrayal, and hidden truth.
+A beautiful adult East Asian heroine in a bright modern story location, such as an airport hall, hotel lobby, glass office, event hall, factory floor, school office, hospital corridor, restaurant, shop, or public interior. Medium-wide composition, camera 2 to 4 meters away. The heroine occupies about 30% to 45% of the image, with a clear readable environment around her. Supporting figures in the background suggest witnesses, pressure, secrets, betrayal, and hidden truth.
 
 Style:
-Premium 2D Chinese manhua / Korean webtoon / high-end anime light novel cover art. Clean line art, beautiful face, luminous eyes, glossy hair, smooth skin, elegant modern clothing, bright commercial color, clear cel-shading with soft painterly gradients, polished dramatic promotional cover finish.
+Premium bright 2D Chinese manhua / Korean webtoon / high-end anime light novel cover art. Beautiful refined face, luminous eyes, glossy hair, smooth skin, elegant modern clothing, clean confident line art, bright commercial color, clear cel-shading with soft painterly gradients, polished dramatic promotional cover finish similar to high-quality ChatGPT anime/manhua generations.
 
 Strict quality rules:
 Do not use photorealism, live-action drama still, gritty realism, muddy dark office lighting, low-budget 3D render, mobile game NPC art, harsh realistic face, dead eyes, plastic mannequin skin, or ugly semi-realistic AI poster style.
@@ -80,7 +80,7 @@ ULTRA NO-TEXT RESCUE:
 - No readable or unreadable script-like marks.
 - All papers, phones, monitors, folders, books, signs, tickets, and documents must be blank, dark, blurred, covered, turned away, or abstract.
 - This is scene illustration only, not a poster with typography.
-- Keep the camera pulled far back. The heroine must stay small inside a large readable environment.
+- Keep the composition balanced: beautiful readable heroine plus a clear spacious environment. Do not turn it into a tiny distant character or a tight portrait.
 - If the model tends to add any title or writing, remove it completely and keep only the illustration.`.trim()
 }
 

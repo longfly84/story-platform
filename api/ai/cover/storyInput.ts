@@ -184,7 +184,24 @@ export function extractStoryInput(body: JsonRecord): StoryInput {
     suggestedCoverSceneType,
     currentChapterCount,
     targetChapters,
-    coverBrief: safeString(source.coverBrief || source.cover_brief || body.coverBrief || body.cover_brief),
+    coverBrief: safeString(
+      source.coverBrief ||
+        source.cover_brief ||
+        source.visualCoverBrief ||
+        source.visual_cover_brief ||
+        source.coverSceneBrief ||
+        source.cover_scene_brief ||
+        source.imagePromptBrief ||
+        source.image_prompt_brief ||
+        body.coverBrief ||
+        body.cover_brief ||
+        body.visualCoverBrief ||
+        body.visual_cover_brief ||
+        body.coverSceneBrief ||
+        body.cover_scene_brief ||
+        body.imagePromptBrief ||
+        body.image_prompt_brief,
+    ),
     chapterTitles,
     chapters,
   }

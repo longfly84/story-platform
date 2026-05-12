@@ -1156,31 +1156,91 @@ function buildFallbackPrompt(data: ReturnType<typeof buildPromptData>): string {
   return `Vertical 2:3 premium Chinese manhua / Korean webtoon / high-end anime urban-drama web-novel cover illustration, high-end commercial webnovel promotional art. Beautiful polished adult East Asian heroine, soft luminous eyes, glossy hair, elegant modern outfit, attractive refined face, graceful expression. Medium-wide story scene, not a close-up heroine portrait and not a gloomy realistic poster. Camera is 2.5 to 5 meters away. The environment should occupy 45% to 60% of the image. The female lead should occupy 28% to 42% of the frame, off-center or on a visual third, preferably knee-up, 3/4 body, or seated full-body. Show clear setting: ${data.setting}. Story-specific evidence must be visible: ${data.keyEvidence}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style must look like beautiful premium 2D Chinese manhua / Korean webtoon promo / high-end anime light novel cover, with clean line art, luminous eyes, glossy hair, smooth skin, bright commercial color, clear cel-shading with soft painterly gradients, detailed environment, attractive characters. Not photorealistic, not gritty, not muddy, not live-action drama still, not cheap 3D render, not low-budget mobile game NPC art. Show foreground, midground, background, floor, ceiling, windows, furniture, machines, counters, tables, corridors, crowd space, or architecture. Show supporting figures, witnesses, antagonist, staff, child, or crowd when relevant. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Not a bust portrait. Not a centered heroine blocking the background. Not cramped, not narrow, not claustrophobic. The heroine must not occupy 55%, 60%, 70%, or 80% of the image. The heroine must look beautiful, elegant, emotionally controlled, and commercially appealing; avoid angry scowling face, harsh glare, ugly grimace, deeply furrowed brows, clenched jaw, stiff dead eyes, bitter expression, villain-like face, dull realistic face, uncanny AI face, plastic mannequin skin, old tired office-worker face, low-budget mobile game NPC look. Use restrained emotion: calm pain, quiet shock, protective determination, or controlled confidence. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, dark gray office palette, and repeated yellow-brown cover palette. Use bright clean cinematic color with cool neutral base and elegant warm accents only when needed.`
 }
 
+
+function buildCompactCommercialPrompt(data: ReturnType<typeof buildPromptData>): string {
+  const styleLine = String(data.coverArtStyle) === 'popular_webnovel_collage'
+    ? 'premium glossy Chinese webnovel collage cover, beautiful 2D manhua character art, layered story fragments, elegant dramatic commercial poster finish'
+    : 'premium 2D Chinese manhua / Korean webtoon / high-end anime light novel cover art, beautiful commercial key visual, clean line art, luminous eyes, glossy hair, smooth skin, bright polished color'
+
+  const sceneLine = data.sceneType === 'airport_secret_tension'
+    ? 'large bright airport departure hall with glass walls, runway view, flight board shapes without readable text, luggage and crowd depth'
+    : data.sceneType === 'hospital_legal_suspense'
+      ? 'clean modern hospital or laboratory corridor with glass doors, medical staff silhouettes, cold blue-white light, visible room depth'
+      : data.sceneType === 'school_parent_conflict'
+        ? 'school office or classroom corridor with parents, teachers, child, desks, windows, and public pressure'
+        : data.sceneType === 'mother_child_protection'
+          ? 'modern public interior where a protective mother and child face pressure from adults, with readable background space'
+          : data.sceneType === 'boardroom_evidence_reveal'
+            ? 'modern boardroom or corporate meeting room with long table, glass wall, executives, documents, and public confrontation pressure'
+            : data.sceneType === 'family_banquet_confrontation'
+              ? 'wealthy family banquet room or luxury dining space with relatives, tableware, warm elegant lighting, and confrontation atmosphere'
+              : data.sceneType === 'public_reveal_confrontation'
+                ? 'public event hall, hotel lobby, charity event, media room, showroom, or stage area with witnesses and social pressure'
+                : data.sceneType === 'private_betrayal_confrontation'
+                  ? 'luxury hotel corridor, restaurant private room, apartment lobby, or modern interior with betrayal tension and background witnesses'
+                  : data.sceneType === 'collage_story_poster'
+                    ? 'layered modern urban drama collage with heroine, evidence object, supporting cast, city night, room fragments, and emotional secret fragments'
+                    : data.setting
+
+  const compositionLine = String(data.coverArtStyle) === 'popular_webnovel_collage'
+    ? 'Composition: elegant layered poster collage. One beautiful heroine anchor occupies about 32% to 45% of the image. Around her are 4 to 7 readable mini-scenes or fragments showing evidence, witnesses, antagonist, child, corridor, room, phone, document, vehicle, crowd, or location clues. Make the collage glossy, spacious, expensive, and story-rich, not chaotic.'
+    : 'Composition: vertical 2:3 medium-wide story scene, not a close-up portrait. Camera feels 2 to 4 meters away. Heroine occupies about 30% to 45% of the image, readable and beautiful. Environment occupies about 45% to 60%. Show foreground evidence, midground heroine action, background witnesses/antagonist/staff/crowd and architecture. Use visible floor, ceiling, windows, tables, machines, counters, chairs, doors, corridor depth, or open public space.'
+
+  return `
+Create one vertical 2:3 cover illustration for a modern Vietnamese female-drama webnovel.
+
+MOST IMPORTANT ART TARGET:
+The image must look like a beautiful premium ChatGPT-style anime/manhua illustration, similar in quality to polished Chinese manhua and Korean webtoon promotional art. It must be pretty, clean, bright, glossy, cinematic, and commercially clickable.
+Do not make a gloomy semi-realistic AI poster. Do not make a live-action drama still. Do not make an old tired realistic face. Do not make low-budget mobile game NPC art.
+
+Rendering style:
+${styleLine}.
+Beautiful adult East Asian / Vietnamese heroine, refined attractive face, soft luminous eyes, delicate nose and lips, graceful hair, elegant modern clothing, natural hands, expressive but controlled emotion. Clean confident line art, crisp silhouette, cel-shading plus soft painterly gradients, high-detail background, no muddy gray-brown realism.
+
+Story:
+Title: ${data.title}.
+Genre: ${data.genre}.
+Heroine: ${data.heroine}.
+Antagonist / pressure: ${data.antagonist}.
+Core conflict: ${data.relationshipCore}.
+Key evidence object: ${data.keyEvidence}.
+Emotional hook: ${data.emotionalHook}.
+Stakes: ${data.stakes}.
+Mood: ${data.moodKeywords}.
+
+Scene location:
+Use this story location as the visual stage: ${sceneLine}.
+The setting must be clear at first glance and must not be only a blurry wall behind the heroine.
+
+${compositionLine}
+
+Beauty and expression:
+The heroine should be attractive and elegant, with soft serious sadness, quiet shock, protective determination, or controlled confidence. Avoid angry shouting face, ugly grimace, harsh glare, dead eyes, plastic skin, stiff mannequin pose, and villain-like expression.
+
+Color and lighting:
+Prefer bright clean commercial color, luminous daylight or elegant blue-white cinematic light with small warm accents. Use clear contrast and readable details. Avoid dark dirty office palette, muddy gray-blue horror lighting, sepia wash, yellow-brown filter, nicotine beige, and flat dull realism.
+
+Strict no-text rules:
+No title, no words, no letters, no readable signs, no readable labels, no readable phone screen, no readable documents, no logos, no watermark. Papers, screens, tickets, boards, folders, and labels must be blank, abstract, blurred, turned away, or unreadable.
+
+Safety and content:
+No blood, no wounds, no corpse, no gore, no weapons, no explicit violence, no self-harm. Show conflict through posture, distance, witnesses, evidence, lighting, reflections, and atmosphere.
+
+Final quality check before rendering:
+It should feel closer to the beautiful airport/factory reference images than to a dark realistic office poster. Beautiful 2D manhua/anime faces, polished webnovel cover finish, readable environment, story clues, no ugly semi-realism.
+`.trim()
+}
+
 export function buildCoverPrompt(input: StoryInput | JsonRecord | unknown): CoverBuildResult {
   const data = buildPromptData(input)
 
-  const prompt = [
-  buildPrimaryGoalBlock(),
-  buildStoryCoreBlock(data),
-  buildStoryStageBlock(data.storyStage),
-  buildStyleBlock(data.coverArtStyle),
-  buildReferenceLookBlock(data),
-  buildColorDiversityBlock(data.coverArtStyle, data.sceneType),
-  buildSceneSelectionBlock(data.sceneType, data.coverArtStyle),
-  buildCompositionPresetBlock(data),
-  buildCompositionHardLockBlock(data),
-  buildFramingAndCharacterBlock(data.coverArtStyle, data.compositionPreset),
-  buildBeautyExpressionLockBlock(data),
-  buildNoTextBlock(),
-  buildAntiGenericBlock(data.sceneType, data.coverArtStyle),
-  buildFinalInstructionBlock(data.coverArtStyle),
-].join('\n\n')
+  const prompt = buildCompactCommercialPrompt(data)
 
   return {
     prompt,
     fallbackPrompt: buildFallbackPrompt(data),
     coverConcept: {
-      version: 'cover-beautiful-manhua-v5',
+      version: 'cover-compact-commercial-v6',
       coverArtStyle: data.coverArtStyle,
       sceneType: data.sceneType,
       storyStage: data.storyStage,

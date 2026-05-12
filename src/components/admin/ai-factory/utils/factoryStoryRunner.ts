@@ -138,6 +138,147 @@ function getCoverArtStyleLabel(style: AIFactoryConfig['coverArtStyle']) {
   }
 }
 
+
+function stringifyCoverSeedValue(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stringifyCoverSeedValue(item))
+      .filter(Boolean)
+      .slice(0, 8)
+      .join(" | ");
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return [
+      record.title,
+      record.name,
+      record.label,
+      record.value,
+      record.text,
+      record.summary,
+      record.description,
+      record.motifText,
+      record.motif,
+    ]
+      .map((item) => stringifyCoverSeedValue(item))
+      .filter(Boolean)
+      .slice(0, 6)
+      .join(" | ");
+  }
+
+  return "";
+}
+
+function pickCoverSeedText(seed: FactoryStorySeed | null | undefined, keys: string[]) {
+  if (!seed || typeof seed !== "object") return "";
+
+  const record = seed as Record<string, unknown>;
+  for (const key of keys) {
+    const direct = stringifyCoverSeedValue(record[key]);
+    if (direct) return direct;
+  }
+
+  return "";
+}
+
+function buildFactoryCoverBrief(params: {
+  storyTitle: string;
+  storyDescription: string;
+  genreLabel: string;
+  heroineLabel: string;
+  storySeed?: FactoryStorySeed | null;
+}) {
+  const seed = params.storySeed;
+  const concept =
+    seed && typeof seed === "object"
+      ? (seed as Record<string, unknown>).coverConcept
+      : null;
+  const conceptRecord =
+    concept && typeof concept === "object" && !Array.isArray(concept)
+      ? (concept as Record<string, unknown>)
+      : {};
+
+  const conceptText = [
+    conceptRecord.scene,
+    conceptRecord.mainScene,
+    conceptRecord.visualScene,
+    conceptRecord.setting,
+    conceptRecord.location,
+    conceptRecord.evidence,
+    conceptRecord.keyEvidence,
+    conceptRecord.characters,
+    conceptRecord.conflict,
+    conceptRecord.mood,
+  ]
+    .map((item) => stringifyCoverSeedValue(item))
+    .filter(Boolean)
+    .join(" | ");
+
+  const arena = pickCoverSeedText(seed, [
+    "openingArena",
+    "mainArena",
+    "arena",
+    "setting",
+    "location",
+    "stage",
+  ]);
+
+  const evidence = pickCoverSeedText(seed, [
+    "keyEvidence",
+    "signatureObject",
+    "evidenceObject",
+    "evidenceType",
+    "motifText",
+    "motifFingerprint",
+  ]);
+
+  const conflict = pickCoverSeedText(seed, [
+    "coreConflict",
+    "relationshipCore",
+    "relationshipConflict",
+    "emotionalHook",
+    "hook",
+    "stakes",
+  ]);
+
+  const antagonist = pickCoverSeedText(seed, [
+    "antagonist",
+    "villain",
+    "pressureSource",
+    "opposingForce",
+  ]);
+
+  const heroine = pickCoverSeedText(seed, [
+    "heroine",
+    "femaleLead",
+    "coverHeroine",
+    "heroineProfile",
+  ]);
+
+  return [
+    "Create the cover from this exact story, not from a generic template.",
+    `Title: ${params.storyTitle}`,
+    `Story summary: ${params.storyDescription}`,
+    `Genre: ${params.genreLabel}`,
+    `Female lead type: ${heroine || params.heroineLabel}`,
+    arena ? `Main visible location / arena: ${arena}` : "",
+    evidence ? `Key visible evidence object: ${evidence}` : "",
+    antagonist ? `Opposing characters / pressure source: ${antagonist}` : "",
+    conflict ? `Central conflict to show visually: ${conflict}` : "",
+    conceptText ? `Existing cover concept / visual seed: ${conceptText}` : "",
+    "Art direction: beautiful premium Chinese manhua / Korean webtoon commercial webnovel cover, bright clean polished faces, attractive heroine, cinematic but still clearly 2D illustrated.",
+    "Composition direction: heroine should be appealing and readable, but include a real story scene around her: location, witnesses, antagonist, evidence, and emotional pressure.",
+    "Avoid: ugly semi-realistic AI drama poster, dull grey lighting, stiff NPC faces, old-looking heroine, cramped hallway-only composition, generic woman holding paper.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+
 function normalizeCoverCompositionPreset(
   value: unknown,
 ): AIFactoryConfig['coverCompositionPreset'] {
@@ -893,6 +1034,8 @@ export async function generateAndAttachFactoryCover(params: {
       }
     : null
 
+  const coverBrief = buildFactoryCoverBrief(params)
+
   const response = await fetch('/api/ai/generate-cover', {
     method: 'POST',
     headers: {
@@ -904,6 +1047,10 @@ export async function generateAndAttachFactoryCover(params: {
       modelKey: params.config.modelKey,
       title: params.storyTitle,
       storySummary: params.storyDescription,
+      summary: coverBrief,
+      description: coverBrief,
+      coverBrief,
+      cover_brief: coverBrief,
       genreLabel: params.genreLabel,
       heroineLabel: params.heroineLabel,
       story_dna: storyDna,
@@ -911,7 +1058,10 @@ export async function generateAndAttachFactoryCover(params: {
         id: params.storyId,
         title: params.storyTitle,
         slug: params.storySlug,
-        summary: params.storyDescription,
+        summary: coverBrief,
+        description: coverBrief,
+        coverBrief,
+        cover_brief: coverBrief,
         genreLabel: params.genreLabel,
         tags: [params.genreLabel, params.heroineLabel].filter(Boolean),
         story_dna: storyDna,
