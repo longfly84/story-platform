@@ -151,6 +151,7 @@ ${compactPlan}
 
 RULE:
 - Nếu mode là viết chương, chương này phải hoàn thành đúng mission của chapterNumber hiện tại.
+- Không được viết lời nhắc/recap meta vào BẢN ĐỌC, kể cả các câu như “Hai câu tóm tắt nhanh”, “Tóm tắt nhanh”, “Ở chương trước”. Outline chỉ là khóa nội bộ, không được lộ ra văn truyện.
 - Nếu đang ở chương cuối theo targetChapters, phải nén payoff cuối vào chương này thay vì treo tiếp.
 - Không được bỏ qua power shift. Nếu không có power shift thật, chương bị xem là lỗi.
 - Không được dùng lại tiêu đề chương trước hoặc một tiêu đề cùng nghĩa. Tiêu đề phải phản ánh evidence step/state change mới của chương.

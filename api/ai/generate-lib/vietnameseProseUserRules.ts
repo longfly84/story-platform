@@ -11,6 +11,22 @@ function normalizeEvidencePlace(input: string) {
 
 export const userVietnameseProseReplacementRules: VietnameseProseRule[] = [
   {
+    id: 'user-remove-meta-recap-line',
+    category: 'unclear_sentence',
+    severity: 'high',
+    mode: 'template-replace',
+    pattern: /^(?:\s*(?:Hai câu tóm tắt nhanh|Tóm tắt nhanh|Ở chương trước|Nhắc lại một chút)\s*[:：][^\n]*(?:\n|$))+/giu,
+    replacement: '',
+    message: 'Dòng mở chương dạng meta/recap không thuộc nội dung truyện; xóa khỏi bản đọc.',
+    genericSuggestion: 'Mở thẳng bằng cảnh truyện, hành động, lời thoại, hoặc hậu quả hiện tại.',
+    examples: [
+      {
+        bad: 'Hai câu tóm tắt nhanh: nữ chính vừa bị đình chỉ. Bây giờ cô tới phòng họp.',
+        good: 'Cửa phòng họp mở ra, và tờ quyết định đình chỉ đã nằm sẵn trên bàn.',
+      },
+    ],
+  },
+  {
     id: 'user-object-small-stone-template',
     category: 'ai_metaphor',
     severity: 'medium',
@@ -1203,6 +1219,15 @@ export const userVietnameseProseReplacementRules: VietnameseProseRule[] = [
 ]
 
 export const userVietnameseProseWarningRules: VietnameseProseRule[] = [
+  {
+    id: 'user-warning-meta-recap-inside-chapter',
+    category: 'unclear_sentence',
+    severity: 'high',
+    mode: 'warning',
+    pattern: /Hai câu tóm tắt nhanh|Tóm tắt nhanh|Ở chương trước|Nhắc lại một chút/gi,
+    message: 'Lộ lời nhắc/tóm tắt meta trong bản đọc, làm truyện mất tự nhiên và rất giống AI.',
+    genericSuggestion: 'Xóa câu meta, chuyển thông tin cần nhắc vào hành động hoặc lời thoại tự nhiên.',
+  },
   {
     id: 'user-warning-too-many-toi-openings',
     category: 'unclear_sentence',

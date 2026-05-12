@@ -646,11 +646,37 @@ CHAPTER MISSION LOCK:
 `.trim()
   }
 
+  const missionByChapter: Record<number, string> = {
+    6: 'mở hậu quả trả đũa của phản diện sau cú đảo chiều đầu tiên; nữ chính mất một quyền thật nhưng giữ được một người hoặc một vật chứng sống.',
+    7: 'đổi chiến trường sang nơi có người thật chịu thiệt; kéo một nhân chứng né tránh ra ánh sáng bằng hành động cụ thể, không chỉ bằng metadata.',
+    8: 'cho phản diện tự lộ sơ hở trong một cảnh công khai hoặc nửa công khai; nữ chính không thắng sạch nhưng khiến một quyết định bất lợi bị treo.',
+    9: 'đẩy vào điểm giữa muộn: người từng trung lập buộc phải chọn phe; nữ chính đặt bẫy nhỏ để kiểm chứng ai đang nói dối.',
+    10: 'mini-payoff lớn: công khai một phần bằng chứng đã cài từ các chương trước, làm phản diện mất đồng minh/quyền truy cập/danh nghĩa.',
+    11: 'phản diện phản công bằng nước cờ nặng nhất trước cuối truyện; có thiệt hại thật về gia đình, công ty, quyền nuôi con, cổ phần hoặc danh dự.',
+    12: 'nữ chính chuyển từ phòng thủ sang tấn công có chuẩn bị; gọi đúng người, đúng địa điểm, đúng thời điểm để khóa đường chối của đối phương.',
+    13: 'tiền cao trào: gom các đầu mối quan trọng thành một cuộc đối chất; không mở thêm tuyến mới ngoài một twist đã được cài trước.',
+    14: 'cao trào: bắt phản diện trả lời trước đám đông/người có quyền; trả ít nhất 2 payoff đã cài, làm thế lực che chắn phản diện lung lay.',
+    15: 'kết truyện: giải quyết mâu thuẫn chính, buộc phản diện trả giá rõ, trả lại quyền/danh dự/người thân cho nữ chính; chỉ giữ dư âm nhỏ, không mở vụ án mới.',
+  }
+
+  const mission = missionByChapter[chapter]
+  if (mission) {
+    return `
+CHAPTER MISSION LOCK:
+- Đây là Chương ${chapter}${target > 0 ? `/${target}` : ''}.
+- Nhiệm vụ chương này: ${mission}
+- Không được mở chương bằng dòng tóm tắt kiểu “Hai câu tóm tắt nhanh”, “Tóm tắt chương trước”, hoặc bất kỳ lời meta nào.
+- Không được chỉ thêm file/email/camera mới rồi kết bằng hứa kiểm tra. Phải có cảnh người thật đối chất, mất mát, đổi phe, hoặc trả giá ngay trong chương.
+- Cuối chương phải có một state change đo được: quyền bị trả/khóa, người đổi lời, quyết định bị hủy/treo, phản diện bị gọi tên, hoặc nữ chính giành được quyền chủ động kế tiếp.
+`.trim()
+  }
+
   return `
 CHAPTER MISSION LOCK:
 - Đây là Chương ${chapter}.
 - Nhiệm vụ chương này: mở một bước tiến mới trong mạch truyện, không lặp lại nhiệm vụ của chương trước.
 - Bắt buộc có state change: sau chương này, vị thế nữ chính, vị thế phản diện, bằng chứng, hoặc dư luận phải thay đổi thật.
+- Không được mở bằng recap/meta. Không viết “Hai câu tóm tắt nhanh”, “Ở chương trước”, “Tóm lại”. Hãy nối thẳng bằng hành động hiện tại.
 `.trim()
 }
 
@@ -700,6 +726,7 @@ ${milestone}
 ${phaseRule}
 
 Luật chống lặp dài hơi:
+- BẢN ĐỌC tuyệt đối không được mở bằng câu meta/tóm tắt như “Hai câu tóm tắt nhanh”, “Tóm tắt nhanh”, “Ở chương trước”, “Sau chuyện vừa rồi”. Vào thẳng cảnh mới bằng hành động, địa điểm, lời nói hoặc hậu quả.
 - Không dùng cùng công thức chương quá 2 lần trong cả truyện: bị tố → kiểm tra giấy/file → phát hiện metadata/header → tin nhắn đe dọa.
 - Không để 3 chương liên tiếp đều kết bằng “có thêm một đầu mối”. Phải xen kẽ mất mát thật, thắng lợi nhỏ, người đổi phe, hoặc phản diện bị ép ra mặt.
 - Không để vật chứng kỹ thuật chiếm hết truyện. Vật chứng phải kéo theo con người: ai ký, ai nói dối, ai bị ép, ai hưởng lợi, ai chịu thiệt.
@@ -779,6 +806,11 @@ Các chức năng được phép:
 6. Legal Countermove: nữ chính dùng luật sư/tòa án để khóa chứng cứ.
 7. Boardroom/Public Confrontation: đối đầu ở phòng họp/hội đồng/truyền thông.
 8. Trap Reversal: nữ chính gài bẫy để phản diện tự lộ sơ hở.
+
+Gợi ý nhịp 15 chương nếu target dài:
+- Ch1 Public Exposure, Ch2 Evidence Verification, Ch3 Real Loss, Ch4 Witness Hunt, Ch5 Trap Reversal/mini-payoff.
+- Ch6 Emotional Cost, Ch7 Witness Hunt ở địa điểm mới, Ch8 Boardroom/Public Confrontation, Ch9 Trap Reversal, Ch10 mini-payoff công khai.
+- Ch11 Real Loss nặng, Ch12 Legal Countermove hoặc chủ động đặt bẫy, Ch13 gom chứng cứ, Ch14 cao trào đối chất, Ch15 trả giá/kết.
 
 Cấm 2 chương liên tiếp dùng cùng chức năng chính.
 Cấm chương mới chỉ lặp lại: xem hồ sơ → chụp ảnh → bị niêm phong → gọi luật sư → bị nhắn 48 giờ.

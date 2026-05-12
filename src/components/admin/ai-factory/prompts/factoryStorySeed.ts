@@ -2250,49 +2250,6 @@ function makeSeedAlignedTitle(params: {
   );
 }
 
-function makeChapterTitle(params: {
-  chapterNumber: number;
-  candidate: ReturnType<typeof buildSeedCandidate>;
-  alternateEvidence: string;
-  alternateSetting: string;
-  alternatePressure: string;
-  seed: string;
-}) {
-  const evidenceTitle = makeEvidenceTitle(params.candidate.evidenceObject);
-  const altEvidenceTitle = makeEvidenceTitle(params.alternateEvidence);
-  const setting = params.alternateSetting.replace(/^một\s+/i, "").trim();
-  const pressure = params.alternatePressure.replace(/^một\s+/i, "").trim();
-
-  switch (params.chapterNumber) {
-    case 1:
-      return evidenceTitle;
-    case 2:
-      return altEvidenceTitle || titleCaseFirst(pressure.length <= 34 ? pressure : setting) || "Nhân Chứng Đầu Tiên";
-    case 3:
-      return titleCaseFirst(setting.length <= 34 ? setting : pressure) || "Địa Điểm Thứ Hai";
-    case 4:
-      return titleCaseFirst(`Nguồn Gốc Của ${altEvidenceTitle || evidenceTitle}`.slice(0, 58)) || "Nguồn Gốc Bằng Chứng Phụ";
-    case 5:
-      return "Cú Vả Mặt Đầu Tiên";
-    case 6:
-      return "Phản Diện Chính Ra Mặt";
-    case 7:
-      return "Bằng Chứng Đảo Nghĩa";
-    case 8:
-      return "Cái Bẫy Được Giăng Lại";
-    case 9:
-      return "Đòn Trả Thù Công Khai";
-    case 10:
-      return "Người Đứng Giữa Đổi Phe";
-    case 11:
-      return "Đối Chất Trước Mọi Người";
-    case 12:
-      return "Sự Thật Được Mở Khóa";
-    default:
-      return `Chương ${params.chapterNumber}`;
-  }
-}
-
 
 const RECENTLY_OVERUSED_CHARACTER_NAMES = [
   "Hạ Vân",
@@ -2693,14 +2650,6 @@ function buildFactoryStoryPlan(params: {
   candidate: ReturnType<typeof buildSeedCandidate>;
 }) {
   const { candidate } = params;
-  const alternatePressure =
-    pickSeedItem(
-      FACTORY_PUBLIC_PRESSURES.filter(
-        (item) => item !== candidate.publicPressure,
-      ),
-      params.seed,
-      "planner-alt-pressure",
-    ) || candidate.publicPressure;
   const alternateEvidence =
     pickSeedItem(
       FACTORY_SEED_EVIDENCE_OBJECTS.filter(
@@ -2709,12 +2658,6 @@ function buildFactoryStoryPlan(params: {
       params.seed,
       "planner-alt-evidence",
     ) || candidate.evidenceObject;
-  const alternateSetting =
-    pickSeedItem(
-      FACTORY_SETTING_CLUSTERS.filter((item) => item !== candidate.setting),
-      params.seed,
-      "planner-alt-setting",
-    ) || candidate.setting;
 
   const evidencePlan = [
     `Chương 1 cài vật chứng chính: ${candidate.evidenceObject}, trong một tình huống cụ thể của genre; không dùng công thức vật chứng rơi ra đúng lúc chung chung.`,
@@ -2744,213 +2687,205 @@ function buildFactoryStoryPlan(params: {
   const chapterPlan: FactoryStoryPlanChapter[] = [
     {
       chapterNumber: 1,
-      title: makeChapterTitle({ chapterNumber: 1, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission: `Mở tại ${candidate.openingScene}. ${candidate.evidenceObject} bị dùng trong một tình huống cụ thể của genre để làm nữ chính mất thế; không dùng câu vật chứng rơi ra đúng lúc chung chung.`,
-      sceneType: "opening hook / public pressure",
+      title: makeEvidenceTitle(candidate.evidenceObject),
+      mission: `Mở cú vu oan/cú ép tại ${candidate.openingScene}, cho thấy cái giá nếu nữ chính thua và cài ${candidate.evidenceObject} làm vật chứng trung tâm.`,
+      sceneType: 'Public Exposure',
       mainScene: candidate.openingScene,
-      evidenceBeat: `Cài ${candidate.evidenceObject}, chỉ cho thấy 1 điểm lệch logic.`,
-      villainBeat: `Phản diện tung cú đánh đầu tiên qua ${candidate.publicPressure}, có dấu tay cá nhân rõ.`,
-      heroineMove:
-        "Nữ chính không khóc lóc; cô giữ lại bản sao/chứng cứ nhỏ và làm một phản đòn ngay tại chỗ khiến quy trình/đám đông phải khựng lại.",
+      evidenceBeat: `Vật chứng ${candidate.evidenceObject} xuất hiện trong tay phe phản diện nhưng có một chi tiết lệch nhỏ.`,
+      villainBeat: candidate.villainAttack,
+      heroineMove: candidate.heroineCounter,
       emotionalBeat: candidate.emotionalHook,
-      powerShift:
-        "Nữ chính bị đẩy vào thế yếu công khai, nhưng giữ được vật chứng và khiến ít nhất một người trung lập phải tạm nghi ngờ phản diện.",
-      endingHook: "Một người/thứ tưởng ngoài lề bị kéo vào làm áp lực thật.",
+      powerShift: 'Một người trung lập chưa đứng về nữ chính nhưng đồng ý tạm dừng kết luận.',
+      endingHook: `Nữ chính giữ được ${candidate.evidenceObject} hoặc bản sao, nhận ra có người đã chuẩn bị từ trước.`,
     },
     {
       chapterNumber: 2,
-      title: makeChapterTitle({ chapterNumber: 2, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission:
-        "Không lặp thủ tục/pháp lý/log/camera. Chương này phải cho hậu quả chạm vào người thân, công việc, danh dự hoặc quan hệ theo đúng genre, đồng thời mở một evidence step mới khác chương 1.",
-      sceneType: "emotional cost / villain pressure",
-      mainScene: alternateSetting,
-      evidenceBeat: `Vật chứng chính bị phản diện bẻ nghĩa, nhưng nữ chính lần ra một nguồn xác minh mới liên quan ${alternateEvidence}; chưa giải thích hết ${candidate.evidenceObject}.`,
-      villainBeat:
-        "Phản diện chính gửi lời đe dọa hoặc xuất hiện ngắn, thể hiện mục tiêu cá nhân.",
-      heroineMove:
-        "Nữ chính chọn một hành động cụ thể để bảo vệ người yếu thế trước khi phản công: khóa/giữ một quyền, yêu cầu người có thẩm quyền xác minh, hoặc khiến một nhân chứng buộc phải trả lời.",
-      emotionalBeat:
-        "Một câu hỏi/ánh nhìn/tin nhắn khiến nữ chính đau nhưng không gục.",
-      powerShift:
-        "Phản diện thắng một bước thật: cô mất quyền, mất niềm tin của đám đông hoặc bị cô lập.",
-      endingHook: `Một dấu vết phụ trỏ sang ${alternateEvidence}.`,
+      title: 'Nguồn gốc vật chứng bị lộ một góc',
+      mission: 'Đưa hậu quả đời sống xuất hiện ngay sau chương 1 và kiểm chứng vật chứng ở một nguồn mới.',
+      sceneType: 'Evidence Verification',
+      mainScene: candidate.publicPressure,
+      evidenceBeat: `Nguồn gốc/đường đi của ${candidate.evidenceObject} lộ thêm thời gian, người giao, hoặc dấu xác nhận.`,
+      villainBeat: 'Phản diện dùng kết luận nửa vời để khóa một quyền lợi nhỏ của nữ chính.',
+      heroineMove: 'Nữ chính yêu cầu ghi nhận chính thức, giữ bản sao và ép người liên quan ký xác nhận.',
+      emotionalBeat: 'Người thân/người yếu thế chịu ảnh hưởng trực tiếp, làm nữ chính không thể chỉ phòng thủ.',
+      powerShift: 'Nữ chính mất một lợi ích trước mắt nhưng lấy được nguồn xác minh đầu tiên.',
+      endingHook: 'Một cái tên/địa điểm mới xuất hiện trong hồ sơ tiếp nhận.',
     },
     {
       chapterNumber: 3,
-      title: makeChapterTitle({ chapterNumber: 3, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission: `Chuyển trọng tâm sang ${alternatePressure} hoặc đối thoại trực diện, tạo scene mới khác chương trước, không dùng lại nhịp bị chặn bằng giấy tờ/log; phản diện phải gây thiệt hại thật nhưng cũng lộ một đường dẫn mới.`,
-      sceneType: "direct confrontation / social pressure",
-      mainScene: alternatePressure,
-      evidenceBeat: `Hé ${alternateEvidence} như vật chứng phụ, không thay thế vật chứng chính.`,
-      villainBeat:
-        "Phản diện sỉ nhục nữ chính trước ít nhất một người có quyền lực hoặc một nhóm người chứng kiến.",
-      heroineMove:
-        "Nữ chính đặt một câu hỏi khiến đối phương lộ mâu thuẫn nhỏ.",
-      emotionalBeat:
-        "Có một chi tiết đời thường làm người đọc thấy cái giá nữ chính đang chịu.",
-      powerShift:
-        "Nữ chính chưa thắng nhưng làm một người trung lập bắt đầu nghi ngờ phản diện.",
-      endingHook: "Một người từng thân thiết nhắn/đến gặp với thái độ mập mờ.",
+      title: 'Quyền lợi bị khóa ngay trước mặt mọi người',
+      mission: 'Cho phản diện phản công thật, khiến nữ chính mất quyền truy cập/quyền phát biểu/quyền làm việc hoặc quyền bảo vệ người thân.',
+      sceneType: 'Real Loss',
+      mainScene: candidate.powerStructure,
+      evidenceBeat: 'Vật chứng cũ chỉ được nhắc thoáng qua; trọng tâm là thông báo/quyết định bất lợi mới.',
+      villainBeat: 'Phản diện ép nữ chính nhận lỗi để đổi lấy việc gỡ phong tỏa.',
+      heroineMove: 'Nữ chính không nhận lỗi, yêu cầu quyết định bất lợi phải ghi rõ người ký và căn cứ.',
+      emotionalBeat: 'Nữ chính đau vì người cần được bảo vệ bị kéo vào làm con tin tinh thần.',
+      powerShift: 'Phản diện thắng một nhịp thật; nữ chính lấy được chữ ký hoặc căn cứ ra quyết định.',
+      endingHook: 'Tên người ký không khớp với người vừa xuất hiện trước đó.',
     },
     {
       chapterNumber: 4,
-      title: makeChapterTitle({ chapterNumber: 4, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission:
-        "Đổi chiến trường và đẩy tuyến phản bội/đổi phe bằng chi tiết đời sống hoặc quan hệ; không biến chương này thành giám định/log/thủ tục thuần túy, không dùng lại evidence step của chương 2.",
-      sceneType: "betrayal / witness scene",
-      mainScene: "một không gian kín có đối thoại căng",
-      evidenceBeat:
-        "Một nhân chứng hoặc dữ liệu phụ từ nguồn mới xác nhận có người bên trong động tay; đây phải là mẩu mới, không phải bản lặp của ảnh/file/phiếu đã dùng ở chương 2.",
-      villainBeat:
-        "Phản diện phụ cố che, nhưng phản diện chính phải có dấu tay/lời nhắn/áp lực riêng.",
-      heroineMove:
-        "Nữ chính không vạch mặt ngay, giữ lại mồi để gài bẫy chương sau.",
-      emotionalBeat:
-        "Người nữ chính từng tin làm cô đau hoặc buộc cô nghi ngờ lòng tin của mình.",
-      powerShift: "Nữ chính từ bị động chuyển sang có kế hoạch phản công.",
-      endingHook:
-        "Lộ một thông tin khiến bằng chứng ban đầu có nghĩa ngược lại.",
+      title: 'Người giữ bản gốc bắt đầu né tránh',
+      mission: 'Đổi chiến trường để tìm người/bản gốc có thể xác minh, không xoay lại cùng vật chứng cũ.',
+      sceneType: 'Witness Hunt',
+      mainScene: 'nơi giữ bản gốc, kho lưu, quầy trực, phòng kỹ thuật, hoặc nhà người chứng kiến',
+      evidenceBeat: 'Bản gốc/nhân chứng tồn tại nhưng bị chuyển đi, sửa ca, hoặc bị ép im lặng.',
+      villainBeat: 'Phe phản diện cử người chặn đường hoặc làm nhân chứng đổi lời.',
+      heroineMove: 'Nữ chính dùng một chi tiết đời thường để khiến nhân chứng không thể nói dối trọn vẹn.',
+      emotionalBeat: 'Nhân chứng lộ ra cũng từng bị ép hoặc sợ mất việc/mất con đường sống.',
+      powerShift: 'Một nhân chứng yếu thế chưa dám khai nhưng đưa ra một manh mối đủ dùng.',
+      endingHook: 'Manh mối chỉ về người có quyền cao hơn phản diện tuyến đầu.',
     },
     {
       chapterNumber: 5,
-      title: makeChapterTitle({ chapterNumber: 5, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission: `Tạo payoff nhỏ trước ${candidate.publicPressure}: nữ chính thắng một ván bằng logic genre và tính cách heroine, chưa lật hết ${candidate.hiddenTruth}.`,
-      sceneType: "public face-slap / small payoff",
-      mainScene: candidate.publicPressure,
-      evidenceBeat: `Dùng ${candidate.evidenceObject} hoặc ${alternateEvidence} để chứng minh một lời nói dối nhỏ.`,
-      villainBeat:
-        "Phản diện bị khựng lại trước đám đông nhưng lập tức chuẩn bị đòn nặng hơn.",
-      heroineMove:
-        "Nữ chính nói ít, dùng chứng cứ hoặc câu hỏi sắc để đảo chiều dư luận nhỏ.",
-      emotionalBeat:
-        "Người yếu thế được trả lại một phần công bằng hoặc nữ chính giữ được một điều quan trọng.",
-      powerShift:
-        "Nữ chính giành thắng lợi nhỏ thật; đám đông chuyển từ kết tội sang nghi ngờ.",
-      endingHook:
-        "Phản diện chính quyết định ra mặt mạnh hơn vì không thể để cô tiếp tục.",
+      title: 'Cú đảo chiều đầu tiên',
+      mission: 'Dùng chi tiết đã cài từ chương 1–4 để tạo mini-payoff công khai, làm phản diện mất thế trong một cảnh đông người.',
+      sceneType: 'Trap Reversal',
+      mainScene: 'cảnh đối chất nửa công khai có người có quyền chứng kiến',
+      evidenceBeat: 'Một bằng chứng nhỏ được xác thực tại chỗ, đủ hủy/tạm dừng một quyết định bất lợi.',
+      villainBeat: 'Phản diện cố đổ lỗi cho sai sót kỹ thuật hoặc người dưới quyền.',
+      heroineMove: 'Nữ chính hỏi đúng một câu khiến lời chống chế bị hở.',
+      emotionalBeat: 'Người từng nghi ngờ nữ chính bắt đầu im hoặc đổi ánh mắt.',
+      powerShift: 'Nữ chính lấy lại một quyền nhỏ hoặc buộc quy trình phải mở lại.',
+      endingHook: 'Phản diện nhìn sang một đồng minh chưa từng lộ mặt.',
     },
     {
       chapterNumber: 6,
-      title: makeChapterTitle({ chapterNumber: 6, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission:
-        "Bắt buộc có phản diện chính đối đầu trực diện hoặc gọi/nhắn đe dọa có cá tính riêng.",
-      sceneType: "main villain confrontation",
-      mainScene: "không gian riêng nhưng có hậu quả công khai",
-      evidenceBeat:
-        "Không thêm vật chứng mới quá nhiều; tập trung vào ý nghĩa mới của chứng cứ cũ.",
-      villainBeat:
-        "Phản diện chính đưa điều kiện: im lặng, ký giấy, rời khỏi vị trí hoặc hy sinh một quan hệ.",
-      heroineMove:
-        "Nữ chính giả vờ nhượng một phần để lấy câu nói/sơ hở của phản diện.",
-      emotionalBeat:
-        "Nữ chính phải nuốt một câu nhục nhưng biến nó thành mồi bẫy.",
-      powerShift:
-        "Phản diện tưởng thắng, nhưng nữ chính lấy được bằng chứng về động cơ thật.",
-      endingHook: `Một phần của hidden truth hé ra: ${candidate.hiddenTruth}.`,
+      title: 'Đòn trả thù đánh vào người bên cạnh',
+      mission: 'Sau cú đảo chiều, phản diện trả đũa bằng hậu quả đời sống, không chỉ lời dọa.',
+      sceneType: 'Emotional Cost',
+      mainScene: 'trường học, bệnh viện, nhóm gia đình, nơi làm việc của người thân, hoặc căn nhà riêng',
+      evidenceBeat: 'Một thông báo/đơn tố cáo mới xuất hiện nhưng phải gắn với con người thật chịu thiệt.',
+      villainBeat: 'Phản diện dùng người yếu thế làm áp lực để nữ chính lùi bước.',
+      heroineMove: 'Nữ chính giữ người yếu thế an toàn trước rồi mới phản công bằng một yêu cầu có giấy tờ.',
+      emotionalBeat: 'Nữ chính bị đau thật nhưng không vỡ trận; cảm xúc chuyển thành hành động.',
+      powerShift: 'Nữ chính mất thêm một phần yên ổn, đổi lại khóa được đường đi của đơn tố cáo.',
+      endingHook: 'Dấu vết của đơn tố cáo trùng với người ở chương trước.',
     },
     {
       chapterNumber: 7,
-      title: makeChapterTitle({ chapterNumber: 7, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission:
-        "Đảo nghĩa một mảnh chứng cứ: thứ tưởng bất lợi hóa ra là bẫy hoặc chìa khóa.",
-      sceneType: "midpoint reveal",
-      mainScene: alternateSetting,
-      evidenceBeat: `Kết nối ${candidate.evidenceObject} với ${alternateEvidence}.`,
-      villainBeat: "Phản diện đổi chiến thuật vì kế hoạch cũ bắt đầu rạn.",
-      heroineMove:
-        "Nữ chính chủ động hẹn gặp/đặt bẫy một người trong phe phản diện.",
-      emotionalBeat:
-        "Một đồng minh/người thân không còn tin cô tuyệt đối, tạo áp lực cảm xúc mới.",
-      powerShift:
-        "Thế trận cân bằng hơn: nữ chính có vũ khí thật nhưng chưa thể công khai.",
-      endingHook: "Người phản bội thật sự không phải người bị nghi đầu tiên.",
+      title: 'Người chứng kiến nói thiếu nửa câu',
+      mission: 'Kéo nhân chứng từng né tránh ra ánh sáng, buộc họ nói một nửa sự thật bằng tình huống cụ thể.',
+      sceneType: 'Witness Hunt',
+      mainScene: 'địa điểm gặp riêng nhưng có rủi ro bị theo dõi',
+      evidenceBeat: 'Nhân chứng đưa ra một chi tiết cảm giác/đồ vật/thói quen mà hồ sơ không có.',
+      villainBeat: 'Nhân chứng bị gọi, bị dọa, bị chuyển việc hoặc bị người của phản diện bám sát.',
+      heroineMove: 'Nữ chính không ép khai hết, chỉ lấy một câu đủ để nối sang bằng chứng kế tiếp.',
+      emotionalBeat: 'Nhân chứng không hoàn toàn tốt; họ từng im lặng nên nữ chính vừa giận vừa cần họ.',
+      powerShift: 'Một mắt xích người thật được xác nhận, không còn chỉ là giấy tờ.',
+      endingHook: 'Nhân chứng nhắc đến một buổi gặp/đồ vật mà phản diện tưởng đã xóa sạch.',
     },
     {
       chapterNumber: 8,
-      title: makeChapterTitle({ chapterNumber: 8, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission: "Nữ chính chủ động dựng sân khấu để phản diện tự nói/làm sai.",
-      sceneType: "heroine trap / active counterattack",
-      mainScene: candidate.publicPressure,
-      evidenceBeat: "Chứng cứ được dùng như mồi, không chỉ như lời giải thích.",
-      villainBeat: "Phản diện phụ cắn câu, làm lộ kết nối với phản diện chính.",
-      heroineMove: "Nữ chính kiểm soát thời điểm tung một phần sự thật.",
-      emotionalBeat:
-        "Nữ chính bảo vệ người yếu thế bằng hành động, không chỉ lời hứa.",
-      powerShift:
-        "Một người trung lập hoặc đồng minh cũ chuyển sang giúp nữ chính.",
-      endingHook: "Phản diện chính chuẩn bị đòn trả thù lớn nhất.",
+      title: 'Cuộc họp đổi chiều',
+      mission: 'Đưa mâu thuẫn trở lại không gian có quyền lực để một quyết định bất lợi bị treo hoặc sửa.',
+      sceneType: 'Boardroom/Public Confrontation',
+      mainScene: 'phòng họp, nhà gia tộc, hội đồng, ban tuyển sinh, ban tổ chức hoặc nhóm công khai',
+      evidenceBeat: 'Một chi tiết từ nhân chứng chương 7 được đặt cạnh quyết định bất lợi chương 3/6.',
+      villainBeat: 'Phản diện cố ép bỏ phiếu/ký quyết định trước khi kiểm tra xong.',
+      heroineMove: 'Nữ chính buộc họ đọc rõ căn cứ và người chịu trách nhiệm trước khi quyết.',
+      emotionalBeat: 'Người từng sợ liên lụy bắt đầu nhìn thấy mình cũng có thể thành vật hy sinh.',
+      powerShift: 'Quyết định bất lợi bị treo/sửa điều kiện; phản diện mất quyền áp đặt tuyệt đối.',
+      endingHook: 'Một đồng minh của phản diện bị gọi tên trong biên bản.',
     },
     {
       chapterNumber: 9,
-      title: makeChapterTitle({ chapterNumber: 9, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission: "Cho phản diện thắng đau một ván, nhưng không phá logic đã cài.",
-      sceneType: "villain counterstrike",
-      mainScene: "một sự kiện có nhiều người chứng kiến",
-      evidenceBeat: "Chứng cứ bị cắt ghép/bẻ nghĩa lần cuối, tạo hiểu lầm lớn.",
-      villainBeat:
-        "Phản diện chính sỉ nhục hoặc ép nữ chính chọn giữa danh dự và người thân.",
-      heroineMove:
-        "Nữ chính chấp nhận mất mặt tạm thời để giữ bằng chứng cuối.",
-      emotionalBeat: "Đây là đáy cảm xúc của nữ chính trong truyện.",
-      powerShift:
-        "Phản diện giành lại quyền lực tạm thời, đẩy nữ chính sát mép thua.",
-      endingHook: "Một chi tiết nhỏ chứng minh phản diện đã quá tay.",
+      title: 'Cái bẫy dành cho người sửa dấu vết',
+      mission: 'Nữ chính chủ động đặt bẫy nhỏ để xác định ai sửa chứng cứ hoặc ai truyền lệnh.',
+      sceneType: 'Trap Reversal',
+      mainScene: 'một cảnh nữ chính cố tình thả thông tin có kiểm soát',
+      evidenceBeat: 'Thông tin mồi chỉ có một nhóm nhỏ biết; người phản ứng sẽ tự lộ nguồn.',
+      villainBeat: 'Phản diện tưởng nữ chính sơ hở nên vội dùng thông tin mồi.',
+      heroineMove: 'Nữ chính không công khai ngay, chỉ ghi nhận người cắn câu và giữ nhân chứng.',
+      emotionalBeat: 'Nữ chính chấp nhận bị hiểu lầm thêm một nhịp để đổi lấy bằng chứng chắc hơn.',
+      powerShift: 'Người đứng sau bắt đầu hiện hình qua hành động vội.',
+      endingHook: 'Tin mồi quay về đúng chiếc điện thoại/tài khoản/địa điểm cần bắt.',
     },
     {
       chapterNumber: 10,
-      title: makeChapterTitle({ chapterNumber: 10, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission:
-        "Một nhân vật từng im lặng/đứng giữa phải chọn phe vì thấy phản diện quá tay.",
-      sceneType: "ally switch / witness payoff",
-      mainScene: alternateSetting,
-      evidenceBeat: "Nhân chứng hoặc vật chứng phụ xác nhận chuỗi thao túng.",
-      villainBeat: "Phe phản diện bắt đầu tự nghi ngờ và đổ lỗi lẫn nhau.",
-      heroineMove:
-        "Nữ chính ghép đủ các mảnh nhưng chỉ công khai phần cần thiết.",
-      emotionalBeat:
-        "Một lời xin lỗi muộn hoặc một sự thật khiến nữ chính phải lạnh lòng.",
-      powerShift: "Nữ chính lấy lại thế chủ động thật sự.",
-      endingHook: "Hẹn sân khấu đối chất cuối cùng.",
+      title: 'Mini-payoff công khai',
+      mission: 'Trả một cụm bằng chứng đã cài, khiến một đồng minh của phản diện mất tư cách hoặc phải xin lỗi/tự bảo vệ.',
+      sceneType: 'Boardroom/Public Confrontation',
+      mainScene: 'cảnh công khai đủ đông để có dopamine nhưng chưa phải kết cuối',
+      evidenceBeat: 'Ghép chi tiết từ chương 2, 5 và 9 thành một chuỗi ngắn, dễ hiểu.',
+      villainBeat: 'Phản diện cắt bỏ tay sai hoặc đổ lỗi cho hiểu lầm để tự cứu.',
+      heroineMove: 'Nữ chính chỉ yêu cầu một quyết định cụ thể: hủy thông báo, mở lại quyền, xin lỗi, hoặc niêm phong hồ sơ.',
+      emotionalBeat: 'Người yếu thế nhận được một phần công bằng trước mắt.',
+      powerShift: 'Nữ chính thắng rõ một ván nhỏ; phản diện mất một lá chắn.',
+      endingHook: 'Phản diện tung nước cờ cuối: nhắm vào thứ nữ chính quan tâm nhất.',
     },
     {
       chapterNumber: 11,
-      title: makeChapterTitle({ chapterNumber: 11, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission:
-        "Dồn phản diện chính vào nơi không thể dùng người phụ gánh tội thay.",
-      sceneType: "final confrontation setup",
-      mainScene: candidate.publicPressure,
-      evidenceBeat: `Chuẩn bị payoff cho ${candidate.evidenceObject}, ${alternateEvidence}, và hidden truth.`,
-      villainBeat: "Phản diện chính tự tin vì nghĩ đã khóa hết đường lui.",
-      heroineMove: "Nữ chính cho đối phương nói đủ nhiều rồi mới lật chứng cứ.",
-      emotionalBeat:
-        "Nữ chính đối diện người từng làm cô đau nhất bằng sự bình tĩnh.",
-      powerShift:
-        "Cán cân nghiêng hẳn về nữ chính nhưng chưa tuyên án/kết luận hết.",
-      endingHook: "Một câu nói hoặc file cuối cùng mở khóa toàn bộ sự thật.",
+      title: 'Nước cờ nặng nhất của phản diện',
+      mission: 'Cho phản diện phản công mạnh trước cuối truyện, tạo thiệt hại thật và đẩy nữ chính vào lựa chọn khó.',
+      sceneType: 'Real Loss',
+      mainScene: 'nơi nữ chính không thể né: nhà, bệnh viện, trường, công ty, tòa, hoặc buổi ký quyết định',
+      evidenceBeat: 'Bằng chứng bị khóa/chuyển đi/đánh tráo nhưng để lại một lỗi do vội.',
+      villainBeat: 'Phản diện nói một câu đủ ác, đánh vào người thân/công sức/danh dự.',
+      heroineMove: 'Nữ chính không thắng tại chỗ; cô bảo vệ người quan trọng trước và đổi mục tiêu sang bắt lỗi vội.',
+      emotionalBeat: 'Đây là điểm đau nhất trước cao trào, nữ chính suýt mất bình tĩnh nhưng giữ được quyết định.',
+      powerShift: 'Phản diện tưởng đã thắng; nữ chính nhận ra họ đã để lại dấu tay không thể phủ nhận.',
+      endingHook: 'Một lỗi nhỏ trong nước cờ nặng nhất mở ra đường phản công cuối.',
     },
     {
       chapterNumber: 12,
-      title: makeChapterTitle({ chapterNumber: 12, candidate, alternateEvidence, alternateSetting, alternatePressure, seed: params.seed }),
-      mission:
-        "Trả đủ bằng chứng, cảm xúc và quyền lực; không kết bằng tóm tắt vội.",
-      sceneType: "payoff / resolution",
-      mainScene: "sân khấu từng khiến nữ chính bị sỉ nhục, nay đảo chiều",
-      evidenceBeat: `Payoff ${candidate.evidenceObject}: chứng minh ai dựng chuyện, dựng bằng cách nào, và vì sao.`,
-      villainBeat:
-        "Phản diện chính mất quyền thao túng hoặc bị buộc chịu hậu quả công khai.",
-      heroineMove:
-        "Nữ chính chọn cách kết thúc có khí chất: không cầu xin, không dây dưa, không tự hạ mình.",
-      emotionalBeat:
-        "Người thân/con/đồng minh thấy nữ chính giành lại sự an toàn và danh dự.",
-      powerShift: "Nữ chính kiểm soát lại đời mình và mở ra trạng thái mới.",
-      endingHook: "Kết chắc, có dư vị thắng nhưng không lê thê.",
+      title: 'Khóa đường chối',
+      mission: 'Nữ chính chuyển sang tấn công có chuẩn bị, gọi đúng người và đúng quy trình để phản diện không rút lui được.',
+      sceneType: 'Legal Countermove',
+      mainScene: 'văn phòng luật, phòng họp có ghi biên bản, cơ quan/đơn vị có thẩm quyền, hoặc cuộc gọi ba bên được xác nhận',
+      evidenceBeat: 'Lỗi vội ở chương 11 được xác minh bởi nguồn độc lập.',
+      villainBeat: 'Phản diện cố biến vụ việc thành hiểu lầm cá nhân.',
+      heroineMove: 'Nữ chính yêu cầu lập biên bản/niêm phong/xác nhận danh tính người ra lệnh.',
+      emotionalBeat: 'Nữ chính trả lại cảm giác an toàn cho người yếu thế bằng hành động pháp lý cụ thể.',
+      powerShift: 'Đường chối của phản diện bị thu hẹp; người che chắn phải cân nhắc rời phe.',
+      endingHook: 'Một người thân cận phản diện xin gặp riêng nữ chính.',
+    },
+    {
+      chapterNumber: 13,
+      title: 'Người bên cạnh phản diện đổi lời',
+      mission: 'Tiền cao trào: một người trong phe phản diện đổi lời/đưa điều kiện, mở cửa cho cuộc đối chất cuối.',
+      sceneType: 'Witness Hunt',
+      mainScene: 'cuộc gặp căng giữa nữ chính và người từng tiếp tay',
+      evidenceBeat: 'Người đổi lời giao một mảnh chứng cứ then chốt nhưng cũng tự bảo vệ mình.',
+      villainBeat: 'Phản diện phát hiện có người lung lay và tìm cách bịt miệng.',
+      heroineMove: 'Nữ chính không tin hoàn toàn; cô dùng điều kiện trao đổi để bảo vệ chứng cứ.',
+      emotionalBeat: 'Nữ chính đối mặt sự thật rằng người gây hại không chỉ là phản diện chính mà còn là cả hệ thống im lặng.',
+      powerShift: 'Cửa vào cao trào được mở; phe phản diện rạn nứt.',
+      endingHook: 'Địa điểm/giờ đối chất cuối được ấn định.',
+    },
+    {
+      chapterNumber: 14,
+      title: 'Đối chất trước mặt tất cả',
+      mission: 'Cao trào: gom bằng chứng đã cài, buộc phản diện và người che chắn trả lời trước người có quyền/đám đông.',
+      sceneType: 'Boardroom/Public Confrontation',
+      mainScene: 'cuộc đối chất cuối ở nơi phản diện từng dùng để ép nữ chính',
+      evidenceBeat: 'Trả ít nhất hai payoff: vật chứng trung tâm và nhân chứng/nguồn độc lập.',
+      villainBeat: 'Phản diện vùng vẫy, đổ lỗi, đe dọa, hoặc kéo người thân ra làm lá chắn lần cuối.',
+      heroineMove: 'Nữ chính không tranh cãi dài; cô lần lượt đặt chứng cứ và yêu cầu quyết định ngay.',
+      emotionalBeat: 'Nữ chính nói một câu chốt không hoa mỹ nhưng đủ khiến người từng im lặng phải cúi đầu.',
+      powerShift: 'Phản diện mất quyền quyết định hoặc bị đình chỉ/loại khỏi cuộc chơi.',
+      endingHook: 'Chỉ còn một việc cuối: xử lý hậu quả và trả lại thứ đã bị cướp.',
+    },
+    {
+      chapterNumber: 15,
+      title: 'Thứ bị cướp được trả lại',
+      mission: 'Kết truyện: giải quyết mâu thuẫn chính, trả danh dự/quyền lợi/người thân cho nữ chính và cho phản diện trả giá rõ.',
+      sceneType: 'Final Payoff',
+      mainScene: 'không gian sau cao trào, nơi quyết định cuối được công bố hoặc thực thi',
+      evidenceBeat: 'Không mở bằng chứng lớn mới; chỉ dùng lại vật chứng đã cài để đóng vòng.',
+      villainBeat: 'Phản diện nhận hậu quả cụ thể: mất quyền, bị hủy tư cách, phải xin lỗi/cải chính/bồi thường, hoặc bị điều tra.',
+      heroineMove: 'Nữ chính chọn cách kết thúc đúng với kiểu nhân vật, không cần tuyên ngôn dài.',
+      emotionalBeat: 'Người yếu thế được yên ổn, nữ chính lấy lại tự trọng và quyền chủ động.',
+      powerShift: 'Mâu thuẫn chính đóng. Nữ chính không toàn năng nhưng thắng đúng thứ cần thắng.',
+      endingHook: 'Dư âm nhẹ cho đời sống mới, không mở thêm vụ án mới.',
     },
   ];
 
   return {
-    plannerVersion: "story-planner-v1",
+    plannerVersion: "story-planner-v2-long-run-15",
     totalPlannedChapters: chapterPlan.length,
-    plannerGoal: `Outline cố định cho ${params.title}: evidence plan + villain curve + emotional/payoff. Writer phải bám mission từng chương, mỗi chương có evidence step mới và payoff nhỏ; không tự trôi về nhịp thủ tục lặp hoặc title chương trùng ý.`,
+    plannerGoal: `Outline cố định cho ${params.title}: khóa nhịp 15 chương, có mini-payoff ở chương 5/10, cú đau ở 11, phản công ở 12/13, cao trào 14 và kết 15. Writer phải bám mission từng chương, không tự trôi về nhịp thủ tục lặp, không mở chương bằng recap/meta.`,
     evidencePlan,
     villainCurve,
     payoffPlan,

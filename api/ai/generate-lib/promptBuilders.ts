@@ -813,12 +813,13 @@ ${viralDopamineWebNovelInstruction}
 
 CHAPTER CONTINUATION RULE:
 - Số chương cần viết: Chương ${nextChapterNumber}.
+- BẢN ĐỌC phải vào thẳng cảnh truyện. Cấm tuyệt đối mọi dòng meta/recap trước nội dung như: “Hai câu tóm tắt nhanh”, “Tóm tắt nhanh”, “Ở chương trước”, “Sau biến cố trước”, “Nhắc lại một chút”.
 - ${
     isContinuation
       ? 'Đây là chương tiếp theo của truyện đã có chương trước. Tuyệt đối không viết lại chương 1, không mở truyện lại từ đầu, không reset quan hệ nhân vật, không đổi tên nhân vật chính/phản diện, không đổi tính cách nữ chính.'
       : 'Đây là chương mở đầu. Có thể mở bằng cú sốc mạnh, nhưng phải chọn premise theo GENRE LOCK và PREMISE DIVERSITY LOCK, không mặc định hot search nếu không cần.'
   }
-- Nếu là chương tiếp theo, đoạn mở đầu phải nối từ sự kiện/hook/bằng chứng ở chương gần nhất, nhưng không được recap quá 2 câu.
+- Nếu là chương tiếp theo, đoạn mở đầu phải nối từ sự kiện/hook/bằng chứng ở chương gần nhất bằng một cảnh mới, không phải bằng lời kể tóm tắt. Recap tối đa 1 câu và phải nằm tự nhiên trong hành động.
 - Không tự tạo lại một vụ hot search mở đầu mới nếu chương trước đã có hook cụ thể, trừ khi đó là hệ quả trực tiếp của chương trước.
 - Tiêu đề chương bắt buộc dùng dạng: "# Chương ${nextChapterNumber} — [tên chương ngắn, cụ thể, có hook]".
 - Tên chương phải thể hiện biến cố/vật chứng/state change chính của chương này, không được là tiêu đề chung chung hoặc giống phân tích.
@@ -917,7 +918,7 @@ NARRATIVE CRAFT RULE:
 - Phản diện phải có phản ứng và phản công hợp lý, không đứng yên chịu thua.
 
 CLEAN PROSE RULE:
-- BẢN ĐỌC CHO ĐỘC GIẢ không được dùng ngôn ngữ phân tích kỹ thuật như: "phản diện đang phản công", "nữ chính phản đòn", "mục tiêu chương", "genre lock", "heroine lock", "ending strategy", "premise diversity lock", "character name diversity lock".
+- BẢN ĐỌC CHO ĐỘC GIẢ không được dùng ngôn ngữ phân tích kỹ thuật hoặc lời dẫn ngoài truyện như: "Hai câu tóm tắt nhanh", "tóm tắt nhanh", "ở chương trước", "phản diện đang phản công", "nữ chính phản đòn", "mục tiêu chương", "genre lock", "heroine lock", "ending strategy", "premise diversity lock", "character name diversity lock".
 - Những ý kỹ thuật phải được chuyển thành cảnh truyện tự nhiên, bằng hành động/tin nhắn/đối thoại/vật chứng/phản ứng cơ thể.
 - Không kết thúc phần đọc bằng câu kiểu phân tích. Kết chương phải là hình ảnh, hành động, tin nhắn, bằng chứng mới, áp lực mới, hoặc một câu thoại có hook.
 - Khi nữ chính phản đòn, ưu tiên dùng đối thoại ngắn, lạnh, sắc thay vì giải thích chiến thuật.
@@ -940,6 +941,12 @@ ${antiAIStyleRulesInstruction}
 ${viralDopamineWebNovelInstruction}
 
 ${vietnameseNaturalProseFewShotInstruction}
+
+LONG-RUN FULL-STORY DAMAGE CONTROL:
+- Với truyện 12–15 chương, tuyệt đối không biến nửa sau thành chuỗi “thêm một email/thêm một camera/thêm một header”. Từ chương 6 trở đi, mỗi chương phải có người thật bị buộc chọn phe hoặc phản diện mất một lớp che chắn.
+- Chương 10 trở đi phải bắt đầu trả nợ cài cắm: vật chứng từng xuất hiện phải được dùng để đổi quyết định thật, không chỉ lưu lại.
+- Chương cuối phải đóng mâu thuẫn chính. Không kết bằng “mọi thứ mới bắt đầu”, “trò chơi còn dài”, hoặc một tin nhắn đe dọa mới.
+- Cấm mở chương bằng summary note. Dòng đầu sau tiêu đề chương phải là văn truyện: hành động, lời nói, không gian có xung đột, hoặc hậu quả trực tiếp.
 
 SELF-REVISION PASS BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
 Trước khi xuất kết quả cuối cùng, hãy tự đọc lại bản chương như một biên tập viên và tự sửa trong im lặng theo checklist này:
