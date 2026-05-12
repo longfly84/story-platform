@@ -5,6 +5,27 @@ const OPENAI_MODERATION_MODEL = process.env.OPENAI_MODERATION_MODEL || 'omni-mod
 
 type OpenAIImageQuality = 'low' | 'medium' | 'high'
 
+type GenerateCoverImageOptions = {
+  styleReferenceUrl?: string
+}
+
+type OpenAIImageResult = {
+  b64: string
+  promptUsed: string
+  revisedPrompt?: string
+  fallbackUsed?: boolean
+  noTextRescueUsed?: boolean
+  emergencyFallbackUsed?: boolean
+  styleReferenceUsed?: boolean
+  styleReferenceError?: string | null
+  primaryError?: string | null
+  fallbackError?: string | null
+  imageQualityUsed?: OpenAIImageQuality
+}
+
+const DEFAULT_OPENAI_IMAGE_QUALITY: OpenAIImageQuality =
+  normalizeImageQuality(process.env.OPENAI_IMAGE_QUALITY || 'medium')
+
 function normalizeImageQuality(value: unknown): OpenAIImageQuality {
   const normalized = String(value || '')
     .trim()
@@ -17,99 +38,101 @@ function normalizeImageQuality(value: unknown): OpenAIImageQuality {
   return 'medium'
 }
 
-const DEFAULT_OPENAI_IMAGE_QUALITY = normalizeImageQuality(process.env.OPENAI_IMAGE_QUALITY || 'medium')
-
 function safeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
+function normalizeUrl(value: unknown) {
+  const raw = safeString(value)
+  if (!raw) return ''
 
   try {
-    return JSON.stringify(error)
+    const url = new URL(raw)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
+    return url.toString()
   } catch {
-    return 'Unknown error'
+    return ''
   }
 }
 
-function isModerationBlockedError(error: unknown) {
-  const message = getErrorMessage(error).toLowerCase()
-  const detail = String((error as any)?.detail ? JSON.stringify((error as any).detail) : '').toLowerCase()
+function inferMimeTypeFromUrl(url: string) {
+  const pathname = (() => {
+    try {
+      return new URL(url).pathname.toLowerCase()
+    } catch {
+      return ''
+    }
+  })()
 
-  return (
-    message.includes('moderation') ||
-    message.includes('blocked') ||
-    message.includes('violence') ||
-    message.includes('safety') ||
-    detail.includes('moderation') ||
-    detail.includes('flagged') ||
-    detail.includes('violence')
-  )
+  if (pathname.endsWith('.jpg') || pathname.endsWith('.jpeg')) return 'image/jpeg'
+  if (pathname.endsWith('.webp')) return 'image/webp'
+  if (pathname.endsWith('.png')) return 'image/png'
+
+  return 'image/png'
 }
 
-function buildEmergencyFallbackPrompt() {
+function inferFileNameFromUrl(url: string) {
+  try {
+    const last = new URL(url).pathname.split('/').filter(Boolean).pop()
+    if (last) return last
+  } catch {
+    // ignore
+  }
+
+  return 'cover-style-reference.png'
+}
+
+function appendNoTextInstruction(prompt: string) {
   return `
-Vertical 2:3 premium bright Chinese manhua / Korean webtoon / high-end anime urban-drama webnovel cover illustration, beautiful ChatGPT-style polished commercial key visual.
+${prompt}
 
-Scene:
-A beautiful adult East Asian heroine in a bright modern story location, such as an airport hall, hotel lobby, glass office, event hall, factory floor, school office, hospital corridor, restaurant, shop, or public interior. Medium-wide composition, camera 2 to 4 meters away. The heroine occupies about 30% to 45% of the image, with a clear readable environment around her. Supporting figures in the background suggest witnesses, pressure, secrets, betrayal, and hidden truth.
-
-Style:
-Premium bright 2D Chinese manhua / Korean webtoon / high-end anime light novel cover art. Beautiful refined face, luminous eyes, glossy hair, smooth skin, elegant modern clothing, clean confident line art, bright commercial color, clear cel-shading with soft painterly gradients, polished dramatic promotional cover finish similar to high-quality ChatGPT anime/manhua generations.
-
-Strict quality rules:
-Do not use photorealism, live-action drama still, gritty realism, muddy dark office lighting, low-budget 3D render, mobile game NPC art, harsh realistic face, dead eyes, plastic mannequin skin, or ugly semi-realistic AI poster style.
-
-Strict safety/text rules:
-No text, no title, no letters, no typography, no logo, no watermark.
-No blood, no weapons, no knife, no gun, no corpse, no dead body, no wounds, no gore, no explicit violence, no self-harm.
-Represent conflict only through symbolic emotional tension, shadows, reflections, distance, blank documents, turned-away phones, and lighting.
-Safe public social media cover art.
+STRICT COVER OUTPUT RULE:
+- Do not render any readable text, letters, subtitles, watermark, logo, caption, typography, Vietnamese words, Chinese words, English words, numbers, QR code, UI text, title text, author name, or fake book title on the image.
+- The final image must be clean cover art only.
 `.trim()
 }
 
-function buildUltraNoTextRescuePrompt(prompt: string) {
-  return `${safeString(prompt)}
+function appendStyleReferenceInstruction(prompt: string) {
+  return `
+${prompt}
 
-ULTRA NO-TEXT RESCUE:
-- Absolute zero text in the image.
-- No title area at all.
-- No letters, no words, no typography, no logo, no watermark.
-- No readable or unreadable script-like marks.
-- All papers, phones, monitors, folders, books, signs, tickets, and documents must be blank, dark, blurred, covered, turned away, or abstract.
-- This is scene illustration only, not a poster with typography.
-- Keep the composition balanced: beautiful readable heroine plus a clear spacious environment. Do not turn it into a tiny distant character or a tight portrait.
-- If the model tends to add any title or writing, remove it completely and keep only the illustration.`.trim()
+STYLE REFERENCE USAGE:
+- Use the attached reference image ONLY as an art-style guide.
+- Borrow its premium clean manhua / webtoon quality, attractive faces, polished eyes, smooth hair rendering, bright color grading, soft commercial lighting, and high-end webnovel cover finish.
+- Do NOT copy the reference character, outfit, pose, background, composition, identity, or exact scene.
+- Create a completely new cover for the story in the prompt.
+- Keep the story-specific setting, evidence object, conflict, and characters from the text prompt.
+`.trim()
 }
 
-function containsTypographyRisk(text: string) {
-  const lowered = safeString(text).toLowerCase()
-  if (!lowered) return false
+function extractImageData(json: any) {
+  const first = json?.data?.[0]
+  const b64 = first?.b64_json || first?.image_base64 || first?.base64
 
-  return [
-    'title',
-    'text',
-    'typography',
-    'caption',
-    'logo',
-    'watermark',
-    'font',
-    'headline',
-    'letters',
-  ].some((keyword) => lowered.includes(keyword))
+  if (!b64) {
+    throw new Error('OpenAI image response missing b64_json')
+  }
+
+  return {
+    b64: String(b64),
+    revisedPrompt: typeof first?.revised_prompt === 'string' ? first.revised_prompt : undefined,
+  }
+}
+
+async function readErrorResponse(response: Response) {
+  const text = await response.text().catch(() => '')
+  if (!text) return `OpenAI image request failed: ${response.status}`
+
+  try {
+    const json = JSON.parse(text)
+    return json?.error?.message || json?.message || text
+  } catch {
+    return text
+  }
 }
 
 async function moderatePromptOrThrow(prompt: string) {
-  if (!OPENAI_API_KEY) {
-    throw new Error('Missing OPENAI_API_KEY')
-  }
-
-  const safePrompt = String(prompt || '').trim()
-  if (!safePrompt) {
-    throw new Error('Missing cover prompt for moderation')
-  }
+  if (!OPENAI_API_KEY || !OPENAI_MODERATION_MODEL) return
 
   const response = await fetch('https://api.openai.com/v1/moderations', {
     method: 'POST',
@@ -119,38 +142,18 @@ async function moderatePromptOrThrow(prompt: string) {
     },
     body: JSON.stringify({
       model: OPENAI_MODERATION_MODEL,
-      input: safePrompt,
+      input: prompt.slice(0, 8000),
     }),
   })
 
-  const contentType = response.headers.get('content-type') || ''
-  let data: any = null
-
-  if (contentType.includes('application/json')) {
-    data = await response.json()
-  } else {
-    const text = await response.text()
-    const error = new Error('OpenAI moderation API returned non-JSON response') as Error & {
-      detail?: unknown
-      status?: number
-    }
-    error.detail = text
-    error.status = response.status
-    throw error
-  }
-
   if (!response.ok) {
-    const message = data?.error?.message || `OpenAI moderation API error (${response.status})`
-    const error = new Error(message) as Error & {
-      detail?: unknown
-      status?: number
-    }
-    error.detail = data
-    error.status = response.status
-    throw error
+    const detail = await readErrorResponse(response)
+    console.warn('[cover moderation] moderation request failed:', detail)
+    return
   }
 
-  const first = data?.results?.[0] || {}
+  const data = await response.json().catch(() => null)
+  const first = data?.results?.[0]
   const flagged = Boolean(first?.flagged)
   const categories = (first?.categories || {}) as Record<string, boolean>
 
@@ -165,18 +168,51 @@ async function moderatePromptOrThrow(prompt: string) {
       }`,
     ) as Error & {
       detail?: unknown
-      categories?: Record<string, boolean>
     }
 
-    error.detail = data
-    error.categories = categories
+    error.detail = { categories, flaggedKeys }
     throw error
   }
-
-  return data
 }
 
-async function requestOpenAIImage(prompt: string, requestedQuality?: unknown) {
+async function fetchReferenceImage(styleReferenceUrl: string) {
+  const normalizedUrl = normalizeUrl(styleReferenceUrl)
+
+  if (!normalizedUrl) {
+    throw new Error('Invalid style reference URL')
+  }
+
+  const response = await fetch(normalizedUrl)
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch cover style reference image: HTTP ${response.status}`,
+    )
+  }
+
+  const arrayBuffer = await response.arrayBuffer()
+  const contentType =
+    response.headers.get('content-type')?.split(';')[0]?.trim() ||
+    inferMimeTypeFromUrl(normalizedUrl)
+
+  if (!contentType.startsWith('image/')) {
+    throw new Error(`Style reference URL is not an image: ${contentType}`)
+  }
+
+  if (arrayBuffer.byteLength < 1024) {
+    throw new Error('Style reference image is too small or empty')
+  }
+
+  return {
+    blob: new Blob([arrayBuffer], { type: contentType }),
+    fileName: inferFileNameFromUrl(normalizedUrl),
+  }
+}
+
+async function requestTextOnlyImage(
+  prompt: string,
+  requestedQuality?: unknown,
+): Promise<OpenAIImageResult> {
   if (!OPENAI_API_KEY) {
     throw new Error('Missing OPENAI_API_KEY')
   }
@@ -204,133 +240,166 @@ async function requestOpenAIImage(prompt: string, requestedQuality?: unknown) {
       prompt: safePrompt,
       size: OPENAI_IMAGE_SIZE,
       quality: imageQuality,
+      n: 1,
+      moderation: 'low',
     }),
   })
 
-  const contentType = response.headers.get('content-type') || ''
-  let data: any = null
-
-  if (contentType.includes('application/json')) {
-    data = await response.json()
-  } else {
-    const text = await response.text()
-    const error = new Error('OpenAI image API returned non-JSON response') as Error & {
-      detail?: unknown
-      status?: number
-    }
-    error.detail = text
-    error.status = response.status
-    throw error
-  }
-
   if (!response.ok) {
-    const message = data?.error?.message || `OpenAI image API error (${response.status})`
-    const error = new Error(message) as Error & {
-      detail?: unknown
-      status?: number
-    }
-    error.detail = data
-    error.status = response.status
-    throw error
+    throw new Error(await readErrorResponse(response))
   }
 
-  const first = data?.data?.[0]
-  const b64 = first?.b64_json || first?.image_base64 || null
-  const revisedPrompt = first?.revised_prompt || first?.prompt || null
-
-  if (!b64) {
-    const error = new Error('OpenAI image response missing base64 image data') as Error & {
-      detail?: unknown
-    }
-    error.detail = data
-    throw error
-  }
+  const data = await response.json()
+  const image = extractImageData(data)
 
   return {
-    b64,
-    revisedPrompt,
-    raw: data,
+    b64: image.b64,
+    promptUsed: safePrompt,
+    revisedPrompt: image.revisedPrompt,
     imageQualityUsed: imageQuality,
   }
 }
 
-async function requestBestEffortNoTextImage(prompt: string, requestedQuality?: unknown) {
-  const first = await requestOpenAIImage(prompt, requestedQuality)
-
-  if (!containsTypographyRisk(first.revisedPrompt || '')) {
-    return {
-      ...first,
-      noTextRescueUsed: false,
-    }
+async function requestImageWithStyleReference(
+  prompt: string,
+  requestedQuality: unknown,
+  styleReferenceUrl: string,
+): Promise<OpenAIImageResult> {
+  if (!OPENAI_API_KEY) {
+    throw new Error('Missing OPENAI_API_KEY')
   }
 
-  const rescuePrompt = buildUltraNoTextRescuePrompt(prompt)
-  const rescue = await requestOpenAIImage(rescuePrompt, requestedQuality)
+  const safePrompt = safeString(prompt)
+
+  if (!safePrompt) {
+    throw new Error('Missing cover prompt')
+  }
+
+  const imageQuality = normalizeImageQuality(
+    requestedQuality || DEFAULT_OPENAI_IMAGE_QUALITY,
+  )
+  const reference = await fetchReferenceImage(styleReferenceUrl)
+  const promptWithReference = appendStyleReferenceInstruction(safePrompt)
+
+  await moderatePromptOrThrow(promptWithReference)
+
+  const form = new FormData()
+  form.append('model', OPENAI_IMAGE_MODEL)
+  form.append('prompt', promptWithReference)
+  form.append('size', OPENAI_IMAGE_SIZE)
+  form.append('quality', imageQuality)
+  form.append('n', '1')
+  form.append('image', reference.blob, reference.fileName)
+
+  const response = await fetch('https://api.openai.com/v1/images/edits', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: form,
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorResponse(response))
+  }
+
+  const data = await response.json()
+  const image = extractImageData(data)
 
   return {
-    ...rescue,
-    promptUsedOverride: rescuePrompt,
-    noTextRescueUsed: true,
+    b64: image.b64,
+    promptUsed: promptWithReference,
+    revisedPrompt: image.revisedPrompt,
+    imageQualityUsed: imageQuality,
+    styleReferenceUsed: true,
   }
 }
 
-export async function generateCoverImage(
-  primaryPrompt: string,
-  fallbackPrompt: string,
+async function requestBestEffortNoTextImage(
+  prompt: string,
   requestedQuality?: unknown,
-) {
-  const safePrimaryPrompt = safeString(primaryPrompt)
-  const safeFallbackPrompt = safeString(fallbackPrompt) || buildEmergencyFallbackPrompt()
+  options: GenerateCoverImageOptions = {},
+): Promise<OpenAIImageResult> {
+  const styleReferenceUrl = normalizeUrl(options.styleReferenceUrl)
 
-  try {
-    const result = await requestBestEffortNoTextImage(safePrimaryPrompt, requestedQuality)
-
-    return {
-      ...result,
-      promptUsed: (result as any).promptUsedOverride || safePrimaryPrompt,
-      fallbackUsed: false,
-      emergencyFallbackUsed: false,
-      primaryError: null as string | null,
-      fallbackError: null as string | null,
-    }
-  } catch (primaryError: any) {
-    console.error(
-      '[generate-cover] primary prompt failed:',
-      primaryError?.message,
-      primaryError?.detail || '',
-    )
-
+  if (styleReferenceUrl) {
     try {
-      const result = await requestBestEffortNoTextImage(safeFallbackPrompt, requestedQuality)
-
-      return {
-        ...result,
-        promptUsed: (result as any).promptUsedOverride || safeFallbackPrompt,
-        fallbackUsed: true,
-        emergencyFallbackUsed: false,
-        primaryError: primaryError?.message || 'Primary prompt failed',
-        fallbackError: null as string | null,
-      }
-    } catch (fallbackError: any) {
-      console.error(
-        '[generate-cover] fallback prompt failed:',
-        fallbackError?.message,
-        fallbackError?.detail || '',
+      return await requestImageWithStyleReference(
+        appendNoTextInstruction(prompt),
+        requestedQuality,
+        styleReferenceUrl,
+      )
+    } catch (error: any) {
+      console.warn(
+        '[cover] style reference generation failed, falling back to text-only:',
+        error?.message || error,
       )
 
-      const emergencyPrompt = buildEmergencyFallbackPrompt()
-      const shouldTryEmergency =
-        safeFallbackPrompt !== emergencyPrompt && isModerationBlockedError(fallbackError)
+      const textOnly = await requestTextOnlyImage(
+        appendNoTextInstruction(prompt),
+        requestedQuality,
+      )
 
-      if (!shouldTryEmergency) {
-        throw fallbackError
+      return {
+        ...textOnly,
+        styleReferenceUsed: false,
+        styleReferenceError: error?.message || 'Style reference generation failed',
       }
+    }
+  }
 
-      const result = await requestBestEffortNoTextImage(emergencyPrompt, requestedQuality)
+  return requestTextOnlyImage(appendNoTextInstruction(prompt), requestedQuality)
+}
+
+export async function generateCoverImage(
+  prompt: string,
+  fallbackPrompt: string,
+  requestedQuality?: unknown,
+  options: GenerateCoverImageOptions = {},
+): Promise<OpenAIImageResult> {
+  let primaryError: any = null
+  let fallbackError: any = null
+
+  try {
+    return await requestBestEffortNoTextImage(prompt, requestedQuality, options)
+  } catch (error: any) {
+    primaryError = error
+
+    console.error('[cover] primary image generation failed:', error?.message || error)
+
+    try {
+      const fallback = await requestBestEffortNoTextImage(
+        fallbackPrompt || prompt,
+        requestedQuality,
+        options,
+      )
+
+      return {
+        ...fallback,
+        fallbackUsed: true,
+        primaryError: primaryError?.message || 'Primary prompt failed',
+      }
+    } catch (fallbackFailure: any) {
+      fallbackError = fallbackFailure
+
+      console.error('[cover] fallback image generation failed:', fallbackFailure?.message || fallbackFailure)
+
+      const emergencyPrompt = `
+Create a premium vertical 2:3 Chinese manhua / Korean webtoon commercial webnovel cover.
+Beautiful young modern female lead, attractive face, clean polished 2D illustration, bright soft cinematic lighting.
+Show a dramatic modern urban story scene with visible environment, supporting characters, and a small evidence object.
+No readable text, no title, no watermark, no logo.
+`.trim()
+
+      const result = await requestBestEffortNoTextImage(
+        emergencyPrompt,
+        requestedQuality,
+        options,
+      )
 
       return {
         ...result,
-        promptUsed: (result as any).promptUsedOverride || emergencyPrompt,
+        promptUsed: (result as any).promptUsedOverride || result.promptUsed || emergencyPrompt,
         fallbackUsed: true,
         emergencyFallbackUsed: true,
         primaryError: primaryError?.message || 'Primary prompt failed',

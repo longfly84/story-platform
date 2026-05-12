@@ -29,10 +29,25 @@ function normalizeCoverArtStyle(raw: string): string {
     value === 'anime_cinematic' ||
     value === 'anime-cinematic' ||
     value === 'anime' ||
+    value === 'anime_glossy' ||
+    value === 'anime-glossy' ||
     value.includes('anime cinematic') ||
-    value.includes('anime điện ảnh')
+    value.includes('anime điện ảnh') ||
+    value.includes('anime webnovel')
   ) {
     return 'anime_cinematic'
+  }
+
+  if (
+    value === 'clean_webtoon_manhua' ||
+    value === 'clean-webtoon-manhua' ||
+    value.includes('clean webtoon') ||
+    value.includes('bright webtoon') ||
+    value.includes('webtoon sạch') ||
+    value.includes('manhua sáng') ||
+    value.includes('màu sáng')
+  ) {
+    return 'clean_webtoon_manhua'
   }
 
   if (
@@ -41,7 +56,8 @@ function normalizeCoverArtStyle(raw: string): string {
     value === 'manga' ||
     value === 'manhwa' ||
     value.includes('manga') ||
-    value.includes('manhwa')
+    value.includes('manhwa') ||
+    value.includes('manhua')
   ) {
     return 'manga_manhwa'
   }
@@ -89,6 +105,15 @@ function normalizeCoverArtStyle(raw: string): string {
   }
 
   return 'auto'
+}
+
+function firstString(...values: unknown[]) {
+  for (const value of values) {
+    const text = safeString(value)
+    if (text) return text
+  }
+
+  return ''
 }
 
 export function extractStoryInput(body: JsonRecord): StoryInput {
@@ -184,34 +209,44 @@ export function extractStoryInput(body: JsonRecord): StoryInput {
     suggestedCoverSceneType,
     currentChapterCount,
     targetChapters,
-    coverBrief: safeString(
-      source.coverBrief ||
-        source.cover_brief ||
-        source.visualCoverBrief ||
-        source.visual_cover_brief ||
-        source.coverSceneBrief ||
-        source.cover_scene_brief ||
-        source.imagePromptBrief ||
-        source.image_prompt_brief ||
-        body.coverBrief ||
-        body.cover_brief ||
-        body.visualCoverBrief ||
-        body.visual_cover_brief ||
-        body.coverSceneBrief ||
-        body.cover_scene_brief ||
-        body.imagePromptBrief ||
-        body.image_prompt_brief,
+    coverBrief: firstString(
+      source.coverBrief,
+      source.cover_brief,
+      source.visualCoverBrief,
+      source.visual_cover_brief,
+      source.coverSceneBrief,
+      source.cover_scene_brief,
+      source.imagePromptBrief,
+      source.image_prompt_brief,
+      body.coverBrief,
+      body.cover_brief,
+      body.visualCoverBrief,
+      body.visual_cover_brief,
+      body.coverSceneBrief,
+      body.cover_scene_brief,
+      body.imagePromptBrief,
+      body.image_prompt_brief,
+    ),
+    coverStyleReferenceUrl: firstString(
+      source.coverStyleReferenceUrl,
+      source.cover_style_reference_url,
+      source.styleReferenceUrl,
+      source.style_reference_url,
+      body.coverStyleReferenceUrl,
+      body.cover_style_reference_url,
+      body.styleReferenceUrl,
+      body.style_reference_url,
     ),
     chapterTitles,
     chapters,
-  }
+  } as StoryInput & { coverStyleReferenceUrl?: string }
 }
 
 export function pickSummary(story: StoryInput): string {
   return (
+    safeString(story.coverBrief) ||
     safeString(story.summary) ||
     safeString(story.description) ||
-    safeString(story.coverBrief) ||
     ''
   )
 }

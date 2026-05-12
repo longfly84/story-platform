@@ -28,6 +28,15 @@ function normalizeCoverImageQuality(value: unknown): CoverImageQuality {
   return normalized === 'high' ? 'high' : 'medium'
 }
 
+function firstNonEmptyString(...values: unknown[]) {
+  for (const value of values) {
+    const text = safeString(value)
+    if (text) return text
+  }
+
+  return ''
+}
+
 function shouldReturnBase64Fallback(body: JsonRecord, publicUrl: string | null) {
   if (body.returnBase64 === true) return true
 
@@ -83,6 +92,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         storyPayload.quality,
     )
 
+    const coverStyleReferenceUrl = firstNonEmptyString(
+      body.coverStyleReferenceUrl,
+      body.cover_style_reference_url,
+      body.styleReferenceUrl,
+      body.style_reference_url,
+      (story as any).coverStyleReferenceUrl,
+      storyPayload.coverStyleReferenceUrl,
+      storyPayload.cover_style_reference_url,
+      process.env.OPENAI_COVER_STYLE_REFERENCE_URL,
+      process.env.COVER_STYLE_REFERENCE_URL,
+    )
+
     const { prompt, fallbackPrompt, coverConcept } = buildCoverPrompt(story)
 
     console.info('[generate-cover] cover concept:', {
@@ -90,9 +111,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       coverArtStyle: (coverConcept as any)?.coverArtStyle,
       sceneType: (coverConcept as any)?.sceneType,
       storyStage: (coverConcept as any)?.storyStage,
+      styleReferenceEnabled: Boolean(coverStyleReferenceUrl),
     })
-    
-    const imageResult = await generateCoverImage(prompt, fallbackPrompt, requestedQuality)
+
+    const imageResult = await generateCoverImage(prompt, fallbackPrompt, requestedQuality, {
+      styleReferenceUrl: coverStyleReferenceUrl,
+    })
     const imageBuffer = Buffer.from(imageResult.b64, 'base64')
 
     const uploadEnabled = body.uploadToSupabase !== false
@@ -147,6 +171,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fallbackUsed: imageResult.fallbackUsed,
       noTextRescueUsed: imageResult.noTextRescueUsed || false,
       emergencyFallbackUsed: imageResult.emergencyFallbackUsed || false,
+      styleReferenceUsed: imageResult.styleReferenceUsed || false,
+      styleReferenceUrl: imageResult.styleReferenceUsed ? coverStyleReferenceUrl : null,
+      styleReferenceError: imageResult.styleReferenceError || null,
       primaryError: imageResult.primaryError || null,
       fallbackError: imageResult.fallbackError || null,
 
