@@ -252,15 +252,10 @@ function resolveFinalArtStyle(
     return 'popular_webnovel_collage'
   }
 
-  if (
-    sceneType === 'hospital_legal_suspense' ||
-    sceneType === 'boardroom_evidence_reveal' ||
-    sceneType === 'school_parent_conflict'
-  ) {
-    return 'cinematic_realistic'
-  }
-
-  return 'anime_cinematic'
+  // Important: the previous auto resolver sometimes selected cinematic_realistic for
+  // hospital / school / boardroom scenes. That made many covers look like dull AI
+  // game NPC posters. Auto should favor the prettier commercial manhua/webnovel look.
+  return 'clean_webtoon_manhua' as CoverArtStyleKey
 }
 
 function inferKeyEvidence(text: string): string {
@@ -651,53 +646,59 @@ function buildStyleBlock(style: CoverArtStyleKey): string {
   switch (String(style)) {
     case "clean_webtoon_manhua":
       return `
-STYLE PRESET: CLEAN_WEBTOON_MANHUA.
-- clean premium webtoon / Chinese manhua romance-drama illustration
-- polished clean line art, crisp outlines, expressive faces, readable body language
-- bright elegant interiors, soft luxury color, clean cel-shading, smooth simple gradients
-- suitable for wedding, hotel, banquet, restaurant, cashier counter, office, school, factory, family confrontation, and public embarrassment scenes
-- allow 3 to 6 characters in one clear dramatic scene when the story supports it
-- not hyper-realistic, not gritty, not horror, not dark muddy cinematic realism
-- not childish, not chibi, not flat low-detail cartoon
-- keep the final result commercially attractive, easy to read, and strongly story-driven
-- do not make the image a simple close-up portrait
+STYLE PRESET: CLEAN_WEBTOON_MANHUA — BEAUTIFUL COMMERCIAL MANHUA.
+- premium Chinese manhua / high-end Asian webnovel illustration, like a polished commercial light-novel key visual
+- beautiful adult East Asian characters with soft attractive faces, sparkling clear eyes, refined hair, elegant modern clothing
+- clean confident line art, crisp silhouettes, graceful anatomy, delicate hands, balanced facial proportions
+- luminous skin rendering, soft blush, glossy hair highlights, bright clean eyes, gentle emotional expression
+- vibrant but controlled color, clear cel-shading plus soft painterly gradients, high-budget promotional poster finish
+- detailed readable environment design: airport hall, factory floor, hotel lobby, office, school, hospital, event hall, restaurant, shop, boardroom, street, or story-specific setting
+- keep the scene spacious and story-first, but the characters must still look pretty and professionally illustrated
+- similar quality target: premium Chinese manhua cover, Korean webtoon promo art, high-end anime light novel cover, not cheap AI portrait
+- not gritty realism, not Western realistic, not horror, not muddy dark film still, not dull 3D render
+- not childish, not chibi, not flat low-detail cartoon, not low-budget mobile game NPC art
+- no ugly face, no dead eyes, no stiff mannequin expression, no harsh old-looking realistic face
 `.trim();
     case "manga_manhwa":
       return `
-STYLE PRESET: MANGA_MANHWA.
-- polished Asian webtoon / manga-drama / manhua illustration
-- strong line work, crisp facial expressions, dramatic contrast
-- visually clear conflict, sharper storytelling, elegant panel-like energy
-- not childish, not chibi, not comedic
-- colored or limited-palette dramatic finish is allowed, but it should still feel premium and story-rich
-- do not make the image a simple close-up portrait
+STYLE PRESET: MANGA_MANHWA — POLISHED PRETTY WEBTOON DRAMA.
+- polished Asian webtoon / Korean manhwa / Chinese manhua drama illustration
+- attractive adult characters, expressive eyes, graceful pose language, elegant hair and fashion
+- clean sharp line work, refined facial beauty, vivid emotional readability, high-end serialized webtoon promo quality
+- cinematic but still illustrated, not photorealistic, not gritty, not muddy
+- bright enough to feel commercially appealing, with detailed environment and story pressure
+- not childish, not chibi, not comedic, not flat low-detail anime screenshot
+- no ugly distorted face, no old harsh face, no dead eyes, no stiff AI mannequin
 `.trim();
     case "cinematic_realistic":
       return `
-STYLE PRESET: CINEMATIC_REALISTIC.
-- highly polished semi-realistic / near-realistic drama illustration
-- premium modern Chinese drama key-visual feeling
-- cinematic lighting, believable human features, upscale atmosphere
-- not a stock photo, not overly plastic, not uncanny hyperrealism
-- beautiful but story-first
-- use a wider poster composition, not a headshot
+STYLE PRESET: CINEMATIC_REALISTIC — SEMI-REALISTIC MANHUA, NOT PHOTO.
+- premium semi-realistic Chinese manhua / drama key art, NOT a real photo and NOT dull hyperrealism
+- beautiful adult East Asian faces with idealized webnovel-cover attractiveness
+- polished digital painting, clean skin, elegant eyes, refined hair, graceful modern wardrobe
+- cinematic lighting and believable space, but keep the rendering beautiful, illustrated, and commercially polished
+- the final result should look like high-end illustrated Chinese drama poster art, not a gloomy CCTV still, not a stock photo, not a 3D game render
+- avoid harsh realism, pores-heavy face, tired dull skin, uncanny eyes, stiff mannequin body, and muddy dark office lighting
+- use a wider poster composition with detailed environment, supporting cast, and story action
 `.trim();
     case "popular_webnovel_collage":
       return `
-STYLE PRESET: POPULAR_WEBNOVEL_COLLAGE.
-- high-performing Chinese web-novel cover style
-- one female lead anchor plus multiple supporting mini-scenes or layered fragments around her
-- emotional collage composition showing several story clues, memory fragments, conflicts, or evidence moments
-- dramatic, addictive, commercially attractive, very story-dense
+STYLE PRESET: POPULAR_WEBNOVEL_COLLAGE — GLOSSY CHINESE WEBNOVEL COVER.
+- high-performing Chinese web-novel / manhua cover style with beautiful character art
+- glossy, polished, attractive, dramatic, expensive-looking, emotionally addictive
+- one elegant female lead anchor plus multiple supporting mini-scenes or layered fragments around her
+- refined pretty faces, soft expressive eyes, clean hair highlights, graceful costume details
+- emotional collage composition showing story clues, memory fragments, conflicts, evidence moments, crowd pressure, or location fragments
 - the heroine must not become a giant face covering the entire poster
+- not cheap AI collage, not muddy realism, not horror, not low-detail mobile ad art
 `.trim();
     case "ancient_chinese_cinematic_romance":
       return `
 STYLE PRESET: ANCIENT_CHINESE_CINEMATIC_ROMANCE.
 - premium Chinese ancient-romance cover illustration
 - xianxia / wuxia / historical-romance inspired mood, but still story-first
-- semi-realistic cinematic digital painting, not flat anime
-- elegant East Asian features, flowing hair, refined hanfu-inspired costume, lantern-lit atmosphere
+- beautiful elegant East Asian faces, flowing hair, refined hanfu-inspired costume, graceful posture
+- semi-realistic cinematic digital painting with polished manhua beauty, not flat anime and not ugly realism
 - base palette must stay cool blue-gray, charcoal, misty teal, deep black, and desaturated silver
 - warm lantern light can be used only as a small accent; avoid yellow wash, sepia wash, muddy beige, and brown monochrome grading
 - this style changes the rendering language, color mood, and costume language, but must still follow the actual story conflict and key evidence
@@ -705,13 +706,15 @@ STYLE PRESET: ANCIENT_CHINESE_CINEMATIC_ROMANCE.
     case "anime_cinematic":
     default:
       return `
-STYLE PRESET: ANIME_CINEMATIC.
-- polished premium anime-style / manhua-style urban-drama illustration
-- beautiful modern East Asian adult characters
-- cinematic lighting and emotional storytelling
-- attractive, elegant, dramatic, web-novel-friendly
-- not too cartoony, not too flat, not children-anime style
-- do not make this a face-focused beauty portrait
+STYLE PRESET: ANIME_CINEMATIC — PREMIUM BEAUTIFUL MANHUA/ANIME.
+- polished premium anime / Chinese manhua urban-drama illustration
+- beautiful modern adult East Asian characters with soft refined faces, luminous eyes, elegant hair, graceful styling
+- clean attractive line art, glossy hair highlights, smooth skin rendering, cinematic lighting, high-end webnovel promotional art
+- detailed environment and readable story moment, like a beautiful anime key visual rather than a generic AI portrait
+- attractive, elegant, dramatic, emotionally controlled, web-novel-friendly
+- not photorealistic, not gritty, not muddy, not Western realistic, not cheap 3D render
+- not too cartoony, not too flat, not children-anime style, not low-budget mobile game art
+- no ugly scowling face, no stiff dead eyes, no harsh tired expression
 `.trim();
   }
 }
@@ -751,13 +754,15 @@ ${collageMood ? '- Because this uses a collage-forward look, allow layered emoti
 
   return `
 REFERENCE LOOK TARGET:
-- The overall look should feel close to premium Chinese commercial webnovel cover art.
-- Refined modern East Asian adult faces, elegant fashion styling, glossy but controlled rendering, polished dramatic finish.
+- The overall look should feel close to the two good references: premium bright Chinese manhua / high-end anime webnovel promotional art, not gloomy pseudo-realism.
+- Characters must have refined attractive adult East Asian faces, soft luminous eyes, graceful hair, elegant fashion styling, glossy but controlled rendering, polished dramatic finish.
+- The art quality must feel beautiful, clean, crisp, expensive, and commercially clickable.
 - Keep the mood mature, luxurious, emotionally heavy, and visually addictive.
 - Prefer cool charcoal, smoke gray, midnight blue, steel blue, neutral gray, slate black, soft silver, and clean cinematic contrast.
 - Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, over-warm skin tint, brown monochrome color, and vintage faded poster color.
 - Warm highlights are allowed only as small accent lights from lamps, screens, city lights, or windows, not as the whole image color.
-- The result should feel more like Chinese webnovel / manhua key art than ordinary Japanese anime.
+- The result should feel more like premium Chinese webnovel / manhua key art than ordinary Japanese anime or realistic drama still.
+- Strongly avoid the ugly failure mode: dull semi-realistic face, stiff office poster, harsh shadows, dead eyes, plastic skin, muddy gray-brown room, low-budget AI character card.
 ${collageMood ? '- Because this uses a collage-forward look, allow darker luxury mood, layered montage storytelling, and a more editorial premium finish without turning the whole image yellow-brown.' : '- Because this uses a single-scene look, keep the space readable, background wide enough, and character placement off-center.'}
 `.trim()
 }
@@ -1064,11 +1069,11 @@ function buildBeautyExpressionLockBlock(
 
   return `
 CHARACTER BEAUTY / EXPRESSION HARD LOCK:
-- The female lead must look beautiful, elegant, attractive, soft-serious, and commercially appealing.
+- The female lead must look beautiful, elegant, attractive, soft-serious, and commercially appealing, like a premium Chinese manhua/webnovel heroine.
 - Her expression should be emotionally controlled: calm, softly worried, quietly shocked, protective, wounded but graceful, or determined without anger.
 - Do not make the female lead ugly, harsh, furious, scary, old-looking, exhausted, bitter, judgmental, resentful, or constantly scowling.
-- Avoid deeply furrowed brows, clenched jaw, angry glare, villain-like face, stiff dead eyes, deadpan stare, bitter grimace, hostile expression, and tight angry lips.
-- Prefer soft but serious eyes, relaxed or only subtly tense eyebrows, clean facial features, natural lips, graceful posture, elegant hair, and restrained emotion.
+- Avoid deeply furrowed brows, clenched jaw, angry glare, villain-like face, stiff dead eyes, deadpan stare, bitter grimace, hostile expression, tight angry lips, tired realistic office-worker face, uncanny AI face, and plastic mannequin expression.
+- Prefer soft but serious eyes, relaxed or only subtly tense eyebrows, clean pretty facial features, natural lips, graceful posture, elegant hair, luminous skin, glossy hair highlights, and restrained emotion.
 - The heroine can be under pressure, but she should still look like a polished webnovel cover heroine.
 - Emotional tension should come from body language, distance, witnesses, evidence, lighting, and composition — not from making her face angry.
 - Supporting antagonists can look shocked, guilty, nervous, arrogant, exposed, or pressured, but the heroine should remain visually appealing.
@@ -1143,12 +1148,13 @@ Story content, conflict, setting, and evidence are more important than decorativ
 ${styleCompositionLine}
 Final camera instruction: zoom out, zoom out, zoom out. The heroine must be small inside a large readable environment.
 The final result must be a finished cover artwork illustration only, with zero text inside the image.
+Quality priority: make the art beautiful like premium manhua/anime reference art, not gloomy realistic AI posters.
 `.trim()
 }
 
 
 function buildFallbackPrompt(data: ReturnType<typeof buildPromptData>): string {
-  return `Vertical 2:3 premium Chinese urban-drama web-novel cover illustration. Wide establishing story scene, not a heroine portrait. Pull the camera far back as if the camera is 5 to 10 meters away. The environment must occupy 75% to 85% of the image. The female lead must be small, only 8% to 16% of the frame, off-center, preferably full-body or 3/4 body. Show clear setting: ${data.setting}. Story-specific evidence must be visible: ${data.keyEvidence}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style: ${data.coverArtStyle}. Show foreground, midground, background, floor, ceiling, windows, furniture, machines, counters, tables, corridors, crowd space, or architecture. Show supporting figures, witnesses, antagonist, staff, child, or crowd when relevant. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Not a close-up beauty shot. Not a bust portrait. Not a centered heroine blocking the background. Not cramped, not narrow, not claustrophobic. The heroine must not occupy 30%, 40%, 50%, 60%, or 70% of the image. The heroine must look beautiful, elegant, emotionally controlled, and commercially appealing; avoid angry scowling face, harsh glare, ugly grimace, deeply furrowed brows, clenched jaw, stiff dead eyes, bitter expression, or villain-like face. Use restrained emotion: calm pain, quiet shock, protective determination, or controlled confidence. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, and repeated yellow-brown cover palette. Use story-specific cool neutral cinematic color with warm accents only when needed.`
+  return `Vertical 2:3 premium Chinese manhua / anime urban-drama web-novel cover illustration, high-end commercial webnovel promotional art. Beautiful polished adult East Asian heroine, soft luminous eyes, glossy hair, elegant modern outfit, attractive refined face, graceful expression. Wide establishing story scene, not a heroine portrait. Pull the camera far back as if the camera is 5 to 10 meters away. The environment must occupy 75% to 85% of the image. The female lead must be small, only 8% to 16% of the frame, off-center, preferably full-body or 3/4 body. Show clear setting: ${data.setting}. Story-specific evidence must be visible: ${data.keyEvidence}. Core conflict: ${data.relationshipCore}. Emotional hook: ${data.emotionalHook}. Mood: ${data.moodKeywords}. Style should look like premium Chinese manhua / Korean webtoon promo / high-end anime light novel cover, not photorealistic, not gritty, not muddy, not cheap 3D render. Show foreground, midground, background, floor, ceiling, windows, furniture, machines, counters, tables, corridors, crowd space, or architecture. Show supporting figures, witnesses, antagonist, staff, child, or crowd when relevant. Absolutely no text anywhere in the image. No title, no words, no letters, no logos, no watermark, no readable phone screen, no readable documents, no readable signage, no readable labels. Documents and screens must be blank, abstract, dark, blurred, turned away, or unreadable. Not a generic portrait. Not a close-up beauty shot. Not a bust portrait. Not a centered heroine blocking the background. Not cramped, not narrow, not claustrophobic. The heroine must not occupy 30%, 40%, 50%, 60%, or 70% of the image. The heroine must look beautiful, elegant, emotionally controlled, and commercially appealing; avoid angry scowling face, harsh glare, ugly grimace, deeply furrowed brows, clenched jaw, stiff dead eyes, bitter expression, villain-like face, dull realistic face, uncanny AI face, plastic mannequin skin, old tired office-worker face, low-budget mobile game NPC look. Use restrained emotion: calm pain, quiet shock, protective determination, or controlled confidence. No blood, no wounds, no corpse, no weapons, no explicit violence. Avoid global yellow filter, sepia wash, muddy beige, orange-brown grading, and repeated yellow-brown cover palette. Use bright clean cinematic color with cool neutral base and elegant warm accents only when needed.`
 }
 
 

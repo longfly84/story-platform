@@ -106,11 +106,11 @@ const replacementRules: VietnameseProseRule[] = [
   {
     id: 'convert-little-child-prefix',
     category: 'convert_phrase',
-    severity: 'high',
-    mode: 'template-replace',
-    pattern: /\btiểu\s+([A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴ][^\s,.!?;:"'“”]{0,24}(?:\s+[A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴ][^\s,.!?;:"'“”]{0,24}){0,2})\b/gi,
-    replacement: 'bé $1',
-    message: '“tiểu + tên trẻ nhỏ” nhiễm convert, đổi thành “bé + tên”.',
+    severity: 'low',
+    mode: 'warning',
+    pattern: /\bTiểu\s+([A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴ][^\s,.!?;:"'“”]{0,24}(?:\s+[A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴ][^\s,.!?;:"'“”]{0,24}){0,2})\b/gu,
+    message: '“Tiểu + tên” là cách gọi convert nhưng vẫn đọc được trong truyện mạng; chỉ cảnh báo, không auto sửa để tránh sửa nhầm từ phổ thông như “tiểu thuyết”.',
+    genericSuggestion: 'Có thể giữ “Tiểu X” nếu hợp vibe truyện mạng; chỉ đổi thủ công thành “bé X” khi chắc chắn đó là trẻ nhỏ và không làm mất nhịp.',
   },
   {
     id: 'convert-elder-lao-name',

@@ -51,13 +51,14 @@ function isModerationBlockedError(error: unknown) {
 
 function buildEmergencyFallbackPrompt() {
   return `
-Vertical 2:3 premium modern East Asian web-novel cover illustration.
+Vertical 2:3 premium Chinese manhua / anime modern East Asian web-novel cover illustration.
 
 Scene:
 A wide pulled-back cinematic story scene in a modern city environment, luxury hotel lobby, glass office atrium, airport hall, hospital corridor, factory floor, or event hall. The environment dominates the image with visible architecture, floor, ceiling, windows, furniture, crowd space, and depth. The adult East Asian female lead is small and off-center, full-body or 3/4 body, only about 8% to 16% of the frame. Several blurred but readable supporting figures stand at different distances, suggesting betrayal, secrets, pressure, and hidden truth. Evidence objects such as a blank folder, phone, suitcase, counter, bracelet, or document prop appear in the foreground or midground.
 
 Style:
-Polished premium Chinese manhua / webnovel cinematic cover art, elegant lighting, detailed environment design, commercial drama poster quality, wide establishing shot, scenic composition, not a portrait.
+Polished premium Chinese manhua / high-end anime webnovel cinematic cover art. Beautiful adult East Asian heroine with soft luminous eyes, glossy hair, refined pretty face, elegant modern outfit, graceful emotional expression. Clean crisp line art, luminous skin, soft painterly gradients, bright commercial color, detailed environment design, commercial drama poster quality, wide establishing shot, scenic composition, not a portrait.
+Avoid ugly dull semi-realistic AI poster, harsh realistic office-worker face, dead eyes, plastic mannequin skin, muddy gray-brown lighting, cheap 3D render, low-budget mobile game NPC look.
 
 Strict rules:
 No close-up portrait, no bust portrait, no giant heroine, no centered character blocking the background, no cramped room, no narrow corridor-only framing, no blurred useless background.
