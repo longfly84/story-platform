@@ -2788,10 +2788,183 @@ function buildSeedCandidate(params: {
   };
 }
 
+
+function clampPlannedChapterCount(value?: number) {
+  const n = Math.floor(Number(value || 12));
+  if (!Number.isFinite(n)) return 12;
+  return Math.max(3, Math.min(40, n));
+}
+
+function retitlePlanChapter(params: {
+  chapter: FactoryStoryPlanChapter;
+  chapterNumber: number;
+  candidate: ReturnType<typeof buildSeedCandidate>;
+  alternateEvidence: string;
+  alternateSetting: string;
+  alternatePressure: string;
+  seed: string;
+}) {
+  return {
+    ...params.chapter,
+    chapterNumber: params.chapterNumber,
+    title: makeChapterTitle({
+      chapterNumber: params.chapterNumber,
+      candidate: params.candidate,
+      alternateEvidence: params.alternateEvidence,
+      alternateSetting: params.alternateSetting,
+      alternatePressure: params.alternatePressure,
+      seed: params.seed,
+    }),
+  };
+}
+
+function buildTargetedChapterPlan(params: {
+  basePlan: FactoryStoryPlanChapter[];
+  targetChapters?: number;
+  candidate: ReturnType<typeof buildSeedCandidate>;
+  alternateEvidence: string;
+  alternateSetting: string;
+  alternatePressure: string;
+  seed: string;
+}) {
+  const target = clampPlannedChapterCount(params.targetChapters);
+  const base = params.basePlan;
+  const finalBase = base[base.length - 1];
+
+  if (target === base.length) {
+    return base.map((chapter, index) =>
+      retitlePlanChapter({
+        chapter,
+        chapterNumber: index + 1,
+        candidate: params.candidate,
+        alternateEvidence: params.alternateEvidence,
+        alternateSetting: params.alternateSetting,
+        alternatePressure: params.alternatePressure,
+        seed: params.seed,
+      }),
+    );
+  }
+
+  if (target < base.length) {
+    return Array.from({ length: target }, (_, index) => {
+      const chapterNumber = index + 1;
+      const sourceIndex =
+        target === 1
+          ? base.length - 1
+          : Math.round((index * (base.length - 1)) / Math.max(1, target - 1));
+      const source = base[Math.min(base.length - 1, Math.max(0, sourceIndex))] || finalBase;
+      const compressed = {
+        ...source,
+        mission:
+          chapterNumber === target
+            ? `${source.mission} Đây là chương cuối theo target ${target} chương: phải gom payoff còn lại, đóng hidden truth và kết truyện chắc.`
+            : `${source.mission} Vì target chỉ ${target} chương, nén nhịp, không kéo dài thủ tục.` ,
+        endingHook:
+          chapterNumber === target
+            ? "Kết chắc, trả đủ bằng chứng và cảm xúc, không mở thêm tuyến mới."
+            : source.endingHook,
+      };
+      return retitlePlanChapter({
+        chapter: compressed,
+        chapterNumber,
+        candidate: params.candidate,
+        alternateEvidence: params.alternateEvidence,
+        alternateSetting: params.alternateSetting,
+        alternatePressure: params.alternatePressure,
+        seed: params.seed,
+      });
+    });
+  }
+
+  const expanded: FactoryStoryPlanChapter[] = [];
+  const midExpansionCount = target - base.length;
+
+  base.slice(0, 10).forEach((chapter) => expanded.push(chapter));
+
+  for (let i = 0; i < midExpansionCount; i += 1) {
+    const turn = i + 1;
+    const chapterNumber = expanded.length + 1;
+    const isPressureTurn = turn % 3 === 1;
+    const isEmotionTurn = turn % 3 === 2;
+    const isTrapTurn = turn % 3 === 0;
+    expanded.push({
+      chapterNumber,
+      title: makeChapterTitle({
+        chapterNumber,
+        candidate: params.candidate,
+        alternateEvidence: params.alternateEvidence,
+        alternateSetting: params.alternateSetting,
+        alternatePressure: params.alternatePressure,
+        seed: `${params.seed}-expanded-${turn}`,
+      }),
+      mission: isPressureTurn
+        ? `Tăng áp lực mới khác các chương trước, không dùng lại cùng cảnh tố cáo/log/camera. Phản diện ép nữ chính trả giá thật quanh ${params.candidate.publicPressure}.`
+        : isEmotionTurn
+          ? `Đào sâu cái giá cảm xúc của nữ chính bằng một cảnh đời sống cụ thể, đồng thời hé thêm 1 mảnh về ${params.candidate.hiddenTruth}.`
+          : `Cho nữ chính chủ động đặt bẫy nhỏ, dùng ${params.alternateEvidence} hoặc một chi tiết đời thường làm mồi, chưa xả final payoff.`,
+      sceneType: isPressureTurn
+        ? "new pressure arena"
+        : isEmotionTurn
+          ? "emotional cost / relationship fracture"
+          : "active trap / clue payoff",
+      mainScene: isPressureTurn
+        ? params.alternatePressure
+        : isEmotionTurn
+          ? params.alternateSetting
+          : "một cuộc gặp có nhân chứng nhưng không biến thành thủ tục pháp lý",
+      evidenceBeat: isTrapTurn
+        ? `Dùng ${params.alternateEvidence} làm mồi để kiểm tra phản ứng phe phản diện.`
+        : `Thêm một chi tiết mới quanh ${params.candidate.evidenceObject}, không lặp lại cách phát hiện cũ.`,
+      villainBeat: isPressureTurn
+        ? "Phản diện chính phải lộ mặt/ra lệnh/đe dọa trực tiếp hơn, không núp hoàn toàn sau người phụ."
+        : "Phe phản diện đổi chiến thuật vì các mảnh cũ bắt đầu rạn.",
+      heroineMove: isTrapTurn
+        ? "Nữ chính chủ động gài một câu hỏi hoặc một vật mồi để đối phương tự mâu thuẫn."
+        : "Nữ chính giữ bình tĩnh, làm một việc cụ thể để bảo vệ người yếu thế và giữ chứng cứ.",
+      emotionalBeat: isEmotionTurn
+        ? params.candidate.emotionalHook
+        : "Áp lực phải chạm vào danh dự, người thân, công việc hoặc chỗ đứng của nữ chính.",
+      powerShift: isPressureTurn
+        ? "Phản diện thắng một nhịp thật nhưng để lại dấu tay mới."
+        : isTrapTurn
+          ? "Nữ chính lấy thêm một mảnh quyền chủ động."
+          : "Một người đứng giữa bắt đầu dao động.",
+      endingHook: isTrapTurn
+        ? "Một chi tiết nhỏ nối thẳng về phản diện chính."
+        : "Cú ép mới mở ra sân khấu đối chất kế tiếp.",
+    });
+  }
+
+  expanded.push(base[10], finalBase);
+
+  return expanded.slice(0, target).map((chapter, index) => {
+    const chapterNumber = index + 1;
+    const isFinal = chapterNumber === target;
+    const normalized = isFinal
+      ? {
+          ...finalBase,
+          mission: `${finalBase.mission} Đây là chương ${target}/${target}: phải đóng toàn bộ truyện theo outline đã lưu, không mở tuyến mới.`,
+          endingHook: "Kết chắc, có dư vị thắng, không câu tiếp.",
+        }
+      : chapter;
+
+    return retitlePlanChapter({
+      chapter: normalized,
+      chapterNumber,
+      candidate: params.candidate,
+      alternateEvidence: params.alternateEvidence,
+      alternateSetting: params.alternateSetting,
+      alternatePressure: params.alternatePressure,
+      seed: params.seed,
+    });
+  });
+}
+
 function buildFactoryStoryPlan(params: {
   title: string;
   seed: string;
   candidate: ReturnType<typeof buildSeedCandidate>;
+  targetChapters?: number;
 }) {
   const { candidate } = params;
   const alternatePressure =
@@ -2839,6 +3012,9 @@ function buildFactoryStoryPlan(params: {
     `Payoff evidence: ${candidate.evidenceObject} phải trả bằng logic riêng của genre, không biến thành một file/camera/log chung.`,
     `Payoff hidden truth: ${candidate.hiddenTruth}`,
     `Payoff heroine arc: nữ chính không thắng nhờ may mắn, mà nhờ chủ động gài bẫy và giữ bình tĩnh.`,
+    `Anti-repeat motif: cả truyện chỉ chọn 1–2 hệ vật chứng chính. Không gom email, header, log, USB, tài khoản ẩn, metadata vào nhiều chương liên tiếp.`,
+    `Anti-repeat pacing: không để nhiều chương liên tục đều kết bằng tạm dừng/tạm khóa/tạm hoãn. Phải xen kẽ mất mát cảm xúc, người đổi phe, bằng chứng bị tráo, nhân chứng bị ép rút lời hoặc phản diện tự lộ.`,
+    `Anti-repeat counter: nữ chính không được chương nào cũng nói “không ký” rồi lôi USB/log/header ra. Phải đổi cách phản công: gài bẫy im lặng, để người trung lập tự phát hiện, cố tình chịu thiệt để ép đối phương lộ mặt, hoặc dùng nhân chứng sống.`,
   ];
 
   const chapterPlan: FactoryStoryPlanChapter[] = [
@@ -3047,14 +3223,24 @@ function buildFactoryStoryPlan(params: {
     },
   ];
 
+  const targetedChapterPlan = buildTargetedChapterPlan({
+    basePlan: chapterPlan,
+    targetChapters: params.targetChapters,
+    candidate,
+    alternateEvidence,
+    alternateSetting,
+    alternatePressure,
+    seed: params.seed,
+  });
+
   return {
-    plannerVersion: "story-planner-v1",
-    totalPlannedChapters: chapterPlan.length,
-    plannerGoal: `Outline cố định cho ${params.title}: evidence plan + villain curve + emotional/payoff. Writer phải bám mission từng chương, không tự trôi về nhịp thủ tục lặp.`,
+    plannerVersion: "story-planner-v2-target-locked",
+    totalPlannedChapters: targetedChapterPlan.length,
+    plannerGoal: `Outline cố định cho ${params.title}: ${targetedChapterPlan.length} chương đúng target. Writer phải bám mission từng chương, không tự trôi về nhịp thủ tục lặp; mode viết tiếp phải dùng lại outline này.` ,
     evidencePlan,
     villainCurve,
     payoffPlan,
-    chapterPlan,
+    chapterPlan: targetedChapterPlan,
   };
 }
 
@@ -3563,6 +3749,7 @@ export function buildMockStorySeed(params: {
   heroineLabel: string;
   avoidLibrary?: AvoidLibrary;
   seed: string;
+  targetChapters?: number;
 }): FactoryStorySeed {
   let bestCandidate: ReturnType<typeof buildSeedCandidate> | null = null;
   let bestScore = Number.POSITIVE_INFINITY;
@@ -3715,6 +3902,7 @@ export function buildMockStorySeed(params: {
     title,
     seed: params.seed,
     candidate,
+    targetChapters: params.targetChapters,
   });
 
   const coverConcept = buildFactoryCoverConcept({
@@ -3914,6 +4102,14 @@ STORY SEED / STORY DNA BẮT BUỘC:
 - Power structure: ${storySeed.powerStructure}
 - Public pressure: ${storySeed.publicPressure}
 - Short fingerprint: ${storySeed.shortFingerprint}
+
+ANTI-REPEAT MOTIF LOCK:
+- Mỗi truyện chỉ dùng 1–2 hệ vật chứng chính. Không gom email/header/log/USB/tài khoản ẩn/metadata thành công thức lặp qua nhiều chương.
+- Nếu chương trước đã dùng vật chứng kỹ thuật, chương sau phải ưu tiên đối chất trực tiếp, hậu quả đời sống, người đổi phe, cảm xúc gia đình, hoặc cú vả mặt công khai.
+- Không để nhiều chương liên tục đều kết bằng “tạm dừng / tạm khóa / tạm hoãn”. Phải xen kẽ mất mát thật, thắng lợi nhỏ, nhân chứng đổi lời, phản diện lộ sơ hở, hoặc quyền lực đổi chiều.
+- Motif người lao động nghèo bị ép làm nhân chứng/forward/in giấy chỉ dùng tối đa 1 lần trong một truyện. Sau đó phải chuyển sang tầng quyền lực khác.
+- Nữ chính không được luôn phản công bằng “không ký” + USB/log/header. Phải thay đổi kiểu phản công theo từng chương.
+
 
 ${storyPlanBlock}
 

@@ -732,7 +732,14 @@ Luật chống lặp dài hơi:
 - Không để vật chứng kỹ thuật chiếm hết truyện. Vật chứng phải kéo theo con người: ai ký, ai nói dối, ai bị ép, ai hưởng lợi, ai chịu thiệt.
 - Mỗi chương chỉ cần 1 vật chứng chính. Nếu đã có quá nhiều giấy/email/log/camera, chương mới phải ưu tiên đối chất trực tiếp hoặc hậu quả đời sống.
 - Cứ mỗi 4 chương phải có một mini-payoff rõ: công khai một phần sự thật, lấy lại một quyền, làm phản diện mất đồng minh, hoặc khiến một quyết định bất lợi bị hủy.
-- Cảnh cuối phải ném độc giả sang chương sau bằng hành động cụ thể: một người đến, một cửa bị khóa, một hồ sơ được đưa ra, một cuộc họp bị ép diễn ra, một nhân chứng đổi lời. Không kết bằng câu quyết tâm.`.trim()
+- Cảnh cuối phải ném độc giả sang chương sau bằng hành động cụ thể: một người đến, một cửa bị khóa, một hồ sơ được đưa ra, một cuộc họp bị ép diễn ra, một nhân chứng đổi lời. Không kết bằng câu quyết tâm.
+
+CHỐNG LẶP MOTIF KỸ THUẬT VÀ PHẢN CÔNG:
+- Không dùng cùng lúc quá nhiều vật chứng kỹ thuật trong một truyện. Mỗi truyện chỉ nên chọn 1–2 hệ vật chứng chính, ví dụ: biên nhận + camera, hoặc email + header. Không gom hết email, header, log, USB, tài khoản ẩn, metadata vào nhiều chương liên tiếp.
+- Không để nhiều chương liên tục đều kết bằng “tạm dừng / tạm khóa / tạm hoãn” một quyền lợi. Cần xen kẽ mất mát khác: mất nhân chứng, mất niềm tin của người thân, bằng chứng bị tráo, người yếu thế bị ép rút lời, tài khoản bị khóa, người trung lập bị đe dọa.
+- Motif người lao động nghèo bị ép làm nhân chứng / forward / in giấy chỉ dùng tối đa 1 lần trong một truyện. Sau đó phải chuyển sang tầng quyền lực khác: pháp chế, cổ đông, luật sư, phòng dữ liệu, người thân, ban kiểm soát, trường học, bệnh viện, đối tác.
+- Không để nữ chính luôn phản công bằng kiểu “không ký” rồi lôi USB/log/header ra. Cần đổi cách phản công: có chương nữ chính im lặng gài bẫy, có chương nhờ người trung lập tự phát hiện, có chương cố tình chịu thiệt để ép đối phương tự lộ, có chương dùng nhân chứng sống thay vì vật chứng kỹ thuật.
+`.trim()
 }
 
 
