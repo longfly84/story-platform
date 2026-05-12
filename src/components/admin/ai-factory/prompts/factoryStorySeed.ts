@@ -3012,9 +3012,9 @@ function buildFactoryStoryPlan(params: {
     `Payoff evidence: ${candidate.evidenceObject} phải trả bằng logic riêng của genre, không biến thành một file/camera/log chung.`,
     `Payoff hidden truth: ${candidate.hiddenTruth}`,
     `Payoff heroine arc: nữ chính không thắng nhờ may mắn, mà nhờ chủ động gài bẫy và giữ bình tĩnh.`,
-    `Anti-repeat motif: cả truyện chỉ chọn 1–2 hệ vật chứng chính. Không gom email, header, log, USB, tài khoản ẩn, metadata vào nhiều chương liên tiếp.`,
-    `Anti-repeat pacing: không để nhiều chương liên tục đều kết bằng tạm dừng/tạm khóa/tạm hoãn. Phải xen kẽ mất mát cảm xúc, người đổi phe, bằng chứng bị tráo, nhân chứng bị ép rút lời hoặc phản diện tự lộ.`,
-    `Anti-repeat counter: nữ chính không được chương nào cũng nói “không ký” rồi lôi USB/log/header ra. Phải đổi cách phản công: gài bẫy im lặng, để người trung lập tự phát hiện, cố tình chịu thiệt để ép đối phương lộ mặt, hoặc dùng nhân chứng sống.`,
+    `Anti-repeat technical chain: cả truyện chỉ được dùng tối đa 1 tuyến kỹ thuật chính như email/header/log/IP/user/USB/tài khoản bị khóa/máy in nội bộ. Nếu đã dùng, chương sau phải chuyển sang người sống, biên nhận giấy, lời khai, đối chất trực tiếp, hậu quả gia đình hoặc phản diện tự lộ.`,
+    `Anti-repeat consequence: không để nhiều chương liên tiếp đều là tạm khóa/tạm hoãn/tạm dừng quyền. Phải luân phiên giữa mất quyền, mất nhân chứng, mất niềm tin, bằng chứng bị tráo, người yếu thế bị ép rút lời, và cú vả mặt công khai.`,
+    `Anti-repeat counter move: nữ chính không được chương nào cũng phản công bằng kiểm tra file/log/header. Phải đổi cách: im lặng gài bẫy, ép người nói ký biên bản, để người trung lập tự phát hiện, cố tình chịu thiệt để phản diện lộ, hoặc dùng nhân chứng sống.`,
   ];
 
   const chapterPlan: FactoryStoryPlanChapter[] = [
@@ -4103,13 +4103,12 @@ STORY SEED / STORY DNA BẮT BUỘC:
 - Public pressure: ${storySeed.publicPressure}
 - Short fingerprint: ${storySeed.shortFingerprint}
 
-ANTI-REPEAT MOTIF LOCK:
-- Mỗi truyện chỉ dùng 1–2 hệ vật chứng chính. Không gom email/header/log/USB/tài khoản ẩn/metadata thành công thức lặp qua nhiều chương.
-- Nếu chương trước đã dùng vật chứng kỹ thuật, chương sau phải ưu tiên đối chất trực tiếp, hậu quả đời sống, người đổi phe, cảm xúc gia đình, hoặc cú vả mặt công khai.
-- Không để nhiều chương liên tục đều kết bằng “tạm dừng / tạm khóa / tạm hoãn”. Phải xen kẽ mất mát thật, thắng lợi nhỏ, nhân chứng đổi lời, phản diện lộ sơ hở, hoặc quyền lực đổi chiều.
-- Motif người lao động nghèo bị ép làm nhân chứng/forward/in giấy chỉ dùng tối đa 1 lần trong một truyện. Sau đó phải chuyển sang tầng quyền lực khác.
-- Nữ chính không được luôn phản công bằng “không ký” + USB/log/header. Phải thay đổi kiểu phản công theo từng chương.
-
+ANTI-REPEAT TECHNICAL MOTIF LOCK:
+- Mỗi truyện chỉ được chọn 1 tuyến kỹ thuật chính nếu thật sự cần: email/header/log/IP/user/USB/tài khoản bị khóa/máy in nội bộ/forward nhầm. Không được gom nhiều tuyến này qua nhiều chương.
+- Nếu một chương đã dùng tài khoản/log/header/metadata/máy in/forward/IP làm vật chứng chính, chương kế tiếp phải chuyển sang nhân chứng sống, giấy tay, biên nhận, camera đời thường, người giao đồ, lời khai bị ép, người thân đổi thái độ, hoặc đối chất trực tiếp.
+- Không để chương 2–4 cùng một công thức: phát hiện bản photo/file → tra máy/user → tài khoản bị khóa → chờ xác minh. Đây là motif bị cấm lặp.
+- Không dùng “tạm dừng/tạm khóa/tạm hoãn” làm hậu quả mặc định ở nhiều chương liên tiếp. Phải xen kẽ hậu quả đời sống và cảm xúc: con bị ảnh hưởng, người thân nghi ngờ, nhân chứng bị mua chuộc, bằng chứng gốc biến mất, phản diện ép người yếu thế nhận tội.
+- Nữ chính không được luôn phản công bằng cách lôi log/header/USB ra. Cần đổi nhịp phản công: ép ký biên bản, đặt câu hỏi khiến đối phương tự lộ, giữ im lặng để gài bẫy, dùng nhân chứng sống, hoặc cố tình chịu thiệt để đổi lấy sơ hở lớn hơn.
 
 ${storyPlanBlock}
 

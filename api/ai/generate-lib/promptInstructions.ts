@@ -734,6 +734,13 @@ Luật chống lặp dài hơi:
 - Cứ mỗi 4 chương phải có một mini-payoff rõ: công khai một phần sự thật, lấy lại một quyền, làm phản diện mất đồng minh, hoặc khiến một quyết định bất lợi bị hủy.
 - Cảnh cuối phải ném độc giả sang chương sau bằng hành động cụ thể: một người đến, một cửa bị khóa, một hồ sơ được đưa ra, một cuộc họp bị ép diễn ra, một nhân chứng đổi lời. Không kết bằng câu quyết tâm.
 
+HARD LOCK — CHỐNG TRƯỢT VỀ LOG/HEADER/TÀI KHOẢN:
+- Nếu chương trước hoặc đoạn truyện gần nhất đã dùng một trong các thứ: email, header, metadata, log, IP, user, USB, tài khoản bị khóa, máy in nội bộ, forward nhầm, hệ thống phụ huynh, quyền truy cập, thì chương hiện tại KHÔNG được tiếp tục dùng cùng tuyến kỹ thuật đó làm vật chứng chính.
+- Sau một chương có vật chứng kỹ thuật, chương kế tiếp bắt buộc đổi sang ít nhất một trong các hướng đời sống: nhân chứng sống đổi lời, giấy tay/biên nhận thật, người giao đồ, bảo vệ/cô giáo/tài xế bị ép, cuộc đối chất trực tiếp, người thân mất niềm tin, phản diện tự lộ qua lời nói, hoặc hậu quả cụ thể lên con/người yếu thế.
+- Không để các chương liên tiếp cùng nhịp: phát hiện file/log → kiểm tra user/header → khóa tài khoản → chờ xác minh. Nhịp này chỉ được dùng một lần trong cả truyện.
+- Không được dùng “tài khoản bị khóa” như hậu quả mặc định. Nếu đã có một quyền bị khóa, chương sau phải đổi hậu quả: nhân chứng biến mất, người thân bị ép ký, đồ vật gốc bị tráo, cô giáo/bảo vệ bị đổ tội, hoặc nữ chính bị tước quyền nói trước đám đông.
+- Nếu cần điều tra kỹ thuật, chỉ nhắc rất ngắn ở nền. Cảnh chính vẫn phải là người thật đối đầu người thật, có lời nói, áp lực, lựa chọn và cái giá rõ ràng.
+
 CHỐNG LẶP MOTIF KỸ THUẬT VÀ PHẢN CÔNG:
 - Không dùng cùng lúc quá nhiều vật chứng kỹ thuật trong một truyện. Mỗi truyện chỉ nên chọn 1–2 hệ vật chứng chính, ví dụ: biên nhận + camera, hoặc email + header. Không gom hết email, header, log, USB, tài khoản ẩn, metadata vào nhiều chương liên tiếp.
 - Không để nhiều chương liên tục đều kết bằng “tạm dừng / tạm khóa / tạm hoãn” một quyền lợi. Cần xen kẽ mất mát khác: mất nhân chứng, mất niềm tin của người thân, bằng chứng bị tráo, người yếu thế bị ép rút lời, tài khoản bị khóa, người trung lập bị đe dọa.

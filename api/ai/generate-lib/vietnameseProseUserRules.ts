@@ -2129,54 +2129,94 @@ export const userVietnameseProseWarningRules: VietnameseProseRule[] = [
     replacement: 'Tôi không có quyền xem chuyện đó là nhẹ',
     message: 'Câu gượng, khó hiểu.',
   },
+    {
+    id: 'market-typo-mo-xi-xao',
+    category: 'typo',
+    severity: 'high',
+    mode: 'replace',
+    pattern: /Mộ\s+tiếng\s+xì\s+xào\s+lan/giu,
+    replacement: 'Một tiếng xì xào lan ra',
+    message: 'Typo “Mộ” thành “Một”.',
+  },
   {
-  find: "Mộ tiếng xì xào lan",
-  replace: "Một tiếng xì xào lan ra",
-  reason: "Typo 'Mộ' thành 'Một'."
-},
-{
-  find: "cố cưỡi ngựa xem bầy",
-  replace: "cố giữ vẻ bình tĩnh",
-  reason: "Dùng sai thành ngữ; 'cưỡi ngựa xem hoa' không hợp ngữ cảnh, còn 'xem bầy' là lỗi."
-},
-{
-  find: "khi tranh trò",
-  replace: "khi dỗ trẻ",
-  reason: "Cụm 'tranh trò' tối nghĩa, có vẻ lỗi sinh câu."
-},
-{
-  find: "Một man đỏ",
-  replace: "Một tờ tiền đỏ",
-  reason: "'man đỏ' là lỗi convert/typo, không tự nhiên trong tiếng Việt."
-},
-{
-  find: "một thái độ cơ bản: hiểu chuyện nhưng chưa vào",
-  replace: "anh ta hiểu chuyện đã lộ, nhưng vẫn chưa dám bước vào",
-  reason: "Câu phân tích khô, lộ giọng AI, không giống văn truyện."
-},
-{
-  find: "đó là đường lối đi tiếp",
-  replace: "đó là hướng để tôi lần tiếp",
-  reason: "'đường lối đi tiếp' gượng, giống văn hành chính."
-},
-{
-  find: "không phải ai đó đứng ngoài vô hiệu hóa tài khoản để giả mạo",
-  replace: "không phải người ngoài tùy tiện bấm máy là làm được",
-  reason: "Câu kỹ thuật khô, làm mùi AI tăng."
-},
-{
-  find: "Họ khóa tài khoản của tôi để tôi không thể cạnh tranh bằng chứng trực tuyến",
-  replace: "Họ khóa tài khoản để tôi không còn đường tự kiểm tra lịch đưa đón",
-  reason: "'cạnh tranh bằng chứng trực tuyến' gượng và sai tai."
-},
-{
-  find: "Đó là cửa sổ bé, nhưng là cửa sổ mở vào bên trong",
-  replace: "Manh mối nhỏ, nhưng đủ để tôi lần vào bên trong",
-  reason: "Ẩn dụ cửa sổ lặp và hơi AI."
-},
-{
-  find: "một nút thắt được nới một chút",
-  replace: "ít nhất tôi đã kéo được một đầu mối ra ánh sáng",
-  reason: "Ẩn dụ quen, hơi chung chung."
-}
+    id: 'market-wrong-idiom-cuoi-ngua-xem-bay',
+    category: 'convert_phrase',
+    severity: 'high',
+    mode: 'replace',
+    pattern: /cố\s+cưỡi\s+ngựa\s+xem\s+bầy/giu,
+    replacement: 'cố giữ vẻ bình tĩnh',
+    message: 'Dùng sai thành ngữ; “cưỡi ngựa xem hoa” không hợp ngữ cảnh, còn “xem bầy” là lỗi.',
+  },
+  {
+    id: 'market-khi-tranh-tro',
+    category: 'unclear_sentence',
+    severity: 'high',
+    mode: 'replace',
+    pattern: /khi\s+tranh\s+trò/giu,
+    replacement: 'khi dỗ trẻ',
+    message: 'Cụm “tranh trò” tối nghĩa, có vẻ lỗi sinh câu.',
+  },
+  {
+    id: 'market-man-do',
+    category: 'convert_phrase',
+    severity: 'high',
+    mode: 'replace',
+    pattern: /Một\s+man\s+đỏ/giu,
+    replacement: 'Một tờ tiền đỏ',
+    message: '“Man đỏ” là lỗi convert/typo, không tự nhiên trong tiếng Việt.',
+  },
+  {
+    id: 'market-attitude-understood-not-entered',
+    category: 'ai_tone',
+    severity: 'high',
+    mode: 'replace',
+    pattern: /một\s+thái\s+độ\s+cơ\s+bản:\s*hiểu\s+chuyện\s+nhưng\s+chưa\s+vào/giu,
+    replacement: 'anh ta hiểu chuyện đã lộ, nhưng vẫn chưa dám bước vào',
+    message: 'Câu phân tích khô, lộ giọng AI, không giống văn truyện.',
+  },
+  {
+    id: 'market-duong-loi-di-tiep',
+    category: 'collocation',
+    severity: 'medium',
+    mode: 'replace',
+    pattern: /đó\s+là\s+đường\s+lối\s+đi\s+tiếp/giu,
+    replacement: 'đó là hướng để tôi lần tiếp',
+    message: '“Đường lối đi tiếp” gượng, giống văn hành chính.',
+  },
+  {
+    id: 'market-outside-disable-account-fake',
+    category: 'ai_tone',
+    severity: 'medium',
+    mode: 'replace',
+    pattern: /không\s+phải\s+ai\s+đó\s+đứng\s+ngoài\s+vô\s+hiệu\s+hóa\s+tài\s+khoản\s+để\s+giả\s+mạo/giu,
+    replacement: 'không phải người ngoài tùy tiện bấm máy là làm được',
+    message: 'Câu kỹ thuật khô, làm mùi AI tăng.',
+  },
+  {
+    id: 'market-compete-online-evidence',
+    category: 'ai_tone',
+    severity: 'high',
+    mode: 'replace',
+    pattern: /Họ\s+khóa\s+tài\s+khoản\s+của\s+tôi\s+để\s+tôi\s+không\s+thể\s+cạnh\s+tranh\s+bằng\s+chứng\s+trực\s+tuyến/giu,
+    replacement: 'Họ khóa tài khoản để tôi không còn đường tự kiểm tra lịch đưa đón',
+    message: '“Cạnh tranh bằng chứng trực tuyến” gượng và sai tai.',
+  },
+  {
+    id: 'market-window-inside',
+    category: 'ai_metaphor',
+    severity: 'medium',
+    mode: 'replace',
+    pattern: /Đó\s+là\s+cửa\s+sổ\s+bé,\s*nhưng\s+là\s+cửa\s+sổ\s+mở\s+vào\s+bên\s+trong/giu,
+    replacement: 'Manh mối nhỏ, nhưng đủ để tôi lần vào bên trong',
+    message: 'Ẩn dụ cửa sổ lặp và hơi AI.',
+  },
+  {
+    id: 'market-knot-loosened',
+    category: 'ai_metaphor',
+    severity: 'medium',
+    mode: 'replace',
+    pattern: /một\s+nút\s+thắt\s+được\s+nới\s+một\s+chút/giu,
+    replacement: 'ít nhất tôi đã kéo được một đầu mối ra ánh sáng',
+    message: 'Ẩn dụ quen, hơi chung chung.',
+  },
 ]
