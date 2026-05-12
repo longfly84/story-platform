@@ -170,10 +170,10 @@ const replacementRules: VietnameseProseRule[] = [
     id: 'ai-smooth-fan-voice',
     category: 'ai_metaphor',
     severity: 'high',
-    mode: 'replace',
+    mode: 'template-replace',
     pattern: /Giọng\s+([^,.\n]{1,24})\s+trơn như cánh quạt lùa qua/gi,
-    replacement: '$1 nói rất nhẹ',
-    message: '“giọng trơn như cánh quạt” sai tai, đổi thành cách nói cụ thể.',
+    replacement: 'Giọng $1 hạ thấp xuống',
+    message: '“giọng trơn như cánh quạt” sai tai, đổi thành sắc thái nói cụ thể.',
   },
   {
     id: 'ai-colder-than-verdict',
