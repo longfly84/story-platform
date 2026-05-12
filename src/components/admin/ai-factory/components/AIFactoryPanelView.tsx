@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import type {
   AIFactoryConfig,
   AvoidLibrary,
@@ -358,9 +358,67 @@ export default function AIFactoryPanelView({
 }: AIFactoryPanelViewProps) {
   const chapterMinChars = Number((config as any).chapterMinChars ?? 3500);
   const chapterMaxChars = Number((config as any).chapterMaxChars ?? 4500);
+  const [minTargetChaptersDraft, setMinTargetChaptersDraft] = useState(() =>
+    String(config.minTargetChapters ?? 5),
+  );
+  const [maxTargetChaptersDraft, setMaxTargetChaptersDraft] = useState(() =>
+    String(config.maxTargetChapters ?? 10),
+  );
   const selectedContinueStory = incompleteStories.find(
     (story) => String((story as any).id) === selectedContinueStoryId,
   );
+
+  useEffect(() => {
+    setMinTargetChaptersDraft(String(config.minTargetChapters ?? 5));
+  }, [config.minTargetChapters]);
+
+  useEffect(() => {
+    setMaxTargetChaptersDraft(String(config.maxTargetChapters ?? 10));
+  }, [config.maxTargetChapters]);
+
+  function parseDraftNumber(value: string, fallback: number) {
+    const trimmed = value.trim();
+    if (!trimmed) return fallback;
+
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function commitMinTargetChaptersDraft() {
+    const currentMax = Number(config.maxTargetChapters ?? 10);
+    const safeMin = clampNumber(
+      parseDraftNumber(minTargetChaptersDraft, Number(config.minTargetChapters ?? 5)),
+      5,
+      50,
+    );
+    const safeMax = Math.max(currentMax, safeMin);
+
+    setMinTargetChaptersDraft(String(safeMin));
+    updateConfig("minTargetChapters", safeMin as any);
+
+    if (safeMax !== currentMax) {
+      setMaxTargetChaptersDraft(String(safeMax));
+      updateConfig("maxTargetChapters", safeMax as any);
+    }
+  }
+
+  function commitMaxTargetChaptersDraft() {
+    const currentMin = Number(config.minTargetChapters ?? 5);
+    const safeMax = clampNumber(
+      parseDraftNumber(maxTargetChaptersDraft, Number(config.maxTargetChapters ?? 10)),
+      5,
+      60,
+    );
+    const safeMin = Math.min(currentMin, safeMax);
+
+    if (safeMin !== currentMin) {
+      setMinTargetChaptersDraft(String(safeMin));
+      updateConfig("minTargetChapters", safeMin as any);
+    }
+
+    setMaxTargetChaptersDraft(String(safeMax));
+    updateConfig("maxTargetChapters", safeMax as any);
+  }
 
   function updateChapterCharRange(nextMin: number, nextMax: number) {
     const safeMin = clampNumber(Number(nextMin), 1000, 12000);
@@ -691,13 +749,16 @@ export default function AIFactoryPanelView({
                   min={5}
                   max={50}
                   disabled={isRunning}
-                  value={config.minTargetChapters}
+                  value={minTargetChaptersDraft}
                   onChange={(event) =>
-                    updateConfig(
-                      "minTargetChapters",
-                      clampNumber(Number(event.target.value), 5, 50),
-                    )
+                    setMinTargetChaptersDraft(event.target.value)
                   }
+                  onBlur={commitMinTargetChaptersDraft}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.currentTarget.blur();
+                    }
+                  }}
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
                 <SmallHint>
@@ -713,13 +774,16 @@ export default function AIFactoryPanelView({
                   min={5}
                   max={60}
                   disabled={isRunning}
-                  value={config.maxTargetChapters}
+                  value={maxTargetChaptersDraft}
                   onChange={(event) =>
-                    updateConfig(
-                      "maxTargetChapters",
-                      clampNumber(Number(event.target.value), 5, 60),
-                    )
+                    setMaxTargetChaptersDraft(event.target.value)
                   }
+                  onBlur={commitMaxTargetChaptersDraft}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.currentTarget.blur();
+                    }
+                  }}
                   className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
                 />
                 <SmallHint>
