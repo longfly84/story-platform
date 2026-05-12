@@ -227,6 +227,7 @@ function buildFactoryTitleVariantCandidates(
 export function useAIFactoryPanelController() {
   const stopRequestedRef = useRef(false);
   const currentRunTitleKeysRef = useRef<Set<string>>(new Set());
+  const factoryHistoryUnavailableRef = useRef(false);
 
   const [config, setConfig] = useState<AIFactoryConfig>(defaultConfig);
   const [selectedGenres, setSelectedGenres] = useState<FactoryGenreOption[]>(
@@ -384,6 +385,204 @@ export function useAIFactoryPanelController() {
   }
 
 
+  function isFactoryHistoryMissingError(error: unknown) {
+    const message = String((error as any)?.message || error || "");
+    return /ai_factory_history|relation .* does not exist|does not exist|schema cache|could not find/i.test(
+      message,
+    );
+  }
+
+  function markFactoryHistoryUnavailable(error: unknown) {
+    if (!factoryHistoryUnavailableRef.current) {
+      addLog(
+        `Chưa có bảng ai_factory_history, tạm fallback scan stories hiện tại. Tạo bảng bằng SQL patch để né cả truyện đã xóa. (${String(
+          (error as any)?.message || error || "unknown",
+        ).slice(0, 120)})`,
+        "warning",
+      );
+    }
+
+    factoryHistoryUnavailableRef.current = true;
+  }
+
+  function factoryHistoryRowToExistingStory(row: any): ExistingStory {
+    const rawStoryDna =
+      row?.story_dna && typeof row.story_dna === "object" ? row.story_dna : {};
+    const rawSeed =
+      rawStoryDna?.factory_seed && typeof rawStoryDna.factory_seed === "object"
+        ? rawStoryDna.factory_seed
+        : {};
+    const motifFingerprint =
+      rawSeed?.motifFingerprint ||
+      rawStoryDna?.motifFingerprint ||
+      (row?.motif_fingerprint ? { fingerprint: row.motif_fingerprint } : null);
+    const motifText =
+      row?.motif_text || rawSeed?.motifText || rawStoryDna?.motifText || "";
+    const motifEmbedding =
+      row?.motif_embedding || rawSeed?.motifEmbedding || rawStoryDna?.motifEmbedding;
+
+    return {
+      id: row?.story_id || row?.id || makeId("history-story"),
+      title: row?.title || rawSeed?.title || "",
+      description: row?.description || row?.core_premise || rawSeed?.corePremise || "",
+      genres: Array.isArray(row?.genres)
+        ? row.genres
+        : row?.genre_label
+          ? [row.genre_label]
+          : [],
+      story_dna: {
+        ...rawStoryDna,
+        source: rawStoryDna?.source || "ai-factory-history",
+        factory_seed: {
+          ...rawSeed,
+          title: row?.title || rawSeed?.title,
+          corePremise: row?.core_premise || rawSeed?.corePremise,
+          evidenceObject: row?.evidence_object || rawSeed?.evidenceObject,
+          heroineArc: row?.heroine_label || rawSeed?.heroineArc,
+          motifFingerprint,
+          motifText,
+          motifEmbedding,
+        },
+        motifFingerprint,
+        motifText,
+        motifEmbedding,
+      },
+      story_memory: row?.story_memory || "",
+      created_at: row?.created_at || new Date().toISOString(),
+    } as ExistingStory;
+  }
+
+  async function scanFactoryHistoryStories() {
+    if (factoryHistoryUnavailableRef.current) return [] as ExistingStory[];
+
+    const result = await supabase
+      .from("ai_factory_history")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (result.error) {
+      if (isFactoryHistoryMissingError(result.error)) {
+        markFactoryHistoryUnavailable(result.error);
+      } else {
+        addLog(
+          `Không quét được ai_factory_history, fallback scan stories: ${result.error.message}`,
+          "warning",
+        );
+      }
+      return [] as ExistingStory[];
+    }
+
+    return ((result.data ?? []) as any[]).map(factoryHistoryRowToExistingStory);
+  }
+
+  async function checkStoryTitleExistsInFactoryHistory(title: string) {
+    if (factoryHistoryUnavailableRef.current) return false;
+
+    const clean = cleanFactoryTitleCandidate(title);
+    const normalized = normalizeFactoryTitleForCompare(clean);
+    if (!normalized) return false;
+
+    const result = await supabase
+      .from("ai_factory_history")
+      .select("id, title, normalized_title")
+      .eq("normalized_title", normalized)
+      .limit(10);
+
+    if (result.error) {
+      if (isFactoryHistoryMissingError(result.error)) {
+        markFactoryHistoryUnavailable(result.error);
+      } else {
+        addLog(
+          `Không check được title trong ai_factory_history: ${result.error.message}`,
+          "warning",
+        );
+      }
+      return false;
+    }
+
+    const rows = Array.isArray(result.data) ? result.data : [];
+    return rows.some(
+      (row: any) =>
+        normalizeFactoryTitleForCompare(row?.normalized_title || row?.title) ===
+        normalized,
+    );
+  }
+
+  async function recordFactoryHistory(params: {
+    story: { id: string; title: string; slug: string };
+    storyDescription: string;
+    storyDna: any;
+    storyMemory: string;
+    genre: FactoryGenreOption;
+    heroine: FactoryHeroineOption;
+    config: AIFactoryConfig;
+    factoryRunId: string;
+    storyIndex: number;
+    targetChapters: number;
+    storySeed?: FactoryStorySeed | null;
+  }) {
+    if (factoryHistoryUnavailableRef.current) return;
+
+    const seed = params.storySeed;
+    const fingerprint = seed?.motifFingerprint;
+    const payload = {
+      story_id: params.story.id,
+      story_slug: params.story.slug,
+      title: params.story.title,
+      normalized_title: normalizeFactoryTitleForCompare(params.story.title),
+      description: params.storyDescription,
+      genres: [params.genre.slug],
+      status: "generated",
+      story_status: params.config.storyStatus,
+      completion_status: params.config.autoCompleteByTarget ? "full" : "ongoing",
+      target_chapters: params.targetChapters,
+      generated_chapters_now: params.config.autoCompleteByTarget
+        ? params.targetChapters
+        : params.config.chaptersToGenerateNow,
+      genre_key: params.genre.key,
+      genre_label: params.genre.label,
+      heroine_key: params.heroine.key,
+      heroine_label: params.heroine.label,
+      evidence_object: seed?.evidenceObject || null,
+      core_premise: seed?.corePremise || null,
+      opening_scene: seed?.openingScene || null,
+      inciting_incident: seed?.incitingIncident || null,
+      villain_attack_type: fingerprint?.villainAttackType || null,
+      heroine_counter_type: fingerprint?.heroineCounterType || null,
+      hidden_truth_type: fingerprint?.hiddenTruthType || null,
+      public_pressure: fingerprint?.publicPressure || null,
+      power_structure: fingerprint?.powerStructure || null,
+      motif_fingerprint: fingerprint?.fingerprint || seed?.shortFingerprint || null,
+      motif_text: seed?.motifText || seed?.shortFingerprint || null,
+      motif_embedding: seed?.motifEmbedding || null,
+      story_dna: params.storyDna,
+      story_memory: params.storyMemory,
+      factory_run_id: params.factoryRunId,
+      story_index: params.storyIndex,
+    };
+
+    const result = await supabase.from("ai_factory_history").insert(payload);
+
+    if (result.error) {
+      if (isFactoryHistoryMissingError(result.error)) {
+        markFactoryHistoryUnavailable(result.error);
+      } else {
+        addLog(
+          `Không ghi được ai_factory_history: ${result.error.message}`,
+          "warning",
+        );
+      }
+      return;
+    }
+
+    addLog(
+      `Đã ghi history chống lặp: ${params.story.title}`,
+      "success",
+    );
+  }
+
+
   async function checkStoryTitleExistsInDatabase(title: string) {
     const clean = cleanFactoryTitleCandidate(title);
     if (!clean) return false;
@@ -403,11 +602,15 @@ export function useAIFactoryPanelController() {
     }
 
     const rows = Array.isArray(result.data) ? result.data : [];
-    return rows.some(
+    const existsInStories = rows.some(
       (row: any) =>
         normalizeFactoryTitleForCompare(row?.title) ===
         normalizeFactoryTitleForCompare(clean),
     );
+
+    if (existsInStories) return true;
+
+    return checkStoryTitleExistsInFactoryHistory(clean);
   }
 
   async function resolveUniqueStoryTitleForInsert(params: {
@@ -937,9 +1140,11 @@ export function useAIFactoryPanelController() {
     }
 
     const stories = (result.data ?? []) as ExistingStory[];
-    const motifItems = extractMotifRegistryItemsFromStories(stories);
+    const historyStories = await scanFactoryHistoryStories();
+    const avoidSourceStories = [...historyStories, ...stories] as ExistingStory[];
+    const motifItems = extractMotifRegistryItemsFromStories(avoidSourceStories);
     const avoid = {
-      ...buildAvoidLibrary(stories),
+      ...buildAvoidLibrary(avoidSourceStories),
       motifFingerprints: motifItems,
       motifTexts: motifItems.map((item) => item.motifText).filter(Boolean),
     };
@@ -948,7 +1153,7 @@ export function useAIFactoryPanelController() {
     setAvoidLibrary(avoid);
 
     addLog(
-      `Đã quét ${stories.length} truyện. Gom ${avoid.titles.length} title, ${avoid.motifs.length} motif, ${motifItems.length} motif DNA.`,
+      `Đã quét ${stories.length} truyện hiện có + ${historyStories.length} history. Gom ${avoid.titles.length} title, ${avoid.motifs.length} motif, ${motifItems.length} motif DNA.`,
       "success",
     );
 
@@ -1291,7 +1496,23 @@ Yêu cầu:
       );
     }
 
-    return result.data as { id: string; title: string; slug: string };
+    const insertedStory = result.data as { id: string; title: string; slug: string };
+
+    await recordFactoryHistory({
+      story: insertedStory,
+      storyDescription: params.parsed.storyDescription,
+      storyDna,
+      storyMemory: params.technicalReport,
+      genre: params.genre,
+      heroine: params.heroine,
+      config: params.config,
+      factoryRunId: params.factoryRunId,
+      storyIndex: params.storyIndex,
+      targetChapters: params.targetChapters,
+      storySeed: params.storySeed,
+    });
+
+    return insertedStory;
   }
 
   async function insertChapterDraft(params: {
