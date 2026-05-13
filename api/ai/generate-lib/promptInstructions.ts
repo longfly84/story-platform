@@ -757,6 +757,32 @@ LUẬT VĂN PHONG RÕ RÀNG:
 `.trim()
 }
 
+
+export function getChapterAdvancementInstruction(payload: NormalizedGeneratePayload) {
+  return `
+CHAPTER ADVANCEMENT LOCK:
+- Mỗi chương phải là một bước tiến mới của truyện, không phải viết lại cùng một sự kiện bằng câu chữ khác.
+- Recap chương trước tối đa 2 câu. Không được mở chương bằng cách kể lại toàn bộ file/email/vật chứng cũ như mới phát hiện.
+- Nếu chương trước đã diễn ra ở sân bay/hầm xe/phòng VIP/phòng chờ, chương này phải đổi cảnh hoặc đổi mục tiêu rõ rệt.
+- Bắt buộc có ít nhất 1 hành động mới không xuất hiện ở chương trước:
+  + đến địa điểm mới
+  + gặp nhân chứng mới
+  + kiểm chứng vật chứng ở nơi khác
+  + bị phản diện cắt một quyền lợi thật
+  + đối chất trực tiếp
+  + bước vào phòng họp/công ty/tòa/bệnh viện/trường học
+  + công khai một phần bằng chứng
+  + bị lộ một thông tin bất lợi thật
+- Cấm vòng lặp chương:
+  vật chứng cũ → gọi luật sư → bị đe dọa qua điện thoại → nhắc metadata → nữ chính nói sẽ thu thập → kết "trò chơi mới bắt đầu".
+- Cấm nhiều chương liên tiếp chỉ xoay quanh cùng 1 file PDF, cùng 1 thẻ nhớ, cùng 1 phong thư, cùng 1 metadata.
+- Nếu vẫn cần dùng vật chứng cũ, nó chỉ được làm nền; chương phải có hành động mới hoặc hậu quả mới.
+- Mỗi chương chỉ có tối đa 1 vật chứng chính + 1 vật chứng phụ.
+- Mỗi chương phải có một NEW EVIDENCE STEP: vật chứng cũ được kiểm chứng ở nguồn mới, lộ người mới, lộ thời điểm mới, hoặc dẫn tới hậu quả mới. Nếu không có bước mới, chương bị coi là lặp.
+- Chương này phải trả lời câu hỏi: "Sau chương này, tình thế đã thay đổi ở điểm nào?"
+`.trim()
+}
+
 export function getProgressionQualityInstruction() {
   return `
 PROGRESSION QUALITY LOCK:
