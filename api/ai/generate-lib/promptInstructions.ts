@@ -576,202 +576,184 @@ Quy tắc dùng context:
 `.trim()
 }
 
+function getTargetPhase(params: { chapter: number; target: number }) {
+  const { chapter, target } = params
+  if (target <= 0) return 'unknown'
+  if (chapter <= 1) return 'opening'
+  if (chapter >= target) return 'final'
+  const progress = chapter / target
+  if (progress <= 0.22) return 'opening'
+  if (progress <= 0.48) return 'escalation'
+  if (progress <= 0.72) return 'midpoint'
+  if (progress <= 0.9) return 'preFinal'
+  return 'finalRun'
+}
+
+function getTargetMilestone(params: { chapter: number; target: number }) {
+  const { chapter, target } = params
+  const phase = getTargetPhase(params)
+  const label = target > 0 ? `Chương ${chapter}/${target}` : `Chương ${chapter}`
+
+  if (phase === 'opening') {
+    return `${label} — PHA MỞ HOOK: mở cú ép mạnh, cài vật chứng/trục xung đột, cho nữ chính phản đòn nhỏ nhìn thấy được.`
+  }
+  if (phase === 'escalation') {
+    return `${label} — PHA LEO THANG: hậu quả lan sang đời sống/người thân/công việc, đổi chiến trường, phản diện thắng một nhịp thật.`
+  }
+  if (phase === 'midpoint') {
+    return `${label} — PHA ĐẢO CHIỀU GIỮA TRUYỆN: nữ chính không chỉ xác minh nữa mà bắt đầu đặt bẫy/chủ động ép quy trình.`
+  }
+  if (phase === 'preFinal' || phase === 'finalRun') {
+    return `${label} — PHA DỒN CAO TRÀO: gom đầu mối, buộc người đứng giữa chọn phe, trả payoff từng phần, không mở tuyến mới lớn.`
+  }
+  if (phase === 'final') {
+    return `${label} — PHA KẾT: trả đủ bằng chứng, cảm xúc và hậu quả; phản diện phải trả giá rõ.`
+  }
+  return label
+}
+
 export function getChapterMissionInstruction(payload: NormalizedGeneratePayload) {
   const chapter = Math.max(1, Math.floor(payload.nextChapterNumber || 1))
-  const target = payload.chapterTarget > 0 ? payload.chapterTarget : 0
+  const target = payload.chapterTarget > 0 ? Math.floor(payload.chapterTarget) : 0
+  const phase = getTargetPhase({ chapter, target })
+  const milestone = getTargetMilestone({ chapter, target })
   const isFinal = target > 0 && chapter >= target
-
-  if (isFinal) {
-    return `
-CHAPTER MISSION LOCK:
-- Đây là chương cuối hoặc gần cuối theo target ${target}.
-- Nhiệm vụ chương này: trả payoff chính, công khai sự thật quan trọng, buộc phản diện trả giá rõ ràng.
-- Không được mở thêm quá nhiều bí mật mới nếu không có kết.
-- Có thể giữ một dư âm nhỏ, nhưng mâu thuẫn chính phải được giải quyết.
-`.trim()
-  }
+  const isNearFinal = target > 0 && chapter >= Math.max(1, target - 1)
 
   if (chapter === 1) {
     return `
-CHAPTER MISSION LOCK:
-- Đây là Chương 1.
-- Nhiệm vụ chương này: mở biến cố chính trong 3 đoạn đầu, giới thiệu nữ chính, áp lực chính, vật chứng chủ đạo và cái giá nếu cô thua.
-- Trong chương 1 phải có một cú phản đòn nhỏ có kết quả nhìn thấy được: hoãn ký, khóa/giữ vật chứng, buộc người kia mở lịch sử, khiến nhóm chat/căn phòng im, hoặc khiến một người trung lập đổi thái độ.
-- Không được giải thích toàn bộ âm mưu.
-- Không được cho nữ chính thắng sạch, nhưng không được để cô chỉ chịu nhục rồi hứa tìm sự thật.
+CHAPTER MISSION LOCK — TARGET-AWARE:
+- ${milestone}
+- 150 chữ đầu phải kéo người đọc: có lời buộc tội/đòn ép/vật chứng/hậu quả cụ thể, không mở bằng tả cảnh dài.
+- Trong 3 đoạn đầu phải rõ: ai ép nữ chính, ép bằng gì, nếu thua cô mất gì.
+- Trong chương 1 phải có một cú phản đòn nhỏ có kết quả nhìn thấy được: giữ được vật chứng, bắt đối phương nói hớ, buộc quy trình dừng, khiến một người đổi thái độ, hoặc làm phản diện mất nhịp.
+- Không giải thích toàn bộ âm mưu. Không thắng sạch. Không để nữ chính chỉ chịu nhục rồi hứa điều tra.
+- Kết chương phải có việc phải làm ngay ở chương 2, không kết bằng câu “mọi chuyện mới bắt đầu”.
 `.trim()
   }
 
-  if (chapter === 2) {
+  if (isFinal) {
     return `
-CHAPTER MISSION LOCK:
-- Đây là Chương 2.
-- Nhiệm vụ chương này: mở một hậu quả đời sống mới từ biến cố Chương 1, hoặc gặp người/địa điểm có thể xác minh vật chứng.
-- Bắt buộc có một evidence step mới: nguồn in, người giao ca, camera hành lang, người nhận tiền, bản gốc, nhân chứng, tin nhắn gốc, danh sách giao nhận... Không được chỉ nhắc lại vật chứng cũ bằng tên khác.
-- Phải có ít nhất một cảnh mới không trùng địa điểm chính của Chương 1.
-- Không được viết lại cảnh phát hiện vật chứng như mới xảy ra lần đầu.
-- Không được chỉ ngồi một chỗ gọi điện/đọc lại file.
+CHAPTER MISSION LOCK — TARGET-AWARE:
+- ${milestone}
+- Đây là chương cuối theo target ${target}. Phải đóng mâu thuẫn chính, không viết kiểu còn thiếu chương.
+- Trả payoff chính: ai dựng chuyện, dựng bằng cách nào, động cơ là gì, nữ chính lấy lại điều gì.
+- Phản diện phải chịu hậu quả rõ: mất quyền, mất đồng minh, bị công khai, bị pháp lý/nội bộ xử lý, hoặc bị buộc nhận trách nhiệm.
+- Không mở thêm tuyến bí mật lớn. Nếu có dư âm, chỉ là dư vị sau chiến thắng, không phải vụ mới.
 `.trim()
   }
 
-  if (chapter === 3) {
+  if (isNearFinal) {
     return `
-CHAPTER MISSION LOCK:
-- Đây là Chương 3.
-- Nhiệm vụ chương này: phản diện phản công thật, khiến nữ chính mất một lợi thế hoặc bị đẩy vào thế khó mới.
-- Phản công phải có hậu quả cụ thể: tài khoản bị khóa, quyền vào công ty bị chặn, con/người thân bị đe dọa, hợp đồng bị lộ, cổ phần bị phong tỏa, trường học/bệnh viện/công ty bị tác động.
-- Chương 3 phải có một cú dopamine ngược: nữ chính mất một thứ, nhưng đổi lại lấy được tên người/nguồn gốc/địa điểm tiếp theo.
-- Không được chỉ là lời dọa qua điện thoại.
+CHAPTER MISSION LOCK — TARGET-AWARE:
+- ${milestone}
+- Đây là chương sát cuối theo target ${target}. Nhiệm vụ là dồn tất cả về sân khấu đối chất/payoff cuối.
+- Không thêm vật chứng mới lạc tuyến. Chỉ gom và đảo nghĩa những gì đã cài.
+- Phải buộc phản diện hoặc đồng minh của phản diện lộ một lỗi không thể chối.
+- Cuối chương phải mở thẳng vào cảnh kết: cuộc họp, buổi công bố, đối chất gia tộc/công ty/trường/hội đồng.
 `.trim()
   }
 
-  if (chapter === 4) {
+  if (phase === 'opening') {
     return `
-CHAPTER MISSION LOCK:
-- Đây là Chương 4.
-- Nhiệm vụ chương này: đổi chiến trường và dùng một bằng chứng/nhân chứng mới, không được xoay tiếp quanh cùng ảnh/file/phiếu đã nói ở chương 2.
-- Phải chuyển sang một địa điểm/cảnh hành động mới: văn phòng luật, bệnh viện, trường học, phòng họp hội đồng, công ty PR, nhà gia tộc, hầm xe, trụ sở tập đoàn, phòng in, kho lưu trữ, hoặc nơi giữ nhân chứng.
-- Tiêu đề Chương 4 không được trùng hoặc gần trùng tiêu đề Chương 2.
-- Nữ chính phải tự đưa ra quyết định nguy hiểm hoặc chiến thuật mới, tạo state change thật.
+CHAPTER MISSION LOCK — TARGET-AWARE:
+- ${milestone}
+- Mỗi chương đầu phải có cú kéo mới, không được chỉ nhắc lại biến cố chương 1.
+- Chương này phải mở một hậu quả đời sống hoặc một đường xác minh mới, nhưng chỉ chọn 1 vật chứng chính + 1 vật chứng phụ.
+- Phải đổi cảnh hoặc đổi mục tiêu so với chương trước: người thân, trường học, công ty, nhà gia tộc, bệnh viện, hợp đồng, nhân chứng, hoặc nơi giữ vật chứng.
+- Không được chỉ ngồi gọi điện/đọc file/đợi kiểm tra.
 `.trim()
   }
 
-  if (chapter === 5) {
+  if (phase === 'escalation') {
     return `
-CHAPTER MISSION LOCK:
-- Đây là Chương 5.
-- Nhiệm vụ chương này: đảo chiều đầu tiên hoặc vả mặt công khai một phần.
-- Nữ chính phải dùng một bằng chứng đã cài từ trước để tạo kết quả cụ thể.
-- Không kết liễu toàn bộ nếu target còn dài, nhưng phải có một thắng lợi nhỏ rõ ràng.
+CHAPTER MISSION LOCK — TARGET-AWARE:
+- ${milestone}
+- Phản diện phải gây thiệt hại thật, không chỉ dọa: người thân bị kéo vào, quyền bị chặn, nhân chứng bị ép đổi lời, bằng chứng bị tráo, người trung lập nghiêng phe.
+- Nữ chính phải hành động chủ động trong cảnh: ép ký biên bản, giữ bản gốc, đặt câu hỏi bẫy, cố tình chịu một thiệt hại nhỏ để đổi lấy sơ hở.
+- Chương phải có ít nhất một state change ngay trong cảnh, không chỉ thêm đầu mối.
+- Tránh lặp chuỗi kỹ thuật email/header/log/metadata/tài khoản nếu chương trước đã dùng.
 `.trim()
   }
 
-  const missionByChapter: Record<number, string> = {
-    6: 'mở hậu quả trả đũa của phản diện sau cú đảo chiều đầu tiên; nữ chính mất một quyền thật nhưng giữ được một người hoặc một vật chứng sống.',
-    7: 'đổi chiến trường sang nơi có người thật chịu thiệt; kéo một nhân chứng né tránh ra ánh sáng bằng hành động cụ thể, không chỉ bằng metadata.',
-    8: 'cho phản diện tự lộ sơ hở trong một cảnh công khai hoặc nửa công khai; nữ chính không thắng sạch nhưng khiến một quyết định bất lợi bị treo.',
-    9: 'đẩy vào điểm giữa muộn: người từng trung lập buộc phải chọn phe; nữ chính đặt bẫy nhỏ để kiểm chứng ai đang nói dối.',
-    10: 'mini-payoff lớn: công khai một phần bằng chứng đã cài từ các chương trước, làm phản diện mất đồng minh/quyền truy cập/danh nghĩa.',
-    11: 'phản diện phản công bằng nước cờ nặng nhất trước cuối truyện; có thiệt hại thật về gia đình, công ty, quyền nuôi con, cổ phần hoặc danh dự.',
-    12: 'nữ chính chuyển từ phòng thủ sang tấn công có chuẩn bị; gọi đúng người, đúng địa điểm, đúng thời điểm để khóa đường chối của đối phương.',
-    13: 'tiền cao trào: gom các đầu mối quan trọng thành một cuộc đối chất; không mở thêm tuyến mới ngoài một twist đã được cài trước.',
-    14: 'cao trào: bắt phản diện trả lời trước đám đông/người có quyền; trả ít nhất 2 payoff đã cài, làm thế lực che chắn phản diện lung lay.',
-    15: 'kết truyện: giải quyết mâu thuẫn chính, buộc phản diện trả giá rõ, trả lại quyền/danh dự/người thân cho nữ chính; chỉ giữ dư âm nhỏ, không mở vụ án mới.',
-  }
-
-  const mission = missionByChapter[chapter]
-  if (mission) {
+  if (phase === 'midpoint') {
     return `
-CHAPTER MISSION LOCK:
-- Đây là Chương ${chapter}${target > 0 ? `/${target}` : ''}.
-- Nhiệm vụ chương này: ${mission}
-- Không được mở chương bằng dòng tóm tắt kiểu “Hai câu tóm tắt nhanh”, “Tóm tắt chương trước”, hoặc bất kỳ lời meta nào.
-- Không được chỉ thêm file/email/camera mới rồi kết bằng hứa kiểm tra. Phải có cảnh người thật đối chất, mất mát, đổi phe, hoặc trả giá ngay trong chương.
-- Cuối chương phải có một state change đo được: quyền bị trả/khóa, người đổi lời, quyết định bị hủy/treo, phản diện bị gọi tên, hoặc nữ chính giành được quyền chủ động kế tiếp.
+CHAPTER MISSION LOCK — TARGET-AWARE:
+- ${milestone}
+- Đây là đoạn giữa truyện, phải có đảo chiều hoặc bẫy chủ động. Nữ chính không còn chỉ đi xác minh.
+- Một bằng chứng cũ phải đổi nghĩa, hoặc một nhân vật đứng giữa phải bị buộc chọn phe.
+- Phản diện phải phản ứng có cá tính: ra mặt, ép điều kiện, đe dọa có giá, hoặc tự lộ vì nóng vội.
+- Chương phải có dopamine rõ: người đọc thấy thế trận đổi, không chỉ thấy thêm dữ liệu.
 `.trim()
   }
 
   return `
-CHAPTER MISSION LOCK:
-- Đây là Chương ${chapter}.
-- Nhiệm vụ chương này: mở một bước tiến mới trong mạch truyện, không lặp lại nhiệm vụ của chương trước.
-- Bắt buộc có state change: sau chương này, vị thế nữ chính, vị thế phản diện, bằng chứng, hoặc dư luận phải thay đổi thật.
-- Không được mở bằng recap/meta. Không viết “Hai câu tóm tắt nhanh”, “Ở chương trước”, “Tóm lại”. Hãy nối thẳng bằng hành động hiện tại.
+CHAPTER MISSION LOCK — TARGET-AWARE:
+- ${milestone}
+- Giai đoạn này phải dồn về payoff: gom đầu mối, đối chất, buộc phản diện/đồng minh nói sai, trả một phần công bằng cho người bị hại.
+- Không mở thêm phe mới/vụ mới nếu target còn ít chương.
+- Mỗi chương phải trả ít nhất một điểm đã cài: tên người, động cơ, bản gốc, nhân chứng, quyền bị lấy lại, hoặc đồng minh phản diện lung lay.
+- Cuối chương phải đẩy thẳng sang cao trào kế tiếp bằng hành động cụ thể.
 `.trim()
 }
-
-
 
 export function getLongRunPacingInstruction(payload: NormalizedGeneratePayload) {
   const chapter = Math.max(1, Math.floor(Number(payload.nextChapterNumber || 1)))
   const target = Math.max(0, Math.floor(Number(payload.chapterTarget || 0)))
-  const progress = target > 0 ? chapter / target : 0
+  const phase = getTargetPhase({ chapter, target })
+  const milestone = getTargetMilestone({ chapter, target })
 
-  let phase = 'mở truyện'
-  let phaseRule = `
-- Giai đoạn mở truyện: dựng cú vu oan/cú ép đầu tiên, vật chứng trung tâm và cái giá nếu nữ chính thua.
-- Không xả toàn bộ âm mưu, chỉ cho một cú phản đòn nhỏ đủ gây dopamine.
-- Kết chương phải để lại việc cần làm ngay, không chỉ để lại cảm xúc.`
+  const targetShape = target > 0
+    ? `Truyện này được khóa target ${target} chương. Không được viết như mặc định 15 chương. Mọi nhịp mở - leo thang - đảo chiều - cao trào - kết phải nén/giãn theo đúng target ${target}.`
+    : `Chưa có target rõ. Vẫn phải tự giữ nhịp mở - leo thang - đảo chiều - payoff, không kéo dài bằng thủ tục.`
 
-  if (target > 0 && progress >= 0.8) {
-    phase = 'cao trào / payoff cuối'
-    phaseRule = `
-- Giai đoạn cao trào: trả các bằng chứng đã cài, buộc phản diện mất quyền/lộ mặt/trả giá cụ thể.
-- Không mở thêm tuyến bí mật lớn nếu không trả được trong 1–2 chương sau.
-- Mỗi chương phải có ít nhất một payoff công khai: người đổi phe, nhóm/căn phòng quay chiều, quyết định bị hủy, phản diện bị gọi tên, tài khoản/hợp đồng/quyền lực bị khóa.
-- Không kéo dài bằng việc “sắp công bố”, “đợi kiểm tra”, “ngày mai có kết quả” quá một lần.`
-  } else if (target > 0 && progress >= 0.55) {
-    phase = 'đẩy ngược / phản công lớn'
-    phaseRule = `
-- Giai đoạn đẩy ngược: nữ chính không chỉ đi xác minh nữa; cô phải chủ động đặt bẫy hoặc công khai một phần chứng cứ.
-- Phản diện phải trả đòn bằng hậu quả thật, nhưng mỗi lần trả đòn cũng để lại sơ hở mới.
-- Không viết thêm chương chỉ gồm đi lấy thêm header/metadata/camera. Nếu cần dữ liệu kỹ thuật, phải gắn với cảnh người thật: bị chặn cửa, nhân viên khai thật, người thân bị kéo vào, hội đồng đổi thái độ.
-- Cứ 2 chương phải có một cú vả mặt nhỏ hoặc một quyết định chính thức đổi chiều.`
-  } else if (target > 0 && progress >= 0.25) {
-    phase = 'leo thang giữa truyện'
-    phaseRule = `
-- Giai đoạn giữa truyện: mở rộng hậu quả và đổi chiến trường, không lặp lại cú vu oan ban đầu.
-- Mỗi chương phải chọn một trong ba việc: phản diện đánh vào đời sống thật, nữ chính kéo ra nhân chứng mới, hoặc một người trung lập đổi phe.
-- Không để nữ chính chỉ “thu thập thêm” 3 chương liên tiếp. Phải có ít nhất một hành động khiến đối phương mất thế ngay trong cảnh.
-- Địa điểm nên luân phiên: nhà/gia tộc → công ty/trường/bệnh viện → nơi giữ vật chứng/nhân chứng → cảnh công khai.`
-  }
-
-  const milestone = target > 0
-    ? `- Vị trí hiện tại: chương ${chapter}/${target}, pha: ${phase}.`
-    : `- Vị trí hiện tại: chương ${chapter}, pha suy luận: ${phase}.`
+  const phaseRule = phase === 'opening'
+    ? `
+- Pha mở: hook phải cực nhanh. Mở bằng biến cố, lời ép, vật chứng hoặc hậu quả; không tả không khí quá 2 câu liên tiếp.
+- Mỗi chương đầu phải có một cú trả đũa nhỏ hoặc cú chặn nhỏ, để độc giả thấy nữ chính không chỉ chịu trận.
+- Không xả âm mưu, chỉ cài 1–2 chi tiết lệch đủ tò mò.`
+    : phase === 'escalation'
+      ? `
+- Pha leo thang: phản diện phải đánh vào đời sống thật, không chỉ gửi tin nhắn dọa.
+- Đổi chiến trường rõ: nếu chương trước là giấy/email/log, chương này ưu tiên người thật, biên nhận, lời khai, gia đình, trường học, công ty, hiện trường.
+- Không để 2 chương liên tiếp cùng kết bằng “tạm hoãn/tạm khóa”.`
+      : phase === 'midpoint'
+        ? `
+- Pha giữa truyện: bắt buộc có đảo chiều. Nữ chính phải chủ động dựng bẫy hoặc ép đối phương tự lộ.
+- Phải có một thắng lợi nhỏ hoặc một mất mát lớn đổi lấy manh mối lớn.
+- Người trung lập không được xuất hiện quá tiện; nữ chính phải tạo điều kiện khiến họ không thể làm ngơ.`
+        : phase === 'final' || phase === 'finalRun' || phase === 'preFinal'
+          ? `
+- Pha cao trào/kết: gom và trả, không mở rộng.
+- Mỗi chương phải trả một payoff rõ, không chỉ “sắp có kết quả”.
+- Phản diện phải mất thứ cụ thể: quyền nói dối, quyền thao túng, đồng minh, vị trí, hợp đồng, hoặc danh dự.`
+          : `
+- Giữ nhịp mỗi chương có hook - áp lực - hành động - state change - hook cuối.`
 
   return `
-LONG-RUN PACING LOCK — CHỐNG MỎI TRUYỆN 10–15 CHƯƠNG:
-${milestone}
+LONG-RUN PACING LOCK — RANDOM TARGET 8–20 CHƯƠNG:
+- ${targetShape}
+- Vị trí hiện tại: ${milestone}
 ${phaseRule}
 
-Luật chống lặp dài hơi:
-- BẢN ĐỌC tuyệt đối không được mở bằng câu meta/tóm tắt như “Hai câu tóm tắt nhanh”, “Tóm tắt nhanh”, “Ở chương trước”, “Sau chuyện vừa rồi”. Vào thẳng cảnh mới bằng hành động, địa điểm, lời nói hoặc hậu quả.
-- Không dùng cùng công thức chương quá 2 lần trong cả truyện: bị tố → kiểm tra giấy/file → phát hiện metadata/header → tin nhắn đe dọa.
-- Không để 3 chương liên tiếp đều kết bằng “có thêm một đầu mối”. Phải xen kẽ mất mát thật, thắng lợi nhỏ, người đổi phe, hoặc phản diện bị ép ra mặt.
-- Không để vật chứng kỹ thuật chiếm hết truyện. Vật chứng phải kéo theo con người: ai ký, ai nói dối, ai bị ép, ai hưởng lợi, ai chịu thiệt.
-- Mỗi chương chỉ cần 1 vật chứng chính. Nếu đã có quá nhiều giấy/email/log/camera, chương mới phải ưu tiên đối chất trực tiếp hoặc hậu quả đời sống.
-- Cứ mỗi 4 chương phải có một mini-payoff rõ: công khai một phần sự thật, lấy lại một quyền, làm phản diện mất đồng minh, hoặc khiến một quyết định bất lợi bị hủy.
-- Cảnh cuối phải ném độc giả sang chương sau bằng hành động cụ thể: một người đến, một cửa bị khóa, một hồ sơ được đưa ra, một cuộc họp bị ép diễn ra, một nhân chứng đổi lời. Không kết bằng câu quyết tâm.
+LUẬT GIỮ CHÂN ĐỘC GIẢ TỪNG CHƯƠNG:
+- 150 chữ đầu phải có câu kéo mắt: ai đó đã khóa, ném, đọc lớn, gửi nhầm, ép ký, ép xin lỗi, chặn cửa, công bố, gọi tên nữ chính trước đám đông.
+- Trong 150 chữ đầu phải rõ “nếu nữ chính thua thì mất gì”: con, quyền, tiền, hợp đồng, danh dự, công việc, người thân, hoặc cơ hội sống còn.
+- Cứ 600–900 chữ phải có một cú nhích thế trận: đối phương ép thêm, bằng chứng lệch, người đổi thái độ, nữ chính hỏi trúng điểm yếu, hoặc hậu quả rơi xuống.
+- Mỗi chương phải có state change thật ở cuối. Không tính các câu kiểu “tôi biết mọi chuyện chưa kết thúc”, “tôi sẽ điều tra tiếp”.
 
-HARD LOCK — CHỐNG TRƯỢT VỀ LOG/HEADER/TÀI KHOẢN:
-- Nếu chương trước hoặc đoạn truyện gần nhất đã dùng một trong các thứ: email, header, metadata, log, IP, user, USB, tài khoản bị khóa, máy in nội bộ, forward nhầm, hệ thống phụ huynh, quyền truy cập, thì chương hiện tại KHÔNG được tiếp tục dùng cùng tuyến kỹ thuật đó làm vật chứng chính.
-- Sau một chương có vật chứng kỹ thuật, chương kế tiếp bắt buộc đổi sang ít nhất một trong các hướng đời sống: nhân chứng sống đổi lời, giấy tay/biên nhận thật, người giao đồ, bảo vệ/cô giáo/tài xế bị ép, cuộc đối chất trực tiếp, người thân mất niềm tin, phản diện tự lộ qua lời nói, hoặc hậu quả cụ thể lên con/người yếu thế.
-- Không để các chương liên tiếp cùng nhịp: phát hiện file/log → kiểm tra user/header → khóa tài khoản → chờ xác minh. Nhịp này chỉ được dùng một lần trong cả truyện.
-- Không được dùng “tài khoản bị khóa” như hậu quả mặc định. Nếu đã có một quyền bị khóa, chương sau phải đổi hậu quả: nhân chứng biến mất, người thân bị ép ký, đồ vật gốc bị tráo, cô giáo/bảo vệ bị đổ tội, hoặc nữ chính bị tước quyền nói trước đám đông.
-- Nếu cần điều tra kỹ thuật, chỉ nhắc rất ngắn ở nền. Cảnh chính vẫn phải là người thật đối đầu người thật, có lời nói, áp lực, lựa chọn và cái giá rõ ràng.
+LUẬT CHỐNG LẶP MOTIF DÀI HƠI:
+- Cả truyện chỉ chọn 1–2 hệ vật chứng chính. Không gom email + header + log + USB + tài khoản ẩn + camera + metadata trong cùng một truyện nếu không thật cần.
+- Nếu chương trước dùng kỹ thuật số, chương sau phải chuyển sang người sống/vật chứng đời thường/đối chất/hậu quả gia đình.
+- Không để mỗi chương đều kết bằng tạm khóa/tạm hoãn/tạm dừng. Phải luân phiên: mất nhân chứng, mất niềm tin, bằng chứng bị tráo, người yếu thế bị ép rút lời, phản diện bị lộ sơ hở, hoặc nữ chính thắng một phần.
+- Không dùng “người lao động nghèo bị ép làm nhân chứng/forward/in giấy” quá 1 lần trong một truyện. Sau đó chuyển sang tầng quyền lực khác: pháp chế, cổ đông, luật sư, phòng dữ liệu, người thân, người có quyền quyết định.
+- Nữ chính không được chương nào cũng “không ký rồi lôi USB/log ra”. Phải đổi cách phản công: im lặng gài bẫy, buộc ký biên bản, để người trung lập tự phát hiện, giả vờ chịu thiệt, ép phản diện nói trước đám đông.
 
-CHỐNG LẶP MOTIF KỸ THUẬT VÀ PHẢN CÔNG:
-- Không dùng cùng lúc quá nhiều vật chứng kỹ thuật trong một truyện. Mỗi truyện chỉ nên chọn 1–2 hệ vật chứng chính, ví dụ: biên nhận + camera, hoặc email + header. Không gom hết email, header, log, USB, tài khoản ẩn, metadata vào nhiều chương liên tiếp.
-- Không để nhiều chương liên tục đều kết bằng “tạm dừng / tạm khóa / tạm hoãn” một quyền lợi. Cần xen kẽ mất mát khác: mất nhân chứng, mất niềm tin của người thân, bằng chứng bị tráo, người yếu thế bị ép rút lời, tài khoản bị khóa, người trung lập bị đe dọa.
-- Motif người lao động nghèo bị ép làm nhân chứng / forward / in giấy chỉ dùng tối đa 1 lần trong một truyện. Sau đó phải chuyển sang tầng quyền lực khác: pháp chế, cổ đông, luật sư, phòng dữ liệu, người thân, ban kiểm soát, trường học, bệnh viện, đối tác.
-- Không để nữ chính luôn phản công bằng kiểu “không ký” rồi lôi USB/log/header ra. Cần đổi cách phản công: có chương nữ chính im lặng gài bẫy, có chương nhờ người trung lập tự phát hiện, có chương cố tình chịu thiệt để ép đối phương tự lộ, có chương dùng nhân chứng sống thay vì vật chứng kỹ thuật.
-`.trim()
-}
-
-
-export function getChapterAdvancementInstruction(payload: NormalizedGeneratePayload) {
-  return `
-CHAPTER ADVANCEMENT LOCK:
-- Mỗi chương phải là một bước tiến mới của truyện, không phải viết lại cùng một sự kiện bằng câu chữ khác.
-- Recap chương trước tối đa 2 câu. Không được mở chương bằng cách kể lại toàn bộ file/email/vật chứng cũ như mới phát hiện.
-- Nếu chương trước đã diễn ra ở sân bay/hầm xe/phòng VIP/phòng chờ, chương này phải đổi cảnh hoặc đổi mục tiêu rõ rệt.
-- Bắt buộc có ít nhất 1 hành động mới không xuất hiện ở chương trước:
-  + đến địa điểm mới
-  + gặp nhân chứng mới
-  + kiểm chứng vật chứng ở nơi khác
-  + bị phản diện cắt một quyền lợi thật
-  + đối chất trực tiếp
-  + bước vào phòng họp/công ty/tòa/bệnh viện/trường học
-  + công khai một phần bằng chứng
-  + bị lộ một thông tin bất lợi thật
-- Cấm vòng lặp chương:
-  vật chứng cũ → gọi luật sư → bị đe dọa qua điện thoại → nhắc metadata → nữ chính nói sẽ thu thập → kết "trò chơi mới bắt đầu".
-- Cấm nhiều chương liên tiếp chỉ xoay quanh cùng 1 file PDF, cùng 1 thẻ nhớ, cùng 1 phong thư, cùng 1 metadata.
-- Nếu vẫn cần dùng vật chứng cũ, nó chỉ được làm nền; chương phải có hành động mới hoặc hậu quả mới.
-- Mỗi chương chỉ có tối đa 1 vật chứng chính + 1 vật chứng phụ.
-- Mỗi chương phải có một NEW EVIDENCE STEP: vật chứng cũ được kiểm chứng ở nguồn mới, lộ người mới, lộ thời điểm mới, hoặc dẫn tới hậu quả mới. Nếu không có bước mới, chương bị coi là lặp.
-- Chương này phải trả lời câu hỏi: "Sau chương này, tình thế đã thay đổi ở điểm nào?"
+LUẬT VĂN PHONG RÕ RÀNG:
+- Ưu tiên câu rõ, cụ thể, có chủ thể - hành động - hậu quả. Không dùng ẩn dụ tối nghĩa để làm đẹp văn.
+- Tránh các hình ảnh mơ hồ kiểu “đường chỉ”, “mồi lửa”, “vết nứt trong lòng”, “dao trong tim” nếu không gắn với hành động cụ thể.
+- Một đoạn văn tốt phải đẩy truyện: gây áp lực, hé vật chứng, đổi thái độ, làm nữ chính hành động, hoặc tạo hook.
+- Không mở bằng recap/meta. Không viết “Hai câu tóm tắt nhanh”, “Tóm tắt chương trước”, “Ở chương trước”.
 `.trim()
 }
 
