@@ -6,7 +6,7 @@ import StoryCard from "@/components/home/StoryCard"
 import HomeAds from "@/components/ads/HomeAds"
 import MainLayout from "@/layouts/MainLayout"
 import { Button } from "@/components/ui/button"
-import { genres, stories } from "@/data/stories"
+import { genres } from "@/data/stories"
 import type { Story } from "@/data/stories"
 import { fetchStoriesFromSupabase, resolveCoverUrl, supabase } from "@/lib/supabase"
 import { getStoryViewCounts } from "@/lib/analytics/viewStats"
@@ -423,8 +423,8 @@ export default function HomePage() {
     }
   }, [])
 
-  const baseStories = remoteStories.length > 0 ? remoteStories : stories
-  const usingRemote = remoteStories.length > 0
+  const baseStories = remoteLoaded ? remoteStories : []
+  const usingRemote = remoteLoaded && remoteStories.length > 0
 
   const filteredStories = useMemo(() => {
     const q = normalizeText(debouncedQuery)
@@ -445,7 +445,7 @@ export default function HomePage() {
     return list
   }, [baseStories, debouncedQuery, selectedGenre, sortMode])
 
-  const featured = filteredStories[0] ?? baseStories[0]
+  const featured = remoteLoaded ? (filteredStories[0] ?? baseStories[0]) : undefined
 
   const hot = useMemo(() => {
     return [...filteredStories]
