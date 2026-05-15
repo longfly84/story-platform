@@ -100,16 +100,34 @@ export default function MainLayout({
 
           <div className="ml-auto flex min-w-0 items-center justify-end gap-2">
             {!isAdminPath ? (
-              headerRight ?? (
-                <Input
-                  placeholder="Tìm kiếm (tên truyện hoặc tác giả)…"
-                  className={`hidden w-[260px] ${
-                    theme === 'dark'
-                      ? 'border-zinc-800/80 bg-zinc-950/30 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/20'
-                      : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-300/20'
-                  } lg:block`}
-                />
-              )
+              <>
+                {headerRight ?? (
+                  <Input
+                    placeholder="Tìm kiếm (tên truyện hoặc tác giả)…"
+                    className={`hidden w-[260px] ${
+                      theme === 'dark'
+                        ? 'border-zinc-800/80 bg-zinc-950/30 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/20'
+                        : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-300/20'
+                    } lg:block`}
+                  />
+                )}
+
+                <div className="hidden items-center gap-2 sm:flex">
+                  <Link
+                    to="/login"
+                    className="rounded-lg border border-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-100 hover:border-amber-300 hover:text-amber-300"
+                  >
+                    Đăng nhập
+                  </Link>
+
+                  <Link
+                    to="/register"
+                    className="rounded-lg bg-amber-300 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-200"
+                  >
+                    Đăng ký
+                  </Link>
+                </div>
+              </>
             ) : null}
 
             <div className="hidden sm:block">
@@ -121,6 +139,24 @@ export default function MainLayout({
             <MobileMenuButton />
           </div>
         </div>
+
+        {!isAdminPath ? (
+          <div className="mx-auto flex max-w-7xl items-center justify-end gap-2 px-3 pb-3 sm:hidden">
+            <Link
+              to="/login"
+              className="rounded-lg border border-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-100 hover:border-amber-300 hover:text-amber-300"
+            >
+              Đăng nhập
+            </Link>
+
+            <Link
+              to="/register"
+              className="rounded-lg bg-amber-300 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-200"
+            >
+              Đăng ký
+            </Link>
+          </div>
+        ) : null}
 
         {headerBottom ? (
           <div className="mx-auto max-w-7xl px-4 pb-4 sm:hidden">
@@ -162,7 +198,7 @@ export default function MainLayout({
                     // ignore
                   }
 
-                  window.location.href = '/login'
+                  window.location.href = '/admin/login'
                 }}
                 className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-100"
               >
@@ -206,6 +242,14 @@ export default function MainLayout({
               <a href="/#chapter-count" className="text-zinc-300 hover:text-zinc-100">
                 Theo số chương
               </a>
+
+              <Link to="/login" className="text-zinc-300 hover:text-zinc-100">
+                Đăng nhập
+              </Link>
+
+              <Link to="/register" className="text-zinc-300 hover:text-zinc-100">
+                Đăng ký
+              </Link>
             </nav>
 
             <div className="mt-2 text-sm text-zinc-500 sm:mt-0">

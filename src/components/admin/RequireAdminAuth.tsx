@@ -45,7 +45,7 @@ export default function RequireAdminAuth() {
   }
 
   if (!isAuthed) {
-    return <Navigate to="/login" replace state={{ from: location }} />
+    return <Navigate to="/admin/login" replace state={{ from: location }} />
   }
 
   return <Outlet />

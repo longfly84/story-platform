@@ -1,10 +1,13 @@
-import { BrowserRouter, Route } from 'react-router-dom'
-import { Routes } from 'react-router'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 import HomePage from '@/pages/HomePage'
 import ReaderPage from '@/pages/ReaderPage'
 import StoryDetailPage from '@/pages/StoryDetailPage'
 import NotFoundPage from '@/pages/NotFoundPage'
+
+import LoginPage from '@/pages/LoginPage'
+import RegisterPage from '@/pages/RegisterPage'
+import AdminLoginPage from '@/pages/AdminLoginPage'
 
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 import AdminContentPage from '@/pages/admin/AdminContentPage'
@@ -20,7 +23,6 @@ import AIFactoryResultsPage from '@/pages/admin/AIFactoryResultsPage'
 import AdminFacebookPostsPage from '@/pages/admin/AdminFacebookPostsPage'
 
 import AdminEditStoryPage from '@/pages/AdminEditStoryPage'
-import LoginPage from '@/pages/LoginPage'
 import RequireAdminAuth from '@/components/admin/RequireAdminAuth'
 import AnalyticsRouteTracker from '@/components/AnalyticsRouteTracker'
 
@@ -34,7 +36,13 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/truyen/:slug" element={<StoryDetailPage />} />
         <Route path="/doc-truyen/:slug/:chapter" element={<ReaderPage />} />
+
+        {/* User auth routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Admin auth route */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
 
         {/* Protected admin routes */}
         <Route element={<RequireAdminAuth />}>
@@ -45,7 +53,7 @@ export default function App() {
 
           {/* Giữ route cũ để không gãy link cũ nếu trước đây có dùng */}
           <Route path="/admin/stories/:id/edit" element={<AdminEditStoryPage />} />
-          
+
           <Route path="/admin/content/chapters/new" element={<AdminCreateChapterPage />} />
           <Route path="/admin/content/categories" element={<AdminCategoriesPage />} />
           <Route path="/admin/content/comments" element={<AdminCommentsPage />} />

@@ -110,6 +110,23 @@ export async function signInWithEmail(email: string, password: string) {
   }
 }
 
+export async function signUpWithEmail(email: string, password: string) {
+  try {
+    const res = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`
+      }
+    })
+
+    return res
+  } catch (e) {
+    console.warn('signUpWithEmail failed', e)
+    throw e
+  }
+}
+
 export async function signOut() {
   try {
     await supabase.auth.signOut()

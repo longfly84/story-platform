@@ -1,40 +1,51 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import MainLayout from '@/layouts/MainLayout'
-import { signInWithEmail } from '@/lib/supabase'
+import { signUpWithEmail } from '@/lib/supabase'
 
-type LocationState = {
-  from?: string
-}
-
-export default function LoginPage() {
+export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
 
   const navigate = useNavigate()
-  const location = useLocation()
-
-  const state = location.state as LocationState | null
-  const redirectTo = state?.from || '/'
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setErrorMsg('')
+    setSuccessMsg('')
+
+    if (password.length < 6) {
+      setErrorMsg('Mật khẩu phải có ít nhất 6 ký tự.')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMsg('Mật khẩu nhập lại không khớp.')
+      return
+    }
+
     setLoading(true)
 
     try {
-      const res = await signInWithEmail(email.trim(), password)
+      const res = await signUpWithEmail(email.trim(), password)
 
       if (res.error) {
         throw res.error
       }
 
-      navigate(redirectTo, { replace: true })
+      if (!res.data.session) {
+        setSuccessMsg('Đăng ký thành công. Hãy kiểm tra email để xác nhận tài khoản.')
+        return
+      }
+
+      navigate('/', { replace: true })
     } catch (err: any) {
-      setErrorMsg(String(err?.message ?? 'Không đăng nhập được.'))
+      setErrorMsg(String(err?.message ?? 'Không đăng ký được.'))
     } finally {
       setLoading(false)
     }
@@ -43,10 +54,10 @@ export default function LoginPage() {
   return (
     <MainLayout>
       <main className="mx-auto max-w-md px-4 py-8">
-        <h1 className="mb-2 text-2xl font-bold text-zinc-100">Đăng nhập</h1>
+        <h1 className="mb-2 text-2xl font-bold text-zinc-100">Đăng ký</h1>
 
         <p className="mb-6 text-sm text-zinc-400">
-          Đăng nhập để theo dõi truyện, lưu lịch sử đọc và tiếp tục đọc dễ hơn.
+          Tạo tài khoản để lưu lịch sử đọc và theo dõi truyện yêu thích.
         </p>
 
         <form onSubmit={handleSubmit} className="grid gap-3">
@@ -66,7 +77,18 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Mật khẩu"
-            autoComplete="current-password"
+            autoComplete="new-password"
+            minLength={6}
+            required
+          />
+
+          <input
+            className="rounded bg-zinc-900/40 p-3 text-zinc-100 outline-none ring-1 ring-zinc-800 focus:ring-amber-300"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Nhập lại mật khẩu"
+            autoComplete="new-password"
             minLength={6}
             required
           />
@@ -77,26 +99,25 @@ export default function LoginPage() {
             </div>
           ) : null}
 
+          {successMsg ? (
+            <div className="rounded bg-emerald-500/10 p-3 text-sm text-emerald-300 ring-1 ring-emerald-500/30">
+              {successMsg}
+            </div>
+          ) : null}
+
           <button
             type="submit"
             disabled={loading}
             className="rounded bg-amber-300 px-4 py-3 font-semibold text-zinc-950 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loading ? 'Đang đăng ký...' : 'Đăng ký'}
           </button>
         </form>
 
         <p className="mt-5 text-sm text-zinc-400">
-          Chưa có tài khoản?{' '}
-          <Link className="font-semibold text-amber-300" to="/register">
-            Đăng ký
-          </Link>
-        </p>
-
-        <p className="mt-3 text-xs text-zinc-600">
-          Quản trị viên?{' '}
-          <Link className="text-zinc-400 hover:text-amber-300" to="/admin/login">
-            Đăng nhập admin
+          Đã có tài khoản?{' '}
+          <Link className="font-semibold text-amber-300" to="/login">
+            Đăng nhập
           </Link>
         </p>
       </main>
