@@ -30,6 +30,9 @@ export type GroupPostDraft = {
   chapterTitle?: string | null
   caption: string
   captionNoLink: string
+  captionCharCount?: number
+  wasTrimmed?: boolean
+  removedCharCount?: number
   commentText: string
   storyUrl: string
   imageUrl: string
@@ -39,6 +42,21 @@ export type GroupPostDraft = {
 }
 
 const STORAGE_KEY = 'story_platform_group_post_drafts_v1'
+
+export const FACEBOOK_POST_LIMIT = 60000
+
+const GROUP_POST_LENGTH_LIMIT: Record<'short' | 'medium' | 'long', number> = {
+  short: 12000,
+  medium: 25000,
+  long: FACEBOOK_POST_LIMIT,
+}
+
+type SafeFacebookPostResult = {
+  text: string
+  charCount: number
+  wasTrimmed: boolean
+  removedCharCount: number
+}
 
 const FACEBOOK_HOOK_KEYWORDS = [
   'chồng',
@@ -114,6 +132,114 @@ function safeText(value: unknown): string {
 function safeId(value: unknown): string {
   if (typeof value === 'string' || typeof value === 'number') return String(value)
   return ''
+}
+
+
+function normalizeFacebookPostText(value: string) {
+  return String(value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim()
+}
+
+function cutAtReadablePoint(text: string, maxLength: number) {
+  if (text.length <= maxLength) return text.trim()
+
+  const hardCut = text.slice(0, maxLength)
+  const minGoodCut = Math.floor(maxLength * 0.7)
+
+  const paragraphCut = hardCut.lastIndexOf('\n\n')
+  if (paragraphCut >= minGoodCut) return hardCut.slice(0, paragraphCut).trim()
+
+  const sentenceMarks = ['. ', '! ', '? ', '.”', '!”', '?”', '。', '！', '？']
+  let sentenceCut = -1
+
+  for (const mark of sentenceMarks) {
+    const index = hardCut.lastIndexOf(mark)
+    if (index > sentenceCut) sentenceCut = index + mark.length
+  }
+
+  if (sentenceCut >= minGoodCut) return hardCut.slice(0, sentenceCut).trim()
+
+  const spaceCut = hardCut.lastIndexOf(' ')
+  if (spaceCut >= minGoodCut) return hardCut.slice(0, spaceCut).trim()
+
+  return hardCut.trim()
+}
+
+export function limitFacebookPostText(rawText: string, maxLength = FACEBOOK_POST_LIMIT): SafeFacebookPostResult {
+  const source = normalizeFacebookPostText(rawText)
+
+  if (source.length <= maxLength) {
+    return {
+      text: source,
+      charCount: source.length,
+      wasTrimmed: false,
+      removedCharCount: 0,
+    }
+  }
+
+  const notice = '\n\n...[Bài quá dài nên đã được cắt bớt để đăng Facebook. Đọc tiếp ở link bên dưới.]'
+  const available = Math.max(1000, maxLength - notice.length)
+  const cut = cutAtReadablePoint(source, available)
+  const text = normalizeFacebookPostText(`${cut}${notice}`).slice(0, maxLength).trim()
+
+  return {
+    text,
+    charCount: text.length,
+    wasTrimmed: true,
+    removedCharCount: Math.max(0, source.length - text.length),
+  }
+}
+
+export function ensureSafeFacebookPostText(rawText: string, maxLength = FACEBOOK_POST_LIMIT) {
+  return limitFacebookPostText(rawText, maxLength).text
+}
+
+function buildSafeCaption(displayBody: string, maxLength: number): SafeFacebookPostResult {
+  const closing = '\n\n...\n\n👉 Link đọc tiếp mình để dưới bình luận.'
+  const normalizedBody = normalizeFacebookPostText(displayBody)
+  const rawCaption = normalizeFacebookPostText(`${normalizedBody}${closing}`)
+
+  if (rawCaption.length <= maxLength) {
+    return {
+      text: rawCaption,
+      charCount: rawCaption.length,
+      wasTrimmed: false,
+      removedCharCount: 0,
+    }
+  }
+
+  const notice = '\n\n...[Bài quá dài nên đã được cắt bớt để đăng Facebook.]'
+  const availableForBody = Math.max(1000, maxLength - closing.length - notice.length)
+  const cutBody = cutAtReadablePoint(normalizedBody, availableForBody)
+  const text = normalizeFacebookPostText(`${cutBody}${notice}${closing}`).slice(0, maxLength).trim()
+
+  return {
+    text,
+    charCount: text.length,
+    wasTrimmed: true,
+    removedCharCount: Math.max(0, rawCaption.length - text.length),
+  }
+}
+
+function normalizeDraftForFacebookLimit(draft: GroupPostDraft): GroupPostDraft {
+  const safeCaption = limitFacebookPostText(draft.caption || '', FACEBOOK_POST_LIMIT)
+  const safeCaptionNoLink = limitFacebookPostText(draft.captionNoLink || draft.caption || '', FACEBOOK_POST_LIMIT)
+
+  return {
+    ...draft,
+    caption: safeCaption.text,
+    captionNoLink: safeCaptionNoLink.text,
+    captionCharCount: safeCaption.charCount,
+    wasTrimmed: Boolean(draft.wasTrimmed || safeCaption.wasTrimmed || safeCaptionNoLink.wasTrimmed),
+    removedCharCount: Math.max(
+      Number(draft.removedCharCount || 0),
+      safeCaption.removedCharCount,
+      safeCaptionNoLink.removedCharCount
+    ),
+  }
 }
 
 function isPublishedStory(row: Record<string, any>) {
@@ -215,7 +341,7 @@ export function loadDrafts(): GroupPostDraft[] {
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
 
-    return parsed
+    return parsed.map((draft) => normalizeDraftForFacebookLimit(draft as GroupPostDraft))
   } catch {
     return []
   }
@@ -441,11 +567,8 @@ export function createGroupPostDraft(params: {
   const storyUrl = buildStoryUrl(story.slug)
   const chapter = fallbackChapters[0]
 
-  const caption = `${displayBody}
-
-...
-
-👉 Link đọc tiếp mình để dưới bình luận.`
+  const safeCaption = buildSafeCaption(displayBody, GROUP_POST_LENGTH_LIMIT[length])
+  const caption = safeCaption.text
 
   const captionNoLink = caption
 
@@ -464,6 +587,9 @@ ${storyUrl}`
     chapterTitle: chapter.title,
     caption,
     captionNoLink,
+    captionCharCount: safeCaption.charCount,
+    wasTrimmed: safeCaption.wasTrimmed,
+    removedCharCount: safeCaption.removedCharCount,
     commentText,
     storyUrl,
     imageUrl: story.coverImage || '',

@@ -6,7 +6,7 @@ import StoryDetailPage from "@/pages/StoryDetailPage"
 import NotFoundPage from "../pages/NotFoundPage"
 import ScrollToTop from "@/components/ScrollToTop"
 import AdminPage from "@/pages/AdminPage"
-import LoginPage from "@/pages/LoginPage"
+import LoginPage from "@/pages/AdminLoginPage"
 
 export default function AppRouter() {
   return (

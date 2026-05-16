@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import {
+  FACEBOOK_POST_LIMIT,
   copyText,
   createGroupPostDraft,
   deleteDraft,
@@ -9,6 +10,7 @@ import {
   loadDrafts,
   loadPublishedStories,
   loadStoryChapters,
+  limitFacebookPostText,
   type GroupPostDraft,
   type GroupPostStory,
   updateDraftStatus,
@@ -122,6 +124,18 @@ function DraftCard({
             >
               {getStatusLabel(draft.status)}
             </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-xs text-zinc-400">
+            <span>
+              Độ dài bài: {(draft.caption?.length ?? 0).toLocaleString('vi-VN')} / {FACEBOOK_POST_LIMIT.toLocaleString('vi-VN')} ký tự
+            </span>
+            {(draft.caption?.length ?? 0) > FACEBOOK_POST_LIMIT ? (
+              <span className="font-semibold text-red-300">Vượt giới hạn Facebook</span>
+            ) : null}
+            {draft.wasTrimmed ? (
+              <span className="font-semibold text-amber-300">Đã tự cắt bớt</span>
+            ) : null}
           </div>
 
           <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-xl border border-zinc-800 bg-black/40 p-3 text-sm leading-6 text-zinc-200">
@@ -370,17 +384,23 @@ export default function GroupPostFactory() {
   async function handleCopy(draft: GroupPostDraft, text: string, markCopied = false) {
     setManualCopyText('')
 
+    const safe = markCopied ? limitFacebookPostText(text, FACEBOOK_POST_LIMIT) : { text, wasTrimmed: false, charCount: text.length }
+
     try {
-      await copyText(text)
+      await copyText(safe.text)
 
       if (markCopied) {
         const nextDrafts = updateDraftStatus(draft.id, 'copied')
         setDrafts(nextDrafts)
       }
 
-      setMessage('Đã copy.')
+      setMessage(
+        safe.wasTrimmed
+          ? `Bài quá dài nên đã cắt còn ${safe.charCount.toLocaleString('vi-VN')} ký tự rồi mới copy.`
+          : 'Đã copy.'
+      )
     } catch (error) {
-      setManualCopyText(text)
+      setManualCopyText(safe.text)
       setMessage(`${getErrorMessage(error)} Tao đã hiện nội dung bên dưới để copy thủ công.`)
     }
   }
