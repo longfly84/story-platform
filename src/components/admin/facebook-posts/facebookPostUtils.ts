@@ -43,12 +43,12 @@ export type GroupPostDraft = {
 
 const STORAGE_KEY = 'story_platform_group_post_drafts_v1'
 
-export const FACEBOOK_POST_LIMIT = 60000
+export const FACEBOOK_POST_LIMIT = 40000
 
 const GROUP_POST_LENGTH_LIMIT: Record<'short' | 'medium' | 'long', number> = {
-  short: 12000,
-  medium: 25000,
-  long: FACEBOOK_POST_LIMIT,
+  short: 10000,
+  medium: 22000,
+  long: 40000
 }
 
 type SafeFacebookPostResult = {
