@@ -83,6 +83,7 @@ export default function AdminPage() {
 
   async function fetchStories() {
     setLoading(true)
+
     try {
       let q = supabase.from('stories').select('*')
 
@@ -90,10 +91,96 @@ export default function AdminPage() {
         q = q.eq('owner_id', user.id)
       }
 
-      const res = await q.order('id', { ascending: true })
-      if (res.error) throw res.error
+      // Admin đang ghi "truyện mới tạo lên đầu", nên phải order false.
+      const storiesRes = await q.order('created_at', { ascending: false })
+      if (storiesRes.error) throw storiesRes.error
 
-      setStories(res.data ?? [])
+      const rawStories = storiesRes.data ?? []
+
+      if (rawStories.length === 0) {
+        setStories([])
+        setError(null)
+        return
+      }
+
+      const chapterSelect = 'id, story_id, story_slug, chapter_number, number, created_at'
+
+      async function loadChapterRowsForStory(story: any) {
+        const storyId = story?.id !== null && story?.id !== undefined ? String(story.id) : ''
+        const storySlug = typeof story?.slug === 'string' ? story.slug.trim() : ''
+        const rowsById = new Map<string, any>()
+
+        async function addRows(query: any) {
+          const { data, error } = await query
+          if (error) throw error
+
+          for (const chapter of data ?? []) {
+            if (chapter?.id !== null && chapter?.id !== undefined) {
+              rowsById.set(String(chapter.id), chapter)
+            }
+          }
+        }
+
+        // Tách 2 query riêng cho chắc. Dùng .or() dễ lỗi khi slug có ký tự đặc biệt
+        // hoặc khi type story_id/story_slug khác nhau.
+        if (storyId) {
+          await addRows(
+            supabase
+              .from('chapters')
+              .select(chapterSelect)
+              .eq('story_id', storyId)
+          )
+        }
+
+        if (storySlug) {
+          await addRows(
+            supabase
+              .from('chapters')
+              .select(chapterSelect)
+              .eq('story_slug', storySlug)
+          )
+        }
+
+        const rows = Array.from(rowsById.values())
+        const count = rows.length
+
+        let latest = 0
+
+        for (const chapter of rows) {
+          const chapterNumber = Number(chapter?.chapter_number ?? chapter?.number ?? 0)
+          if (Number.isFinite(chapterNumber) && chapterNumber > latest) {
+            latest = chapterNumber
+          }
+        }
+
+        return {
+          count,
+          latest: latest > 0 ? latest : null,
+        }
+      }
+
+      const storiesWithChapterStats = await Promise.all(
+        rawStories.map(async (story: any) => {
+          const stats = await loadChapterRowsForStory(story)
+
+          return {
+            ...story,
+
+            // Giữ nhiều tên field để StoriesSection bản nào cũng đọc được.
+            _chapter_count: stats.count,
+            chapter_count: stats.count,
+            chapters_count: stats.count,
+            chapterCount: stats.count,
+            chaptersCount: stats.count,
+
+            _latest_chapter_number: stats.latest,
+            latest_chapter_number: stats.latest,
+            latestChapterNumber: stats.latest,
+          }
+        })
+      )
+
+      setStories(storiesWithChapterStats)
       setError(null)
     } catch (e: any) {
       setError(String(e?.message ?? e))
@@ -273,6 +360,8 @@ export default function AdminPage() {
         title: newChapter.title,
         slug: newChapter.slug,
         content: newChapter.content,
+        chapter_number: newChapter.chapter_number,
+        story_slug: newChapter.storySlug,
       }
 
       if (story?.id) payload.story_id = story.id
@@ -299,6 +388,7 @@ export default function AdminPage() {
       setChapterSlugEdited(false)
 
       if (story?.slug) await openManageChapters(story.slug)
+      await fetchStories()
     } catch (err: any) {
       alert('Error: ' + String(err?.message ?? err))
     }
@@ -385,6 +475,7 @@ export default function AdminPage() {
         title: editChapterData.title,
         slug: editChapterData.slug,
         content: editChapterData.content,
+        chapter_number: editChapterData.chapter_number,
         summary: editChapterData.summary,
         cliffhanger: editChapterData.cliffhanger,
         important_events: editChapterData.important_events,
@@ -395,6 +486,7 @@ export default function AdminPage() {
       if (res.error) throw res.error
 
       if (selectedStoryForChapters) await openManageChapters(selectedStoryForChapters)
+      await fetchStories()
 
       setEditingChapterId(null)
       setEditChapterData(null)
@@ -410,6 +502,7 @@ export default function AdminPage() {
       const res = await supabase.from('chapters').delete().eq('id', id)
       if (res.error) throw res.error
       if (storySlug) await openManageChapters(storySlug)
+      await fetchStories()
     } catch (err: any) {
       alert('Delete chapter failed: ' + String(err?.message ?? err))
     }
@@ -420,13 +513,37 @@ export default function AdminPage() {
       setSelectedStoryForChapters(slug)
 
       const sid = stories.find((s) => s.slug === slug)?.id
-      const q = supabase.from('chapters').select('*')
-      const q2 = sid ? q.eq('story_id', sid) : q.eq('story_slug', slug)
+      const chapterRowsById = new Map<string, any>()
 
-      const { data, error } = await q2.order('created_at', { ascending: true })
-      if (error) throw error
+      async function addRows(query: any) {
+        const { data, error } = await query
+        if (error) throw error
 
-      setExpandedChapters((m) => ({ ...m, [slug]: data ?? [] }))
+        for (const chapter of data ?? []) {
+          chapterRowsById.set(String(chapter.id), chapter)
+        }
+      }
+
+      if (sid) {
+        await addRows(
+          supabase.from('chapters').select('*').eq('story_id', sid).order('created_at', { ascending: true })
+        )
+      }
+
+      await addRows(
+        supabase.from('chapters').select('*').eq('story_slug', slug).order('created_at', { ascending: true })
+      )
+
+      const data = Array.from(chapterRowsById.values()).sort((a: any, b: any) => {
+        const aNumber = Number(a?.chapter_number ?? a?.number ?? 0)
+        const bNumber = Number(b?.chapter_number ?? b?.number ?? 0)
+
+        if (aNumber !== bNumber) return aNumber - bNumber
+
+        return new Date(a?.created_at || 0).getTime() - new Date(b?.created_at || 0).getTime()
+      })
+
+      setExpandedChapters((m) => ({ ...m, [slug]: data }))
 
       setTimeout(() => {
         document.getElementById('manage-chapters')?.scrollIntoView({
