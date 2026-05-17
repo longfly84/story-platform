@@ -299,6 +299,58 @@ export default function StoriesSection({
     return pages
   }
 
+
+  function renderPagination(position: 'top' | 'bottom' = 'bottom') {
+    if (filtered.length <= STORIES_PER_PAGE) return null
+
+    return (
+      <div
+        className={[
+          'flex flex-wrap items-center justify-center gap-2',
+          position === 'top' ? 'mt-4 mb-3' : 'mt-4',
+        ].join(' ')}
+      >
+        <button
+          type="button"
+          disabled={page <= 1}
+          onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+          className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 hover:border-amber-300"
+        >
+          Trước
+        </button>
+
+        {getVisiblePageNumbers().map((pageNumber) => (
+          <button
+            key={pageNumber}
+            type="button"
+            onClick={() => setPage(pageNumber)}
+            className={[
+              'rounded-lg px-3 py-2 text-sm font-semibold',
+              pageNumber === page
+                ? 'bg-amber-300 text-zinc-950'
+                : 'border border-zinc-700 text-zinc-100 hover:border-amber-300',
+            ].join(' ')}
+          >
+            {pageNumber}
+          </button>
+        ))}
+
+        <button
+          type="button"
+          disabled={page >= totalPages}
+          onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+          className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 hover:border-amber-300"
+        >
+          Sau
+        </button>
+
+        <span className="ml-2 text-xs text-zinc-500">
+          Trang {page}/{totalPages}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <section className="mb-6">
       <div>
@@ -325,6 +377,8 @@ export default function StoriesSection({
 
         <span className="text-zinc-600">Sắp xếp: truyện mới tạo lên đầu</span>
       </div>
+
+      {renderPagination('top')}
 
       {loading ? <div className="mt-3 text-sm text-zinc-400">Loading...</div> : null}
       {error ? <div className="mt-3 text-sm text-red-400">{error}</div> : null}
@@ -545,47 +599,7 @@ export default function StoriesSection({
         )}
       </ul>
 
-      {filtered.length > STORIES_PER_PAGE ? (
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 hover:border-amber-300"
-          >
-            Trước
-          </button>
-
-          {getVisiblePageNumbers().map((pageNumber) => (
-            <button
-              key={pageNumber}
-              type="button"
-              onClick={() => setPage(pageNumber)}
-              className={[
-                'rounded-lg px-3 py-2 text-sm font-semibold',
-                pageNumber === page
-                  ? 'bg-amber-300 text-zinc-950'
-                  : 'border border-zinc-700 text-zinc-100 hover:border-amber-300',
-              ].join(' ')}
-            >
-              {pageNumber}
-            </button>
-          ))}
-
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 hover:border-amber-300"
-          >
-            Sau
-          </button>
-
-          <span className="ml-2 text-xs text-zinc-500">
-            Trang {page}/{totalPages}
-          </span>
-        </div>
-      ) : null}
+      {renderPagination('bottom')}
     </section>
   )
 }
