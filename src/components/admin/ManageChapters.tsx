@@ -1,13 +1,13 @@
 type Props = {
   selectedStoryForChapters: string | null
   chapters: any[]
-  editingChapterId: number | null
+  editingChapterId: any | null
   editChapterData: any
-  setEditingChapterId: (value: number | null) => void
+  setEditingChapterId: (value: any | null) => void
   setEditChapterData: (value: any) => void
   startEditChapter: (chapter: any) => void
   saveEditChapter: (e: any) => void | Promise<void>
-  deleteChapter: (id: number, storySlug?: string) => void | Promise<void>
+  deleteChapter: (id: any, storySlug?: string) => void | Promise<void>
   onClose: () => void
 }
 
@@ -41,6 +41,7 @@ export default function ManageChapters({
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="truncate font-medium text-zinc-100">{c.title}</div>
+                <div className="mt-0.5 text-xs text-amber-300">Chương {c.chapter_number ?? 'chưa có số'}</div>
                 <div className="truncate text-xs text-zinc-400">{c.slug}</div>
                 <div className="mt-1 line-clamp-2 text-xs text-zinc-500">{c.content}</div>
               </div>
@@ -63,6 +64,7 @@ export default function ManageChapters({
               <form onSubmit={saveEditChapter} className="mt-3 grid gap-2">
                 <input className="rounded bg-zinc-900/60 p-2 text-zinc-100" value={editChapterData.title ?? ''} onChange={(e) => setEditChapterData({ ...editChapterData, title: e.target.value })} />
                 <input className="rounded bg-zinc-900/60 p-2 text-zinc-100" value={editChapterData.slug ?? ''} onChange={(e) => setEditChapterData({ ...editChapterData, slug: e.target.value })} />
+                <input type="number" min={1} className="rounded bg-zinc-900/60 p-2 text-zinc-100" value={editChapterData.chapter_number ?? ''} onChange={(e) => setEditChapterData({ ...editChapterData, chapter_number: Number(e.target.value) || null })} />
                 <textarea className="min-h-72 rounded bg-zinc-900/60 p-2 text-zinc-100" value={editChapterData.content ?? ''} onChange={(e) => setEditChapterData({ ...editChapterData, content: e.target.value })} />
                 <div className="flex gap-2">
                   <button type="submit" className="rounded bg-amber-300 px-3 py-1 text-zinc-900">Save</button>
