@@ -19,7 +19,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [expandedChapters, setExpandedChapters] = useState<Record<string, any[]>>({})
-  const [editingChapterId, setEditingChapterId] = useState<number | null>(null)
+  const [editingChapterId, setEditingChapterId] = useState<any | null>(null)
   const [editChapterData, setEditChapterData] = useState<any>(null)
   const [selectedStoryForChapters, setSelectedStoryForChapters] = useState<string | null>(null)
 
@@ -81,6 +81,12 @@ export default function AdminPage() {
       .replace(/\s+/g, '-')
   }
 
+  function getChapterNumberFromTitle(title: any) {
+    const match = String(title ?? '').match(/Chương\s+(\d+)/i)
+    const value = match ? Number(match[1]) : 0
+    return Number.isFinite(value) && value > 0 ? value : 0
+  }
+
   async function fetchStories() {
     setLoading(true)
 
@@ -91,94 +97,98 @@ export default function AdminPage() {
         q = q.eq('owner_id', user.id)
       }
 
-      // Admin đang ghi "truyện mới tạo lên đầu", nên phải order false.
       const storiesRes = await q.order('created_at', { ascending: false })
       if (storiesRes.error) throw storiesRes.error
 
       const rawStories = storiesRes.data ?? []
+      const storyIds = rawStories
+        .map((story: any) => story?.id)
+        .filter((id: any) => id !== null && id !== undefined)
+        .map((id: any) => String(id))
 
-      if (rawStories.length === 0) {
-        setStories([])
-        setError(null)
-        return
+      const chapterStatsByStoryId = new Map<string, { count: number; latest: number | null }>()
+
+      if (storyIds.length > 0) {
+        // First try the SECURITY DEFINER RPC. This is important when RLS hides draft chapters
+        // from the browser client, while SQL Editor still shows them.
+        const rpcRes = await supabase.rpc('get_admin_story_chapter_stats', {
+          story_ids: storyIds,
+        })
+
+        if (!rpcRes.error && Array.isArray(rpcRes.data)) {
+          for (const row of rpcRes.data) {
+            const storyId = row?.story_id ? String(row.story_id) : ''
+            if (!storyId) continue
+
+            const count = Number(row?.chapter_count ?? 0)
+            const latestRaw = Number(row?.latest_chapter_number ?? 0)
+
+            chapterStatsByStoryId.set(storyId, {
+              count: Number.isFinite(count) && count > 0 ? count : 0,
+              latest: Number.isFinite(latestRaw) && latestRaw > 0 ? latestRaw : null,
+            })
+          }
+        } else {
+          // Fallback for local/dev databases that do not have the RPC yet.
+          const { data: chapterRows, error: chapterError } = await supabase
+            .from('chapters')
+            .select('id, story_id, title, chapter_number, created_at')
+            .in('story_id', storyIds)
+
+          if (chapterError) throw chapterError
+
+          for (const chapter of chapterRows ?? []) {
+            const storyId = chapter?.story_id ? String(chapter.story_id) : ''
+            if (!storyId) continue
+
+            const oldStats = chapterStatsByStoryId.get(storyId) ?? { count: 0, latest: null }
+            const directChapterNumber = Number(chapter?.chapter_number ?? 0)
+            const parsedChapterNumber = getChapterNumberFromTitle(chapter?.title)
+            const chapterNumber =
+              Number.isFinite(directChapterNumber) && directChapterNumber > 0
+                ? directChapterNumber
+                : parsedChapterNumber
+
+            chapterStatsByStoryId.set(storyId, {
+              count: oldStats.count + 1,
+              latest:
+                chapterNumber > 0
+                  ? Math.max(oldStats.latest ?? 0, chapterNumber)
+                  : oldStats.latest,
+            })
+          }
+        }
       }
 
-      const chapterSelect = 'id, story_id, story_slug, chapter_number, number, created_at'
-
-      async function loadChapterRowsForStory(story: any) {
-        const storyId = story?.id !== null && story?.id !== undefined ? String(story.id) : ''
-        const storySlug = typeof story?.slug === 'string' ? story.slug.trim() : ''
-        const rowsById = new Map<string, any>()
-
-        async function addRows(query: any) {
-          const { data, error } = await query
-          if (error) throw error
-
-          for (const chapter of data ?? []) {
-            if (chapter?.id !== null && chapter?.id !== undefined) {
-              rowsById.set(String(chapter.id), chapter)
-            }
-          }
-        }
-
-        // Tách 2 query riêng cho chắc. Dùng .or() dễ lỗi khi slug có ký tự đặc biệt
-        // hoặc khi type story_id/story_slug khác nhau.
-        if (storyId) {
-          await addRows(
-            supabase
-              .from('chapters')
-              .select(chapterSelect)
-              .eq('story_id', storyId)
-          )
-        }
-
-        if (storySlug) {
-          await addRows(
-            supabase
-              .from('chapters')
-              .select(chapterSelect)
-              .eq('story_slug', storySlug)
-          )
-        }
-
-        const rows = Array.from(rowsById.values())
-        const count = rows.length
-
-        let latest = 0
-
-        for (const chapter of rows) {
-          const chapterNumber = Number(chapter?.chapter_number ?? chapter?.number ?? 0)
-          if (Number.isFinite(chapterNumber) && chapterNumber > latest) {
-            latest = chapterNumber
-          }
-        }
+      const storiesWithChapterStats = rawStories.map((story: any) => {
+        const stats = chapterStatsByStoryId.get(String(story.id)) ?? { count: 0, latest: null }
+        const explicitTotal = Number(
+          story?.total_chapters ?? story?.target_chapters ?? story?.planned_chapters ?? 0
+        )
+        const hasExplicitCompletion =
+          story?.completion_status !== undefined ||
+          story?.story_status !== undefined ||
+          story?.progress_status !== undefined ||
+          story?.is_completed !== undefined ||
+          story?.completed !== undefined
 
         return {
-          count,
-          latest: latest > 0 ? latest : null,
+          ...story,
+          _chapter_count: stats.count,
+          chapter_count: stats.count,
+          chapters_count: stats.count,
+          chapterCount: stats.count,
+          chaptersCount: stats.count,
+          _latest_chapter_number: stats.latest,
+          latest_chapter_number: stats.latest,
+          latestChapterNumber: stats.latest,
+          _admin_has_chapters: stats.count > 0,
+          _admin_is_full:
+            hasExplicitCompletion
+              ? undefined
+              : stats.count > 0 && (!explicitTotal || stats.count >= explicitTotal),
         }
-      }
-
-      const storiesWithChapterStats = await Promise.all(
-        rawStories.map(async (story: any) => {
-          const stats = await loadChapterRowsForStory(story)
-
-          return {
-            ...story,
-
-            // Giữ nhiều tên field để StoriesSection bản nào cũng đọc được.
-            _chapter_count: stats.count,
-            chapter_count: stats.count,
-            chapters_count: stats.count,
-            chapterCount: stats.count,
-            chaptersCount: stats.count,
-
-            _latest_chapter_number: stats.latest,
-            latest_chapter_number: stats.latest,
-            latestChapterNumber: stats.latest,
-          }
-        })
-      )
+      })
 
       setStories(storiesWithChapterStats)
       setError(null)
@@ -360,8 +370,8 @@ export default function AdminPage() {
         title: newChapter.title,
         slug: newChapter.slug,
         content: newChapter.content,
-        chapter_number: newChapter.chapter_number,
-        story_slug: newChapter.storySlug,
+        chapter_number: Number(newChapter.chapter_number) || 1,
+        status: 'published',
       }
 
       if (story?.id) payload.story_id = story.id
@@ -475,7 +485,7 @@ export default function AdminPage() {
         title: editChapterData.title,
         slug: editChapterData.slug,
         content: editChapterData.content,
-        chapter_number: editChapterData.chapter_number,
+        chapter_number: Number(editChapterData.chapter_number) || undefined,
         summary: editChapterData.summary,
         cliffhanger: editChapterData.cliffhanger,
         important_events: editChapterData.important_events,
@@ -495,7 +505,7 @@ export default function AdminPage() {
     }
   }
 
-  async function deleteChapter(id: number, storySlug?: string) {
+  async function deleteChapter(id: any, storySlug?: string) {
     if (!confirm('Xác nhận xoá chương?')) return
 
     try {
@@ -513,37 +523,20 @@ export default function AdminPage() {
       setSelectedStoryForChapters(slug)
 
       const sid = stories.find((s) => s.slug === slug)?.id
-      const chapterRowsById = new Map<string, any>()
 
-      async function addRows(query: any) {
-        const { data, error } = await query
-        if (error) throw error
-
-        for (const chapter of data ?? []) {
-          chapterRowsById.set(String(chapter.id), chapter)
-        }
+      if (!sid) {
+        throw new Error('Không tìm thấy story_id cho truyện này.')
       }
 
-      if (sid) {
-        await addRows(
-          supabase.from('chapters').select('*').eq('story_id', sid).order('created_at', { ascending: true })
-        )
-      }
+      const { data, error } = await supabase
+        .from('chapters')
+        .select('*')
+        .eq('story_id', sid)
+        .order('chapter_number', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
+      if (error) throw error
 
-      await addRows(
-        supabase.from('chapters').select('*').eq('story_slug', slug).order('created_at', { ascending: true })
-      )
-
-      const data = Array.from(chapterRowsById.values()).sort((a: any, b: any) => {
-        const aNumber = Number(a?.chapter_number ?? a?.number ?? 0)
-        const bNumber = Number(b?.chapter_number ?? b?.number ?? 0)
-
-        if (aNumber !== bNumber) return aNumber - bNumber
-
-        return new Date(a?.created_at || 0).getTime() - new Date(b?.created_at || 0).getTime()
-      })
-
-      setExpandedChapters((m) => ({ ...m, [slug]: data }))
+      setExpandedChapters((m) => ({ ...m, [slug]: data ?? [] }))
 
       setTimeout(() => {
         document.getElementById('manage-chapters')?.scrollIntoView({
